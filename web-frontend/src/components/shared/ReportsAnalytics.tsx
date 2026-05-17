@@ -352,7 +352,7 @@ export function ReportsAnalytics() {
 
       <Tabs defaultValue="overview" className="space-y-4">
         <motion.div {...fadeUp(0.15)}>
-          <TabsList className="w-full justify-start overflow-x-auto bg-white border border-[#EEF1F8] rounded-xl h-auto p-1">
+          <TabsList className="w-full justify-start overflow-x-auto bg-white/60 border border-[#EEF1F8] rounded-xl h-auto p-1">
             <TabsTrigger value="overview" className="text-[12px]">Overview</TabsTrigger>
             <TabsTrigger value="revenue" className="text-[12px]">Revenue</TabsTrigger>
             <TabsTrigger value="bookings" className="text-[12px]">Bookings</TabsTrigger>

@@ -124,7 +124,7 @@ export function VehicleFormDialog({ open, onOpenChange, onSave }: VehicleFormDia
           w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] lg:w-[50vw]
           max-w-[960px] sm:max-w-none p-0 gap-0 rounded-2xl border-0
           shadow-[0_24px_64px_rgba(0,0,0,0.14)]
-          flex flex-col max-h-[92vh]
+          flex flex-col max-h-[70v h]
           sm:max-h-[88vh]
           [&>button]:hidden
         "

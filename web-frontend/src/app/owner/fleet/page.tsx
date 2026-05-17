@@ -1,8 +1,5 @@
+import FleetTracker from "@/components/shared/FleetTracker";
 
 export default function FleetPage() {
-    return(
-        <div>
-            Fleet Page
-        </div>
-    )
+  return <FleetTracker />;
 }
