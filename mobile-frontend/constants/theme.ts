@@ -5,24 +5,25 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Aligned to web-frontend theme tokens in `web-frontend/src/app/globals.css`
+const tintColorLight = '#171717';
+const tintColorDark = '#EBEBEB';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#171717',
+    background: '#FFFFFF',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#8E8E8E',
+    tabIconDefault: '#8E8E8E',
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#FAFAFA',
+    background: '#171717',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#A1A1A1',
+    tabIconDefault: '#A1A1A1',
     tabIconSelected: tintColorDark,
   },
 };
