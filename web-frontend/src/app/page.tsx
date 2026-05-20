@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import CarShowcase from "@/components/common/CarShowcase";
 import BookingSteps from "@/components/common/BookingSteps";
@@ -5,11 +7,40 @@ import TestimonialCard from "@/components/common/TestimonialCard";
 import { testimonials } from "@/lib/mock_data";
 import { Map } from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+
+const MotionLink = motion.create(Link);
+
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.45, delay },
+});
+
+const revealUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 22 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, amount: 0.18 },
+  transition: { duration: 0.45, delay },
+});
+
+const heroStagger = {
+  initial: {},
+  animate: { transition: { staggerChildren: 0.1, delayChildren: 0.25 } },
+};
+
+const heroItem = {
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+};
 
 export default function Home() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#F5F5F5] flex flex-col ">
-      <header className="fixed top-0 left-0 w-full z-50 px-20 py-3 bg-[#f5f5f5]/90 backdrop-blur flex items-center justify-between ">
+      <motion.header
+        {...fadeUp(0)}
+        className="fixed top-0 left-0 w-full z-50 px-20 py-3 bg-[#f5f5f5]/90 backdrop-blur flex items-center justify-between "
+      >
         <p className="text-[#346EF6] text-lg font-semibold">
           JAMJADE CAR RENTAL
         </p>
@@ -50,43 +81,93 @@ export default function Home() {
             LOGIN
           </Link>
         </div>
-      </header>
+      </motion.header>
 
       <main>
-        <section id="home" className="min-h-screen ">
-          <div className="relative min-h-screen">
+        <section
+          id="home"
+          className="relative min-h-[92vh] overflow-hidden"
+        >
+          <motion.div
+            className="absolute inset-0"
+            initial={{ opacity: 0, scale: 1.04 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.9 }}
+          >
             <Image
-              src="/Hero-Image.jpg"
-              alt="Vios"
+              src="/JamJade-Hero.jpeg"
+              alt="JamJade rental car ready for a trip"
               fill
-              className="absolute z-20 inset-0 w-full h-full object-cover brightness-80"
+              priority
+              className="object-cover object-center brightness-110 saturate-105"
             />
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-white/80 to-transparent blur-sm"></div>
-          </div>
+            <div className="absolute inset-0 bg-white/20" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.38)_43%,rgba(245,245,245,0.9)_100%)]" />
+          </motion.div>
 
-          <div className="absolute z-30 top-55 left-15">
-            <p className="text-neutral-900 text-7xl font-bold w-150 text-white">
-              Your Journey Starts
-            </p>
-            <p className="text-[#346EF6] text-7xl font-bold italic w-40 mb-3">
-              with JamJade
-            </p>
-            <p className="w-120 mb-3 text-white">
+          <motion.div
+            variants={heroStagger}
+            initial="initial"
+            animate="animate"
+            className="relative z-10 mx-auto flex min-h-[92vh] max-w-5xl flex-col items-center justify-center px-6 pb-14 pt-28 text-center sm:px-10"
+          >
+            <motion.h1
+              variants={heroItem}
+              transition={{ duration: 0.5 }}
+              className="max-w-4xl text-5xl font-bold leading-[0.95] text-neutral-950/80 sm:text-6xl lg:text-8xl"
+            >
+              Your Journey Starts with
+              <span className="block italic text-[#346EF6]">JamJade</span>
+            </motion.h1>
+            <motion.p
+              variants={heroItem}
+              transition={{ duration: 0.45 }}
+              className="mt-6 max-w-2xl text-base leading-7 text-neutral-700 sm:text-lg"
+            >
               Experience the road like never before. Premium vehicle rentals
-              tailored for your comfort, style, and budget
-            </p>
-            <div className="flex space-x-3">
-              <button className="text-sm text-white bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] px-4 py-2 rounded-md hover:opacity-95">
+              tailored for your comfort, style, and budget.
+            </motion.p>
+            <motion.div
+              variants={heroItem}
+              transition={{ duration: 0.45 }}
+              className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
+            >
+              <MotionLink
+                href="/login"
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="min-w-32 rounded-md bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_60%,#5a8cff_100%)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all ease-in-out hover:-translate-y-0.5 hover:shadow-blue-500/30"
+              >
                 Rent Now
-              </button>
-              <button className="text-sm text-white bg-[#346EF6] px-4 py-2 rounded-md hover:bg-[#346EF6]/95">
+              </MotionLink>
+              <motion.a
+                href="#showcase"
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                className="min-w-32 rounded-md border border-neutral-950/15 bg-white/70 px-5 py-3 text-sm font-semibold text-neutral-900 backdrop-blur transition-all ease-in-out hover:-translate-y-0.5 hover:bg-white"
+              >
                 View Fleet
-              </button>
-            </div>
-          </div>
+              </motion.a>
+            </motion.div>
+            <motion.div
+              variants={heroItem}
+              transition={{ duration: 0.45 }}
+              className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs font-medium uppercase tracking-[0.18em] text-neutral-600"
+            >
+              <span>Clean Cars</span>
+              <span className="h-1 w-1 rounded-full bg-[#346EF6]" />
+              <span>Flexible Booking</span>
+              <span className="h-1 w-1 rounded-full bg-[#346EF6]" />
+              <span>Local Support</span>
+            </motion.div>
+          </motion.div>
         </section>
 
-        <section id="showcase" className="py-20 px-20 flex flex-col ">
+        <motion.section
+          {...revealUp(0)}
+          id="showcase"
+          className="py-20 px-20 flex flex-col "
+        >
           <p className="font-semibold text-4xl mb-2">Select Your Excellence</p>
           <p className="text-sm mb-8 text-gray-600">
             Browse our hand-picked selection of premium vehicle for every
@@ -96,9 +177,10 @@ export default function Home() {
           <div className="mx-auto w-full ">
             <CarShowcase />
           </div>
-        </section>
+        </motion.section>
 
-        <section
+        <motion.section
+          {...revealUp(0)}
           id="tutorial"
           className="py-20 px-20 grid grid-cols-2 bg-white/80"
         >
@@ -108,9 +190,13 @@ export default function Home() {
             </p>
             <BookingSteps />
           </div>
-        </section>
+        </motion.section>
 
-        <section id="testimonial" className="py-20 px-20 flex flex-col">
+        <motion.section
+          {...revealUp(0)}
+          id="testimonial"
+          className="py-20 px-20 flex flex-col"
+        >
           <p className="font-semibold text-4xl mb-2">Words of Praises</p>
           <p className="text-sm mb-8 text-gray-600">
             Hear from our satisfied customers and learn how our service made
@@ -136,9 +222,13 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section id="visit" className="py-20 px-20 bg-white/80 relative ">
+        <motion.section
+          {...revealUp(0)}
+          id="visit"
+          className="py-20 px-20 bg-white/80 relative "
+        >
           <p className="font-semibold text-4xl mb-2">Come and Visit Us</p>
           <p className="text-sm mb-8 text-gray-600">
             Visit our location and explore our available cars up close. Our team
@@ -173,7 +263,7 @@ export default function Home() {
               </a>
             </p>
           </div>
-        </section>
+        </motion.section>
       </main>
 
       <footer className="py-15 px-40 grid grid-cols-4 gap-20 ">
