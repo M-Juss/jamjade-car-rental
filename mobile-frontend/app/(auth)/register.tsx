@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AuthScreenFrame, AuthSubmitButton, InputWithLabel } from '@/components/common';
 
@@ -35,9 +35,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    Alert.alert('Account ready', 'Register is ready to connect to the auth API.', [
-      { text: 'Continue', onPress: () => router.replace('/(tabs)') },
-    ]);
+    router.replace('/(tabs)');
   };
 
   return (
@@ -91,7 +89,16 @@ export default function RegisterScreen() {
             value={confirmPassword}
           />
 
-          <AuthSubmitButton label="Continue" disabled={isSubmitDisabled} onPress={handleSubmit} />
+          <View className="rounded-3xl border border-[#DDE8FF] bg-[#F8FAFF] px-4 py-3">
+            <Text className="text-[13px] font-bold leading-5 text-[#17315F]">
+              Start your JamJade account.
+            </Text>
+            <Text className="mt-1 text-[12px] font-medium leading-[18px] text-[#6C7A96]">
+              Register once to make future reservations faster and easier.
+            </Text>
+          </View>
+
+          <AuthSubmitButton label="Register" disabled={isSubmitDisabled} onPress={handleSubmit} />
         </View>
       </AuthScreenFrame>
     </>

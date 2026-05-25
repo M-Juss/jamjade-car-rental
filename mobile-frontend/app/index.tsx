@@ -15,8 +15,8 @@ export default function LandingScreen() {
   const isCompact = height < 760 || width < 380;
   const isTiny = height < 690 || width < 360;
   const screenClass = width > 520
-    ? 'relative flex-1 w-full max-w-[430px] self-center overflow-hidden border-x border-[#DDE8FF] bg-[#F8FAFF] px-5 pb-5 pt-4 shadow-2xl shadow-[#346EF6]/15'
-    : 'relative flex-1 w-full max-w-[430px] self-center overflow-hidden bg-[#F8FAFF] px-5 pb-4 pt-3';
+    ? 'relative flex-1 w-full max-w-[430px] self-center overflow-hidden border-x border-[#DDE8FF] bg-[#F8FAFF] px-5 shadow-2xl shadow-[#346EF6]/15'
+    : 'relative flex-1 w-full max-w-[430px] self-center overflow-hidden bg-[#F8FAFF] px-5';
   const titleClass = isTiny
     ? 'text-[35px] font-black leading-[38px] text-[#17315F]'
     : isCompact
@@ -58,7 +58,7 @@ export default function LandingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-[#F8FAFF]">
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar />
+      <StatusBar backgroundColor="transparent" style="dark" translucent />
 
       <View className={screenClass}>
         <View className="absolute right-[-128px] top-14 h-[318px] w-[318px] rounded-full bg-[#DDE8FF]" />
@@ -73,7 +73,7 @@ export default function LandingScreen() {
         <View className="absolute right-[68px] bottom-[164px] h-4 w-4 rounded-full bg-[#BFD7FF] opacity-80" />
         <View className="absolute bottom-[178px] left-5 right-5 h-px bg-[#17315F]/5" />
 
-        <View className={cx('z-10 pt-6', isCompact && 'pt-3', isTiny && 'pt-1')}>
+        <View className={cx('z-10 pt-3', isCompact && 'pt-2', isTiny && 'pt-1')}>
           <Text className={titleClass}>
             Your Journey
           </Text>
@@ -88,7 +88,7 @@ export default function LandingScreen() {
           </View>
         </View>
 
-        <View className={cx('z-10 mt-auto gap-4 pb-1', isCompact && 'gap-3', isTiny && 'gap-2.5')}>
+        <View className={cx('z-10 mt-auto gap-4', isCompact && 'gap-3', isTiny && 'gap-2.5')}>
           <View className="overflow-hidden rounded-[26px] border border-[#DDE8FF] bg-white/90 px-4 py-3 shadow-sm shadow-[#346EF6]/10">
             <View className="absolute bottom-[-28px] right-[-18px] h-20 w-20 rounded-full bg-[#DDE8FF]/60" />
             <View className="mb-2 flex-row items-center gap-2">
@@ -105,21 +105,21 @@ export default function LandingScreen() {
 
           <View className={cx('gap-3', isCompact && 'gap-2.5')}>
             <Pressable
-              onPress={() => router.push('/(auth)/register')}
+              onPress={() => router.push('/register')}
               className={cx(
                 'items-center justify-center rounded-full bg-[#346EF6] shadow-lg shadow-[#004BFA]/20',
                 buttonHeightClass,
               )}>
-              <Text className={primaryTextClass}>Get Started</Text>
+              <Text className={primaryTextClass}>Register</Text>
             </Pressable>
 
             <Pressable
-              onPress={() => router.push('/(auth)/login')}
+              onPress={() => router.push('/login')}
               className={cx(
                 'items-center justify-center rounded-full border border-[#346EF6]/20 bg-white',
                 buttonHeightClass,
               )}>
-              <Text className={secondaryTextClass}>I already have an account</Text>
+              <Text className={secondaryTextClass}>Login</Text>
             </Pressable>
           </View>
         </View>

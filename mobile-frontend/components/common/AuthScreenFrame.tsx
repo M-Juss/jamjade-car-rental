@@ -17,21 +17,130 @@ type AuthScreenFrameProps = PropsWithChildren<{
   mode: AuthMode;
 }>;
 
+type BreakpointFlags = {
+  isCompact: boolean;
+  isTiny: boolean;
+};
+
+const AUTH_MODE_CONFIG = {
+  login: {
+    label: 'Login',
+    route: '/login',
+  },
+  register: {
+    label: 'Register',
+    route: '/register',
+  },
+} as const;
+
+const AUTH_HEADER_COPY = {
+  brand: 'JamJade',
+  service: 'Car Rental',
+  tagline: 'Premium rides, ready when you are',
+};
+
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
+}
+
+function DecorativeCircle({ className }: { className: string }) {
+  return <View className={className} />;
+}
+
+function AuthHeroHeader({ isCompact, isTiny }: BreakpointFlags) {
+  return (
+    <View
+      className={cx(
+        'min-h-[214px] overflow-hidden px-7 pb-12 pt-5',
+        isCompact && 'min-h-[190px] pb-10 pt-4',
+        isTiny && 'min-h-[170px] px-6 pb-9 pt-3',
+      )}>
+      <DecorativeCircle className="absolute right-[-112px] top-[-42px] h-[260px] w-[260px] rounded-full bg-[#DDE8FF]" />
+      <DecorativeCircle className="absolute left-[-124px] top-[-126px] h-[250px] w-[250px] rounded-full bg-white" />
+      <DecorativeCircle className="absolute right-12 top-[118px] h-5 w-5 rounded-full bg-[#BFD7FF]" />
+
+      <View className="z-10 items-center">
+        <Text
+          className={cx(
+            'text-center text-[42px] font-black italic leading-[44px] text-[#346EF6]',
+            isTiny && 'text-[35px] leading-[38px]',
+          )}>
+          {AUTH_HEADER_COPY.brand}
+        </Text>
+        <Text
+          className={cx(
+            'text-center text-[34px] font-black italic leading-[36px] text-[#346EF6]',
+            isTiny && 'text-[28px] leading-[31px]',
+          )}>
+          {AUTH_HEADER_COPY.service}
+        </Text>
+        <Text
+          className={cx(
+            'mt-2 text-center text-[11px] font-bold uppercase tracking-[1.8px] text-[#6C7A96]',
+            isTiny && 'text-[10px] tracking-[1.4px]',
+          )}>
+          {AUTH_HEADER_COPY.tagline}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function AuthCardDecorations() {
+  return (
+    <>
+      <DecorativeCircle className="absolute bottom-[-48px] right-8 h-28 w-28 rounded-full bg-[#EAF7F1]" />
+    </>
+  );
+}
+
+function AuthModeSwitch({
+  mode,
+  onModeChange,
+}: {
+  mode: AuthMode;
+  onModeChange: (nextMode: AuthMode) => void;
+}) {
+  return (
+    <View className="z-10 mb-5 min-h-[54px] flex-row items-center rounded-full bg-[#EEF4FF] p-1.5">
+      {(Object.keys(AUTH_MODE_CONFIG) as AuthMode[]).map((authMode) => {
+        const isActive = mode === authMode;
+
+        return (
+          <Pressable
+            key={authMode}
+            accessibilityRole="button"
+            onPress={() => onModeChange(authMode)}
+            className={cx(
+              'min-h-[42px] flex-1 items-center justify-center rounded-full',
+              isActive && 'bg-[#346EF6] shadow-md shadow-[#346EF6]/20',
+            )}>
+            <Text
+              className={cx(
+                'text-[15px] font-bold',
+                isActive ? 'text-white' : 'text-[#17315F]',
+              )}>
+              {AUTH_MODE_CONFIG[authMode].label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 export function AuthScreenFrame({ mode, children }: AuthScreenFrameProps) {
   const router = useRouter();
   const { height, width } = useWindowDimensions();
   const isCompact = height < 860;
+  const isTiny = height < 720 || width < 360;
 
   const handleModeChange = (nextMode: AuthMode) => {
     if (nextMode === mode) {
       return;
     }
 
-    router.replace(nextMode === 'login' ? '/(auth)/login' : '/(auth)/register');
+    router.replace(AUTH_MODE_CONFIG[nextMode].route);
   };
 
   return (
@@ -42,68 +151,23 @@ export function AuthScreenFrame({ mode, children }: AuthScreenFrameProps) {
         <View
           className={cx(
             'flex-1 w-full max-w-[430px] self-center overflow-hidden bg-[#F8FAFF]',
-            width > 520 && 'my-5 rounded-[36px] border border-[#DDE8FF] shadow-2xl shadow-[#346EF6]/20',
+            width > 520 && 'border-x border-[#DDE8FF] shadow-2xl shadow-[#346EF6]/20',
           )}>
-          <View
-            className={cx(
-              'min-h-[196px] items-center justify-center px-7 pb-6 pt-7',
-              isCompact && 'min-h-[170px] pb-4 pt-5',
-            )}>
-            <View className="absolute right-[-94px] top-9 h-[260px] w-[260px] rounded-full bg-[#DDE8FF] opacity-95" />
-            <View className="absolute left-[-104px] top-[-104px] h-[270px] w-[270px] rounded-full bg-white" />
-
-            <Text className="text-7xl  font-black italic leading-[52px] text-[#346EF6]">
-              JamJade
-            </Text>
-            <Text className="text-center text-[28px] font-semibold leading-[32px] text-[#346EF6]">
-              Car Rental
-            </Text>
-          </View>
+          <AuthHeroHeader isCompact={isCompact} isTiny={isTiny} />
 
           <ScrollView
             bounces={false}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            className="flex-1"
+            className="-mt-8 flex-1"
             contentContainerClassName={cx(
-              'grow rounded-t-[30px] bg-white px-5 pb-7 pt-5 shadow-lg shadow-[#346EF6]/10',
+              'grow overflow-hidden rounded-t-[34px] border border-[#DDE8FF] bg-white px-5 pb-7 pt-4 shadow-2xl shadow-[#346EF6]/15',
               isCompact && 'pb-6 pt-[18px]',
             )}>
-            <View className="mb-5 min-h-[54px] flex-row items-center rounded-full bg-[#EEF4FF] p-1.5">
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => handleModeChange('login')}
-                className={cx(
-                  'min-h-[42px] flex-1 items-center justify-center rounded-full',
-                  mode === 'login' && 'bg-[#346EF6] shadow-md shadow-[#346EF6]/20',
-                )}>
-                <Text
-                  className={cx(
-                    'text-[15px] font-bold',
-                    mode === 'login' ? 'text-white' : 'text-[#17315F]',
-                  )}>
-                  Log In
-                </Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => handleModeChange('register')}
-                className={cx(
-                  'min-h-[42px] flex-1 items-center justify-center rounded-full',
-                  mode === 'register' && 'bg-[#346EF6] shadow-md shadow-[#346EF6]/20',
-                )}>
-                <Text
-                  className={cx(
-                    'text-[15px] font-bold',
-                    mode === 'register' ? 'text-white' : 'text-[#17315F]',
-                  )}>
-                  Sign Up
-                </Text>
-              </Pressable>
-            </View>
-
-            {children}
+            <AuthCardDecorations />
+            <View className="z-10 mb-4 h-1.5 w-12 self-center rounded-full bg-[#BFD0F4]" />
+            <AuthModeSwitch mode={mode} onModeChange={handleModeChange} />
+            <View className="z-10">{children}</View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>

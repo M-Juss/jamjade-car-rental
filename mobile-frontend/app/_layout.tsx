@@ -23,9 +23,11 @@ const JamJadeNavigationTheme = {
 export default function RootLayout() {
   return (
     <ThemeProvider value={JamJadeNavigationTheme}>
-      <Stack>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="browse" options={{ headerShown: false }} />
+        <Stack.Screen name="bookings" options={{ headerShown: false }} />
       </Stack>
       <StatusBar />
     </ThemeProvider>

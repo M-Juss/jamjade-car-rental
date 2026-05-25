@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { AuthScreenFrame, AuthSubmitButton, InputWithLabel } from '@/components/common';
 
@@ -30,9 +30,7 @@ export default function LoginScreen() {
       return;
     }
 
-    Alert.alert('Welcome back', 'Login is ready to connect to the auth API.', [
-      { text: 'Continue', onPress: () => router.replace('/(tabs)') },
-    ]);
+    router.replace('/(tabs)');
   };
 
   return (
@@ -70,7 +68,16 @@ export default function LoginScreen() {
             value={password}
           />
 
-          <AuthSubmitButton label="Continue" disabled={isSubmitDisabled} onPress={handleSubmit} />
+          <View className="rounded-3xl border border-[#DDE8FF] bg-[#F8FAFF] px-4 py-3">
+            <Text className="text-[13px] font-bold leading-5 text-[#17315F]">
+              Welcome back to JamJade.
+            </Text>
+            <Text className="mt-1 text-[12px] font-medium leading-[18px] text-[#6C7A96]">
+              Sign in to continue managing your rentals and saved booking details.
+            </Text>
+          </View>
+
+          <AuthSubmitButton label="Login" disabled={isSubmitDisabled} onPress={handleSubmit} />
         </View>
       </AuthScreenFrame>
     </>

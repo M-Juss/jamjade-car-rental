@@ -1,0 +1,141 @@
+import {
+  CalendarX,
+  Car,
+  ClipboardList,
+  CreditCard,
+  FileCheck2,
+  MessageCircle,
+  Navigation,
+  RefreshCcw,
+  Star,
+  type LucideIcon,
+} from 'lucide-react-native';
+
+import type { BookingStatus } from '@/types/booking';
+
+import type { ActionButtonVariant } from './ActionButton';
+
+export type BookingActionKey =
+  | 'view_details'
+  | 'cancel_request'
+  | 'payment_info'
+  | 'prepare_documents'
+  | 'open_telematics'
+  | 'contact_admin'
+  | 'book_again'
+  | 'leave_feedback'
+  | 'book_another_vehicle';
+
+export type BookingAction = {
+  key: BookingActionKey;
+  label: string;
+  icon: LucideIcon;
+  variant: ActionButtonVariant;
+};
+
+const detailAction: BookingAction = {
+  key: 'view_details',
+  label: 'View Details',
+  icon: ClipboardList,
+  variant: 'primary',
+};
+
+const actionsByStatus = {
+  Pending: [
+    detailAction,
+    {
+      key: 'cancel_request',
+      label: 'Cancel Request',
+      icon: CalendarX,
+      variant: 'danger',
+    },
+  ],
+  Approved: [
+    detailAction,
+    {
+      key: 'payment_info',
+      label: 'Payment Info',
+      icon: CreditCard,
+      variant: 'soft',
+    },
+    {
+      key: 'prepare_documents',
+      label: 'Prepare Documents',
+      icon: FileCheck2,
+      variant: 'secondary',
+    },
+  ],
+  Active: [
+    detailAction,
+    {
+      key: 'open_telematics',
+      label: 'Open Telematics',
+      icon: Navigation,
+      variant: 'success',
+    },
+    {
+      key: 'contact_admin',
+      label: 'Contact Admin',
+      icon: MessageCircle,
+      variant: 'secondary',
+    },
+  ],
+  Ongoing: [
+    detailAction,
+    {
+      key: 'open_telematics',
+      label: 'Open Telematics',
+      icon: Navigation,
+      variant: 'success',
+    },
+    {
+      key: 'contact_admin',
+      label: 'Contact Admin',
+      icon: MessageCircle,
+      variant: 'secondary',
+    },
+  ],
+  Completed: [
+    detailAction,
+    {
+      key: 'book_again',
+      label: 'Book Again',
+      icon: RefreshCcw,
+      variant: 'soft',
+    },
+    {
+      key: 'leave_feedback',
+      label: 'Leave Feedback',
+      icon: Star,
+      variant: 'secondary',
+    },
+  ],
+  Rejected: [
+    detailAction,
+    {
+      key: 'book_another_vehicle',
+      label: 'Book Another Vehicle',
+      icon: Car,
+      variant: 'soft',
+    },
+  ],
+  Cancelled: [
+    detailAction,
+    {
+      key: 'book_another_vehicle',
+      label: 'Book Another Vehicle',
+      icon: Car,
+      variant: 'soft',
+    },
+  ],
+} satisfies Record<BookingStatus, BookingAction[]>;
+
+export function getBookingActions(status: BookingStatus, options?: { includeDetails?: boolean }) {
+  const includeDetails = options?.includeDetails ?? true;
+
+  if (includeDetails) {
+    return actionsByStatus[status];
+  }
+
+  return actionsByStatus[status].filter((action) => action.key !== 'view_details');
+}
