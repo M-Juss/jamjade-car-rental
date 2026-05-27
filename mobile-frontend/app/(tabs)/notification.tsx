@@ -14,7 +14,7 @@ export default function NotificationScreen() {
         { label: 'Unread', value: '4' },
         { label: 'Today', value: '7' },
       ]}
-      subtitle="A clear inbox for every rental, booking, payment, and service update."
+      subtitle="Catch booking, payment, and service updates fast."
       summaryText="Review all notifications and keep important JamJade updates easy to find."
       summaryTitle="All notifications"
       title="Notifications"

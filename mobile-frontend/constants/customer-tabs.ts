@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
-export type CustomerTabRouteName = 'index' | 'bookings' | 'telematics' | 'profile';
+export type CustomerTabRouteName = 'index' | 'bookings' | 'telematics' | 'notifications' | 'profile';
 export type CustomerTabIcon = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 export type CustomerTabConfig = {
@@ -34,6 +34,12 @@ export const CUSTOMER_TABS: CustomerTabConfig[] = [
     icon: 'steering',
     featured: true,
     requiresActiveBooking: true,
+  },
+  {
+    routeName: 'notifications',
+    label: 'Notifications',
+    description: 'Booking, payment, vehicle, trip, and service updates',
+    icon: 'bell-outline',
   },
   {
     routeName: 'profile',

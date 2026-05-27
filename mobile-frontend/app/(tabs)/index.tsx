@@ -12,8 +12,10 @@ import {
   type BrowseFilters,
   type SortOption,
 } from '@/components/browse';
+import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
-import { availableVehicles, BOOKMARKED_VEHICLE_IDS } from '@/lib/browse/mock-data';
+import { toggleBookmarkedVehicle, useBookmarkedVehicleIds } from '@/lib/browse/bookmarks';
+import { availableVehicles } from '@/lib/browse/mock-data';
 import type { Vehicle } from '@/types/browse';
 
 const defaultFilters: BrowseFilters = {
@@ -34,7 +36,7 @@ function matchesSearch(vehicle: Vehicle, searchTerm: string) {
     .includes(normalized);
 }
 
-function matchesFilters(vehicle: Vehicle, filters: BrowseFilters) {
+function matchesFilters(vehicle: Vehicle, filters: BrowseFilters, bookmarkedVehicleIds: string[]) {
   const matchesBrand = !filters.brand || vehicle.brand === filters.brand;
   const matchesPrice = !filters.maxPrice || vehicle.pricePerDay <= filters.maxPrice;
   const matchesTransmission = !filters.transmission || vehicle.transmission === filters.transmission;
@@ -42,7 +44,7 @@ function matchesFilters(vehicle: Vehicle, filters: BrowseFilters) {
   const matchesSeats = !filters.seats || vehicle.seats === filters.seats;
   const matchesFeatures = filters.features.every((feature) => vehicle.features.includes(feature));
   const matchesMostBooked = !filters.mostBookedOnly || Boolean(vehicle.isMostBooked);
-  const matchesBookmarked = !filters.bookmarkedOnly || BOOKMARKED_VEHICLE_IDS.includes(vehicle.id);
+  const matchesBookmarked = !filters.bookmarkedOnly || bookmarkedVehicleIds.includes(vehicle.id);
 
   return (
     matchesBrand &&
@@ -81,15 +83,16 @@ export default function BrowseScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<BrowseFilters>(defaultFilters);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const bookmarkedVehicleIds = useBookmarkedVehicleIds();
   const isLoading = false;
 
   const vehicles = useMemo(() => {
     const filteredVehicles = availableVehicles.filter(
-      (vehicle) => matchesSearch(vehicle, searchTerm) && matchesFilters(vehicle, filters),
+      (vehicle) => matchesSearch(vehicle, searchTerm) && matchesFilters(vehicle, filters, bookmarkedVehicleIds),
     );
 
     return sortVehicles(filteredVehicles, filters.sort ?? 'most_booked');
-  }, [filters, searchTerm]);
+  }, [bookmarkedVehicleIds, filters, searchTerm]);
 
   const activeFilterCount =
     Number(Boolean(filters.brand)) +
@@ -111,16 +114,7 @@ export default function BrowseScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
-          <View className="flex-row items-center justify-between gap-4">
-            <View className="min-w-0 flex-1">
-              <Text className="text-[29px] font-black italic leading-[34px] text-[#346EF6]" numberOfLines={1}>
-                JamJade Car Rental
-              </Text>
-              <Text className="mt-1 text-[13px] font-semibold leading-5 text-[#6C7A96]" numberOfLines={1}>
-                Find a clean, ready ride for your next trip.
-              </Text>
-            </View>
-          </View>
+          <CustomerTabHeader description="Choose the right car for your next trip." />
 
           <View className="mt-6">
             <SearchInput
@@ -143,7 +137,9 @@ export default function BrowseScreen() {
               vehicles.map((vehicle) => (
                 <VehicleCard
                   key={vehicle.id}
+                  isBookmarked={bookmarkedVehicleIds.includes(vehicle.id)}
                   vehicle={vehicle}
+                  onBookmarkPress={() => toggleBookmarkedVehicle(vehicle.id)}
                   onPress={() => router.push(`/browse/${vehicle.id}` as Href)}
                 />
               ))
@@ -155,6 +151,7 @@ export default function BrowseScreen() {
       </ScrollView>
 
       <FilterSheet
+        bookmarkedVehicleIds={bookmarkedVehicleIds}
         visible={isFilterOpen}
         filters={filters}
         vehicles={availableVehicles}

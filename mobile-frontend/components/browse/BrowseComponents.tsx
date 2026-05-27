@@ -17,13 +17,11 @@ import {
   FileCheck2,
   Fuel,
   Gauge,
-  History,
   Info,
   MapPin,
   MapPinned,
   Navigation,
   Search,
-  Share2,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -51,7 +49,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { BOOKMARKED_VEHICLE_IDS, optionalServices, REQUIRED_DOCUMENTS } from '@/lib/browse/mock-data';
+import { optionalServices, REQUIRED_DOCUMENTS } from '@/lib/browse/mock-data';
 import { formatPeso } from '@/lib/browse/pricing';
 import type { OptionalService, PriceBreakdown, Vehicle } from '@/types/browse';
 
@@ -78,11 +76,13 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 function SmallIconButton({
   accessibilityLabel,
+  iconFill = 'none',
   icon: Icon,
   onPress,
   variant = 'light',
 }: {
   accessibilityLabel: string;
+  iconFill?: string;
   icon: LucideIcon;
   onPress?: () => void;
   variant?: 'light' | 'dark';
@@ -98,7 +98,7 @@ function SmallIconButton({
         variant === 'light' && 'border-white/55 bg-white/25',
         variant === 'dark' && 'border-[#E6EEFF] bg-white',
       )}>
-      <Icon size={22} color={variant === 'light' ? '#FFFFFF' : ink} strokeWidth={2.35} />
+      <Icon size={22} color={variant === 'light' ? '#FFFFFF' : ink} fill={iconFill} strokeWidth={2.35} />
     </Pressable>
   );
 }
@@ -157,102 +157,94 @@ export function FeatureBadge({ label, tone = 'light' }: { label: string; tone?: 
 }
 
 export function VehicleCard({
+  isBookmarked,
+  onBookmarkPress,
   onPress,
   vehicle,
 }: {
+  isBookmarked: boolean;
   vehicle: Vehicle;
+  onBookmarkPress: () => void;
   onPress: () => void;
 }) {
   const specs = [
-    { icon: Car, title: 'Brand', value: `${vehicle.brand} ${vehicle.year}` },
     { icon: Users, title: 'Seats', value: `${vehicle.seats} seats` },
     { icon: Gauge, title: 'Drive', value: vehicle.transmission },
     { icon: Fuel, title: 'Fuel', value: vehicle.fuelType },
     { icon: Clock3, title: 'Mileage', value: vehicle.mileage },
-    { icon: Sparkles, title: 'Color', value: vehicle.color },
   ];
-  const leftSpecs = specs.slice(0, 3);
-  const rightSpecs = specs.slice(3);
+  const specRows = [specs.slice(0, 2), specs.slice(2)];
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`View ${vehicle.name} details`}
       onPress={onPress}
-      className="relative overflow-hidden rounded-[30px] border-2 border-[#BCD4FF] bg-white p-4 shadow-xl shadow-[#17315F]/15">
-      <View className="absolute bottom-0 left-0 top-0 w-1.5 bg-[#346EF6]" />
-      <View className="absolute inset-x-4 top-0 h-px bg-white" />
-      <View className="flex-row gap-3">
+      className="overflow-hidden rounded-[26px] border border-[#D8E6FF] bg-white p-4 shadow-lg shadow-[#17315F]/10">
+      <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <View>
-            <Text className="text-[22px] font-black leading-[26px] text-[#10203F]" numberOfLines={2}>
-              {vehicle.name}
+          <Text className="text-[21px] font-black leading-[25px] text-[#10203F]" numberOfLines={2}>
+            {vehicle.name}
+          </Text>
+          <View className="mt-2 flex-row items-baseline gap-1.5">
+            <Text className="text-[18px] font-black leading-[21px] text-[#17315F]" numberOfLines={1}>
+              {formatPeso(vehicle.pricePerDay)}
             </Text>
-            <Text
-              className="mt-1 text-[11px] font-bold uppercase tracking-[0.65px] text-[#6E81A6]"
-              numberOfLines={1}>
-              {vehicle.model}
-            </Text>
-          </View>
-
-          <View className="mt-3 flex-row gap-2">
-            <View className="flex-1 gap-2.5">
-              {leftSpecs.map(({ icon: Icon, title, value }) => (
-                <View key={title} className="min-h-[40px] justify-center">
-                  <View className="flex-row items-center gap-1">
-                    <Icon size={11} color="#346EF6" strokeWidth={2.65} />
-                    <Text className="min-w-0 flex-1 text-[9px] font-black uppercase text-[#6E81A6]" numberOfLines={1}>
-                      {title}
-                    </Text>
-                  </View>
-                  <Text className="mt-1 text-[12px] font-black leading-[14px] text-[#10203F]" numberOfLines={1}>
-                    {value}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <View className="flex-1 gap-2.5">
-              {rightSpecs.map(({ icon: Icon, title, value }) => (
-                <View key={title} className="min-h-[40px] justify-center">
-                  <View className="flex-row items-center gap-1">
-                    <Icon size={11} color="#346EF6" strokeWidth={2.65} />
-                    <Text className="min-w-0 flex-1 text-[9px] font-black uppercase text-[#6E81A6]" numberOfLines={1}>
-                      {title}
-                    </Text>
-                  </View>
-                  <Text className="mt-1 text-[12px] font-black leading-[14px] text-[#10203F]" numberOfLines={1}>
-                    {value}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            <Text className="text-[11px] font-black uppercase tracking-[0.45px] text-[#6E81A6]">/day</Text>
           </View>
         </View>
-
-        <View className="relative h-[185px] w-[126px] overflow-hidden rounded-[20px] border border-[#DCE8FF] bg-[#EEF4FF]">
-          <Image source={{ uri: vehicle.images[0] }} resizeMode="cover" className="h-full w-full" />
-          {vehicle.status === 'available' && (
-            <View className="absolute left-1.5 top-1.5 flex-row items-center gap-1 rounded-full bg-white/95 px-2 py-1">
-              <BadgeCheck size={10} color="#159947" strokeWidth={2.7} />
-              <Text className="text-[8px] font-black uppercase tracking-[0.3px] text-[#159947]">Available</Text>
-            </View>
-          )}
-          <View className="absolute right-1.5 top-1.5 h-7 w-7 items-center justify-center rounded-full bg-white/95">
-            <Bookmark size={13} color="#346EF6" strokeWidth={2.7} />
-          </View>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isBookmarked ? `Remove ${vehicle.name} bookmark` : `Bookmark ${vehicle.name}`}
+          hitSlop={8}
+          onPress={(event) => {
+            event.stopPropagation();
+            onBookmarkPress();
+          }}
+          className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE8FF] bg-[#F7FAFF]">
+          <Bookmark size={18} color="#346EF6" fill={isBookmarked ? '#346EF6' : 'none'} strokeWidth={2.7} />
+        </Pressable>
       </View>
 
-      <View className="mt-3 flex-row items-end justify-between gap-3">
-        <Text className="min-w-0 flex-1 text-[24px] font-black leading-[28px] text-[#10203F]">
-          {formatPeso(vehicle.pricePerDay)}
-          <Text className="text-[12px] font-black text-[#6E81A6]"> /day</Text>
-        </Text>
-        <View className="w-[126px] flex-row items-center justify-end gap-1">
-          <Text className="text-[9px] font-black uppercase tracking-[0.45px] text-[#346EF6]" numberOfLines={1}>
-            View full info
-          </Text>
-          <ChevronRight size={13} color="#346EF6" strokeWidth={2.8} />
+      <View className="relative mt-3 h-[174px] overflow-hidden rounded-[22px] border border-[#DCE8FF] bg-[#EEF4FF]">
+        <Image source={{ uri: vehicle.images[0] }} resizeMode="cover" className="h-full w-full" />
+      </View>
+
+      <View className="mt-3 rounded-[18px] border border-[#E6EEFF] bg-[#F8FAFF] px-3 py-2">
+        {specRows.map((row, rowIndex) => (
+          <View
+            key={row.map((spec) => spec.title).join('-')}
+            className={cx('flex-row', rowIndex === 0 && 'border-b border-[#E1EBFF]')}>
+            {row.map(({ icon: Icon, title, value }, index) => (
+              <View
+                key={title}
+                className={cx(
+                  'min-h-[42px] flex-1 flex-row items-center gap-2 py-1.5',
+                  index === 0 && 'border-r border-[#E1EBFF] pr-2',
+                  index === 1 && 'pl-3',
+                )}>
+                <View className="h-7 w-7 items-center justify-center rounded-full bg-white">
+                  <Icon size={13} color="#346EF6" strokeWidth={2.55} />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text className="text-[9px] font-black uppercase tracking-[0.35px] text-[#7B879C]" numberOfLines={1}>
+                    {title}
+                  </Text>
+                  <Text className="mt-0.5 text-[12px] font-black leading-[14px] text-[#10203F]" numberOfLines={1}>
+                    {value}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      <View className="mt-3 flex-row items-center justify-between rounded-[18px] bg-[#EEF4FF] px-4 py-3">
+        <Text className="text-[12px] font-black uppercase tracking-[0.45px] text-[#346EF6]">Full info</Text>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-[12px] font-black text-[#17315F]">View details</Text>
+          <ChevronRight size={16} color="#346EF6" strokeWidth={2.8} />
         </View>
       </View>
     </Pressable>
@@ -273,16 +265,18 @@ export function VehicleImageTabs({ activeIndex, count }: { activeIndex: number; 
 
 export function VehicleStoryCarousel({
   activeIndex,
+  isBookmarked,
   onActiveIndexChange,
   onBackPress,
-  onSharePress,
+  onBookmarkPress,
   vehicle,
 }: {
   vehicle: Vehicle;
   activeIndex: number;
+  isBookmarked: boolean;
   onActiveIndexChange: (index: number) => void;
+  onBookmarkPress: () => void;
   onBackPress: () => void;
-  onSharePress?: () => void;
 }) {
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollViewType>(null);
@@ -321,7 +315,12 @@ export function VehicleStoryCarousel({
 
       <View className="absolute left-5 right-5 top-24 flex-row items-center justify-between">
         <SmallIconButton accessibilityLabel="Go back" icon={ArrowLeft} onPress={onBackPress} />
-        <SmallIconButton accessibilityLabel="Share vehicle" icon={Share2} onPress={onSharePress} />
+        <SmallIconButton
+          accessibilityLabel={isBookmarked ? `Remove ${vehicle.name} bookmark` : `Bookmark ${vehicle.name}`}
+          icon={Bookmark}
+          iconFill={isBookmarked ? '#FFFFFF' : 'none'}
+          onPress={onBookmarkPress}
+        />
       </View>
     </View>
   );
@@ -334,7 +333,7 @@ export function VehicleSpecsGrid({ vehicle }: { vehicle: Vehicle }) {
     { icon: Fuel, label: 'Fuel type', value: vehicle.fuelType },
     { icon: Clock3, label: 'Mileage', value: vehicle.mileage },
     { icon: Sparkles, label: 'Color', value: vehicle.color },
-    { icon: History, label: 'Bookings', value: `${vehicle.successfulBookings}` },
+    { icon: Car, label: 'Brand', value: vehicle.brand },
   ];
 
   return (
@@ -580,12 +579,14 @@ function FilterChip({
 }
 
 export function FilterSheet({
+  bookmarkedVehicleIds,
   filters,
   onApply,
   onClose,
   visible,
   vehicles: availableVehicleOptions,
 }: {
+  bookmarkedVehicleIds: string[];
   visible: boolean;
   filters: BrowseFilters;
   vehicles: Vehicle[];
@@ -605,9 +606,7 @@ export function FilterSheet({
     { label: 'Highest price', value: 'highest_price' },
     { label: 'Newest', value: 'newest' },
   ];
-  const bookmarkedCount = availableVehicleOptions.filter((vehicle) =>
-    BOOKMARKED_VEHICLE_IDS.includes(vehicle.id),
-  ).length;
+  const bookmarkedCount = availableVehicleOptions.filter((vehicle) => bookmarkedVehicleIds.includes(vehicle.id)).length;
   const mostBookedCount = availableVehicleOptions.filter((vehicle) => vehicle.isMostBooked).length;
 
   useEffect(() => {

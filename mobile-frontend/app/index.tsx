@@ -1,7 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Image, Pressable, Text, useWindowDimensions, View, type ImageStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const carHero = require('@/assets/images/vios-hero.png');
 
@@ -11,12 +11,19 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export default function LandingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
   const isCompact = height < 760 || width < 380;
   const isTiny = height < 690 || width < 360;
-  const screenClass = width > 520
-    ? 'relative flex-1 w-full max-w-[430px] self-center overflow-hidden border-x border-[#DDE8FF] bg-[#F8FAFF] px-5 shadow-2xl shadow-[#346EF6]/15'
-    : 'relative flex-1 w-full max-w-[430px] self-center overflow-hidden bg-[#F8FAFF] px-5';
+  const screenClass = 'relative flex-1 w-full overflow-hidden bg-[#F8FAFF] px-5';
+  const contentClass = cx(
+    'z-10 flex-1 w-full self-center',
+    width > 520 && 'max-w-[460px]',
+  );
+  const contentStyle = {
+    paddingBottom: Math.max(insets.bottom + (isTiny ? 10 : 14), isTiny ? 12 : isCompact ? 16 : 20),
+    paddingTop: Math.max(insets.top + (isTiny ? 8 : 12), isTiny ? 24 : isCompact ? 30 : 36),
+  };
   const titleClass = isTiny
     ? 'text-[35px] font-black leading-[38px] text-[#17315F]'
     : isCompact
@@ -56,7 +63,7 @@ export default function LandingScreen() {
     : 'text-center text-[15px] font-extrabold text-[#17315F]';
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-[#F8FAFF]">
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar backgroundColor="transparent" style="dark" translucent />
 
@@ -73,58 +80,60 @@ export default function LandingScreen() {
         <View className="absolute right-[68px] bottom-[164px] h-4 w-4 rounded-full bg-[#BFD7FF] opacity-80" />
         <View className="absolute bottom-[178px] left-5 right-5 h-px bg-[#17315F]/5" />
 
-        <View className={cx('z-10 pt-3', isCompact && 'pt-2', isTiny && 'pt-1')}>
-          <Text className={titleClass}>
-            Your Journey
-          </Text>
-          <Text className={titleClass}>Starts With</Text>
-          <Text className={brandClass}>JamJade</Text>
-          <Text className={rentalClass}>Car Rental</Text>
-        </View>
-
-        <View className={carSectionClass}>
-          <View className={cx('max-w-[488px] items-center justify-center overflow-hidden', carFrameClass)}>
-            <Image source={carHero} resizeMode="contain" style={$carImage} />
+        <View className={contentClass} style={contentStyle}>
+          <View>
+            <Text className={titleClass}>
+              Your Journey
+            </Text>
+            <Text className={titleClass}>Starts With</Text>
+            <Text className={brandClass}>JamJade</Text>
+            <Text className={rentalClass}>Car Rental</Text>
           </View>
-        </View>
 
-        <View className={cx('z-10 mt-auto gap-4', isCompact && 'gap-3', isTiny && 'gap-2.5')}>
-          <View className="overflow-hidden rounded-[26px] border border-[#DDE8FF] bg-white/90 px-4 py-3 shadow-sm shadow-[#346EF6]/10">
-            <View className="absolute bottom-[-28px] right-[-18px] h-20 w-20 rounded-full bg-[#DDE8FF]/60" />
-            <View className="mb-2 flex-row items-center gap-2">
-              <View className="h-2.5 w-2.5 rounded-full bg-[#346EF6]" />
-              <Text className="text-[12px] font-black uppercase text-[#346EF6]">
-                Premium Rentals
+          <View className={carSectionClass}>
+            <View className={cx('max-w-[488px] items-center justify-center overflow-hidden', carFrameClass)}>
+              <Image source={carHero} resizeMode="contain" style={$carImage} />
+            </View>
+          </View>
+
+          <View className={cx('mt-auto gap-4', isCompact && 'gap-3', isTiny && 'gap-2.5')}>
+            <View className="overflow-hidden rounded-[26px] border border-[#DDE8FF] bg-white/90 px-4 py-3 shadow-sm shadow-[#346EF6]/10">
+              <View className="absolute bottom-[-28px] right-[-18px] h-20 w-20 rounded-full bg-[#DDE8FF]/60" />
+              <View className="mb-2 flex-row items-center gap-2">
+                <View className="h-2.5 w-2.5 rounded-full bg-[#346EF6]" />
+                <Text className="text-[12px] font-black uppercase text-[#346EF6]">
+                  Premium Rentals
+                </Text>
+              </View>
+              <Text className={messageClass}>
+                Cars ready for errands, business meetings, and weekend escapes. Choose your ride and
+                drive with confidence.
               </Text>
             </View>
-            <Text className={messageClass}>
-              Cars ready for errands, business meetings, and weekend escapes. Choose your ride and
-              drive with confidence.
-            </Text>
-          </View>
 
-          <View className={cx('gap-3', isCompact && 'gap-2.5')}>
-            <Pressable
-              onPress={() => router.push('/register')}
-              className={cx(
-                'items-center justify-center rounded-full bg-[#346EF6] shadow-lg shadow-[#004BFA]/20',
-                buttonHeightClass,
-              )}>
-              <Text className={primaryTextClass}>Register</Text>
-            </Pressable>
+            <View className={cx('gap-3', isCompact && 'gap-2.5')}>
+              <Pressable
+                onPress={() => router.push('/register')}
+                className={cx(
+                  'items-center justify-center rounded-full bg-[#346EF6] shadow-lg shadow-[#004BFA]/20',
+                  buttonHeightClass,
+                )}>
+                <Text className={primaryTextClass}>Register</Text>
+              </Pressable>
 
-            <Pressable
-              onPress={() => router.push('/login')}
-              className={cx(
-                'items-center justify-center rounded-full border border-[#346EF6]/20 bg-white',
-                buttonHeightClass,
-              )}>
-              <Text className={secondaryTextClass}>Login</Text>
-            </Pressable>
+              <Pressable
+                onPress={() => router.push('/login')}
+                className={cx(
+                  'items-center justify-center rounded-full border border-[#346EF6]/20 bg-white',
+                  buttonHeightClass,
+                )}>
+                <Text className={secondaryTextClass}>Login</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

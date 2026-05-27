@@ -1,0 +1,281 @@
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Modal,
+  Pressable,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+function cx(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
+}
+
+function padDatePart(value: number) {
+  return value.toString().padStart(2, '0');
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDateKey(date: Date) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function parseDateKey(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const [yearValue, monthValue, dayValue] = value.split('-').map(Number);
+
+  if (!yearValue || !monthValue || !dayValue) {
+    return null;
+  }
+
+  const date = new Date(yearValue, monthValue - 1, dayValue);
+
+  if (
+    date.getFullYear() !== yearValue ||
+    date.getMonth() !== monthValue - 1 ||
+    date.getDate() !== dayValue
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function getTodayKey() {
+  return formatDateKey(new Date());
+}
+
+function getFirstDayOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getMonthTitle(date: Date) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatDisplayDate(value: string) {
+  const date = parseDateKey(value);
+
+  if (!date) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function getCalendarCells(monthDate: Date) {
+  const monthStart = getFirstDayOfMonth(monthDate);
+  const leadingEmptyCells = monthStart.getDay();
+  const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+  const cells: (Date | null)[] = Array.from({ length: leadingEmptyCells }, () => null);
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push(new Date(monthStart.getFullYear(), monthStart.getMonth(), day));
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  return cells;
+}
+
+export function getNextDateKey(value: string) {
+  const date = parseDateKey(value);
+
+  if (!date) {
+    return getTodayKey();
+  }
+
+  date.setDate(date.getDate() + 1);
+  return formatDateKey(date);
+}
+
+export function DateWithLabel({
+  helperText,
+  label,
+  minimumDate = getTodayKey(),
+  onChange,
+  placeholder = 'Select date',
+  value,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  minimumDate?: string;
+  helperText?: string;
+}) {
+  const insets = useSafeAreaInsets();
+  const selectedDate = useMemo(() => parseDateKey(value), [value]);
+  const minimumSelectableDate = useMemo(() => startOfDay(parseDateKey(minimumDate) ?? new Date()), [minimumDate]);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    getFirstDayOfMonth(selectedDate ?? minimumSelectableDate),
+  );
+
+  const calendarCells = useMemo(() => getCalendarCells(visibleMonth), [visibleMonth]);
+  const minimumMonth = getFirstDayOfMonth(minimumSelectableDate);
+  const canGoToPreviousMonth = visibleMonth.getTime() > minimumMonth.getTime();
+
+  useEffect(() => {
+    if (isCalendarOpen) {
+      setVisibleMonth(getFirstDayOfMonth(selectedDate ?? minimumSelectableDate));
+    }
+  }, [isCalendarOpen, minimumSelectableDate, selectedDate]);
+
+  const goToNextMonth = () => {
+    setVisibleMonth((currentMonth) => new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
+
+  const goToPreviousMonth = () => {
+    if (!canGoToPreviousMonth) {
+      return;
+    }
+
+    setVisibleMonth((currentMonth) => new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  };
+
+  const handleSelectDate = (date: Date) => {
+    const dateKey = formatDateKey(date);
+    onChange(dateKey);
+    setIsCalendarOpen(false);
+  };
+
+  return (
+    <View className="gap-2">
+      <Text className="text-[12px] font-black uppercase tracking-[0.7px] text-[#91A0B8]">{label}</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setIsCalendarOpen(true)}
+        className="min-h-[54px] flex-row items-center rounded-2xl border border-[#E6EEFF] bg-white px-4">
+        <CalendarDays size={18} color="#346EF6" strokeWidth={2.35} />
+        <Text
+          className={cx(
+            'min-w-0 flex-1 px-3 text-[15px] font-bold',
+            value ? 'text-[#17315F]' : 'text-[#9AA4B8]',
+          )}>
+          {value ? formatDisplayDate(value) : placeholder}
+        </Text>
+      </Pressable>
+      {helperText ? <Text className="text-[11px] font-bold leading-4 text-[#91A0B8]">{helperText}</Text> : null}
+
+      <Modal animationType="fade" transparent visible={isCalendarOpen} onRequestClose={() => setIsCalendarOpen(false)}>
+        <View className="flex-1 justify-end bg-black/35">
+          <Pressable accessibilityRole="button" className="flex-1" onPress={() => setIsCalendarOpen(false)} />
+          <View
+            className="rounded-t-[32px] bg-[#F8FAFF] px-5 pt-4"
+            style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
+            <View className="mb-4 items-center">
+              <View className="h-1.5 w-12 rounded-full bg-[#CBD5E1]" />
+            </View>
+            <View className="mb-5 flex-row items-center gap-3">
+              <View className="min-w-0 flex-1">
+                <Text className="text-[22px] font-black text-[#17315F]">{label}</Text>
+                <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">Past dates are disabled.</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close calendar"
+                hitSlop={8}
+                onPress={() => setIsCalendarOpen(false)}
+                className="h-10 w-10 items-center justify-center rounded-full bg-white">
+                <X size={19} color="#64748B" strokeWidth={2.45} />
+              </Pressable>
+            </View>
+
+            <View className="rounded-[26px] border border-[#E6EEFF] bg-white p-4">
+              <View className="flex-row items-center justify-between">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !canGoToPreviousMonth }}
+                  onPress={goToPreviousMonth}
+                  className={cx(
+                    'h-10 w-10 items-center justify-center rounded-full',
+                    canGoToPreviousMonth ? 'bg-[#EEF4FF]' : 'bg-[#F1F5F9]',
+                  )}>
+                  <ChevronLeft size={19} color={canGoToPreviousMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
+                </Pressable>
+                <Text className="text-[17px] font-black text-[#17315F]">{getMonthTitle(visibleMonth)}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={goToNextMonth}
+                  className="h-10 w-10 items-center justify-center rounded-full bg-[#EEF4FF]">
+                  <ChevronRight size={19} color="#346EF6" strokeWidth={2.45} />
+                </Pressable>
+              </View>
+
+              <View className="mt-4 flex-row">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
+                  <Text
+                    key={weekday}
+                    className="text-center text-[10px] font-black uppercase text-[#91A0B8]"
+                    style={{ width: `${100 / 7}%` }}>
+                    {weekday}
+                  </Text>
+                ))}
+              </View>
+
+              <View className="mt-2 flex-row flex-wrap">
+                {calendarCells.map((date, index) => {
+                  if (!date) {
+                    return <View key={`empty-${index}`} className="h-11" style={{ width: `${100 / 7}%` }} />;
+                  }
+
+                  const dateKey = formatDateKey(date);
+                  const isSelected = value === dateKey;
+                  const isPastDate = startOfDay(date).getTime() < minimumSelectableDate.getTime();
+
+                  return (
+                    <View key={dateKey} className="h-11 items-center justify-center" style={{ width: `${100 / 7}%` }}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ disabled: isPastDate, selected: isSelected }}
+                        disabled={isPastDate}
+                        onPress={() => handleSelectDate(date)}
+                        className={cx(
+                          'h-9 w-9 items-center justify-center rounded-full',
+                          isSelected && 'bg-[#346EF6]',
+                          !isSelected && !isPastDate && 'bg-white',
+                          isPastDate && 'bg-[#F1F5F9]',
+                        )}>
+                        <Text
+                          className={cx(
+                            'text-[13px] font-black',
+                            isSelected && 'text-white',
+                            !isSelected && !isPastDate && 'text-[#17315F]',
+                            isPastDate && 'text-[#CBD5E1]',
+                          )}>
+                          {date.getDate()}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}

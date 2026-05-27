@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { type PropsWithChildren } from 'react';
 import {
   KeyboardAvoidingView,
@@ -9,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type AuthMode = 'login' | 'register';
 
@@ -20,6 +21,7 @@ type AuthScreenFrameProps = PropsWithChildren<{
 type BreakpointFlags = {
   isCompact: boolean;
   isTiny: boolean;
+  topPadding: number;
 };
 
 const AUTH_MODE_CONFIG = {
@@ -47,19 +49,20 @@ function DecorativeCircle({ className }: { className: string }) {
   return <View className={className} />;
 }
 
-function AuthHeroHeader({ isCompact, isTiny }: BreakpointFlags) {
+function AuthHeroHeader({ isCompact, isTiny, topPadding }: BreakpointFlags) {
   return (
     <View
       className={cx(
-        'min-h-[214px] overflow-hidden px-7 pb-12 pt-5',
-        isCompact && 'min-h-[190px] pb-10 pt-4',
-        isTiny && 'min-h-[170px] px-6 pb-9 pt-3',
-      )}>
+        'min-h-[214px] items-center overflow-hidden px-7 pb-12',
+        isCompact && 'min-h-[190px] pb-10',
+        isTiny && 'min-h-[170px] px-6 pb-9',
+      )}
+      style={{ paddingTop: topPadding }}>
       <DecorativeCircle className="absolute right-[-112px] top-[-42px] h-[260px] w-[260px] rounded-full bg-[#DDE8FF]" />
       <DecorativeCircle className="absolute left-[-124px] top-[-126px] h-[250px] w-[250px] rounded-full bg-white" />
       <DecorativeCircle className="absolute right-12 top-[118px] h-5 w-5 rounded-full bg-[#BFD7FF]" />
 
-      <View className="z-10 items-center">
+      <View className="z-10 w-full max-w-[430px] items-center self-center">
         <Text
           className={cx(
             'text-center text-[42px] font-black italic leading-[44px] text-[#346EF6]',
@@ -131,9 +134,18 @@ function AuthModeSwitch({
 
 export function AuthScreenFrame({ mode, children }: AuthScreenFrameProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
   const isCompact = height < 860;
   const isTiny = height < 720 || width < 360;
+  const headerTopPadding = Math.max(
+    insets.top + (isTiny ? 8 : 12),
+    isTiny ? 28 : isCompact ? 36 : 40,
+  );
+  const sheetBottomPadding = Math.max(
+    insets.bottom + (isTiny ? 14 : 18),
+    isTiny ? 24 : isCompact ? 28 : 34,
+  );
 
   const handleModeChange = (nextMode: AuthMode) => {
     if (nextMode === mode) {
@@ -144,34 +156,34 @@ export function AuthScreenFrame({ mode, children }: AuthScreenFrameProps) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-[#F8FAFF]">
+      <StatusBar backgroundColor="transparent" style="dark" translucent />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1">
-        <View
-          className={cx(
-            'flex-1 w-full max-w-[430px] self-center overflow-hidden bg-[#F8FAFF]',
-            width > 520 && 'border-x border-[#DDE8FF] shadow-2xl shadow-[#346EF6]/20',
-          )}>
-          <AuthHeroHeader isCompact={isCompact} isTiny={isTiny} />
+        <View className="flex-1 w-full overflow-hidden bg-[#F8FAFF]">
+          <AuthHeroHeader isCompact={isCompact} isTiny={isTiny} topPadding={headerTopPadding} />
 
           <ScrollView
             bounces={false}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             className="-mt-8 flex-1"
+            contentContainerStyle={{ paddingBottom: sheetBottomPadding }}
             contentContainerClassName={cx(
-              'grow overflow-hidden rounded-t-[34px] border border-[#DDE8FF] bg-white px-5 pb-7 pt-4 shadow-2xl shadow-[#346EF6]/15',
-              isCompact && 'pb-6 pt-[18px]',
+              'relative grow overflow-hidden rounded-t-[34px] border border-[#DDE8FF] bg-white px-5 pt-4 shadow-2xl shadow-[#346EF6]/15',
+              isCompact && 'pt-[18px]',
             )}>
             <AuthCardDecorations />
-            <View className="z-10 mb-4 h-1.5 w-12 self-center rounded-full bg-[#BFD0F4]" />
-            <AuthModeSwitch mode={mode} onModeChange={handleModeChange} />
-            <View className="z-10">{children}</View>
+            <View className="z-10 w-full max-w-[430px] self-center">
+              <View className="mb-4 h-1.5 w-12 self-center rounded-full bg-[#BFD0F4]" />
+              <AuthModeSwitch mode={mode} onModeChange={handleModeChange} />
+              <View>{children}</View>
+            </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -2,6 +2,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import type { CustomerTabIcon } from '@/constants/customer-tabs';
 
@@ -34,7 +35,6 @@ export function CustomerTabScreen({
   subtitle,
   summaryText,
   summaryTitle,
-  title,
 }: CustomerTabScreenProps) {
   const insets = useSafeAreaInsets();
   const handleTabScroll = useAutoHideCustomerTabBar();
@@ -51,20 +51,7 @@ export function CustomerTabScreen({
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>JamJade</Text>
-            <Text style={styles.sectionLabel}>Customer app</Text>
-          </View>
-          <View style={[styles.headerIcon, { backgroundColor: accent }]}>
-            <MaterialCommunityIcons name={icon} size={28} color="#FFFFFF" />
-          </View>
-        </View>
-
-        <View style={styles.hero}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
+        <CustomerTabHeader description={subtitle} />
 
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
@@ -115,49 +102,6 @@ const styles = StyleSheet.create({
     paddingBottom: 132,
     paddingHorizontal: 20,
     paddingTop: 12,
-  },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  brand: {
-    color: '#346EF6',
-    fontSize: 28,
-    fontStyle: 'italic',
-    fontWeight: '900',
-    lineHeight: 31,
-  },
-  sectionLabel: {
-    color: '#6C7A96',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    lineHeight: 16,
-    textTransform: 'uppercase',
-  },
-  headerIcon: {
-    alignItems: 'center',
-    borderRadius: 24,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  hero: {
-    marginTop: 32,
-  },
-  title: {
-    color: '#17315F',
-    fontSize: 36,
-    fontWeight: '900',
-    lineHeight: 40,
-  },
-  subtitle: {
-    color: '#6C7A96',
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-    marginTop: 10,
   },
   summaryCard: {
     backgroundColor: '#FFFFFF',

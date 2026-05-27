@@ -14,7 +14,7 @@ export default function HistoryScreen() {
         { label: 'Upcoming', value: '2' },
         { label: 'Completed', value: '18' },
       ]}
-      subtitle="Keep booking tracking and rental records in one place."
+      subtitle="Review past rentals and upcoming records."
       summaryText="Review reservations, pickup status, return notes, and previous rental activity."
       summaryTitle="Your booking timeline"
       title="Rental history"

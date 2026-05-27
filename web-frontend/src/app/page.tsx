@@ -86,57 +86,65 @@ export default function Home() {
       <main>
         <section
           id="home"
-          className="relative min-h-[92vh] overflow-hidden"
+          className="relative min-h-screen overflow-hidden bg-neutral-950"
         >
           <motion.div
             className="absolute inset-0"
-            initial={{ opacity: 0, scale: 1.04 }}
+            initial={{ opacity: 0, scale: 1.03 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.9 }}
+            transition={{ duration: 0.85 }}
           >
             <Image
               src="/JamJade-Hero.jpeg"
               alt="JamJade rental car ready for a trip"
               fill
               priority
-              className="object-cover object-center brightness-110 saturate-105"
+              className="object-cover object-center brightness-[0.82] saturate-105"
             />
-            <div className="absolute inset-0 bg-white/20" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.72)_0%,rgba(255,255,255,0.38)_43%,rgba(245,245,245,0.9)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,15,28,0.88)_0%,rgba(10,15,28,0.58)_46%,rgba(10,15,28,0.18)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,15,28,0.2)_0%,rgba(10,15,28,0.08)_58%,rgba(245,245,245,0.95)_100%)]" />
           </motion.div>
 
           <motion.div
             variants={heroStagger}
             initial="initial"
             animate="animate"
-            className="relative z-10 mx-auto flex min-h-[92vh] max-w-5xl flex-col items-center justify-center px-6 pb-14 pt-28 text-center sm:px-10"
+            className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-end px-6 pb-16 pt-28 sm:px-10 lg:px-20"
           >
+            <motion.div
+              variants={heroItem}
+              transition={{ duration: 0.45 }}
+              className="mb-4 inline-flex w-fit items-center gap-2 border-l-2 border-[#346EF6] pl-3 text-xs font-semibold uppercase text-white/75"
+            >
+              Premium car rentals in Cavite
+            </motion.div>
             <motion.h1
               variants={heroItem}
               transition={{ duration: 0.5 }}
-              className="max-w-4xl text-5xl font-bold leading-[0.95] text-neutral-950/80 sm:text-6xl lg:text-8xl"
+              className="max-w-4xl text-5xl font-bold leading-none text-white sm:text-6xl lg:text-8xl"
             >
               Your Journey Starts with
-              <span className="block italic text-[#346EF6]">JamJade</span>
+              <span className="block text-[#346EF6] italic">JamJade</span>
             </motion.h1>
             <motion.p
               variants={heroItem}
               transition={{ duration: 0.45 }}
-              className="mt-6 max-w-2xl text-base leading-7 text-neutral-700 sm:text-lg"
+              className="mt-6 max-w-2xl text-base leading-7 text-white/78 sm:text-lg"
             >
-              Experience the road like never before. Premium vehicle rentals
-              tailored for your comfort, style, and budget.
+              Reliable daily and long-term rentals for business trips, family
+              errands, and weekend drives, with vehicles prepared for comfort,
+              safety, and easy booking.
             </motion.p>
             <motion.div
               variants={heroItem}
               transition={{ duration: 0.45 }}
-              className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
+              className="mt-8 flex flex-col gap-3 sm:flex-row"
             >
               <MotionLink
                 href="/login"
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                className="min-w-32 rounded-md bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_60%,#5a8cff_100%)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all ease-in-out hover:-translate-y-0.5 hover:shadow-blue-500/30"
+                className="min-w-32 rounded-md bg-white px-5 py-3 text-center text-sm font-semibold text-[#1A2340] shadow-lg shadow-black/20 transition-all ease-in-out hover:-translate-y-0.5 hover:bg-[#EEF4FF]"
               >
                 Rent Now
               </MotionLink>
@@ -144,7 +152,7 @@ export default function Home() {
                 href="#showcase"
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                className="min-w-32 rounded-md border border-neutral-950/15 bg-white/70 px-5 py-3 text-sm font-semibold text-neutral-900 backdrop-blur transition-all ease-in-out hover:-translate-y-0.5 hover:bg-white"
+                className="min-w-32 rounded-md border border-white/35 bg-white/10 px-5 py-3 text-center text-sm font-semibold text-white backdrop-blur transition-all ease-in-out hover:-translate-y-0.5 hover:bg-white/18"
               >
                 View Fleet
               </motion.a>
@@ -152,7 +160,7 @@ export default function Home() {
             <motion.div
               variants={heroItem}
               transition={{ duration: 0.45 }}
-              className="mt-12 flex flex-wrap items-center justify-center gap-6 text-xs font-medium uppercase tracking-[0.18em] text-neutral-600"
+              className="mt-12 flex flex-wrap items-center gap-5 text-xs font-medium uppercase text-white/70"
             >
               <span>Clean Cars</span>
               <span className="h-1 w-1 rounded-full bg-[#346EF6]" />

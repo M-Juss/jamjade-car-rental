@@ -81,11 +81,6 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
       {/* Divider */}
       <div className="mx-6 h-px bg-[#EEF1F8] mb-4" />
 
-      {/* Nav label */}
-      <p className="px-6 text-[10.5px] font-semibold tracking-[0.14em] uppercase text-[#A0AABF] mb-2">
-        Main Menu
-      </p>
-
       {/* Navigation */}
       <nav className="flex-1 px-3 flex flex-col gap-0.5">
         {navItems.map(({ href, label, icon: Icon }) => {

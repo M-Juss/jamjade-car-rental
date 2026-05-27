@@ -14,7 +14,7 @@ export default function TelematicsScreen() {
         { label: 'Active trip', value: '1' },
         { label: 'Range left', value: '82%' },
       ]}
-      subtitle="Active trip monitoring only, centered around the current drive."
+      subtitle="Monitor your active trip and driving signals."
       summaryText="Use this area while a rental is in progress to view driving, distance, and vehicle signals."
       summaryTitle="Live drive view"
       title="Telematics"

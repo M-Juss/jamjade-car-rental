@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -14,6 +14,7 @@ import {
   browseIcons,
   optionalServices,
 } from '@/components/browse';
+import { DateWithLabel, getNextDateKey, LocationSearchWithLabel } from '@/components/common';
 import { encodeBookingData, firstParam } from '@/lib/browse/booking-params';
 import { SHOP_LOCATION } from '@/lib/browse/mock-data';
 import { formatPeso, getNumberOfDays, getPriceBreakdown, getVehicleById } from '@/lib/browse/pricing';
@@ -28,34 +29,6 @@ function Section({ children, title }: { title: string; children: ReactNode }) {
     <View className="mt-6">
       <Text className="mb-3 text-[18px] font-black text-[#17315F]">{title}</Text>
       {children}
-    </View>
-  );
-}
-
-function FieldInput({
-  label,
-  onChangeText,
-  placeholder,
-  value,
-}: {
-  label: string;
-  value: string;
-  placeholder: string;
-  onChangeText: (value: string) => void;
-}) {
-  return (
-    <View className="gap-2">
-      <Text className="text-[12px] font-black uppercase tracking-[0.7px] text-[#91A0B8]">{label}</Text>
-      <View className="min-h-[54px] flex-row items-center rounded-2xl border border-[#E6EEFF] bg-white px-4">
-        <browseIcons.CalendarDays size={18} color="#346EF6" strokeWidth={2.35} />
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor="#9AA4B8"
-          className="min-w-0 flex-1 px-3 text-[15px] font-bold text-[#17315F]"
-        />
-      </View>
     </View>
   );
 }
@@ -109,6 +82,7 @@ export default function BookingFormScreen() {
   const [errors, setErrors] = useState<string[]>([]);
 
   const numberOfDays = useMemo(() => getNumberOfDays(rentalDate, returnDate), [rentalDate, returnDate]);
+  const minimumReturnDate = rentalDate ? getNextDateKey(rentalDate) : undefined;
   const breakdown = useMemo(() => {
     if (!vehicle) {
       return null;
@@ -125,6 +99,14 @@ export default function BookingFormScreen() {
     setSelectedServices((current) =>
       current.includes(serviceId) ? current.filter((item) => item !== serviceId) : [...current, serviceId],
     );
+  };
+
+  const handleRentalDateChange = (nextRentalDate: string) => {
+    setRentalDate(nextRentalDate);
+
+    if (returnDate && Date.parse(returnDate) <= Date.parse(nextRentalDate)) {
+      setReturnDate('');
+    }
   };
 
   const validate = () => {
@@ -232,8 +214,20 @@ export default function BookingFormScreen() {
 
             <Section title="Rental Schedule">
               <View className="gap-4 rounded-[28px] border border-[#E6EEFF] bg-white p-4">
-                <FieldInput label="Rental date" value={rentalDate} onChangeText={setRentalDate} placeholder="2026-06-01" />
-                <FieldInput label="Return date" value={returnDate} onChangeText={setReturnDate} placeholder="2026-06-03" />
+                <DateWithLabel
+                  label="Rental date"
+                  value={rentalDate}
+                  onChange={handleRentalDateChange}
+                  placeholder="Select rental date"
+                />
+                <DateWithLabel
+                  helperText={rentalDate ? 'Return date must be after the rental date.' : undefined}
+                  label="Return date"
+                  minimumDate={minimumReturnDate}
+                  value={returnDate}
+                  onChange={setReturnDate}
+                  placeholder="Select return date"
+                />
                 <View className="rounded-2xl bg-[#F3F7FF] p-4">
                   <Text className="text-[12px] font-black uppercase tracking-[0.8px] text-[#91A0B8]">Number of days</Text>
                   <Text className="mt-1 text-[22px] font-black text-[#17315F]">{numberOfDays} day{numberOfDays > 1 ? 's' : ''}</Text>
@@ -264,14 +258,13 @@ export default function BookingFormScreen() {
                   <Text className="mt-1 text-[15px] font-black text-[#17315F]">{SHOP_LOCATION}</Text>
                 </View>
               ) : (
-                <View className="mt-3 min-h-[56px] flex-row items-center rounded-[24px] border border-[#E6EEFF] bg-white px-4">
-                  <browseIcons.MapPinned size={18} color="#346EF6" strokeWidth={2.35} />
-                  <TextInput
+                <View className="mt-3">
+                  <LocationSearchWithLabel
+                    helperText="Start typing and choose a Google Maps suggestion, or enter the address manually."
+                    label="Pickup location"
                     value={pickupLocation}
                     onChangeText={setPickupLocation}
                     placeholder="Preferred pickup location"
-                    placeholderTextColor="#9AA4B8"
-                    className="min-w-0 flex-1 px-3 text-[15px] font-bold text-[#17315F]"
                   />
                 </View>
               )}
