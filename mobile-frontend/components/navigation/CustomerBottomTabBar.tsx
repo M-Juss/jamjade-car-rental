@@ -7,8 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCustomerTabBarVisibility } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import { type CustomerTabConfig } from '@/constants/customer-tabs';
-import { isTelematicsEnabled } from '@/lib/bookings/helpers';
-import { bookings } from '@/lib/bookings/mock-data';
+import { useCustomer } from '@/lib/customer/customer-store';
 
 type CustomerBottomTabBarProps = BottomTabBarProps & {
   tabs: CustomerTabConfig[];
@@ -20,7 +19,6 @@ const BAR = '#FFFFFF';
 const FEATURED = '#346EF6';
 const FLOAT_GAP = 10;
 const BAR_HEIGHT = 74;
-const hasActiveBooking = bookings.some((booking) => isTelematicsEnabled(booking.status));
 
 export function CustomerBottomTabBar({
   descriptors,
@@ -29,9 +27,11 @@ export function CustomerBottomTabBar({
   tabs,
 }: CustomerBottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const customer = useCustomer();
   const { isTabBarHidden } = useCustomerTabBarVisibility();
   const translateY = useRef(new Animated.Value(0)).current;
   const hideOffset = BAR_HEIGHT + insets.bottom + FLOAT_GAP + 20;
+  const hasActiveBooking = customer.bookingStatus === 'active' || customer.bookingStatus === 'ongoing';
 
   useEffect(() => {
     Animated.timing(translateY, {

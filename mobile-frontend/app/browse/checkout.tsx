@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -10,11 +10,9 @@ import {
   PriceBreakdownCard,
   SelectedVehicleSummary,
   browseIcons,
-  optionalServices,
 } from '@/components/browse';
 import { decodeBookingData, encodeBookingData } from '@/lib/browse/booking-params';
-import { REQUIRED_DOCUMENTS } from '@/lib/browse/mock-data';
-import { formatPeso, getPriceBreakdown, getVehicleById } from '@/lib/browse/pricing';
+import { getPriceBreakdown, getVehicleById } from '@/lib/browse/pricing';
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -43,32 +41,29 @@ export default function CheckoutScreen() {
   const { booking: bookingParam } = useLocalSearchParams<{ booking?: string }>();
   const booking = decodeBookingData(bookingParam);
   const vehicle = getVehicleById(booking?.vehicleId);
-  const [agreementAccepted, setAgreementAccepted] = useState(false);
-  const [showAgreementError, setShowAgreementError] = useState(false);
+  const [termsRead, setTermsRead] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const breakdown = useMemo(() => {
     if (!vehicle || !booking) {
       return null;
     }
 
-    return getPriceBreakdown(vehicle, booking.numberOfDays, booking.optionalServices, booking.paymentOption);
+    return getPriceBreakdown(vehicle, booking.numberOfDays, booking.driverOption, booking.ownerDriverCoverage);
   }, [booking, vehicle]);
 
   if (!booking || !vehicle || !breakdown) {
     return <ErrorState onAction={() => router.replace('/')} title="Booking not found" subtitle="Start again from an available vehicle." />;
   }
 
-  const selectedServiceLabels = booking.optionalServices
-    .map((serviceId) => optionalServices.find((service) => service.id === serviceId)?.label)
-    .filter((label): label is string => Boolean(label));
+  const coverageLabel =
+    booking.ownerDriverCoverage === 'outside_manila' ? 'Outside Manila' : 'Within Metro Manila';
+  const canProceedToPayment = termsRead && termsAccepted;
 
-  const handleSubmit = () => {
-    if (!agreementAccepted) {
-      setShowAgreementError(true);
+  const handleProceedToPayment = () => {
+    if (!canProceedToPayment) {
       return;
     }
-
-    const reference = `JJ-${Date.now().toString().slice(-6)}`;
 
     const encodedBooking = encodeBookingData({
       ...booking,
@@ -77,7 +72,7 @@ export default function CheckoutScreen() {
       remainingBalance: breakdown.remainingBalance,
     });
 
-    router.replace(`/browse/success?booking=${encodedBooking}&reference=${reference}` as Href);
+    router.push(`/browse/payment?booking=${encodedBooking}` as Href);
   };
 
   return (
@@ -93,7 +88,7 @@ export default function CheckoutScreen() {
             </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="text-[27px] font-black text-[#17315F]">Review Booking</Text>
-              <Text className="mt-1 text-[13px] font-semibold text-[#6C7A96]">Confirm details before submission</Text>
+              <Text className="mt-1 text-[13px] font-semibold text-[#6C7A96]">Confirm details before payment</Text>
             </View>
           </View>
 
@@ -112,88 +107,69 @@ export default function CheckoutScreen() {
             <DetailRow label="Pickup option" value={booking.pickupOption === 'shop' ? 'Shop Pickup' : 'Delivery'} />
             <DetailRow label="Pickup location" value={booking.pickupLocation} />
             <DetailRow label="Driver option" value={booking.driverOption === 'self_drive' ? 'Self-drive' : "Owner's Driver"} />
-          </SummaryCard>
-
-          {booking.driverOption === 'self_drive' && (
-            <SummaryCard title="Required Documents Reminder">
-              <View className="gap-2">
-                {REQUIRED_DOCUMENTS.map((document) => (
-                  <View key={document} className="flex-row items-center gap-2">
-                    <browseIcons.FileCheck2 size={17} color="#346EF6" strokeWidth={2.35} />
-                    <Text className="text-[13px] font-bold text-[#17315F]">{document}</Text>
-                  </View>
-                ))}
-              </View>
-            </SummaryCard>
-          )}
-
-          <SummaryCard title="Optional Services">
-            {selectedServiceLabels.length > 0 ? (
-              <View className="flex-row flex-wrap gap-2">
-                {selectedServiceLabels.map((label) => (
-                  <View key={label} className="rounded-full bg-[#EEF4FF] px-3 py-2">
-                    <Text className="text-[12px] font-black text-[#346EF6]">{label}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text className="text-[13px] font-semibold text-[#6C7A96]">No optional services selected.</Text>
-            )}
+            {booking.driverOption === 'owners_driver' && <DetailRow label="Trip coverage" value={coverageLabel} />}
           </SummaryCard>
 
           <View className="mt-5">
             <PriceBreakdownCard breakdown={breakdown} />
           </View>
 
-          <SummaryCard title="Payment">
-            <View className="gap-3">
-              <View className="rounded-2xl border border-[#E6EEFF] bg-[#F8FAFF] px-4 py-3">
-                <Text className="text-[12px] font-black uppercase tracking-[0.8px] text-[#91A0B8]">Payment method</Text>
-                <Text className="mt-1 text-[14px] font-black text-[#17315F]">Payment method placeholder</Text>
+          <SummaryCard title="Terms and Conditions">
+            {!termsRead ? (
+              <View>
+                <Text className="text-[13px] font-semibold leading-5 text-[#6C7A96]">
+                  Read the rental terms before proceeding to payment.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setTermsRead(true)}
+                  className="mt-4 min-h-[50px] items-center justify-center rounded-full bg-[#EEF4FF]">
+                  <Text className="text-[14px] font-black text-[#346EF6]">Read Terms and Conditions</Text>
+                </Pressable>
               </View>
-              <View className="rounded-2xl border border-[#E6EEFF] bg-white px-4 py-3">
-                <Text className="mb-2 text-[12px] font-black uppercase tracking-[0.8px] text-[#91A0B8]">Reference number</Text>
-                <TextInput placeholder="Reference number placeholder" placeholderTextColor="#9AA4B8" className="text-[14px] font-bold text-[#17315F]" />
+            ) : (
+              <View>
+                {[
+                  'Booking details must be accurate before payment.',
+                  'Payment does not guarantee approval until Jamjade confirms the booking.',
+                  'Late returns, toll fees, damage fees, and route-related charges may be settled separately.',
+                  'Cancellations and refunds are subject to Jamjade review.',
+                ].map((term) => (
+                  <View key={term} className="mb-3 flex-row gap-2">
+                    <browseIcons.CircleCheck size={16} color="#159947" strokeWidth={2.35} />
+                    <Text className="min-w-0 flex-1 text-[13px] font-semibold leading-5 text-[#5D6B82]">{term}</Text>
+                  </View>
+                ))}
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: termsAccepted }}
+                  onPress={() => setTermsAccepted((value) => !value)}
+                  className={cx(
+                    'mt-2 flex-row items-start gap-3 rounded-[22px] border p-4',
+                    termsAccepted ? 'border-[#346EF6] bg-[#EEF4FF]' : 'border-[#E6EEFF] bg-white',
+                  )}>
+                  <View className={cx('h-7 w-7 items-center justify-center rounded-full border', termsAccepted ? 'border-[#346EF6] bg-[#346EF6]' : 'border-[#C8D4E8] bg-white')}>
+                    {termsAccepted && <browseIcons.Check size={16} color="#FFFFFF" strokeWidth={3} />}
+                  </View>
+                  <Text className="min-w-0 flex-1 text-[13px] font-bold leading-5 text-[#17315F]">
+                    I have read and agree to the Terms and Conditions.
+                  </Text>
+                </Pressable>
               </View>
-              <View className="min-h-[94px] items-center justify-center rounded-2xl border border-dashed border-[#C8D4E8] bg-[#F8FAFF] px-4 py-5">
-                <browseIcons.Upload size={24} color="#346EF6" strokeWidth={2.35} />
-                <Text className="mt-2 text-[13px] font-black text-[#17315F]">Upload proof of payment placeholder</Text>
-              </View>
-              <View className="flex-row items-center justify-between rounded-2xl bg-[#FFF9E8] px-4 py-3">
-                <Text className="text-[13px] font-bold text-[#806128]">Payment status</Text>
-                <Text className="text-[13px] font-black text-[#B7791F]">Pending verification</Text>
-              </View>
-            </View>
+            )}
           </SummaryCard>
-
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: agreementAccepted }}
-            onPress={() => {
-              setAgreementAccepted((value) => !value);
-              setShowAgreementError(false);
-            }}
-            className={cx(
-              'mt-5 flex-row items-start gap-3 rounded-[24px] border p-4',
-              agreementAccepted ? 'border-[#346EF6] bg-[#EEF4FF]' : 'border-[#E6EEFF] bg-white',
-            )}>
-            <View className={cx('h-7 w-7 items-center justify-center rounded-full border', agreementAccepted ? 'border-[#346EF6] bg-[#346EF6]' : 'border-[#C8D4E8] bg-white')}>
-              {agreementAccepted && <browseIcons.Check size={16} color="#FFFFFF" strokeWidth={3} />}
-            </View>
-            <Text className="min-w-0 flex-1 text-[13px] font-bold leading-5 text-[#17315F]">
-              I understand that my booking is subject to admin approval and payment verification.
-            </Text>
-          </Pressable>
-          {showAgreementError && (
-            <Text className="mt-2 px-2 text-[12px] font-bold text-[#D92D20]">Please accept the agreement before submitting.</Text>
-          )}
 
           <View className="mt-7 gap-3">
             <Pressable
               accessibilityRole="button"
-              onPress={handleSubmit}
-              className="min-h-[60px] items-center justify-center rounded-full bg-[#346EF6] shadow-lg shadow-[#346EF6]/25">
-              <Text className="text-[16px] font-black text-white">Submit Booking</Text>
+              accessibilityState={{ disabled: !canProceedToPayment }}
+              disabled={!canProceedToPayment}
+              onPress={handleProceedToPayment}
+              className={cx(
+                'min-h-[60px] items-center justify-center rounded-full shadow-lg',
+                canProceedToPayment ? 'bg-[#346EF6] shadow-[#346EF6]/25' : 'bg-[#C8D4E8] shadow-transparent',
+              )}>
+              <Text className="text-[16px] font-black text-white">Proceed to Payment</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -201,12 +177,6 @@ export default function CheckoutScreen() {
               className="min-h-[56px] items-center justify-center rounded-full border border-[#DDE8FF] bg-white">
               <Text className="text-[15px] font-black text-[#17315F]">Back to Edit</Text>
             </Pressable>
-          </View>
-
-          <View className="mt-4 rounded-[20px] bg-[#EEF4FF] p-4">
-            <Text className="text-[12px] font-bold leading-5 text-[#346EF6]">
-              Mock checkout only. No real payment gateway or backend submission is connected. Total due: {formatPeso(breakdown.totalAmount)}.
-            </Text>
           </View>
         </View>
       </ScrollView>

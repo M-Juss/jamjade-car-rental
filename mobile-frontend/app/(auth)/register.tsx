@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { AuthScreenFrame, AuthSubmitButton, InputWithLabel } from '@/components/common';
+import { updateRegisteredEmail } from '@/lib/customer/customer-store';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -35,7 +36,11 @@ export default function RegisterScreen() {
       return;
     }
 
-    router.replace('/(tabs)');
+    updateRegisteredEmail(normalizedEmail);
+    router.replace({
+      pathname: '/register-success',
+      params: { email: normalizedEmail },
+    });
   };
 
   return (

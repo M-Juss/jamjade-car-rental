@@ -1,10 +1,8 @@
 import {
   ArrowLeft,
   ArrowUpDown,
-  BadgeCheck,
   Bluetooth,
   Bookmark,
-  CalendarCheck,
   CalendarDays,
   Camera,
   Car,
@@ -12,7 +10,6 @@ import {
   ChevronRight,
   CircleAlert,
   CircleCheck,
-  Clock3,
   CreditCard,
   FileCheck2,
   Fuel,
@@ -56,7 +53,6 @@ import type { OptionalService, PriceBreakdown, Vehicle } from '@/types/browse';
 export type SortOption = 'lowest_price' | 'highest_price' | 'most_booked' | 'newest';
 
 export type BrowseFilters = {
-  brand?: string;
   bookmarkedOnly?: boolean;
   maxPrice?: number;
   mostBookedOnly?: boolean;
@@ -120,7 +116,7 @@ export function SearchInput({
       <TextInput
         value={value}
         onChangeText={onSearchChange}
-        placeholder="Search vehicle, brand, or model"
+        placeholder="Search vehicle or model"
         placeholderTextColor="#9AA4B8"
         className="min-w-0 flex-1 px-3 text-[14px] font-semibold text-[#17315F]"
       />
@@ -170,8 +166,8 @@ export function VehicleCard({
   const specs = [
     { icon: Users, title: 'Seats', value: `${vehicle.seats} seats` },
     { icon: Gauge, title: 'Drive', value: vehicle.transmission },
-    { icon: Fuel, title: 'Fuel', value: vehicle.fuelType },
-    { icon: Clock3, title: 'Mileage', value: vehicle.mileage },
+    { icon: Fuel, title: 'Fuel Type', value: vehicle.fuelType },
+    { icon: Sparkles, title: 'Color', value: vehicle.color },
   ];
   const specRows = [specs.slice(0, 2), specs.slice(2)];
 
@@ -329,11 +325,9 @@ export function VehicleStoryCarousel({
 export function VehicleSpecsGrid({ vehicle }: { vehicle: Vehicle }) {
   const specs = [
     { icon: Users, label: 'Seats', value: `${vehicle.seats}` },
-    { icon: Gauge, label: 'Transmission', value: vehicle.transmission },
-    { icon: Fuel, label: 'Fuel type', value: vehicle.fuelType },
-    { icon: Clock3, label: 'Mileage', value: vehicle.mileage },
+    { icon: Gauge, label: 'Drive', value: vehicle.transmission },
+    { icon: Fuel, label: 'Fuel Type', value: vehicle.fuelType },
     { icon: Sparkles, label: 'Color', value: vehicle.color },
-    { icon: Car, label: 'Brand', value: vehicle.brand },
   ];
 
   return (
@@ -448,7 +442,7 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
             <View className="min-w-0 flex-1">
               <Text className="text-[31px] font-black leading-[36px] text-[#0F172A]">{vehicle.name}</Text>
               <Text className="mt-1 text-[13px] font-bold text-[#6C7A96]">
-                {vehicle.brand} {vehicle.model} · {vehicle.year}
+                {vehicle.model} · {vehicle.year}
               </Text>
             </View>
             <View className="items-end">
@@ -457,16 +451,15 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
             </View>
           </View>
 
-          <View className="mt-4 flex-row flex-wrap items-center gap-2">
-            <View className="flex-row items-center gap-1.5 rounded-full bg-[#EAFBF2] px-3 py-1.5">
-              <BadgeCheck size={15} color="#159947" strokeWidth={2.4} />
-              <Text className="text-[12px] font-black text-[#159947]">Available</Text>
-            </View>
-            <View className="flex-row items-center gap-1.5 rounded-full bg-[#EEF4FF] px-3 py-1.5">
-              <CalendarCheck size={15} color={primary} strokeWidth={2.4} />
-              <Text className="text-[12px] font-black text-[#346EF6]">{vehicle.successfulBookings} successful bookings</Text>
-            </View>
-          </View>
+          <Text className="mt-4 text-[15px] font-semibold leading-6 text-[#6C7A96]">
+            {displayDescription}
+            {!isExpanded && (
+              <Text className="font-black text-[#17315F]" onPress={() => setIsExpanded(true)}>
+                {' '}
+                Read more
+              </Text>
+            )}
+          </Text>
 
           <View className="mt-7">
             <Text className="mb-3 text-[20px] font-black text-[#0F172A]">Specs</Text>
@@ -480,19 +473,6 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
                 <FeatureBadge key={feature} label={feature} />
               ))}
             </View>
-          </View>
-
-          <View className="mt-7">
-            <Text className="text-[20px] font-black text-[#0F172A]">Description</Text>
-            <Text className="mt-3 text-[15px] font-semibold leading-6 text-[#6C7A96]">
-              {displayDescription}
-              {!isExpanded && (
-                <Text className="font-black text-[#17315F]" onPress={() => setIsExpanded(true)}>
-                  {' '}
-                  Read more
-                </Text>
-              )}
-            </Text>
           </View>
 
           <View className="mt-7 rounded-[28px] border border-[#EAF0FB] bg-[#F8FAFF] p-5">
@@ -594,10 +574,9 @@ export function FilterSheet({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState<BrowseFilters>(filters);
-  const brands = Array.from(new Set(availableVehicleOptions.map((vehicle) => vehicle.brand)));
   const features = Array.from(new Set(availableVehicleOptions.flatMap((vehicle) => vehicle.features))).slice(0, 10);
   const transmissions: Vehicle['transmission'][] = ['Automatic', 'Manual'];
-  const fuelTypes: Vehicle['fuelType'][] = ['Gasoline', 'Diesel', 'Hybrid', 'Electric'];
+  const fuelTypes: Vehicle['fuelType'][] = ['Gasoline', 'Diesel'];
   const seatOptions = [5, 7];
   const priceOptions = [4000, 5000, 6000, 7000];
   const sortOptions: { label: string; value: SortOption }[] = [
@@ -661,17 +640,6 @@ export function FilterSheet({
                   label={option.label}
                   isSelected={(draft.sort ?? 'most_booked') === option.value}
                   onPress={() => setDraft((current) => ({ ...current, sort: option.value }))}
-                />
-              ))}
-            </FilterGroup>
-
-            <FilterGroup title="Brand">
-              {brands.map((brand) => (
-                <FilterChip
-                  key={brand}
-                  label={brand}
-                  isSelected={draft.brand === brand}
-                  onPress={() => setDraft((current) => ({ ...current, brand: current.brand === brand ? undefined : brand }))}
                 />
               ))}
             </FilterGroup>
@@ -817,7 +785,7 @@ export function SortSheet({
 }
 
 export function BookingStepper({ step }: { step: 1 | 2 | 3 }) {
-  const steps = ['Details', 'Review', 'Pending'];
+  const steps = ['Details', 'Review', 'Payment'];
 
   return (
     <View className="flex-row items-center gap-2">
@@ -970,16 +938,16 @@ export function PriceBreakdownCard({ breakdown }: { breakdown: PriceBreakdown })
       <BreakdownRow label="Price per day" value={formatPeso(breakdown.pricePerDay)} />
       <BreakdownRow label="Number of days" value={`${breakdown.numberOfDays}`} />
       <BreakdownRow label="Rental subtotal" value={formatPeso(breakdown.subtotal)} />
-      <BreakdownRow label="Optional services total" value={formatPeso(breakdown.optionalServicesTotal)} />
-      {breakdown.outsideManilaFee > 0 && <BreakdownRow label="Outside Manila fee" value={formatPeso(breakdown.outsideManilaFee)} />}
+      {breakdown.ownerDriverFee > 0 && (
+        <BreakdownRow
+          label={`Owner's driver fee (${formatPeso(breakdown.ownerDriverRatePerDay ?? 0)} / day)`}
+          value={formatPeso(breakdown.ownerDriverFee)}
+        />
+      )}
       <View className="my-2 h-px bg-[#E6EEFF]" />
       <BreakdownRow label="Total amount" value={formatPeso(breakdown.totalAmount)} strong />
-      {typeof breakdown.downPaymentAmount === 'number' && (
-        <>
-          <BreakdownRow label="Down payment amount" value={formatPeso(breakdown.downPaymentAmount)} />
-          <BreakdownRow label="Remaining balance" value={formatPeso(breakdown.remainingBalance ?? 0)} />
-        </>
-      )}
+      <BreakdownRow label="Down payment (30%)" value={formatPeso(breakdown.downPaymentAmount)} />
+      <BreakdownRow label="Remaining balance" value={formatPeso(breakdown.remainingBalance)} />
     </View>
   );
 }

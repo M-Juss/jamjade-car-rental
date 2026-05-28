@@ -15,11 +15,21 @@ function getStorage() {
     localStorage?: {
       getItem: (key: string) => string | null;
       setItem: (key: string, value: string) => void;
-      removeItem: (key: string) => void;
+      removeItem?: (key: string) => void;
     };
   };
 
-  return storageHost.localStorage;
+  const storage = storageHost.localStorage;
+
+  if (
+    !storage ||
+    typeof storage.getItem !== 'function' ||
+    typeof storage.setItem !== 'function'
+  ) {
+    return undefined;
+  }
+
+  return storage;
 }
 
 function readStoredDocuments() {
@@ -44,7 +54,7 @@ function readStoredDocuments() {
       ...storedById.get(document.id),
     }));
   } catch {
-    storage.removeItem(STORAGE_KEY);
+    storage.removeItem?.(STORAGE_KEY);
     return initialRenterDocuments;
   }
 }

@@ -52,7 +52,6 @@ export const vehicles: Vehicle[] = [
   {
     id: 'vios-gr-s-2024',
     name: 'Toyota Vios GR-S',
-    brand: 'Toyota',
     model: 'Vios GR-S',
     year: 2024,
     pricePerDay: 3500,
@@ -67,9 +66,7 @@ export const vehicles: Vehicle[] = [
     seats: 5,
     transmission: 'Automatic',
     fuelType: 'Gasoline',
-    mileage: '18,000 km',
     color: 'Platinum White',
-    successfulBookings: 126,
     features: [
       'Air Conditioning',
       'Bluetooth',
@@ -86,7 +83,6 @@ export const vehicles: Vehicle[] = [
   {
     id: 'fortuner-v-2023',
     name: 'Toyota Fortuner V',
-    brand: 'Toyota',
     model: 'Fortuner V',
     year: 2023,
     pricePerDay: 6200,
@@ -102,9 +98,7 @@ export const vehicles: Vehicle[] = [
     seats: 7,
     transmission: 'Automatic',
     fuelType: 'Diesel',
-    mileage: '24,500 km',
     color: 'Attitude Black',
-    successfulBookings: 98,
     features: [
       'Air Conditioning',
       'GPS Navigation',
@@ -121,7 +115,6 @@ export const vehicles: Vehicle[] = [
   {
     id: 'montero-sport-2024',
     name: 'Mitsubishi Montero Sport',
-    brand: 'Mitsubishi',
     model: 'Montero Sport',
     year: 2024,
     pricePerDay: 5900,
@@ -136,9 +129,7 @@ export const vehicles: Vehicle[] = [
     seats: 7,
     transmission: 'Automatic',
     fuelType: 'Diesel',
-    mileage: '16,700 km',
     color: 'Graphite Gray',
-    successfulBookings: 84,
     features: [
       'Air Conditioning',
       'Bluetooth',
@@ -154,7 +145,6 @@ export const vehicles: Vehicle[] = [
   {
     id: 'stargazer-premium-2024',
     name: 'Hyundai Stargazer Premium',
-    brand: 'Hyundai',
     model: 'Stargazer Premium',
     year: 2024,
     pricePerDay: 4800,
@@ -169,9 +159,7 @@ export const vehicles: Vehicle[] = [
     seats: 7,
     transmission: 'Automatic',
     fuelType: 'Gasoline',
-    mileage: '11,200 km',
     color: 'Creamy White Pearl',
-    successfulBookings: 73,
     features: [
       'Air Conditioning',
       'Bluetooth',
@@ -187,7 +175,6 @@ export const vehicles: Vehicle[] = [
   {
     id: 'civic-rs-2023',
     name: 'Honda Civic RS Turbo',
-    brand: 'Honda',
     model: 'Civic RS Turbo',
     year: 2023,
     pricePerDay: 5300,
@@ -202,9 +189,7 @@ export const vehicles: Vehicle[] = [
     seats: 5,
     transmission: 'Automatic',
     fuelType: 'Gasoline',
-    mileage: '20,900 km',
     color: 'Sonic Gray Pearl',
-    successfulBookings: 91,
     features: [
       'Air Conditioning',
       'Bluetooth',
@@ -221,7 +206,6 @@ export const vehicles: Vehicle[] = [
   {
     id: 'xpander-cross-2024',
     name: 'Mitsubishi Xpander Cross',
-    brand: 'Mitsubishi',
     model: 'Xpander Cross',
     year: 2024,
     pricePerDay: 4300,
@@ -236,9 +220,7 @@ export const vehicles: Vehicle[] = [
     seats: 7,
     transmission: 'Automatic',
     fuelType: 'Gasoline',
-    mileage: '13,800 km',
     color: 'Sunrise Orange',
-    successfulBookings: 67,
     features: [
       'Air Conditioning',
       'Bluetooth',
@@ -253,9 +235,8 @@ export const vehicles: Vehicle[] = [
   },
   {
     id: 'innova-hybrid-2025',
-    name: 'Toyota Innova Zenix Hybrid',
-    brand: 'Toyota',
-    model: 'Innova Zenix Hybrid',
+    name: 'Toyota Innova Zenix V',
+    model: 'Innova Zenix V',
     year: 2025,
     pricePerDay: 6800,
     status: 'rented',
@@ -267,19 +248,16 @@ export const vehicles: Vehicle[] = [
     location: SHOP_LOCATION,
     seats: 7,
     transmission: 'Automatic',
-    fuelType: 'Hybrid',
-    mileage: '6,400 km',
+    fuelType: 'Gasoline',
     color: 'Dark Steel Mica',
-    successfulBookings: 41,
     features: ['Air Conditioning', 'Bluetooth', 'GPS Navigation', 'USB Charging', 'Fuel Efficient'],
     description:
-      'A quiet hybrid MPV with premium captain-style comfort and excellent efficiency for longer booked itineraries.',
+      'A quiet MPV with premium captain-style comfort and efficient gasoline performance for longer booked itineraries.',
     createdAt: '2026-05-11',
   },
   {
     id: 'terra-vl-2023',
     name: 'Nissan Terra VL',
-    brand: 'Nissan',
     model: 'Terra VL',
     year: 2023,
     pricePerDay: 6100,
@@ -293,9 +271,7 @@ export const vehicles: Vehicle[] = [
     seats: 7,
     transmission: 'Automatic',
     fuelType: 'Diesel',
-    mileage: '27,100 km',
     color: 'Brilliant Silver',
-    successfulBookings: 57,
     features: ['Air Conditioning', 'Bluetooth', 'Reverse Camera', 'Parking Sensors', 'Dashcam'],
     description:
       'A full-size SUV with strong diesel torque and generous passenger room, currently held for scheduled service.',

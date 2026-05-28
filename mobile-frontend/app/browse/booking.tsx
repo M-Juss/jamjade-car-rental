@@ -1,23 +1,29 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   BookingStepper,
   ErrorState,
-  OptionalServiceCard,
-  RequiredDocumentsCard,
+  PriceBreakdownCard,
   SelectedVehicleSummary,
   browseIcons,
-  optionalServices,
 } from '@/components/browse';
 import { DateWithLabel, getNextDateKey, LocationSearchWithLabel } from '@/components/common';
 import { encodeBookingData, firstParam } from '@/lib/browse/booking-params';
 import { SHOP_LOCATION } from '@/lib/browse/mock-data';
-import { formatPeso, getNumberOfDays, getPriceBreakdown, getVehicleById } from '@/lib/browse/pricing';
+import {
+  OWNER_DRIVER_METRO_MANILA_DAILY_RATE,
+  OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE,
+  formatPeso,
+  getNumberOfDays,
+  getPriceBreakdown,
+  getVehicleById,
+} from '@/lib/browse/pricing';
+import { getSelfDriveBookingAvailability, useCustomer } from '@/lib/customer/customer-store';
 import type { BookingFormData } from '@/types/browse';
 
 function cx(...classes: (string | false | null | undefined)[]) {
@@ -35,6 +41,7 @@ function Section({ children, title }: { title: string; children: ReactNode }) {
 
 function SelectableCard({
   description,
+  disabled = false,
   icon: Icon,
   isSelected,
   onPress,
@@ -45,15 +52,18 @@ function SelectableCard({
   icon: LucideIcon;
   isSelected: boolean;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: isSelected }}
+      accessibilityState={{ disabled, selected: isSelected }}
+      disabled={disabled}
       onPress={onPress}
       className={cx(
         'flex-1 rounded-[24px] border p-4',
         isSelected ? 'border-[#346EF6] bg-[#EEF4FF]' : 'border-[#E6EEFF] bg-white',
+        disabled && 'opacity-60',
       )}>
       <View className="flex-row items-start justify-between gap-3">
         <View className={cx('h-11 w-11 items-center justify-center rounded-full', isSelected ? 'bg-[#346EF6]' : 'bg-[#F3F7FF]')}>
@@ -70,16 +80,25 @@ function SelectableCard({
 export default function BookingFormScreen() {
   const router = useRouter();
   const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
+  const customer = useCustomer();
+  const selfDriveAvailability = useMemo(() => getSelfDriveBookingAvailability(customer), [customer]);
   const vehicle = getVehicleById(firstParam(vehicleId));
   const [rentalDate, setRentalDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [pickupOption, setPickupOption] = useState<BookingFormData['pickupOption']>('shop');
   const [pickupLocation, setPickupLocation] = useState('');
-  const [driverOption, setDriverOption] = useState<BookingFormData['driverOption']>('self_drive');
-  const [requiredDocumentsAcknowledged, setRequiredDocumentsAcknowledged] = useState(false);
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [paymentOption, setPaymentOption] = useState<BookingFormData['paymentOption']>('down_payment');
+  const [driverOption, setDriverOption] = useState<BookingFormData['driverOption']>(
+    selfDriveAvailability.canSelfDrive ? 'self_drive' : 'owners_driver',
+  );
+  const [ownerDriverCoverage, setOwnerDriverCoverage] =
+    useState<BookingFormData['ownerDriverCoverage']>('metro_manila');
   const [errors, setErrors] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!selfDriveAvailability.canSelfDrive && driverOption === 'self_drive') {
+      setDriverOption('owners_driver');
+    }
+  }, [driverOption, selfDriveAvailability.canSelfDrive]);
 
   const numberOfDays = useMemo(() => getNumberOfDays(rentalDate, returnDate), [rentalDate, returnDate]);
   const minimumReturnDate = rentalDate ? getNextDateKey(rentalDate) : undefined;
@@ -88,18 +107,12 @@ export default function BookingFormScreen() {
       return null;
     }
 
-    return getPriceBreakdown(vehicle, numberOfDays, selectedServices, paymentOption);
-  }, [numberOfDays, paymentOption, selectedServices, vehicle]);
+    return getPriceBreakdown(vehicle, numberOfDays, driverOption, ownerDriverCoverage);
+  }, [driverOption, numberOfDays, ownerDriverCoverage, vehicle]);
 
   if (!vehicle || !breakdown) {
     return <ErrorState onAction={() => router.replace('/')} />;
   }
-
-  const toggleService = (serviceId: string) => {
-    setSelectedServices((current) =>
-      current.includes(serviceId) ? current.filter((item) => item !== serviceId) : [...current, serviceId],
-    );
-  };
 
   const handleRentalDateChange = (nextRentalDate: string) => {
     setRentalDate(nextRentalDate);
@@ -142,8 +155,8 @@ export default function BookingFormScreen() {
       nextErrors.push('Preferred pickup location is required for delivery.');
     }
 
-    if (driverOption === 'self_drive' && !requiredDocumentsAcknowledged) {
-      nextErrors.push('Self-drive documents must be acknowledged.');
+    if (driverOption === 'self_drive' && !selfDriveAvailability.canSelfDrive) {
+      nextErrors.push(selfDriveAvailability.message);
     }
 
     setErrors(nextErrors);
@@ -164,9 +177,7 @@ export default function BookingFormScreen() {
       pickupOption,
       pickupLocation: pickupOption === 'shop' ? SHOP_LOCATION : pickupLocation.trim(),
       driverOption,
-      requiredDocumentsAcknowledged,
-      optionalServices: selectedServices,
-      paymentOption,
+      ownerDriverCoverage: driverOption === 'owners_driver' ? ownerDriverCoverage : undefined,
       totalAmount: breakdown.totalAmount,
       downPaymentAmount: breakdown.downPaymentAmount,
       remainingBalance: breakdown.remainingBalance,
@@ -277,6 +288,7 @@ export default function BookingFormScreen() {
                   title="Self-drive"
                   description="Drive the vehicle yourself."
                   isSelected={driverOption === 'self_drive'}
+                  disabled={!selfDriveAvailability.canSelfDrive}
                   onPress={() => setDriverOption('self_drive')}
                 />
                 <SelectableCard
@@ -287,58 +299,38 @@ export default function BookingFormScreen() {
                   onPress={() => setDriverOption('owners_driver')}
                 />
               </View>
-            </Section>
-
-            <Section title="Required Documents">
-              <RequiredDocumentsCard
-                driverOption={driverOption}
-                acknowledged={requiredDocumentsAcknowledged}
-                onToggleAcknowledged={() => setRequiredDocumentsAcknowledged((value) => !value)}
-              />
-            </Section>
-
-            <Section title="Optional Services">
-              <View className="gap-3">
-                {optionalServices.map((service) => (
-                  <OptionalServiceCard
-                    key={service.id}
-                    service={service}
-                    isSelected={selectedServices.includes(service.id)}
-                    onToggle={() => toggleService(service.id)}
-                  />
-                ))}
-              </View>
-            </Section>
-
-            <Section title="Payment Option">
-              <View className="flex-row gap-3">
-                <SelectableCard
-                  icon={browseIcons.CreditCard}
-                  title="Down Payment"
-                  description="Pay 30% now, settle remaining balance later."
-                  isSelected={paymentOption === 'down_payment'}
-                  onPress={() => setPaymentOption('down_payment')}
-                />
-                <SelectableCard
-                  icon={browseIcons.CircleCheck}
-                  title="Full Payment"
-                  description="Pay the total booking amount."
-                  isSelected={paymentOption === 'full_payment'}
-                  onPress={() => setPaymentOption('full_payment')}
-                />
-              </View>
-              {paymentOption === 'down_payment' && (
+              {!selfDriveAvailability.canSelfDrive ? (
                 <View className="mt-3 rounded-[24px] border border-[#FFE7A6] bg-[#FFF9E8] p-4">
                   <Text className="text-[13px] font-bold leading-5 text-[#806128]">
-                    Remaining balance must be paid 1 day before the rental date.
+                    {selfDriveAvailability.message}
                   </Text>
                 </View>
-              )}
-              <View className="mt-3 rounded-[24px] border border-[#DDE8FF] bg-white p-4">
-                <Text className="text-[12px] font-black uppercase tracking-[0.8px] text-[#91A0B8]">Estimated total</Text>
-                <Text className="mt-1 text-[25px] font-black text-[#17315F]">{formatPeso(breakdown.totalAmount)}</Text>
-                <Text className="mt-1 text-[12px] font-semibold text-[#6C7A96]">Toll fee is paid based on consumption.</Text>
-              </View>
+              ) : null}
+            </Section>
+
+            {driverOption === 'owners_driver' && (
+              <Section title="Trip Coverage">
+                <View className="flex-row gap-3">
+                  <SelectableCard
+                    icon={browseIcons.MapPin}
+                    title="Within Metro Manila"
+                    description={`${formatPeso(OWNER_DRIVER_METRO_MANILA_DAILY_RATE)} fixed per day.`}
+                    isSelected={ownerDriverCoverage === 'metro_manila'}
+                    onPress={() => setOwnerDriverCoverage('metro_manila')}
+                  />
+                  <SelectableCard
+                    icon={browseIcons.Navigation}
+                    title="Outside Manila"
+                    description={`${formatPeso(OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE)} fixed per day.`}
+                    isSelected={ownerDriverCoverage === 'outside_manila'}
+                    onPress={() => setOwnerDriverCoverage('outside_manila')}
+                  />
+                </View>
+              </Section>
+            )}
+
+            <Section title="Price Breakdown">
+              <PriceBreakdownCard breakdown={breakdown} />
             </Section>
 
             <Pressable

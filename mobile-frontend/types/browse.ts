@@ -1,7 +1,6 @@
 export type Vehicle = {
   id: string;
   name: string;
-  brand: string;
   model: string;
   year: number;
   pricePerDay: number;
@@ -10,10 +9,8 @@ export type Vehicle = {
   location: string;
   seats: number;
   transmission: 'Automatic' | 'Manual';
-  fuelType: 'Gasoline' | 'Diesel' | 'Hybrid' | 'Electric';
-  mileage: string;
+  fuelType: 'Gasoline' | 'Diesel';
   color: string;
-  successfulBookings: number;
   features: string[];
   description: string;
   isMostBooked?: boolean;
@@ -28,12 +25,10 @@ export type BookingFormData = {
   pickupOption: 'shop' | 'delivery';
   pickupLocation: string;
   driverOption: 'self_drive' | 'owners_driver';
-  requiredDocumentsAcknowledged: boolean;
-  optionalServices: string[];
-  paymentOption: 'down_payment' | 'full_payment';
+  ownerDriverCoverage?: 'metro_manila' | 'outside_manila';
   totalAmount: number;
-  downPaymentAmount?: number;
-  remainingBalance?: number;
+  downPaymentAmount: number;
+  remainingBalance: number;
 };
 
 export type OptionalService = {
@@ -47,9 +42,9 @@ export type PriceBreakdown = {
   pricePerDay: number;
   numberOfDays: number;
   subtotal: number;
-  optionalServicesTotal: number;
-  outsideManilaFee: number;
+  ownerDriverFee: number;
+  ownerDriverRatePerDay?: number;
   totalAmount: number;
-  downPaymentAmount?: number;
-  remainingBalance?: number;
+  downPaymentAmount: number;
+  remainingBalance: number;
 };

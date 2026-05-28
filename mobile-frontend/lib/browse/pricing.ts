@@ -1,7 +1,8 @@
-import { optionalServices, vehicles } from '@/lib/browse/mock-data';
 import type { BookingFormData, PriceBreakdown, Vehicle } from '@/types/browse';
+import { vehicles } from '@/lib/browse/mock-data';
 
-export const OUTSIDE_MANILA_FEE = 1000;
+export const OWNER_DRIVER_METRO_MANILA_DAILY_RATE = 700;
+export const OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE = 1000;
 export const DOWN_PAYMENT_RATE = 0.3;
 
 export const formatPeso = (amount: number) => {
@@ -10,22 +11,6 @@ export const formatPeso = (amount: number) => {
     currency: 'PHP',
     minimumFractionDigits: 0,
   }).format(amount);
-};
-
-export const getServicePrice = (serviceId: string) => {
-  const service = optionalServices.find((item) => item.id === serviceId);
-
-  return service?.price ?? 0;
-};
-
-export const getOptionalServicesTotal = (selectedServiceIds: string[]) => {
-  return selectedServiceIds.reduce((total, serviceId) => {
-    if (serviceId === 'outside_manila') {
-      return total;
-    }
-
-    return total + getServicePrice(serviceId);
-  }, 0);
 };
 
 export const getNumberOfDays = (rentalDate: string, returnDate: string) => {
@@ -41,40 +26,36 @@ export const getNumberOfDays = (rentalDate: string, returnDate: string) => {
   return Math.max(1, Math.ceil((end - start) / millisecondsPerDay));
 };
 
+export const getOwnerDriverRatePerDay = (coverage?: BookingFormData['ownerDriverCoverage']) => {
+  if (coverage === 'outside_manila') {
+    return OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE;
+  }
+
+  return OWNER_DRIVER_METRO_MANILA_DAILY_RATE;
+};
+
 export const getPriceBreakdown = (
   vehicle: Vehicle,
   numberOfDays: number,
-  selectedServiceIds: string[],
-  paymentOption: BookingFormData['paymentOption'],
+  driverOption: BookingFormData['driverOption'],
+  ownerDriverCoverage?: BookingFormData['ownerDriverCoverage'],
 ): PriceBreakdown => {
   const safeDays = Math.max(1, numberOfDays);
   const subtotal = vehicle.pricePerDay * safeDays;
-  const optionalServicesTotal = getOptionalServicesTotal(selectedServiceIds);
-  const outsideManilaFee = selectedServiceIds.includes('outside_manila') ? OUTSIDE_MANILA_FEE : 0;
-  const totalAmount = subtotal + optionalServicesTotal + outsideManilaFee;
-
-  if (paymentOption === 'down_payment') {
-    const downPaymentAmount = Math.ceil(totalAmount * DOWN_PAYMENT_RATE);
-
-    return {
-      pricePerDay: vehicle.pricePerDay,
-      numberOfDays: safeDays,
-      subtotal,
-      optionalServicesTotal,
-      outsideManilaFee,
-      totalAmount,
-      downPaymentAmount,
-      remainingBalance: totalAmount - downPaymentAmount,
-    };
-  }
+  const ownerDriverRatePerDay = driverOption === 'owners_driver' ? getOwnerDriverRatePerDay(ownerDriverCoverage) : undefined;
+  const ownerDriverFee = ownerDriverRatePerDay ? ownerDriverRatePerDay * safeDays : 0;
+  const totalAmount = subtotal + ownerDriverFee;
+  const downPaymentAmount = Math.ceil(totalAmount * DOWN_PAYMENT_RATE);
 
   return {
     pricePerDay: vehicle.pricePerDay,
     numberOfDays: safeDays,
     subtotal,
-    optionalServicesTotal,
-    outsideManilaFee,
+    ownerDriverFee,
+    ownerDriverRatePerDay,
     totalAmount,
+    downPaymentAmount,
+    remainingBalance: totalAmount - downPaymentAmount,
   };
 };
 

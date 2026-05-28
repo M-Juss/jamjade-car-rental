@@ -30,14 +30,13 @@ function matchesSearch(vehicle: Vehicle, searchTerm: string) {
     return true;
   }
 
-  return [vehicle.name, vehicle.brand, vehicle.model, vehicle.year.toString(), vehicle.location]
+  return [vehicle.name, vehicle.model, vehicle.year.toString(), vehicle.location]
     .join(' ')
     .toLowerCase()
     .includes(normalized);
 }
 
 function matchesFilters(vehicle: Vehicle, filters: BrowseFilters, bookmarkedVehicleIds: string[]) {
-  const matchesBrand = !filters.brand || vehicle.brand === filters.brand;
   const matchesPrice = !filters.maxPrice || vehicle.pricePerDay <= filters.maxPrice;
   const matchesTransmission = !filters.transmission || vehicle.transmission === filters.transmission;
   const matchesFuelType = !filters.fuelType || vehicle.fuelType === filters.fuelType;
@@ -47,7 +46,6 @@ function matchesFilters(vehicle: Vehicle, filters: BrowseFilters, bookmarkedVehi
   const matchesBookmarked = !filters.bookmarkedOnly || bookmarkedVehicleIds.includes(vehicle.id);
 
   return (
-    matchesBrand &&
     matchesPrice &&
     matchesTransmission &&
     matchesFuelType &&
@@ -69,7 +67,7 @@ function sortVehicles(vehicles: Vehicle[], sort: SortOption) {
     }
 
     if (sort === 'most_booked') {
-      return second.successfulBookings - first.successfulBookings;
+      return Number(Boolean(second.isMostBooked)) - Number(Boolean(first.isMostBooked));
     }
 
     return Date.parse(second.createdAt) - Date.parse(first.createdAt);
@@ -95,7 +93,6 @@ export default function BrowseScreen() {
   }, [bookmarkedVehicleIds, filters, searchTerm]);
 
   const activeFilterCount =
-    Number(Boolean(filters.brand)) +
     Number(Boolean(filters.bookmarkedOnly)) +
     Number(Boolean(filters.maxPrice)) +
     Number(Boolean(filters.mostBookedOnly)) +

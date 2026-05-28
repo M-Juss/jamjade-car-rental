@@ -25,6 +25,7 @@ export default function RootLayout() {
     <ThemeProvider value={JamJadeNavigationTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="browse" options={{ headerShown: false }} />
         <Stack.Screen name="bookings" options={{ headerShown: false }} />
