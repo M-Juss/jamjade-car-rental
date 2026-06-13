@@ -7,7 +7,9 @@ import {
   Camera,
   Car,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   CircleAlert,
   CircleCheck,
   CreditCard,
@@ -34,6 +36,7 @@ import {
   Image,
   ImageBackground,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   type ScrollView as ScrollViewType,
@@ -46,7 +49,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { optionalServices, REQUIRED_DOCUMENTS } from '@/lib/browse/mock-data';
+import { optionalServices, REQUIRED_DOCUMENTS } from '@/lib/browse/rental-config';
 import { formatPeso } from '@/lib/browse/pricing';
 import type { OptionalService, PriceBreakdown, Vehicle } from '@/types/browse';
 
@@ -68,6 +71,27 @@ const ink = '#17315F';
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
+}
+
+function VehicleImage({
+  className,
+  uri,
+}: {
+  className: string;
+  uri?: string | null;
+}) {
+  if (!uri) {
+    return (
+      <View className={cx(className, 'items-center justify-center bg-[#EEF4FF]')}>
+        <Car size={34} color="#91A0B8" strokeWidth={2.1} />
+        <Text className="mt-2 text-[11px] font-black uppercase tracking-[0.5px] text-[#91A0B8]">
+          No image
+        </Text>
+      </View>
+    );
+  }
+
+  return <Image source={{ uri }} resizeMode="cover" className={className} />;
 }
 
 function SmallIconButton({
@@ -169,81 +193,80 @@ export function VehicleCard({
     { icon: Fuel, title: 'Fuel Type', value: vehicle.fuelType },
     { icon: Sparkles, title: 'Color', value: vehicle.color },
   ];
-  const specRows = [specs.slice(0, 2), specs.slice(2)];
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`View ${vehicle.name} details`}
-      onPress={onPress}
-      className="overflow-hidden rounded-[26px] border border-[#D8E6FF] bg-white p-4 shadow-lg shadow-[#17315F]/10">
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <Text className="text-[21px] font-black leading-[25px] text-[#10203F]" numberOfLines={2}>
-            {vehicle.name}
-          </Text>
-          <View className="mt-2 flex-row items-baseline gap-1.5">
-            <Text className="text-[18px] font-black leading-[21px] text-[#17315F]" numberOfLines={1}>
-              {formatPeso(vehicle.pricePerDay)}
+    <View className="relative">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`View ${vehicle.name} details`}
+        onPress={onPress}
+        className="overflow-hidden rounded-[26px] border border-[#D8E6FF] bg-white p-4 shadow-lg shadow-[#17315F]/10">
+        <View className="flex-row items-start justify-between gap-3">
+          <View className="min-w-0 flex-1 pr-12">
+            <Text className="text-[21px] font-black leading-[25px] text-[#10203F]" numberOfLines={2}>
+              {vehicle.name}
             </Text>
-            <Text className="text-[11px] font-black uppercase tracking-[0.45px] text-[#6E81A6]">/day</Text>
+            <Text className="mt-1 text-[12px] font-bold text-[#6E81A6]" numberOfLines={1}>
+              {vehicle.brand} · {vehicle.model}
+            </Text>
+            <View className="mt-2 flex-row items-baseline gap-1.5">
+              <Text className="text-[18px] font-black leading-[21px] text-[#17315F]" numberOfLines={1}>
+                {formatPeso(vehicle.pricePerDay)}
+              </Text>
+              <Text className="text-[11px] font-black uppercase tracking-[0.45px] text-[#6E81A6]">/day</Text>
+            </View>
           </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={isBookmarked ? `Remove ${vehicle.name} bookmark` : `Bookmark ${vehicle.name}`}
-          hitSlop={8}
-          onPress={(event) => {
-            event.stopPropagation();
-            onBookmarkPress();
-          }}
-          className="h-10 w-10 items-center justify-center rounded-full border border-[#DDE8FF] bg-[#F7FAFF]">
-          <Bookmark size={18} color="#346EF6" fill={isBookmarked ? '#346EF6' : 'none'} strokeWidth={2.7} />
-        </Pressable>
-      </View>
 
-      <View className="relative mt-3 h-[174px] overflow-hidden rounded-[22px] border border-[#DCE8FF] bg-[#EEF4FF]">
-        <Image source={{ uri: vehicle.images[0] }} resizeMode="cover" className="h-full w-full" />
-      </View>
+        <View className="relative mt-3 h-[174px] overflow-hidden rounded-[22px] border border-[#DCE8FF] bg-[#EEF4FF]">
+          <VehicleImage uri={vehicle.cardImage} className="h-full w-full" />
+        </View>
 
-      <View className="mt-3 rounded-[18px] border border-[#E6EEFF] bg-[#F8FAFF] px-3 py-2">
-        {specRows.map((row, rowIndex) => (
-          <View
-            key={row.map((spec) => spec.title).join('-')}
-            className={cx('flex-row', rowIndex === 0 && 'border-b border-[#E1EBFF]')}>
-            {row.map(({ icon: Icon, title, value }, index) => (
-              <View
-                key={title}
-                className={cx(
-                  'min-h-[42px] flex-1 flex-row items-center gap-2 py-1.5',
-                  index === 0 && 'border-r border-[#E1EBFF] pr-2',
-                  index === 1 && 'pl-3',
-                )}>
-                <View className="h-7 w-7 items-center justify-center rounded-full bg-white">
-                  <Icon size={13} color="#346EF6" strokeWidth={2.55} />
-                </View>
-                <View className="min-w-0 flex-1">
-                  <Text className="text-[9px] font-black uppercase tracking-[0.35px] text-[#7B879C]" numberOfLines={1}>
-                    {title}
-                  </Text>
-                  <Text className="mt-0.5 text-[12px] font-black leading-[14px] text-[#10203F]" numberOfLines={1}>
-                    {value}
-                  </Text>
-                </View>
+        <View className="mt-3 flex-row rounded-[18px] border border-[#E6EEFF] bg-[#F8FAFF] px-2 py-2">
+          {specs.map(({ icon: Icon, title, value }, index) => (
+            <View
+              key={title}
+              className={cx(
+                'min-h-[62px] min-w-0 flex-1 items-center justify-center px-1 py-1.5',
+                index < specs.length - 1 && 'border-r border-[#E1EBFF]',
+              )}>
+              <View className="h-7 w-7 items-center justify-center rounded-full bg-white">
+                <Icon size={13} color="#346EF6" strokeWidth={2.55} />
               </View>
-            ))}
-          </View>
-        ))}
-      </View>
-
-      <View className="mt-3 flex-row items-center justify-between rounded-[18px] bg-[#EEF4FF] px-4 py-3">
-        <Text className="text-[12px] font-black uppercase tracking-[0.45px] text-[#346EF6]">Full info</Text>
-        <View className="flex-row items-center gap-1">
-          <Text className="text-[12px] font-black text-[#17315F]">View details</Text>
-          <ChevronRight size={16} color="#346EF6" strokeWidth={2.8} />
+              <View className="mt-1 w-full min-w-0 items-center px-0.5">
+                <Text className="w-full text-center text-[8px] font-black uppercase tracking-[0.3px] text-[#7B879C]" numberOfLines={1}>
+                  {title}
+                </Text>
+                <Text
+                  adjustsFontSizeToFit
+                  className="mt-0.5 w-full text-center text-[10px] font-black leading-[12px] text-[#10203F]"
+                  minimumFontScale={0.75}
+                  numberOfLines={2}>
+                  {value}
+                </Text>
+              </View>
+            </View>
+          ))}
         </View>
-      </View>
-    </Pressable>
+
+        <View className="mt-3 flex-row items-center justify-between rounded-[18px] bg-[#EEF4FF] px-4 py-3">
+          <Text className="text-[12px] font-black uppercase tracking-[0.45px] text-[#346EF6]">Full info</Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="text-[12px] font-black text-[#17315F]">View details</Text>
+            <ChevronRight size={16} color="#346EF6" strokeWidth={2.8} />
+          </View>
+        </View>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={isBookmarked ? `Remove ${vehicle.name} bookmark` : `Bookmark ${vehicle.name}`}
+        hitSlop={8}
+        onPress={onBookmarkPress}
+        className="absolute right-4 top-4 z-10 h-10 w-10 items-center justify-center rounded-full border border-[#DDE8FF] bg-[#F7FAFF]">
+        <Bookmark size={18} color="#346EF6" fill={isBookmarked ? '#346EF6' : 'none'} strokeWidth={2.7} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -276,6 +299,12 @@ export function VehicleStoryCarousel({
 }) {
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollViewType>(null);
+  const displayImages = vehicle.images.length > 0
+    ? vehicle.images
+    : vehicle.cardImage
+      ? [vehicle.cardImage]
+      : [];
+  const imageCount = Math.max(displayImages.length, 1);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ x: width * activeIndex, animated: true });
@@ -283,7 +312,7 @@ export function VehicleStoryCarousel({
 
   const handleMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-    onActiveIndexChange(Math.min(vehicle.images.length - 1, Math.max(0, nextIndex)));
+    onActiveIndexChange(Math.min(imageCount - 1, Math.max(0, nextIndex)));
   };
 
   return (
@@ -298,15 +327,24 @@ export function VehicleStoryCarousel({
         scrollEventThrottle={16}
         snapToInterval={width}
         decelerationRate="fast">
-        {vehicle.images.map((source) => (
-          <ImageBackground key={source} source={{ uri: source }} resizeMode="cover" className="h-[530px] w-screen">
-            <View className="absolute left-0 right-0 top-0 h-[150px] bg-black/10" />
-          </ImageBackground>
-        ))}
+        {displayImages.length > 0 ? (
+          displayImages.map((source) => (
+            <ImageBackground key={source} source={{ uri: source }} resizeMode="cover" className="h-[530px] w-screen">
+              <View className="absolute left-0 right-0 top-0 h-[150px] bg-black/10" />
+            </ImageBackground>
+          ))
+        ) : (
+          <View className="h-[530px] w-screen items-center justify-center bg-[#172033]">
+            <Car size={58} color="#91A0B8" strokeWidth={1.9} />
+            <Text className="mt-3 text-[13px] font-black uppercase tracking-[0.7px] text-[#91A0B8]">
+              No vehicle images
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       <View className="absolute left-5 right-5 top-14">
-        <VehicleImageTabs activeIndex={activeIndex} count={vehicle.images.length} />
+        <VehicleImageTabs activeIndex={activeIndex} count={imageCount} />
       </View>
 
       <View className="absolute left-5 right-5 top-24 flex-row items-center justify-between">
@@ -347,11 +385,16 @@ export function VehicleSpecsGrid({ vehicle }: { vehicle: Vehicle }) {
 
 export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle; onBookNow: () => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDrawerLifted, setIsDrawerLifted] = useState(false);
   const { height } = useWindowDimensions();
   const drawerLift = useRef(new Animated.Value(0)).current;
   const isDrawerLiftedRef = useRef(false);
-  const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const displayDescription = isExpanded ? vehicle.description : `${vehicle.description.slice(0, 128)}...`;
+  const dragStartLiftRef = useRef(0);
+  const description = vehicle.description || 'No vehicle description has been added yet.';
+  const isDescriptionLong = description.length > 128;
+  const displayDescription = isExpanded || !isDescriptionLong
+    ? description
+    : `${description.slice(0, 128)}...`;
   const drawerDefaultTop = 490;
   const drawerLiftDistance = Math.max(360, Math.min(470, drawerDefaultTop - height * 0.05));
   const drawerTranslateY = drawerLift.interpolate({
@@ -359,67 +402,54 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
     outputRange: [0, -drawerLiftDistance],
   });
 
-  const clearCollapseDelay = () => {
-    if (!collapseTimeoutRef.current) {
-      return;
-    }
-
-    clearTimeout(collapseTimeoutRef.current);
-    collapseTimeoutRef.current = null;
-  };
-
-  useEffect(() => clearCollapseDelay, []);
-
   const setDrawerLifted = (shouldLift: boolean) => {
-    clearCollapseDelay();
-
-    if (isDrawerLiftedRef.current === shouldLift) {
-      return;
-    }
-
     isDrawerLiftedRef.current = shouldLift;
+    setIsDrawerLifted(shouldLift);
     drawerLift.stopAnimation();
     Animated.timing(drawerLift, {
       toValue: shouldLift ? 1 : 0,
-      duration: shouldLift ? 240 : 420,
-      useNativeDriver: true,
+      duration: 260,
+      useNativeDriver: false,
     }).start();
   };
 
-  const scheduleDrawerCollapse = () => {
-    if (!isDrawerLiftedRef.current || collapseTimeoutRef.current) {
-      return;
-    }
+  const drawerPanResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gestureState) =>
+      Math.abs(gestureState.dy) > 6 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+    onPanResponderGrant: () => {
+      drawerLift.stopAnimation((value) => {
+        dragStartLiftRef.current = value;
+      });
+    },
+    onPanResponderMove: (_, gestureState) => {
+      const nextLift = dragStartLiftRef.current - gestureState.dy / drawerLiftDistance;
+      drawerLift.setValue(Math.max(0, Math.min(1, nextLift)));
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      const shouldExpand = gestureState.dy < -50 || gestureState.vy < -0.35;
+      const shouldCollapse = gestureState.dy > 50 || gestureState.vy > 0.35;
 
-    collapseTimeoutRef.current = setTimeout(() => {
-      collapseTimeoutRef.current = null;
-      setDrawerLifted(false);
-    }, 900);
-  };
+      if (shouldExpand) {
+        setDrawerLifted(true);
+        return;
+      }
 
-  const handleDrawerScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
+      if (shouldCollapse) {
+        setDrawerLifted(false);
+        return;
+      }
 
-    if (offsetY > 28) {
-      setDrawerLifted(true);
-      return;
-    }
-
-    if (offsetY < -24) {
-      setDrawerLifted(false);
-      return;
-    }
-
-    if (offsetY <= 2) {
-      scheduleDrawerCollapse();
-      return;
-    }
-
-    clearCollapseDelay();
-  };
+      setDrawerLifted(dragStartLiftRef.current >= 0.5);
+    },
+    onPanResponderTerminate: () => {
+      setDrawerLifted(isDrawerLiftedRef.current);
+    },
+    onPanResponderTerminationRequest: () => false,
+  });
 
   return (
     <Animated.View
+      {...drawerPanResponder.panHandlers}
       style={{
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 32,
@@ -430,90 +460,68 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
         overflow: 'hidden',
         transform: [{ translateY: drawerTranslateY }],
       }}>
-      <Animated.ScrollView
-        className="flex-1"
-        onScroll={handleDrawerScroll}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}>
-        <View className="px-5 pb-28 pt-4">
-          <View className="mb-5 h-1.5 w-12 self-center rounded-full bg-[#D7DDE8]" />
-
-          <View className="flex-row items-start gap-4">
-            <View className="min-w-0 flex-1">
-              <Text className="text-[31px] font-black leading-[36px] text-[#0F172A]">{vehicle.name}</Text>
-              <Text className="mt-1 text-[13px] font-bold text-[#6C7A96]">
-                {vehicle.model} · {vehicle.year}
-              </Text>
-            </View>
-            <View className="items-end">
-              <Text className="text-[21px] font-black text-[#17315F]">{formatPeso(vehicle.pricePerDay)}</Text>
-              <Text className="text-[12px] font-extrabold text-[#91A0B8]">/ day</Text>
-            </View>
-          </View>
-
-          <Text className="mt-4 text-[15px] font-semibold leading-6 text-[#6C7A96]">
-            {displayDescription}
-            {!isExpanded && (
-              <Text className="font-black text-[#17315F]" onPress={() => setIsExpanded(true)}>
-                {' '}
-                Read more
-              </Text>
-            )}
+      <Pressable
+        accessibilityLabel={isDrawerLifted ? 'Move vehicle details down' : 'Move vehicle details up'}
+        accessibilityRole="button"
+        onPress={() => setDrawerLifted(!isDrawerLiftedRef.current)}
+        className="items-center border-b border-[#F1F4FA] bg-white px-5 pb-3 pt-4">
+        <View className="h-1.5 w-12 rounded-full bg-[#D7DDE8]" />
+        <View className="mt-2 flex-row items-center gap-1.5">
+          {isDrawerLifted ? (
+            <ChevronDown size={16} color="#6C7A96" strokeWidth={2.6} />
+          ) : (
+            <ChevronUp size={16} color="#6C7A96" strokeWidth={2.6} />
+          )}
+          <Text className="text-[11px] font-black uppercase tracking-[0.6px] text-[#6C7A96]">
+            {isDrawerLifted ? 'Drag down to view images' : 'Drag up for details'}
           </Text>
+        </View>
+      </Pressable>
 
-          <View className="mt-7">
-            <Text className="mb-3 text-[20px] font-black text-[#0F172A]">Specs</Text>
-            <VehicleSpecsGrid vehicle={vehicle} />
+      <View className="flex-1 overflow-hidden px-5 pb-28 pt-5">
+        <View className="flex-row items-start gap-4">
+          <View className="min-w-0 flex-1">
+            <Text className="text-[31px] font-black leading-[36px] text-[#0F172A]">{vehicle.name}</Text>
+            <Text className="mt-1 text-[13px] font-bold text-[#6C7A96]">
+              {vehicle.brand} · {vehicle.model}
+            </Text>
           </View>
+          <View className="items-end">
+            <Text className="text-[21px] font-black text-[#17315F]">{formatPeso(vehicle.pricePerDay)}</Text>
+            <Text className="text-[12px] font-extrabold text-[#91A0B8]">/ day</Text>
+          </View>
+        </View>
 
-          <View className="mt-7">
-            <Text className="mb-3 text-[20px] font-black text-[#0F172A]">Features</Text>
+        <Text className="mt-4 text-[15px] font-semibold leading-6 text-[#6C7A96]">
+          {displayDescription}
+          {!isExpanded && isDescriptionLong && (
+            <Text className="font-black text-[#17315F]" onPress={() => setIsExpanded(true)}>
+              {' '}
+              Read more
+            </Text>
+          )}
+        </Text>
+
+        <View className="mt-7">
+          <Text className="mb-3 text-[20px] font-black text-[#0F172A]">Specs</Text>
+          <VehicleSpecsGrid vehicle={vehicle} />
+        </View>
+
+        <View className="mt-7">
+          <Text className="mb-3 text-[20px] font-black text-[#0F172A]">Features</Text>
+          {vehicle.features.length > 0 ? (
             <View className="flex-row flex-wrap gap-2">
               {vehicle.features.map((feature) => (
                 <FeatureBadge key={feature} label={feature} />
               ))}
             </View>
-          </View>
-
-          <View className="mt-7 rounded-[28px] border border-[#EAF0FB] bg-[#F8FAFF] p-5">
-            <View className="flex-row items-center gap-2">
-              <ShieldCheck size={21} color={primary} strokeWidth={2.35} />
-              <Text className="text-[18px] font-black text-[#17315F]">Rental Requirements</Text>
-            </View>
-            {[
-              'Minimum rental duration is 1 day.',
-              'Renting requires down payment or full payment.',
-              "Self-drive requires Valid ID, Driver's License, Passport, and Meralco Bill.",
-              "Owner's driver does not require those self-drive documents.",
-              'Toll fee is based on consumption.',
-              'Late return may have additional hourly fee.',
-            ].map((item) => (
-              <View key={item} className="mt-3 flex-row gap-2">
-                <CircleCheck size={16} color="#159947" strokeWidth={2.35} />
-                <Text className="min-w-0 flex-1 text-[13px] font-semibold leading-5 text-[#5D6B82]">{item}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View className="mt-5 rounded-[28px] border border-[#FFE7A6] bg-[#FFF9E8] p-5">
-            <View className="flex-row items-center gap-2">
-              <Info size={21} color="#B7791F" strokeWidth={2.35} />
-              <Text className="text-[18px] font-black text-[#6F4A00]">Price Reminder</Text>
-            </View>
-            {[
-              `${formatPeso(vehicle.pricePerDay)} per day.`,
-              `Outside Manila additional fee: ${formatPeso(1000)}.`,
-              'Optional services may add fees.',
-              'Remaining balance for down payment must be paid 1 day before rental date.',
-              'Plate number will be visible once booking is approved.',
-            ].map((item) => (
-              <Text key={item} className="mt-3 text-[13px] font-bold leading-5 text-[#806128]">
-                {item}
-              </Text>
-            ))}
-          </View>
+          ) : (
+            <Text className="text-[13px] font-semibold text-[#6C7A96]">
+              No additional features have been listed.
+            </Text>
+          )}
         </View>
-      </Animated.ScrollView>
+      </View>
 
       <View className="absolute bottom-0 left-0 right-0 border-t border-[#EAF0FB] bg-white/95 px-5 pb-6 pt-4">
         <View className="flex-row items-center gap-4">
@@ -575,10 +583,10 @@ export function FilterSheet({
 }) {
   const [draft, setDraft] = useState<BrowseFilters>(filters);
   const features = Array.from(new Set(availableVehicleOptions.flatMap((vehicle) => vehicle.features))).slice(0, 10);
-  const transmissions: Vehicle['transmission'][] = ['Automatic', 'Manual'];
-  const fuelTypes: Vehicle['fuelType'][] = ['Gasoline', 'Diesel'];
-  const seatOptions = [5, 7];
-  const priceOptions = [4000, 5000, 6000, 7000];
+  const transmissions = Array.from(new Set(availableVehicleOptions.map((vehicle) => vehicle.transmission))).sort();
+  const fuelTypes = Array.from(new Set(availableVehicleOptions.map((vehicle) => vehicle.fuelType))).sort();
+  const seatOptions = Array.from(new Set(availableVehicleOptions.map((vehicle) => vehicle.seats))).sort((a, b) => a - b);
+  const priceOptions = Array.from(new Set(availableVehicleOptions.map((vehicle) => vehicle.pricePerDay))).sort((a, b) => a - b);
   const sortOptions: { label: string; value: SortOption }[] = [
     { label: 'Most booked', value: 'most_booked' },
     { label: 'Lowest price', value: 'lowest_price' },
@@ -807,7 +815,7 @@ export function BookingStepper({ step }: { step: 1 | 2 | 3 }) {
 export function SelectedVehicleSummary({ vehicle }: { vehicle: Vehicle }) {
   return (
     <View className="flex-row gap-3 rounded-[28px] border border-[#E6EEFF] bg-white p-3 shadow-md shadow-[#17315F]/5">
-      <Image source={{ uri: vehicle.images[0] }} resizeMode="cover" className="h-[104px] w-[116px] rounded-[22px]" />
+      <VehicleImage uri={vehicle.cardImage} className="h-[104px] w-[116px] rounded-[22px]" />
       <View className="min-w-0 flex-1 justify-between py-1">
         <View>
           <Text className="text-[18px] font-black leading-[22px] text-[#17315F]" numberOfLines={2}>
@@ -938,6 +946,9 @@ export function PriceBreakdownCard({ breakdown }: { breakdown: PriceBreakdown })
       <BreakdownRow label="Price per day" value={formatPeso(breakdown.pricePerDay)} />
       <BreakdownRow label="Number of days" value={`${breakdown.numberOfDays}`} />
       <BreakdownRow label="Rental subtotal" value={formatPeso(breakdown.subtotal)} />
+      {breakdown.deliveryFee > 0 && (
+        <BreakdownRow label="Delivery fee" value={formatPeso(breakdown.deliveryFee)} />
+      )}
       {breakdown.ownerDriverFee > 0 && (
         <BreakdownRow
           label={`Owner's driver fee (${formatPeso(breakdown.ownerDriverRatePerDay ?? 0)} / day)`}
@@ -991,10 +1002,12 @@ export function LoadingState() {
 }
 
 export function ErrorState({
+  actionLabel = 'Back to Browse',
   onAction,
-  subtitle = 'We could not find that vehicle in the mock fleet.',
+  subtitle = 'We could not load that vehicle.',
   title = 'Vehicle unavailable',
 }: {
+  actionLabel?: string;
   title?: string;
   subtitle?: string;
   onAction?: () => void;
@@ -1008,7 +1021,7 @@ export function ErrorState({
       <Text className="mt-2 text-center text-[14px] font-semibold leading-5 text-[#6C7A96]">{subtitle}</Text>
       {onAction && (
         <Pressable onPress={onAction} className="mt-6 min-h-[52px] items-center justify-center rounded-full bg-[#346EF6] px-7">
-          <Text className="text-[15px] font-black text-white">Back to Browse</Text>
+          <Text className="text-[15px] font-black text-white">{actionLabel}</Text>
         </Pressable>
       )}
     </View>

@@ -1,8 +1,8 @@
 import type { BookingFormData, PriceBreakdown, Vehicle } from '@/types/browse';
-import { vehicles } from '@/lib/browse/mock-data';
 
 export const OWNER_DRIVER_METRO_MANILA_DAILY_RATE = 700;
 export const OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE = 1000;
+export const DELIVERY_FEE = 900;
 export const DOWN_PAYMENT_RATE = 0.3;
 
 export const formatPeso = (amount: number) => {
@@ -18,12 +18,36 @@ export const getNumberOfDays = (rentalDate: string, returnDate: string) => {
   const end = Date.parse(returnDate);
 
   if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-    return 1;
+    return 0;
   }
 
   const millisecondsPerDay = 1000 * 60 * 60 * 24;
 
-  return Math.max(1, Math.ceil((end - start) / millisecondsPerDay));
+  return Math.max(0, Math.ceil((end - start) / millisecondsPerDay));
+};
+
+export const formatBookingDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    return value;
+  }
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
 };
 
 export const getOwnerDriverRatePerDay = (coverage?: BookingFormData['ownerDriverCoverage']) => {
@@ -38,27 +62,26 @@ export const getPriceBreakdown = (
   vehicle: Vehicle,
   numberOfDays: number,
   driverOption: BookingFormData['driverOption'],
+  pickupOption: BookingFormData['pickupOption'],
   ownerDriverCoverage?: BookingFormData['ownerDriverCoverage'],
 ): PriceBreakdown => {
-  const safeDays = Math.max(1, numberOfDays);
+  const safeDays = Math.max(0, numberOfDays);
   const subtotal = vehicle.pricePerDay * safeDays;
+  const deliveryFee = pickupOption === 'delivery' ? DELIVERY_FEE : 0;
   const ownerDriverRatePerDay = driverOption === 'owners_driver' ? getOwnerDriverRatePerDay(ownerDriverCoverage) : undefined;
   const ownerDriverFee = ownerDriverRatePerDay ? ownerDriverRatePerDay * safeDays : 0;
-  const totalAmount = subtotal + ownerDriverFee;
+  const totalAmount = subtotal + deliveryFee + ownerDriverFee;
   const downPaymentAmount = Math.ceil(totalAmount * DOWN_PAYMENT_RATE);
 
   return {
     pricePerDay: vehicle.pricePerDay,
     numberOfDays: safeDays,
     subtotal,
+    deliveryFee,
     ownerDriverFee,
     ownerDriverRatePerDay,
     totalAmount,
     downPaymentAmount,
     remainingBalance: totalAmount - downPaymentAmount,
   };
-};
-
-export const getVehicleById = (vehicleId?: string) => {
-  return vehicles.find((vehicle) => vehicle.id === vehicleId);
 };

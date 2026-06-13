@@ -8,36 +8,67 @@ import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenF
 import { SelectableCard } from '@/components/onboarding/SelectableCard';
 import { BottomActionButton } from '@/components/ui/BottomActionButton';
 import {
+  finalizeCustomerProfileSetup,
   updateDrivingIntent,
+  updateSelfDriveStatus,
   useCustomer,
 } from '@/lib/customer/customer-store';
 import type { DrivingIntent } from '@/types/customer';
+import { FormToast, useFormToast } from '@/forms/FormToast';
+import { completeProfile } from '@/services/api';
+import { ApiError } from '@/services/http';
+
+function toApiDrivingIntent(intent: Exclude<DrivingIntent, null>) {
+  return intent.replaceAll('-', '_') as 'self_drive' | 'owner_driver' | 'not_sure';
+}
 
 export default function DrivingIntentScreen() {
   const router = useRouter();
   const customer = useCustomer();
   const [intent, setIntent] = useState<DrivingIntent>(customer.drivingIntent);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useFormToast();
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!intent) {
       setError('Choose a driving option to continue.');
       return;
     }
 
-    updateDrivingIntent(intent);
+    setIsSubmitting(true);
 
-    if (intent === 'self-drive') {
-      router.push('/onboarding/self-drive-verification' as Href);
-      return;
+    try {
+      await completeProfile({ drivingIntent: toApiDrivingIntent(intent) });
+      updateDrivingIntent(intent);
+      const incompleteStep = finalizeCustomerProfileSetup();
+
+      if (incompleteStep) {
+        router.replace(incompleteStep as Href);
+        return;
+      }
+
+      updateSelfDriveStatus('not-verified');
+      const nextRoute = (
+        intent === 'self-drive'
+          ? '/profile/documents?source=onboarding'
+          : '/onboarding/account-ready'
+      ) as Href;
+
+      router.replace(nextRoute);
+    } catch (submitError) {
+      toast.showToast(
+        submitError instanceof ApiError && submitError.status === 0
+          ? 'Unable to connect right now. Please try again.'
+          : 'Unable to complete your profile.',
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (intent === 'owner-driver') {
-      router.push('/onboarding/owner-driver-confirmation' as Href);
-      return;
-    }
-
-    router.push('/onboarding/not-sure' as Href);
   };
 
   const selectIntent = (nextIntent: DrivingIntent) => {
@@ -46,14 +77,21 @@ export default function DrivingIntentScreen() {
   };
 
   return (
-    <OnboardingScreenFrame
-      action={<BottomActionButton label="Continue" onPress={handleContinue} />}>
+    <View className="flex-1">
+      <OnboardingScreenFrame
+        action={
+          <BottomActionButton
+            disabled={isSubmitting}
+            label={isSubmitting ? 'Saving...' : 'Continue'}
+            onPress={handleContinue}
+          />
+        }>
       <OnboardingHeader
         currentStep={3}
         icon={CarFront}
         subtitle="You can choose owner's driver now, apply for self-drive, or decide later during booking."
         title="Do you plan to self-drive?"
-        totalSteps={4}
+        totalSteps={3}
       />
 
       <View className="mt-7 gap-3">
@@ -85,6 +123,13 @@ export default function DrivingIntentScreen() {
           {error}
         </Text>
       ) : null}
-    </OnboardingScreenFrame>
+      </OnboardingScreenFrame>
+      <FormToast
+        message={toast.message}
+        onDismiss={toast.clearToast}
+        title={toast.title}
+        variant={toast.variant}
+      />
+    </View>
   );
 }

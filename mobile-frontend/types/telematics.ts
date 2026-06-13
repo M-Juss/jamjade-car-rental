@@ -48,7 +48,6 @@ export type TelematicsVehicle = {
   name: string;
   brand: string;
   modelYear: string;
-  plateNumber: string;
   transmission: string;
   fuelType: string;
   seats: number;

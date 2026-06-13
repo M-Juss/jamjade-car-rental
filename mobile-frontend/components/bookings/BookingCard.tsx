@@ -42,7 +42,9 @@ export function BookingCard({
 }) {
   const hasTelematics = isTelematicsEnabled(booking.status);
   const actions = getBookingActions(booking.status).filter(
-    (action) => !(hasTelematics && action.key === 'open_telematics'),
+    (action) =>
+      action.key !== 'payment_info' &&
+      !(hasTelematics && action.key === 'open_telematics'),
   );
 
   const handleAction = (action: BookingAction) => {
@@ -70,7 +72,6 @@ export function BookingCard({
             {booking.vehicleName}
           </Text>
           <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">Booking ID: {booking.id}</Text>
-          <Text className="mt-0.5 text-[12px] font-bold text-[#6C7A96]">Plate No: {booking.plateNumber}</Text>
         </View>
         <BookingStatusBadge status={booking.status} compact />
       </View>

@@ -1,50 +1,56 @@
-# Welcome to your Expo app 👋
+# JamJade Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo customer application for the JamJade Laravel API.
 
-## Get started
+## Setup
 
-1. Install dependencies
+1. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Create `.env.local` from `.env.example`.
+
+   Home/LAN mode derives the API host from Expo and uses port `8000`. For defense/demo use, set `EXPO_PUBLIC_BACKEND_TUNNEL_API` to the separate HTTPS tunnel exposing Laravel. Custom API URLs must end with `/api`.
+
+3. Start Laravel so the phone can reach it:
 
    ```bash
-   npx expo start
+   cd ../backend
+   composer run serve-mobile
    ```
 
-In the output, you'll find options to open the app in a
+   This uses the repository PHP upload configuration: up to 5 MB per
+   image and up to 12 MB for a request containing front and back images.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+4. Start Expo:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   ```bash
+   npm start
+   ```
 
-## Get a fresh project
+   Use `npm start -- --tunnel` when the phone cannot directly reach the computer running Expo. Expo's tunnel exposes Metro only, so Laravel still needs its own tunnel URL in `EXPO_PUBLIC_BACKEND_TUNNEL_API`.
 
-When you're ready, run:
+The API client prefers LAN at home and the configured backend tunnel when Expo is in tunnel mode. If the preferred endpoint cannot connect, it tries the other endpoint and remembers the working one for later requests.
 
-```bash
-npm run reset-project
-```
+## Defense Tunnel
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+1. Keep Laravel running with `composer run serve-mobile`.
+2. From `mobile-frontend`, run `node_modules/.bin/ngrok http 8000`.
+3. Put the HTTPS forwarding URL in `.env.local`, appending `/api`:
 
-## Learn more
+   ```bash
+   EXPO_PUBLIC_BACKEND_TUNNEL_API=https://your-ngrok-domain.ngrok-free.app/api
+   ```
 
-To learn more about developing your project with Expo, look at the following resources:
+4. Restart Expo with `npm start -- --tunnel --clear`.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## API Structure
 
-## Join the community
+- `services/http`: base URL, bearer-token injection, SecureStore persistence, response parsing, and API errors.
+- `services/api`: domain-specific API payloads and calls.
+- `providers/AuthProvider.tsx`: session restoration and current authenticated user.
+- `components/auth/AuthenticatedOnly.tsx`: protection for customer-only route groups.
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Web admin authentication remains cookie/CSRF based. Mobile authentication uses Sanctum bearer tokens stored with Expo SecureStore.

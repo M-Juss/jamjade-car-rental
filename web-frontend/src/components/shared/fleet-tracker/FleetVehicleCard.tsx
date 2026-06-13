@@ -28,7 +28,7 @@ export function FleetVehicleCard({ vehicle, isSelected, onSelect }: FleetVehicle
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-semibold leading-tight text-[#1A2340]">{vehicle.carName}</p>
-            <p className="truncate text-[11px] text-[#8896A7]">{vehicle.plateNumber} - {vehicle.bookingId}</p>
+            <p className="truncate text-[11px] text-[#8896A7]">{vehicle.bookingId}</p>
           </div>
         </div>
 

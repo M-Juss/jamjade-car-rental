@@ -1,16 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ChevronLeft,
   Car,
-  DollarSign,
+  PhilippinePeso,
   Users,
   Settings2,
-  Gauge,
-  Fuel,
   Zap,
   Check,
   Save,
@@ -22,6 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
+import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
+import { VehicleImageGallery } from "@/components/common/VehicleImageGallery";
+import { getVehicle, updateVehicle } from "@/services/vehicle";
+import { GENERIC_ERROR_MESSAGE, GENERIC_SUCCESS_MESSAGE } from "@/services/http";
+import { appToast as toast } from "@/lib/toast";
 
 const FEATURES = [
   "Air Conditioning",
@@ -38,7 +41,7 @@ const FEATURES = [
   "Cruise Control",
 ];
 
-const BRANDS = ["Toyota", "Honda", "Mitsubishi", "Ford", "Hyundai", "Nissan", "Kia"];
+const BRANDS = ["Toyota", "Honda", "Mitsubishi", "Ford", "Hyundai", "Nissan", "Kia", "Mazda", "Suzuki", "Isuzu"];
 
 interface EditVehicleFormProps {
   vehicleId: string;
@@ -46,27 +49,69 @@ interface EditVehicleFormProps {
 
 export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
   const router = useRouter();
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([
-    "Air Conditioning",
-    "Bluetooth",
-    "Reverse Camera",
-  ]);
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    name: "Toyota Fortuner",
-    brand: "Toyota",
-    price: "4500",
-    seats: "7",
-    gvm: "3050",
-    color: "Pearl White",
-    mileage: "12400",
-    transmission: "Automatic",
-    fuel: "Diesel",
+    name: "",
+    brand: "",
+    model: "",
+    description: "",
+    price: "",
+    seats: "",
+    color: "",
+    transmission: "",
+    fuel: "",
   });
 
   const set = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadVehicle() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const vehicle = await getVehicle(vehicleId);
+
+        if (!ignore) {
+          setForm({
+            name: vehicle.name,
+            brand: vehicle.brand,
+            model: vehicle.model ?? "",
+            description: vehicle.description ?? "",
+            price: String(vehicle.pricePerDay),
+            seats: String(vehicle.seats),
+            color: vehicle.color ?? "",
+            transmission: vehicle.transmission,
+            fuel: vehicle.fuelType,
+          });
+          setSelectedFeatures(vehicle.features);
+          setImages(vehicle.images);
+        }
+      } catch {
+        if (!ignore) {
+          setError("Unable to load vehicle.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadVehicle();
+
+    return () => {
+      ignore = true;
+    };
+  }, [vehicleId]);
 
   const toggleFeature = (feature: string) => {
     setSelectedFeatures((prev) =>
@@ -81,6 +126,35 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.3, delay },
   });
+
+  const handleSave = async () => {
+    if (selectedFeatures.length === 0) {
+      toast.error("Select at least one feature.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await updateVehicle(vehicleId, {
+        name: form.name,
+        brand: form.brand,
+        model: form.model,
+        description: form.description,
+        price_per_day: form.price,
+        seats: form.seats,
+        color: form.color,
+        transmission: form.transmission,
+        fuel_type: form.fuel,
+        features: selectedFeatures,
+      });
+      toast.success(GENERIC_SUCCESS_MESSAGE);
+      router.push(`/owner/vehicle/${vehicleId}`);
+    } catch {
+      toast.error(GENERIC_ERROR_MESSAGE);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-[#F5F5F5] min-h-screen">
@@ -108,30 +182,31 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
           </CardHeader>
 
           <CardContent className="p-5 md:p-6 space-y-6">
+            {isLoading ? (
+              <div className="rounded-2xl border border-dashed border-[#E2E8F0] p-8 text-center text-[13px] font-medium text-[#8896A7]">
+                Loading vehicle...
+              </div>
+            ) : error ? (
+              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-8 text-center text-[13px] font-medium text-rose-700">
+                {error}
+              </div>
+            ) : (
+              <>
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-6 h-6 rounded-lg bg-[#EEF4FF] flex items-center justify-center">
                   <ImageIcon size={12} className="text-[#346EF6]" />
                 </div>
                 <h3 className="text-[12.5px] font-bold text-[#1A2340]">Image Gallery</h3>
-                <span className="text-[10.5px] font-medium text-[#8896A7]">Static preview</span>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-3">
-                <div className="h-52 rounded-2xl bg-[#F5F5F5] border border-[#E8ECF4] flex items-center justify-center text-7xl">
-                  🚙
+              {images.length > 0 ? (
+                <VehicleImageGallery images={images} alt={form.name} />
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#E2E8F0] p-6 text-center text-[12.5px] font-medium text-[#8896A7]">
+                  No images uploaded.
                 </div>
-                <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
-                  {["🛻", "🚗", "🚘"].map((item, i) => (
-                    <div
-                      key={i}
-                      className="h-16 lg:h-[68px] rounded-xl bg-[#F5F5F5] border border-[#E8ECF4] flex items-center justify-center text-3xl"
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
 
             <Separator className="bg-[#F0F2F7]" />
@@ -168,13 +243,32 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 </div>
 
                 <InputWithLabel
+                  id="edit-vehicle-model"
+                  label="Model"
+                  value={form.model}
+                  onChange={(e) => set("model", e.target.value)}
+                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-[#4A5568]"
+                />
+
+                <InputWithLabel
                   id="edit-vehicle-price"
                   label="Price / Day (₱)"
-                  icon={<DollarSign size={13} />}
+                  icon={<PhilippinePeso size={13} />}
                   type="number"
                   value={form.price}
                   onChange={(e) => set("price", e.target.value)}
                   labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-[#4A5568]"
+                />
+
+                <TextAreaWithLabel
+                  id="edit-vehicle-description"
+                  label="Description"
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                  wrapperClassName="sm:col-span-2"
+                  rows={3}
+                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-[#4A5568]"
+                  textareaClassName="min-h-[92px]"
                 />
               </div>
             </div>
@@ -201,28 +295,10 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 />
 
                 <InputWithLabel
-                  id="edit-vehicle-gvm"
-                  label="GVM (kg)"
-                  icon={<Gauge size={13} />}
-                  value={form.gvm}
-                  onChange={(e) => set("gvm", e.target.value)}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-[#4A5568]"
-                />
-
-                <InputWithLabel
                   id="edit-vehicle-color"
                   label="Color"
                   value={form.color}
                   onChange={(e) => set("color", e.target.value)}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-[#4A5568]"
-                />
-
-                <InputWithLabel
-                  id="edit-vehicle-mileage"
-                  label="Mileage (km)"
-                  type="number"
-                  value={form.mileage}
-                  onChange={(e) => set("mileage", e.target.value)}
                   labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-[#4A5568]"
                 />
 
@@ -309,16 +385,21 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
               <Button
                 variant="outline"
                 onClick={() => router.push(`/owner/vehicle/${vehicleId}`)}
+                disabled={isSaving}
                 className="flex-1 rounded-xl border-[#E2E8F0] text-[#4A5568] h-10 text-[13px] font-medium hover:bg-[#F5F5F5]"
               >
                 <X size={14} className="mr-2" /> Discard
               </Button>
               <Button
-                className="flex-1 rounded-xl bg-[#346EF6] hover:bg-[#2558D8] text-white h-10 text-[13px] font-semibold shadow-[0_4px_14px_rgba(52,110,246,0.28)]"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 rounded-xl bg-[#346EF6] hover:bg-[#2558D8] text-white h-10 text-[13px] font-semibold shadow-[0_4px_14px_rgba(52,110,246,0.28)] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                <Save size={14} className="mr-2" /> Save Changes
+                <Save size={14} className="mr-2" /> {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </motion.div>

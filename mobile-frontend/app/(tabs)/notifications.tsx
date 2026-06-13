@@ -1,3 +1,5 @@
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, type Href } from 'expo-router';
 import {
   Bell,
   CalendarCheck,
@@ -12,7 +14,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -25,6 +27,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
+import { setUnreadNotificationCount } from '@/lib/customer/notification-unread';
+import { useAuth } from '@/providers/AuthProvider';
+import {
+  getNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from '@/services/api';
 
 type NotificationCategory = 'booking' | 'payment' | 'vehicle' | 'trip' | 'system';
 type NotificationPriority = 'normal' | 'success' | 'warning' | 'urgent';
@@ -48,11 +57,33 @@ type CustomerNotification = {
   createdAt: string;
   bookingId?: string;
   vehicleName?: string;
-  plateNumber?: string;
   paymentStatus?: string;
   tripStatus?: string;
   actionLabel?: string;
+  data?: Record<string, unknown>;
 };
+
+const documentRouteByType: Record<string, string> = {
+  drivers_license: 'driver-license',
+  passport: 'passport',
+  proof_of_billing: 'proof-of-address',
+};
+
+function getDocumentStatusLabel(status?: unknown) {
+  if (status === 'approved') {
+    return 'Approved';
+  }
+
+  if (status === 'rejected') {
+    return 'Not accepted';
+  }
+
+  if (status === 'pending') {
+    return 'Pending review';
+  }
+
+  return undefined;
+}
 
 type CategoryConfig = {
   label: string;
@@ -74,241 +105,6 @@ type PriorityConfig = {
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
-
-// TODO: Replace mock data with GET /api/customer/notifications.
-const mockNotifications: CustomerNotification[] = [
-  {
-    id: 'NTF-001',
-    title: 'Booking request submitted',
-    message: 'Your Toyota Vios booking request is waiting for Jamjade admin review.',
-    fullMessage:
-      'Your booking request for the Toyota Vios has been submitted successfully. Jamjade will review your rental schedule, uploaded documents, pickup details, and down payment status before confirming the booking.',
-    category: 'booking',
-    priority: 'normal',
-    isRead: false,
-    createdAt: '2026-05-25T09:35:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    actionLabel: 'View Booking',
-  },
-  {
-    id: 'NTF-002',
-    title: 'Booking approved',
-    message: 'Your Mitsubishi Xpander booking has been approved for pickup.',
-    fullMessage:
-      'Good news. Your Mitsubishi Xpander booking is approved. Please arrive at Jamjade Garage 30 minutes before pickup and bring your valid ID and driver license for vehicle release.',
-    category: 'booking',
-    priority: 'success',
-    isRead: false,
-    createdAt: '2026-05-25T08:50:00+08:00',
-    bookingId: 'BK-2026-002',
-    vehicleName: 'Mitsubishi Xpander',
-    plateNumber: 'XYZ 5678',
-    paymentStatus: 'Partially Paid',
-    actionLabel: 'View Booking',
-  },
-  {
-    id: 'NTF-003',
-    title: 'Down payment required',
-    message: 'PHP 3,000 down payment is required to continue your booking.',
-    fullMessage:
-      'A down payment of PHP 3,000 is required for Booking BK-2026-003. Once payment is recorded, Jamjade can continue the approval and vehicle release process.',
-    category: 'payment',
-    priority: 'warning',
-    isRead: false,
-    createdAt: '2026-05-25T08:20:00+08:00',
-    bookingId: 'BK-2026-003',
-    vehicleName: 'Toyota Innova',
-    plateNumber: 'JMD 8899',
-    paymentStatus: 'Down Payment Pending',
-    actionLabel: 'Pay Down Payment',
-  },
-  {
-    id: 'NTF-004',
-    title: 'Vehicle ready for pickup',
-    message: 'Your Toyota Innova is prepared and ready for release.',
-    fullMessage:
-      'Your Toyota Innova has passed the release checklist and is ready for pickup at Jamjade Garage. Please confirm the vehicle condition and plate number before starting your rental.',
-    category: 'vehicle',
-    priority: 'success',
-    isRead: true,
-    createdAt: '2026-05-24T18:45:00+08:00',
-    bookingId: 'BK-2026-004',
-    vehicleName: 'Toyota Innova',
-    plateNumber: 'INN 4210',
-    actionLabel: 'View Vehicle',
-  },
-  {
-    id: 'NTF-005',
-    title: 'Rental is now active',
-    message: 'Your Toyota Vios rental is active. Telematics is now enabled.',
-    fullMessage:
-      'Your rental for the Toyota Vios is now active. Telematics features are enabled for this booking, including trip start, trip pause, GPS status, geofence alerts, and flagged event monitoring.',
-    category: 'booking',
-    priority: 'success',
-    isRead: false,
-    createdAt: '2026-05-24T15:10:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    tripStatus: 'Active Trip',
-    actionLabel: 'Start Trip',
-  },
-  {
-    id: 'NTF-006',
-    title: 'Trip started',
-    message: 'GPS tracking is active for your Toyota Vios trip.',
-    fullMessage:
-      'Your trip has started and GPS tracking is active. Jamjade will use trip telemetry to help monitor route activity, flagged driving behavior, geofence status, and vehicle return readiness.',
-    category: 'trip',
-    priority: 'normal',
-    isRead: true,
-    createdAt: '2026-05-24T15:05:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    tripStatus: 'Driving',
-    actionLabel: 'View Trip',
-  },
-  {
-    id: 'NTF-007',
-    title: 'Geofence alert',
-    message: 'Toyota Vios moved outside the approved service area.',
-    fullMessage:
-      'A geofence alert was detected for the Toyota Vios. The vehicle appears to have moved outside the approved route or service area. Please return to the allowed area or contact Jamjade support if this is expected.',
-    category: 'trip',
-    priority: 'urgent',
-    isRead: false,
-    createdAt: '2026-05-24T13:30:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    tripStatus: 'Geofence Alert',
-    actionLabel: 'View Trip Alert',
-  },
-  {
-    id: 'NTF-008',
-    title: 'Flagged driving event detected',
-    message: 'A harsh braking event was recorded during your active trip.',
-    fullMessage:
-      'Jamjade detected a flagged driving event during your active trip. The recorded behavior is harsh braking. Please drive carefully and keep the vehicle within safe operating conditions.',
-    category: 'trip',
-    priority: 'warning',
-    isRead: false,
-    createdAt: '2026-05-24T12:15:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    tripStatus: 'Flagged Event',
-    actionLabel: 'View Trip Alert',
-  },
-  {
-    id: 'NTF-009',
-    title: 'Payment received',
-    message: 'Your PHP 5,000 payment for BK-2026-002 has been recorded.',
-    fullMessage:
-      'Jamjade has recorded your PHP 5,000 payment for Booking BK-2026-002. Your payment status is now partially paid. The remaining balance can be settled before or during vehicle release.',
-    category: 'payment',
-    priority: 'success',
-    isRead: true,
-    createdAt: '2026-05-23T17:25:00+08:00',
-    bookingId: 'BK-2026-002',
-    vehicleName: 'Mitsubishi Xpander',
-    plateNumber: 'XYZ 5678',
-    paymentStatus: 'Partially Paid',
-    actionLabel: 'View Payment',
-  },
-  {
-    id: 'NTF-010',
-    title: 'Toll fee update',
-    message: 'A PHP 320 toll fee was added to your active rental.',
-    fullMessage:
-      'A toll fee of PHP 320 has been added to Booking BK-2026-001 based on your trip activity. This amount will appear in your final payment breakdown when the vehicle is returned.',
-    category: 'payment',
-    priority: 'normal',
-    isRead: true,
-    createdAt: '2026-05-23T11:40:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    paymentStatus: 'Additional Fee Added',
-    actionLabel: 'View Payment',
-  },
-  {
-    id: 'NTF-011',
-    title: 'Vehicle released',
-    message: 'Your Mitsubishi Xpander has been released by Jamjade staff.',
-    fullMessage:
-      'The Mitsubishi Xpander assigned to Booking BK-2026-002 has been released. Please keep your rental documents and return schedule visible in the app during the rental period.',
-    category: 'vehicle',
-    priority: 'success',
-    isRead: false,
-    createdAt: '2026-05-22T14:05:00+08:00',
-    bookingId: 'BK-2026-002',
-    vehicleName: 'Mitsubishi Xpander',
-    plateNumber: 'XYZ 5678',
-    actionLabel: 'View Vehicle',
-  },
-  {
-    id: 'NTF-012',
-    title: 'Return date reminder',
-    message: 'Your Toyota Vios is due for return tomorrow at 9:00 AM.',
-    fullMessage:
-      'This is a reminder that your Toyota Vios rental is due for return tomorrow at 9:00 AM. Please return the vehicle to Jamjade Garage on time to avoid late return fees.',
-    category: 'booking',
-    priority: 'warning',
-    isRead: false,
-    createdAt: '2026-05-22T09:00:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    actionLabel: 'View Booking',
-  },
-  {
-    id: 'NTF-013',
-    title: 'Late return fee added',
-    message: 'A PHP 850 late return fee has been added to BK-2026-005.',
-    fullMessage:
-      'A late return fee of PHP 850 has been added to Booking BK-2026-005 because the vehicle was returned after the agreed schedule. Please review the updated payment breakdown.',
-    category: 'payment',
-    priority: 'urgent',
-    isRead: true,
-    createdAt: '2026-05-21T16:30:00+08:00',
-    bookingId: 'BK-2026-005',
-    vehicleName: 'Toyota Innova',
-    plateNumber: 'INN 4210',
-    paymentStatus: 'Late Fee Added',
-    actionLabel: 'View Payment',
-  },
-  {
-    id: 'NTF-014',
-    title: 'Document submission reminder',
-    message: 'Please upload your valid ID and driver license before approval.',
-    fullMessage:
-      'Jamjade needs your required customer documents before approving your next booking. Please upload a clear valid ID, driver license, and any additional requested proof of address.',
-    category: 'system',
-    priority: 'warning',
-    isRead: false,
-    createdAt: '2026-05-21T10:20:00+08:00',
-    actionLabel: 'Update Profile',
-  },
-  {
-    id: 'NTF-015',
-    title: 'Support message from Jamjade',
-    message: 'Admin added a note about your pickup arrangement.',
-    fullMessage:
-      'Jamjade support added a note to your booking: please confirm if you prefer shop pickup or delivery for your upcoming Toyota Vios rental. Contact support if you need to change the schedule.',
-    category: 'system',
-    priority: 'normal',
-    isRead: true,
-    createdAt: '2026-05-20T19:15:00+08:00',
-    bookingId: 'BK-2026-001',
-    vehicleName: 'Toyota Vios',
-    plateNumber: 'ABC 1234',
-    actionLabel: 'Contact Support',
-  },
-];
 
 const categoryConfig: Record<NotificationCategory, CategoryConfig> = {
   booking: {
@@ -474,7 +270,6 @@ function matchesNotificationSearch(notification: CustomerNotification, query: st
     notification.category,
     notification.bookingId,
     notification.vehicleName,
-    notification.plateNumber,
     notification.paymentStatus,
     notification.tripStatus,
   ]
@@ -826,6 +621,10 @@ function NotificationDetailModal({
   const category = categoryConfig[notification.category];
   const priority = priorityConfig[notification.priority];
   const Icon = category.icon;
+  const rejectionReason =
+    typeof notification.data?.rejectionReason === 'string'
+      ? notification.data.rejectionReason
+      : undefined;
 
   return (
     <Modal animationType="slide" transparent visible={Boolean(notification)} onRequestClose={onClose}>
@@ -874,9 +673,13 @@ function NotificationDetailModal({
               <NotificationDetailRow label="Date" value={formatDateTime(notification.createdAt)} />
               <NotificationDetailRow label="Booking ID" value={notification.bookingId} />
               <NotificationDetailRow label="Vehicle" value={notification.vehicleName} />
-              <NotificationDetailRow label="Plate No." value={notification.plateNumber} />
               <NotificationDetailRow label="Payment" value={notification.paymentStatus} />
               <NotificationDetailRow label="Trip Status" value={notification.tripStatus} />
+              <NotificationDetailRow
+                label="Document Status"
+                value={getDocumentStatusLabel(notification.data?.documentStatus)}
+              />
+              <NotificationDetailRow label="Review Result" value={rejectionReason} />
             </View>
 
             <Pressable
@@ -955,17 +758,47 @@ function NotificationLoadingState() {
 }
 
 export default function NotificationsScreen() {
+  const router = useRouter();
+  const { refreshProfile } = useAuth();
   const insets = useSafeAreaInsets();
   const handleTabScroll = useAutoHideCustomerTabBar();
-  const [notifications, setNotifications] = useState<CustomerNotification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
   const [statusFilters, setStatusFilters] = useState<NotificationStatusFilters>(defaultStatusFilters);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNotification, setSelectedNotification] = useState<CustomerNotification | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const isLoading = false;
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadNotifications = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    setNotifications([]);
+
+    try {
+      setNotifications(await getNotifications());
+    } catch {
+      setLoadError('Notifications could not be loaded. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadNotifications();
+    }, [loadNotifications]),
+  );
 
   const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+
+  useEffect(() => {
+    if (!isLoading) {
+      setUnreadNotificationCount(unreadCount);
+    }
+  }, [isLoading, unreadCount]);
+
   const filteredNotifications = useMemo(() => {
     return notifications
       .filter((notification) => activeFilter === 'all' || notification.category === activeFilter)
@@ -979,8 +812,8 @@ export default function NotificationsScreen() {
     Number(statusFilters.readStatus !== 'all') +
     Number(statusFilters.priority !== 'all');
 
-  const handleMarkAllAsRead = () => {
-    // TODO: Connect mark all as read to PATCH /api/customer/notifications/read-all.
+  const handleMarkAllAsRead = async () => {
+    await markAllNotificationsAsRead();
     setNotifications((currentNotifications) =>
       currentNotifications.map((notification) => ({ ...notification, isRead: true })),
     );
@@ -991,13 +824,14 @@ export default function NotificationsScreen() {
 
   const handleOpenNotification = (notification: CustomerNotification) => {
     if (!notification.isRead) {
-      const readNotification = { ...notification, isRead: true };
-      setNotifications((currentNotifications) =>
-        currentNotifications.map((currentNotification) =>
-          currentNotification.id === notification.id ? readNotification : currentNotification,
-        ),
-      );
-      setSelectedNotification(readNotification);
+      void markNotificationAsRead(notification.id).then((readNotification) => {
+        setNotifications((currentNotifications) =>
+          currentNotifications.map((currentNotification) =>
+            currentNotification.id === notification.id ? readNotification : currentNotification,
+          ),
+        );
+        setSelectedNotification(readNotification);
+      });
       return;
     }
 
@@ -1010,14 +844,41 @@ export default function NotificationsScreen() {
     setSearchQuery('');
   };
 
-  const handleNotificationAction = (notification: CustomerNotification) => {
-    console.log('Navigate based on notification type:', notification);
-    // TODO: Connect action button to proper navigation route.
-    // Booking notification should navigate to Booking Details.
-    // Payment notification should navigate to Payment / Booking Details.
-    // Vehicle notification should navigate to Vehicle Details.
-    // Trip notification should navigate to Telematics.
-    // System notification should navigate to Profile or Support.
+  const handleNotificationAction = async (notification: CustomerNotification) => {
+    setSelectedNotification(null);
+
+    if (
+      notification.data?.action === 'view_documents' ||
+      notification.data?.action === 'resubmit_document'
+    ) {
+      await refreshProfile().catch(() => undefined);
+
+      const documentType =
+        typeof notification.data.documentType === 'string'
+          ? notification.data.documentType
+          : '';
+      const documentRoute = documentRouteByType[documentType];
+
+      if (notification.data.action === 'resubmit_document' && documentRoute) {
+        router.push(`/profile/documents/${documentRoute}` as Href);
+        return;
+      }
+
+      router.push('/profile/documents' as Href);
+      return;
+    }
+
+    if (notification.data?.action === 'pay_balance' && notification.bookingId) {
+      router.push(`/bookings/payment?bookingId=${encodeURIComponent(notification.bookingId)}` as Href);
+      return;
+    }
+
+    if (notification.bookingId) {
+      router.push(`/bookings/${encodeURIComponent(notification.bookingId)}` as Href);
+      return;
+    }
+
+    router.push('/(tabs)/bookings' as Href);
   };
 
   return (
@@ -1044,10 +905,17 @@ export default function NotificationsScreen() {
             <Text className="text-[13px] font-black text-[#17315F]">
               {filteredNotifications.length} notification{filteredNotifications.length === 1 ? '' : 's'}
             </Text>
-            <Text className="text-[12px] font-bold text-[#91A0B8]">Mock data only</Text>
+            <Pressable accessibilityRole="button" onPress={() => void loadNotifications()}>
+              <Text className="text-[12px] font-bold text-[#346EF6]">Refresh</Text>
+            </Pressable>
           </View>
 
           <View className="mt-4 gap-5">
+            {loadError ? (
+              <View className="rounded-[24px] border border-[#FECACA] bg-[#FEF2F2] p-4">
+                <Text className="text-[13px] font-bold text-[#B91C1C]">{loadError}</Text>
+              </View>
+            ) : null}
             {isLoading ? (
               <NotificationLoadingState />
             ) : filteredNotifications.length > 0 ? (

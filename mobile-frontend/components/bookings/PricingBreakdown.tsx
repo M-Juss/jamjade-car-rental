@@ -38,6 +38,7 @@ export function PricingBreakdown({ booking }: { booking: Booking }) {
       <PricingRow label="Number of days" value={`${booking.duration} days`} />
       <PricingRow label="Subtotal" value={formatPeso(booking.subtotal)} />
       <PricingRow label="Delivery Fee" value={formatPeso(booking.deliveryFee)} />
+      <PricingRow label="Owner's Driver Fee" value={formatPeso(booking.ownerDriverFee)} />
       <PricingRow label="Outside Manila Fee" value={formatPeso(booking.outsideManilaFee)} />
       <PricingRow label="Optional Services" value={formatPeso(booking.optionalServices)} />
       <PricingRow label="Add-ons" value={formatPeso(booking.addOns)} />

@@ -32,7 +32,6 @@ export type Booking = {
   vehicleName: string;
   brand: string;
   model: string;
-  plateNumber: string;
   image: string;
   status: BookingStatus;
   rentalDate: string;
@@ -40,6 +39,7 @@ export type Booking = {
   duration: number;
   pickupType: 'Delivery' | 'Shop Pickup';
   pickupLocation: string;
+  deliveryTime?: string | null;
   returnLocation: string;
   driverType: DriverType;
   bookingType: DriverType;
@@ -50,12 +50,14 @@ export type Booking = {
   subtotal: number;
   deliveryFee: number;
   outsideManilaFee: number;
+  ownerDriverFee: number;
   optionalServices: number;
   addOns: number;
   discount: number;
   downPayment: number;
   totalAmount: number;
   remainingBalance: number;
+  balanceDueAt?: string | null;
   paymentStatus: PaymentStatus;
   paymentMethod: string;
   transactionId: string;

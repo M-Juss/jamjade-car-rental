@@ -14,7 +14,7 @@ export type CustomerProfile = {
 
 export type RenterDocumentStatus = 'Verified' | 'Pending' | 'Not Uploaded';
 
-export type RenterDocumentId = 'drivers-license' | 'valid-id' | 'passport' | 'proof-of-billing';
+export type RenterDocumentId = 'drivers-license' | 'passport' | 'proof-of-billing';
 
 export type RenterDocument = {
   id: RenterDocumentId;
@@ -31,41 +31,20 @@ export type EditProfileForm = Pick<
   'firstName' | 'lastName' | 'phoneNumber' | 'address' | 'dateOfBirth'
 >;
 
-export const mockCustomerProfile: CustomerProfile = {
-  profilePicture: '',
-  firstName: 'Juan',
-  lastName: 'Dela Cruz',
-  email: 'juan.delacruz@gmail.com',
-  phoneNumber: '0917 123 4567',
-  address: 'Dasmarinas, Cavite',
-  dateOfBirth: 'January 15, 2000',
-  successfulBookings: 8,
-  totalSpent: 24500,
-  joinedSince: 'March 2026',
-  accountStatus: 'Verified',
-};
-
-export const initialRenterDocuments: RenterDocument[] = [
+export const renterDocumentDefinitions: RenterDocument[] = [
   {
     id: 'drivers-license',
     name: "Driver's License",
     shortName: 'License',
     description: 'Front photo of your valid driver license.',
-    status: 'Verified',
-  },
-  {
-    id: 'valid-id',
-    name: 'Valid ID',
-    shortName: 'Valid ID',
-    description: 'Government-issued ID used for renter identity checks.',
-    status: 'Verified',
+    status: 'Not Uploaded',
   },
   {
     id: 'passport',
     name: 'Passport',
     shortName: 'Passport',
-    description: 'Optional supporting ID for renter verification.',
-    status: 'Pending',
+    description: 'Supporting ID requested by the admin for renter verification.',
+    status: 'Not Uploaded',
   },
   {
     id: 'proof-of-billing',

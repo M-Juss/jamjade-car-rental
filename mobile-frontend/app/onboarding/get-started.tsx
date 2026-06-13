@@ -37,7 +37,7 @@ export default function GetStartedScreen() {
         <InfoCard
           items={[
             { icon: ShieldCheck, label: 'Basic profile', value: 'Name, contact number, birthdate, and address.' },
-            { icon: PhoneCall, label: 'Emergency contact', value: 'Optional now, editable later from Profile.' },
+            { icon: PhoneCall, label: 'Emergency contact', value: 'Optional during setup, editable later from Profile.' },
             { icon: FileCheck2, label: 'Driving documents', value: 'Only needed for eligible self-drive rentals.' },
           ]}
           title="Setup checklist"

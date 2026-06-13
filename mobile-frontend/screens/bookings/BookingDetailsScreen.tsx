@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import {
   ArrowLeft,
@@ -8,7 +9,6 @@ import {
   FileCheck2,
   Fuel,
   Gauge,
-  Info,
   MapPinned,
   Navigation,
   ReceiptText,
@@ -16,7 +16,8 @@ import {
   UserRound,
   Users,
 } from 'lucide-react-native';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -32,7 +33,7 @@ import {
   type BookingAction,
 } from '@/components/bookings';
 import { formatPeso, isTelematicsEnabled } from '@/lib/bookings/helpers';
-import { getBookingById } from '@/lib/bookings/mock-data';
+import { cancelBooking, getBooking } from '@/services/api';
 import type { Booking, DocumentStatus } from '@/types/booking';
 
 import { cx } from '@/components/bookings/utils';
@@ -121,9 +122,56 @@ function DetailsActions({
 export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const booking = getBookingById(bookingId);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadBooking = useCallback(async () => {
+    if (!bookingId) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadError(null);
+
+    try {
+      setBooking(await getBooking(bookingId));
+    } catch {
+      setLoadError('Booking could not be loaded. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [bookingId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBooking();
+    }, [loadBooking]),
+  );
 
   const handleAction = (action: BookingAction, selectedBooking: Booking) => {
+    if (action.key === 'pay_balance' || action.key === 'payment_info') {
+      router.push(`/bookings/payment?bookingId=${encodeURIComponent(selectedBooking.id)}` as Href);
+      return;
+    }
+
+    if (action.key === 'cancel_request') {
+      Alert.alert(
+        'Cancel booking?',
+        'Captured payments are subject to the booking terms and are not automatically refunded.',
+        [
+          { text: 'Keep Booking', style: 'cancel' },
+          {
+            text: 'Cancel Booking',
+            style: 'destructive',
+            onPress: () => void cancelBooking(selectedBooking.id).then(setBooking),
+          },
+        ],
+      );
+      return;
+    }
+
     if (action.key === 'open_telematics' && isTelematicsEnabled(selectedBooking.status)) {
       router.push('/telematics' as Href);
       return;
@@ -134,15 +182,22 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
       return;
     }
 
-    console.log(`Booking detail action tapped: ${action.key}`);
   };
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#F8FAFF]">
+        <ActivityIndicator color="#346EF6" size="large" />
+      </View>
+    );
+  }
 
   if (!booking) {
     return (
       <View className="flex-1 justify-center bg-[#F8FAFF] px-5">
         <BookingEmptyState
           title="Booking Not Found"
-          subtitle="We could not find that booking in the mock data."
+          subtitle={loadError ?? 'We could not find that booking.'}
           buttonLabel="Back to Bookings"
           onBrowsePress={() => router.replace('/bookings' as Href)}
         />
@@ -198,7 +253,6 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <View className="flex-row flex-wrap gap-3">
                 <VehicleSpec icon={Car} label="Brand" value={booking.brand} />
                 <VehicleSpec icon={ReceiptText} label="Model" value={booking.model} />
-                <VehicleSpec icon={Info} label="Plate Number" value={booking.plateNumber} />
                 <VehicleSpec icon={Gauge} label="Transmission" value={booking.transmission} />
                 <VehicleSpec icon={Fuel} label="Fuel Type" value={booking.fuelType} />
                 <VehicleSpec icon={Users} label="Seats" value={`${booking.seats}`} />
@@ -214,7 +268,13 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
             <SectionCard title="Pickup / Return Location" icon={MapPinned}>
               <InfoRow label="Pickup Type" value={booking.pickupType} />
               <InfoRow label="Pickup Location" value={booking.pickupLocation} />
-              <InfoRow label="Return Location" value={booking.returnLocation} />
+              {booking.pickupType === 'Delivery' && booking.deliveryTime ? (
+                <InfoRow label="Delivery Time" value={booking.deliveryTime} />
+              ) : null}
+              <InfoRow
+                label={booking.driverType === "Owner's Driver" ? 'End Trip Location' : 'Return Location'}
+                value={booking.returnLocation}
+              />
             </SectionCard>
 
             <SectionCard title="Driver Type and Documents" icon={ShieldCheck}>
@@ -255,18 +315,16 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <InfoRow label="Payment Method" value={booking.paymentMethod} />
               <InfoRow label="Transaction ID" value={booking.transactionId} />
               <InfoRow label="Paid At" value={booking.paidAt} />
+              {booking.balanceDueAt ? (
+                <InfoRow
+                  label="Balance Due"
+                  value={new Date(booking.balanceDueAt).toLocaleString()}
+                />
+              ) : null}
             </SectionCard>
 
             <SectionCard title="Status Timeline" icon={Navigation}>
               <BookingTimeline items={booking.timeline} />
-            </SectionCard>
-
-            <SectionCard title="Admin Notes" icon={Info}>
-              <View className="rounded-[22px] border border-[#EAF0FB] bg-[#F8FAFF] p-4">
-                <Text className="text-[13px] font-bold leading-5 text-[#6C7A96]">
-                  {booking.adminNotes || 'No admin notes yet.'}
-                </Text>
-              </View>
             </SectionCard>
 
             <SectionCard title="Actions" icon={Navigation}>

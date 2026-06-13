@@ -1,3 +1,4 @@
+import { AdminPermissionGuard } from "@/components/shared/AdminPermissionGuard";
 import Sidebar from "@/components/shared/Sidebar";
 
 export default function AdminLayout({
@@ -9,7 +10,9 @@ export default function AdminLayout({
     <div className="flex min-h-screen overflow-x-hidden [--sidebar-w:260px]">
       <Sidebar role="admin" />
       <div aria-hidden className="w-[var(--sidebar-w)] shrink-0" />
-      <main className="min-w-0 flex-1 bg-blue-200">{children}</main>
+      <main className="min-w-0 flex-1 bg-blue-200">
+        <AdminPermissionGuard>{children}</AdminPermissionGuard>
+      </main>
     </div>
   );
 }

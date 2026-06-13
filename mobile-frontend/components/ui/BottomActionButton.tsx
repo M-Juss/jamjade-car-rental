@@ -43,6 +43,7 @@ export function BottomActionButton({
       {secondaryLabel && onSecondaryPress ? (
         <Pressable
           accessibilityRole="button"
+          disabled={disabled}
           onPress={onSecondaryPress}
           className="mt-3 min-h-[50px] items-center justify-center rounded-full border border-[#DDE8FF] bg-white px-5">
           <Text className="text-[14px] font-black text-[#17315F]">{secondaryLabel}</Text>

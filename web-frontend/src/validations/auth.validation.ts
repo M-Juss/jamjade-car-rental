@@ -1,61 +1,74 @@
 import { z } from "zod/v3";
 
-export const registerSchema = z.object({
+const personNamePattern = /^[\p{L} ]+$/u;
+const mobileNumberPattern = /^09\d{9}$/;
+const specialCharacterPattern =
+  /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/;
+
+export const registerSchema = z
+  .object({
     fullname: z
-    .string()
-    .trim()
-    .nonempty("Fullname is required"),
+      .string()
+      .trim()
+      .nonempty("Full name is required.")
+      .regex(
+        personNamePattern,
+        "Full name may only contain letters and spaces.",
+      ),
 
     email: z
-    .string()
-    .trim()
-    .email("Invalid email address")
-    .nonempty("Email is required."),
+      .string()
+      .trim()
+      .nonempty("Email is required.")
+      .email("Enter a valid email address.")
+      .max(160, "Maximum 160 characters only."),
 
     contact_number: z
-    .string()
-    .trim()
-    .nonempty("Phone Number is required.")
-    .regex(/^(09|\+639|639)\d{9}$/, "Invalid Phone Number"),
+      .string()
+      .trim()
+      .nonempty("Phone Number is required.")
+      .regex(
+        mobileNumberPattern,
+        "Enter an 11-digit mobile number starting with 09.",
+      ),
 
-    address: z
-    .string()
-    .trim()
-    .nonempty("Address is required."),
+    address: z.string().trim().nonempty("Address is required."),
 
     password: z
-    .string()
-    .trim()
-    .nonempty("Password is required.")
-    .min(8, "Password must be at least 8 characters"),
+      .string()
+      .nonempty("Password is required.")
+      .min(8, "Use at least 8 characters with 1 uppercase letter and 1 special character.")
+      .max(255, "Maximum 255 characters only.")
+      .regex(/[A-Z]/, "Include at least 1 uppercase letter.")
+      .regex(
+        specialCharacterPattern,
+        "Include at least 1 special character.",
+      ),
 
     password_confirmation: z
-    .string()
-    .trim()
-    .nonempty("Password is Required!")
-
-}).refine((data) => data.password === data.password_confirmation, {
+      .string()
+      .nonempty("Confirm your password.")
+      .max(255, "Maximum 255 characters only."),
+  })
+  .refine((data) => data.password === data.password_confirmation, {
     path: ["password_confirmation"],
-    message: "Password do not match",
-});
+    message: "Password and confirm password must match.",
+  });
 
-export type RegisterSchemaFormValues = z.infer<typeof registerSchema>
-
+export type RegisterSchemaFormValues = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
-
-    email: z
+  email: z
     .string()
     .trim()
-    .email("Invalid email address")
-    .nonempty("Email is required."),
+    .nonempty("Email is required.")
+    .email("Enter a valid email address.")
+    .max(160, "Maximum 160 characters only."),
 
-    password: z
+  password: z
     .string()
-    .trim()
     .nonempty("Password is required.")
-    .min(8, "Password must be at least 8 characters"),
+    .max(255, "Maximum 255 characters only."),
+});
 
-})
-
-export type LoginSchemaFormValues = z.infer<typeof loginSchema>
+export type LoginSchemaFormValues = z.infer<typeof loginSchema>;

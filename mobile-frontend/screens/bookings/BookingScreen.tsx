@@ -1,7 +1,8 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import { Search, SlidersHorizontal, X } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -13,8 +14,8 @@ import {
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import { matchesBookingSearch, matchesBookingStatus } from '@/lib/bookings/helpers';
-import { bookings } from '@/lib/bookings/mock-data';
-import { BOOKING_STATUS_FILTERS, type BookingStatusFilter } from '@/types/booking';
+import { cancelBooking, getBookings } from '@/services/api';
+import { BOOKING_STATUS_FILTERS, type Booking, type BookingStatusFilter } from '@/types/booking';
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -121,16 +122,58 @@ export function BookingScreen() {
   const [selectedStatus, setSelectedStatus] = useState<BookingStatusFilter>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const isLoading = false;
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const activeFilterCount = Number(selectedStatus !== 'All');
+
+  const loadBookings = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+
+    try {
+      setBookings(await getBookings());
+    } catch {
+      setLoadError('Bookings could not be loaded. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBookings();
+    }, [loadBookings]),
+  );
 
   const filteredBookings = useMemo(() => {
     return bookings.filter(
       (booking) => matchesBookingStatus(booking, selectedStatus) && matchesBookingSearch(booking, searchTerm),
     );
-  }, [searchTerm, selectedStatus]);
+  }, [bookings, searchTerm, selectedStatus]);
 
-  const handleAction = (action: BookingAction) => {
+  const handleAction = (action: BookingAction, booking: Booking) => {
+    if (action.key === 'pay_balance' || action.key === 'payment_info') {
+      router.push(`/bookings/payment?bookingId=${encodeURIComponent(booking.id)}` as Href);
+      return;
+    }
+
+    if (action.key === 'cancel_request') {
+      Alert.alert(
+        'Cancel booking?',
+        'Captured payments are subject to the booking terms and are not automatically refunded.',
+        [
+          { text: 'Keep Booking', style: 'cancel' },
+          {
+            text: 'Cancel Booking',
+            style: 'destructive',
+            onPress: () => void cancelBooking(booking.id).then(loadBookings),
+          },
+        ],
+      );
+      return;
+    }
+
     if (action.key === 'open_telematics') {
       router.push('/telematics' as Href);
       return;
@@ -140,8 +183,6 @@ export function BookingScreen() {
       router.push('/' as Href);
       return;
     }
-
-    console.log(`Booking action tapped: ${action.key}`);
   };
 
   const emptyTitle = searchTerm.trim()
@@ -151,7 +192,7 @@ export function BookingScreen() {
       : `No ${selectedStatus} Bookings`;
 
   const emptySubtitle = searchTerm.trim()
-    ? 'Try another booking ID, vehicle name, or plate number.'
+    ? 'Try another booking ID or vehicle name.'
     : selectedStatus === 'All'
       ? 'Start browsing available vehicles and create your first booking.'
       : `You do not have any ${selectedStatus.toLowerCase()} bookings right now. Start browsing available vehicles and create a new booking.`;
@@ -172,7 +213,7 @@ export function BookingScreen() {
             <TextInput
               value={searchTerm}
               onChangeText={setSearchTerm}
-              placeholder="Search booking ID, vehicle, or plate number..."
+              placeholder="Search booking ID or vehicle name..."
               placeholderTextColor="#9AA4B8"
               className="min-w-0 flex-1 px-3 text-[14px] font-semibold text-[#17315F]"
             />
@@ -195,10 +236,17 @@ export function BookingScreen() {
             <Text className="text-[13px] font-black text-[#17315F]">
               {filteredBookings.length} booking{filteredBookings.length === 1 ? '' : 's'}
             </Text>
-            <Text className="text-[12px] font-bold text-[#91A0B8]">Mock data only</Text>
+            <Pressable accessibilityRole="button" onPress={() => void loadBookings()}>
+              <Text className="text-[12px] font-bold text-[#346EF6]">Refresh</Text>
+            </Pressable>
           </View>
 
           <View className="mt-4 gap-5">
+            {loadError ? (
+              <View className="rounded-[24px] border border-[#FECACA] bg-[#FEF2F2] p-4">
+                <Text className="text-[13px] font-bold text-[#B91C1C]">{loadError}</Text>
+              </View>
+            ) : null}
             {isLoading ? (
               <BookingLoadingState />
             ) : filteredBookings.length > 0 ? (

@@ -315,7 +315,6 @@ export function ReadyToStartCard({
       <View className="mt-6 rounded-[24px] bg-[#F8FAFF] p-4">
         <InfoRow label="Booking ID" value={booking.id} />
         <InfoRow label="Vehicle" value={vehicle.name} />
-        <InfoRow label="Plate Number" value={vehicle.plateNumber} />
         <InfoRow label="Rental Type" value={booking.rentalType} />
         <View className="min-h-[48px] flex-row items-center justify-between gap-3 py-2.5">
           <Text className="min-w-0 flex-1 text-[12px] font-bold leading-4 text-[#6C7A96]">Return Date/Time</Text>
@@ -351,7 +350,6 @@ export function StatusHeaderCard({
         </View>
       </View>
       <Text className="mt-4 text-[19px] font-black leading-6 text-[#17315F]">{vehicle.name}</Text>
-      <Text className="mt-1 text-[13px] font-bold text-[#6C7A96]">Plate No: {vehicle.plateNumber}</Text>
       <View className="mt-4 flex-row flex-wrap gap-2">
         <Pill label={booking.status === 'ongoing' ? 'Ongoing' : 'Active'} tone="green" />
         <Pill label={tripLabel} tone={tripStatus === 'paused' ? 'gray' : 'blue'} />
@@ -670,7 +668,6 @@ export function VehicleInfoCard({ vehicle }: { vehicle: TelematicsVehicle }) {
         <Image source={{ uri: vehicle.image }} resizeMode="cover" className="h-[168px] w-full" />
       </View>
       <Text className="text-[20px] font-black leading-6 text-[#17315F]">{vehicle.name}</Text>
-      <Text className="mt-1 text-[13px] font-bold text-[#6C7A96]">Plate No: {vehicle.plateNumber}</Text>
       <View className="mt-4">
         <InfoRow label="Brand" value={vehicle.brand} />
         <InfoRow label="Model Year" value={vehicle.modelYear} />

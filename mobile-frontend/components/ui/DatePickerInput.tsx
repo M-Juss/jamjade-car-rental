@@ -112,6 +112,7 @@ function isAfterMaximum(date: Date, maximumDate?: Date | null) {
 }
 
 export function DatePickerInput({
+  disabled = false,
   error,
   helperText,
   initialVisibleDate,
@@ -133,6 +134,7 @@ export function DatePickerInput({
   helperText?: string;
   error?: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const selectedDate = useMemo(() => parseDateKey(value), [value]);
@@ -179,17 +181,20 @@ export function DatePickerInput({
   };
 
   return (
-    <View className="gap-2">
+    <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
       <Text className="text-[12px] font-black uppercase text-[#6C7A96]">
         {label}
         {required ? <Text className="text-[#E5484D]"> *</Text> : null}
       </Text>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
         onPress={() => setIsCalendarOpen(true)}
         className={cx(
           'min-h-[54px] flex-row items-center rounded-[20px] border bg-white px-4',
           error ? 'border-[#F4A6A6] bg-[#FFF8F8]' : 'border-[#E6EEFF]',
+          disabled && 'opacity-70',
         )}>
         <CalendarDays size={18} color="#346EF6" strokeWidth={2.35} />
         <Text
@@ -200,11 +205,13 @@ export function DatePickerInput({
           {value ? formatDisplayDate(value) : placeholder}
         </Text>
       </Pressable>
-      {error || helperText ? (
-        <Text className={cx('px-1 text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
-          {error || helperText}
-        </Text>
-      ) : null}
+      <View className="absolute left-1 right-1 top-full mt-1.5">
+        {error || helperText ? (
+          <Text className={cx('text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
+            {error || helperText}
+          </Text>
+        ) : null}
+      </View>
 
       <Modal animationType="fade" transparent visible={isCalendarOpen} onRequestClose={() => setIsCalendarOpen(false)}>
         <View className="flex-1 justify-end bg-black/35">

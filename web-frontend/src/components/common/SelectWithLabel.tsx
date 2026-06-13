@@ -15,7 +15,7 @@ type SelectOption = {
 
 type SelectWithLabelProps = {
   id: string;
-  label: string;
+  label?: string;
   placeholder?: string;
   options: SelectOption[];
   value?: string;
@@ -31,7 +31,7 @@ type SelectWithLabelProps = {
 
 export function SelectWithLabel({
   id,
-  label,
+  label = "",
   placeholder = "Select an option",
   options,
   value,

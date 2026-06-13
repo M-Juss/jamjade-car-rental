@@ -1,10 +1,11 @@
 import { useRouter, type Href } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   EmptyState,
+  ErrorState,
   FilterSheet,
   LoadingState,
   SearchInput,
@@ -14,8 +15,8 @@ import {
 } from '@/components/browse';
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
+import { useAvailableVehicles } from '@/hooks/use-vehicles';
 import { toggleBookmarkedVehicle, useBookmarkedVehicleIds } from '@/lib/browse/bookmarks';
-import { availableVehicles } from '@/lib/browse/mock-data';
 import type { Vehicle } from '@/types/browse';
 
 const defaultFilters: BrowseFilters = {
@@ -30,7 +31,14 @@ function matchesSearch(vehicle: Vehicle, searchTerm: string) {
     return true;
   }
 
-  return [vehicle.name, vehicle.model, vehicle.year.toString(), vehicle.location]
+  return [
+    vehicle.name,
+    vehicle.brand,
+    vehicle.model,
+    vehicle.color,
+    vehicle.transmission,
+    vehicle.fuelType,
+  ]
     .join(' ')
     .toLowerCase()
     .includes(normalized);
@@ -82,7 +90,12 @@ export default function BrowseScreen() {
   const [filters, setFilters] = useState<BrowseFilters>(defaultFilters);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
-  const isLoading = false;
+  const {
+    vehicles: availableVehicles,
+    isLoading,
+    error,
+    refresh,
+  } = useAvailableVehicles();
 
   const vehicles = useMemo(() => {
     const filteredVehicles = availableVehicles.filter(
@@ -90,7 +103,7 @@ export default function BrowseScreen() {
     );
 
     return sortVehicles(filteredVehicles, filters.sort ?? 'most_booked');
-  }, [bookmarkedVehicleIds, filters, searchTerm]);
+  }, [availableVehicles, bookmarkedVehicleIds, filters, searchTerm]);
 
   const activeFilterCount =
     Number(Boolean(filters.bookmarkedOnly)) +
@@ -108,6 +121,14 @@ export default function BrowseScreen() {
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
         onScroll={handleTabScroll}
+        refreshControl={(
+          <RefreshControl
+            colors={['#346EF6']}
+            refreshing={isLoading && availableVehicles.length > 0}
+            tintColor="#346EF6"
+            onRefresh={() => void refresh()}
+          />
+        )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
@@ -124,12 +145,19 @@ export default function BrowseScreen() {
 
           <View className="mt-5 flex-row items-center justify-between">
             <Text className="text-[13px] font-black text-[#17315F]">{vehicles.length} available vehicles</Text>
-            <Text className="text-[12px] font-bold text-[#91A0B8]">Mock fleet only</Text>
+            <Text className="text-[12px] font-bold text-[#91A0B8]">Live fleet</Text>
           </View>
 
           <View className="mt-4 gap-6">
-            {isLoading ? (
+            {isLoading && availableVehicles.length === 0 ? (
               <LoadingState />
+            ) : error && availableVehicles.length === 0 ? (
+              <ErrorState
+                actionLabel="Try Again"
+                title="Vehicles unavailable"
+                subtitle={error}
+                onAction={() => void refresh()}
+              />
             ) : vehicles.length > 0 ? (
               vehicles.map((vehicle) => (
                 <VehicleCard

@@ -8,6 +8,14 @@ export type DocumentVerificationStatus =
   | 'verified'
   | 'rejected';
 
+export type CustomerDocumentId =
+  | 'driver-license'
+  | 'passport'
+  | 'proof-of-address';
+
+export type CustomerDocumentStatuses = Record<CustomerDocumentId, DocumentVerificationStatus>;
+export type CustomerDocumentRejectionReasons = Record<CustomerDocumentId, string>;
+
 export type EmergencyRelationship =
   | 'Parent'
   | 'Sibling'
@@ -28,7 +36,6 @@ export type CustomerDocumentUploads = {
   driverLicenseExpirationDate: string;
   driverLicenseFront: string;
   driverLicenseBack: string;
-  validId: string;
   proofOfAddress: string;
   passport: string;
   passportRequiredByAdmin: boolean;
@@ -45,13 +52,19 @@ export type Customer = {
   address: string;
   profilePicture: string;
   emergencyContact: EmergencyContact;
+  emergencyContactSkipped: boolean;
   isProfileComplete: boolean;
   isBelow18: boolean;
   drivingIntent: DrivingIntent;
   selfDriveStatus: SelfDriveStatus;
   documentVerificationStatus: DocumentVerificationStatus;
   documents: CustomerDocumentUploads;
+  documentStatuses: CustomerDocumentStatuses;
+  documentRejectionReasons: CustomerDocumentRejectionReasons;
   bookingStatus: 'none' | 'pending' | 'active' | 'ongoing' | 'completed';
+  successfulBookings: number;
+  totalSpent: number;
+  joinedAt: string;
 };
 
 export type BasicCustomerProfileInput = Pick<

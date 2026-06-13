@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react';
 
 import {
-  initialRenterDocuments,
+  renterDocumentDefinitions,
   type RenterDocument,
   type RenterDocumentId,
 } from '@/lib/profile/profile-data';
 
-const STORAGE_KEY = 'jamjade:renter-documents';
+const STORAGE_KEY = 'jamjade:renter-documents:v2';
 
 const listeners = new Set<() => void>();
 
@@ -36,26 +36,26 @@ function readStoredDocuments() {
   const storage = getStorage();
 
   if (!storage) {
-    return initialRenterDocuments;
+    return renterDocumentDefinitions;
   }
 
   try {
     const storedValue = storage.getItem(STORAGE_KEY);
 
     if (!storedValue) {
-      return initialRenterDocuments;
+      return renterDocumentDefinitions;
     }
 
     const storedDocuments = JSON.parse(storedValue) as RenterDocument[];
     const storedById = new Map(storedDocuments.map((document) => [document.id, document]));
 
-    return initialRenterDocuments.map((document) => ({
+    return renterDocumentDefinitions.map((document) => ({
       ...document,
       ...storedById.get(document.id),
     }));
   } catch {
     storage.removeItem?.(STORAGE_KEY);
-    return initialRenterDocuments;
+    return renterDocumentDefinitions;
   }
 }
 

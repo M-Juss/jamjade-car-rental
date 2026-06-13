@@ -1,8 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-import { BOOKMARKED_VEHICLE_IDS } from '@/lib/browse/mock-data';
-
-const bookmarkedVehicleIds = new Set(BOOKMARKED_VEHICLE_IDS);
+const bookmarkedVehicleIds = new Set<string>();
 let snapshot = Array.from(bookmarkedVehicleIds);
 const listeners = new Set<() => void>();
 

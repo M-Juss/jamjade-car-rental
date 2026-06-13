@@ -7,7 +7,7 @@ export type ActionButtonVariant = 'primary' | 'secondary' | 'soft' | 'success' |
 
 const variantStyles = {
   primary: {
-    button: 'border-[#065F46] bg-[#065F46] shadow-md shadow-[#065F46]/20',
+    button: 'border-[#346EF6] bg-[#346EF6] shadow-md shadow-[#346EF6]/20',
     text: 'text-white',
     icon: '#FFFFFF',
   },

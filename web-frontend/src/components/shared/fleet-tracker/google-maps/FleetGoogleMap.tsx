@@ -118,7 +118,7 @@ export function FleetGoogleMap({
       const marker = new google.maps.Marker({
         map,
         position: { lat: vehicle.lat, lng: vehicle.lng },
-        title: `${vehicle.carName} - ${vehicle.plateNumber}`,
+        title: vehicle.carName,
         icon: createMarkerIcon(markerColors[vehicle.status], selectedId === vehicle.id),
         zIndex: selectedId === vehicle.id ? 20 : 10,
       });

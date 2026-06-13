@@ -1,4 +1,4 @@
-import { Battery, Flag, Gauge, MapPinned, Phone, Signal, Video } from "lucide-react";
+import { Battery, CarFront, Gauge, MapPinned, Phone, Signal, Video } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,7 +26,7 @@ export function FleetDetailTabs({ vehicle }: FleetDetailTabsProps) {
               <InfoCard label="Booking" value={`${vehicle.bookingId} (${vehicle.tripStatus})`} />
               <InfoCard label="Rental Duration" value={`${vehicle.rentalStart} to ${vehicle.rentalEnd}`} />
               <InfoCard label="Customer" value={vehicle.customerName} icon={<Phone className="size-3" />} subValue={vehicle.customerPhone} />
-              <InfoCard label="Vehicle" value={`${vehicle.carName} - ${vehicle.plateNumber}`} icon={<Flag className="size-3" />} />
+              <InfoCard label="Vehicle" value={vehicle.carName} icon={<CarFront className="size-3" />} />
               <InfoCard label="Coordinates" value={`${vehicle.lat.toFixed(4)}, ${vehicle.lng.toFixed(4)}`} icon={<MapPinned className="size-3" />} />
               <InfoCard label="Speed" value={`${vehicle.speedKph} kph`} icon={<Gauge className="size-3" />} />
               <InfoCard label="Battery" value={`${vehicle.batteryPercent}%`} icon={<Battery className="size-3" />} />

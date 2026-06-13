@@ -128,3 +128,94 @@
     @apply font-sans;
   }
 }
+
+[data-sonner-toaster] .cn-toast {
+  width: min(390px, calc(100vw - 32px)) !important;
+  min-height: 78px;
+  gap: 12px !important;
+  border-width: 1px !important;
+  border-radius: 18px !important;
+  padding: 14px 44px 14px 14px !important;
+  box-shadow: 0 14px 40px rgb(15 23 42 / 12%) !important;
+}
+
+[data-sonner-toaster] .cn-toast[data-type="success"] {
+  border-color: #9be4af !important;
+  background: #f2fcf5 !important;
+}
+
+[data-sonner-toaster] .cn-toast[data-type="info"] {
+  border-color: #93c5fd !important;
+  background: #f1f7ff !important;
+}
+
+[data-sonner-toaster] .cn-toast[data-type="warning"] {
+  border-color: #f7d77a !important;
+  background: #fff9eb !important;
+}
+
+[data-sonner-toaster] .cn-toast[data-type="error"] {
+  border-color: #fda4af !important;
+  background: #fff3f4 !important;
+}
+
+[data-sonner-toaster] .cn-toast-title {
+  color: #1e293b !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 20px !important;
+}
+
+[data-sonner-toaster] .cn-toast-description {
+  margin-top: 2px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 18px !important;
+}
+
+[data-sonner-toaster] .cn-toast-icon {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: white;
+}
+
+[data-sonner-toaster] .cn-toast [data-icon] {
+  width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 40px !important;
+  margin: 0 !important;
+}
+
+[data-sonner-toaster] .cn-toast-icon-success {
+  background: #4ade80 !important;
+}
+
+[data-sonner-toaster] .cn-toast-icon-info {
+  background: #3b82f6 !important;
+}
+
+[data-sonner-toaster] .cn-toast-icon-warning {
+  background: #fbbf24 !important;
+}
+
+[data-sonner-toaster] .cn-toast-icon-error {
+  background: #f43f5e !important;
+}
+
+[data-sonner-toaster] .cn-toast-close {
+  top: 50% !important;
+  right: 12px !important;
+  left: auto !important;
+  width: 28px !important;
+  height: 28px !important;
+  transform: translateY(-50%) !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #64748b !important;
+}

@@ -3,7 +3,6 @@ import {
   Car,
   ClipboardList,
   CreditCard,
-  FileCheck2,
   MessageCircle,
   Navigation,
   RefreshCcw,
@@ -19,7 +18,7 @@ export type BookingActionKey =
   | 'view_details'
   | 'cancel_request'
   | 'payment_info'
-  | 'prepare_documents'
+  | 'pay_balance'
   | 'open_telematics'
   | 'contact_admin'
   | 'book_again'
@@ -57,12 +56,6 @@ const actionsByStatus = {
       label: 'Payment Info',
       icon: CreditCard,
       variant: 'soft',
-    },
-    {
-      key: 'prepare_documents',
-      label: 'Prepare Documents',
-      icon: FileCheck2,
-      variant: 'secondary',
     },
   ],
   Active: [

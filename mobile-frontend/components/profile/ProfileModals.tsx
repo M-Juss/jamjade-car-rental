@@ -16,6 +16,10 @@ import {
   type CustomerProfile,
   type EditProfileForm,
 } from '@/lib/profile/profile-data';
+import {
+  sanitizePersonName,
+  sanitizePhoneNumber,
+} from '@/forms/validation';
 
 import { cx } from '@/components/profile/ProfileCards';
 
@@ -66,6 +70,7 @@ function FormField({
   error,
   keyboardType,
   label,
+  maxLength,
   onChangeText,
   secureTextEntry = false,
   value,
@@ -74,6 +79,7 @@ function FormField({
   value: string;
   onChangeText: (value: string) => void;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  maxLength?: number;
   secureTextEntry?: boolean;
   error?: string;
 }) {
@@ -84,6 +90,7 @@ function FormField({
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType}
+        maxLength={maxLength}
         placeholderTextColor="#9AA4B8"
         secureTextEntry={secureTextEntry}
         className={cx(
@@ -138,12 +145,23 @@ export function EditProfileModal({
     <SheetModal title="Edit Profile" visible={visible} onClose={onClose}>
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View className="gap-3">
-          <FormField label="First Name" value={form.firstName} onChangeText={(value) => updateForm('firstName', value)} />
-          <FormField label="Last Name" value={form.lastName} onChangeText={(value) => updateForm('lastName', value)} />
+          <FormField
+            label="First Name"
+            value={form.firstName}
+            maxLength={100}
+            onChangeText={(value) => updateForm('firstName', sanitizePersonName(value))}
+          />
+          <FormField
+            label="Last Name"
+            value={form.lastName}
+            maxLength={100}
+            onChangeText={(value) => updateForm('lastName', sanitizePersonName(value))}
+          />
           <FormField
             label="Phone Number"
             value={form.phoneNumber}
-            onChangeText={(value) => updateForm('phoneNumber', value)}
+            maxLength={11}
+            onChangeText={(value) => updateForm('phoneNumber', sanitizePhoneNumber(value))}
             keyboardType="phone-pad"
           />
           <FormField label="Full Address" value={form.address} onChangeText={(value) => updateForm('address', value)} />
@@ -176,50 +194,31 @@ export function ChangePasswordModal({ onClose, visible }: { visible: boolean; on
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setHasSubmitted(false);
     }
   }, [visible]);
-
-  const currentPasswordError = hasSubmitted && currentPassword.trim().length === 0 ? 'Current password is required.' : '';
-  const newPasswordError =
-    hasSubmitted && newPassword.length < 8 ? 'New password should be at least 8 characters.' : '';
-  const confirmPasswordError = hasSubmitted && confirmPassword !== newPassword ? 'Passwords do not match.' : '';
-  const canSave = currentPassword.trim().length > 0 && newPassword.length >= 8 && confirmPassword === newPassword;
-
-  const handleSave = () => {
-    setHasSubmitted(true);
-
-    if (canSave) {
-      onClose();
-    }
-  };
 
   return (
     <SheetModal title="Change Password" visible={visible} onClose={onClose}>
       <View className="gap-3">
         <FormField
-          error={currentPasswordError}
           label="Current Password"
           secureTextEntry
           value={currentPassword}
           onChangeText={setCurrentPassword}
         />
         <FormField
-          error={newPasswordError}
           label="New Password"
           secureTextEntry
           value={newPassword}
           onChangeText={setNewPassword}
         />
         <FormField
-          error={confirmPasswordError}
           label="Confirm Password"
           secureTextEntry
           value={confirmPassword}
@@ -227,13 +226,13 @@ export function ChangePasswordModal({ onClose, visible }: { visible: boolean; on
         />
       </View>
       <Text className="mt-4 rounded-[18px] bg-[#EEF4FF] px-4 py-3 text-[12px] font-semibold leading-5 text-[#346EF6]">
-        Mock validation only. No authentication request is sent yet.
+        Password changes are not available in the mobile app yet.
       </Text>
       <Pressable
         accessibilityRole="button"
-        onPress={handleSave}
-        className="mt-5 min-h-[50px] items-center justify-center rounded-full bg-[#346EF6] px-5 shadow-md shadow-[#346EF6]/20">
-        <Text className="text-[13px] font-black text-white">Save Password</Text>
+        disabled
+        className="mt-5 min-h-[50px] items-center justify-center rounded-full bg-[#CBD5E1] px-5">
+        <Text className="text-[13px] font-black text-white">Unavailable</Text>
       </Pressable>
     </SheetModal>
   );

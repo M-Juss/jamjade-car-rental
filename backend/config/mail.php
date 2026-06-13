@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'smtp'),
 
     /*
     |--------------------------------------------------------------------------
@@ -39,13 +39,16 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
+            'scheme' => env(
+                'MAIL_SCHEME',
+                in_array(env('MAIL_ENCRYPTION'), ['ssl', 'smtps'], true) ? 'smtps' : 'smtp'
+            ),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            'timeout' => env('MAIL_TIMEOUT', 30),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
@@ -114,5 +117,21 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Booking Confirmation Delivery
+    |--------------------------------------------------------------------------
+    |
+    | Local development sends booking confirmations immediately so successful
+    | checkouts do not depend on a separately running queue worker. Production
+    | may enable queued delivery and run a persistent queue worker.
+    |
+    */
+
+    'booking_confirmations_queue' => env(
+        'MAIL_BOOKING_CONFIRMATIONS_QUEUE',
+        env('APP_ENV', 'production') === 'production'
+    ),
 
 ];

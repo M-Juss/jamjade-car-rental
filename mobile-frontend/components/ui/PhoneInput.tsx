@@ -1,4 +1,5 @@
 import { FormInput } from '@/components/ui/FormInput';
+import { sanitizePhoneNumber } from '@/forms/validation';
 
 type PhoneInputProps = {
   label?: string;
@@ -24,7 +25,8 @@ export function PhoneInput({
       icon="phone"
       keyboardType="phone-pad"
       label={label}
-      onChangeText={onChangeText}
+      maxLength={11}
+      onChangeText={(nextValue) => onChangeText(sanitizePhoneNumber(nextValue))}
       placeholder={placeholder}
       required={required}
       textContentType="telephoneNumber"

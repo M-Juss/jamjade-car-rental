@@ -1,17 +1,22 @@
 import { FileCheck2, ImagePlus, Trash2, Upload } from 'lucide-react-native';
 import { Image, Pressable, Text, View } from 'react-native';
 
-import { pickImageOrMock } from '@/lib/customer/mock-upload';
+import {
+  pickImageFromDevice,
+  type DocumentImagePickError,
+} from '@/lib/customer/image-picker';
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
 export function UploadDocumentCard({
+  disabled = false,
   error,
   helperText,
   label,
   onChange,
+  onPickError,
   required = false,
   value,
 }: {
@@ -21,19 +26,35 @@ export function UploadDocumentCard({
   required?: boolean;
   helperText?: string;
   error?: string;
+  disabled?: boolean;
+  onPickError?: (error: DocumentImagePickError) => void;
 }) {
   const hasPreview = Boolean(value);
 
   const handlePickImage = async () => {
-    const selectedImage = await pickImageOrMock(label);
+    if (disabled) {
+      return;
+    }
 
-    if (selectedImage) {
-      onChange(selectedImage);
+    const result = await pickImageFromDevice();
+
+    if (result.error) {
+      onPickError?.(result.error);
+      return;
+    }
+
+    if (result.uri) {
+      onChange(result.uri);
     }
   };
 
   return (
-    <View className={cx('rounded-[24px] border bg-white p-4 shadow-md shadow-[#17315F]/5', error ? 'border-[#F4A6A6]' : 'border-[#E6EEFF]')}>
+    <View
+      className={cx(
+        'rounded-[24px] border bg-white p-4 shadow-md shadow-[#17315F]/5',
+        error ? 'border-[#F4A6A6]' : 'border-[#E6EEFF]',
+        disabled && 'opacity-75',
+      )}>
       <View className="flex-row items-start gap-3">
         <View className={cx('h-11 w-11 items-center justify-center rounded-full', hasPreview ? 'bg-[#ECFDF5]' : 'bg-[#EEF4FF]')}>
           {hasPreview ? (
@@ -47,12 +68,13 @@ export function UploadDocumentCard({
             {label}
             {required ? <Text className="text-[#E5484D]"> *</Text> : null}
           </Text>
-          {helperText ? <Text className="mt-1 text-[12px] font-semibold leading-5 text-[#6C7A96]">{helperText}</Text> : null}
         </View>
       </View>
 
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
         onPress={handlePickImage}
         className={cx(
           'mt-4 overflow-hidden rounded-[22px] border border-dashed',
@@ -65,30 +87,26 @@ export function UploadDocumentCard({
             <View className="h-12 w-12 items-center justify-center rounded-full bg-white">
               <Upload size={22} color="#346EF6" strokeWidth={2.45} />
             </View>
-            <Text className="mt-3 text-center text-[14px] font-black text-[#17315F]">Upload image</Text>
+            <Text className="mt-3 text-center text-[14px] font-black text-[#17315F]">Choose image</Text>
             <Text className="mt-1 text-center text-[11px] font-semibold leading-4 text-[#6C7A96]">
-              A preview appears here after upload.
+              Tap here to open your gallery or photos.
             </Text>
           </View>
         )}
       </Pressable>
 
-      {error ? <Text className="mt-2 px-1 text-[11px] font-bold leading-4 text-[#D92D20]">{error}</Text> : null}
-
-      <View className="mt-4 flex-row gap-3">
-        <Pressable
-          accessibilityRole="button"
-          onPress={handlePickImage}
-          className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-full bg-[#346EF6] px-4">
-          <Upload size={16} color="#FFFFFF" strokeWidth={2.45} />
-          <Text className="text-[13px] font-black text-white">{hasPreview ? 'Replace' : 'Upload'}</Text>
-        </Pressable>
-        {hasPreview ? (
+      <View className="mt-3 min-h-[22px] flex-row items-start gap-2">
+        {hasPreview ? <FileCheck2 size={15} color="#047857" strokeWidth={2.45} /> : <ImagePlus size={15} color="#346EF6" strokeWidth={2.45} />}
+        <Text className={cx('min-w-0 flex-1 text-[11px] font-bold leading-4', error ? 'text-[#D92D20]' : 'text-[#6C7A96]')}>
+          {error || helperText || 'Use a clear, well-lit image. Maximum file size is 5 MB.'}
+        </Text>
+        {hasPreview && !disabled ? (
           <Pressable
+            accessibilityLabel={`Remove ${label}`}
             accessibilityRole="button"
             onPress={() => onChange('')}
-            className="min-h-[48px] w-[52px] items-center justify-center rounded-full border border-[#FECACA] bg-[#FEF2F2]">
-            <Trash2 size={17} color="#DC2626" strokeWidth={2.45} />
+            className="h-8 w-8 items-center justify-center rounded-full border border-[#FECACA] bg-[#FEF2F2]">
+            <Trash2 size={15} color="#DC2626" strokeWidth={2.45} />
           </Pressable>
         ) : null}
       </View>

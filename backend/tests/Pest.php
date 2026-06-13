@@ -1,6 +1,13 @@
 <?php
 
+use App\Enums\DocumentStatus;
+use App\Enums\UserRole;
+use App\Enums\VehicleStatus;
+use App\Models\CustomerDocument;
+use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /*
@@ -47,4 +54,75 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function customerUser(array $attributes = []): User
+{
+    $user = User::factory()->create(array_merge([
+        'password' => Hash::make('password123'),
+    ], $attributes));
+
+    $user->assignRole(UserRole::Customer->value);
+
+    $user->customerProfile()->create([
+        'first_name' => 'Juan',
+        'last_name' => 'Dela Cruz',
+        'birthdate' => '2000-01-15',
+        'address' => 'Dasmarinas, Cavite',
+        'profile_completed_at' => now(),
+        'can_self_drive' => true,
+        'verification_status' => 'approved',
+    ]);
+
+    foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $type) {
+        $user->documents()->create([
+            'document_type' => $type,
+            'file_path' => "seed/{$type}.jpg",
+            'status' => DocumentStatus::Approved,
+        ]);
+    }
+
+    return $user;
+}
+
+function documentCustomerUser(): User
+{
+    $user = User::factory()->create([
+        'name' => 'Document Customer',
+    ]);
+    $user->assignRole(UserRole::Customer->value);
+    $user->customerProfile()->create([
+        'first_name' => 'Document',
+        'last_name' => 'Customer',
+        'birthdate' => '2000-01-15',
+        'address' => 'Dasmarinas, Cavite',
+        'profile_completed_at' => now(),
+        'driving_intent' => 'self_drive',
+        'verification_status' => 'documents_required',
+    ]);
+
+    return $user;
+}
+
+function availableVehicle(array $attributes = []): Vehicle
+{
+    $vehicle = Vehicle::create(array_merge([
+        'name' => 'Toyota Vios GR-S',
+        'brand' => 'Toyota',
+        'model' => 'Vios GR-S',
+        'price_per_day' => 3500,
+        'seats' => 5,
+        'transmission' => 'Automatic',
+        'fuel_type' => 'Gasoline',
+        'color' => 'White',
+        'status' => VehicleStatus::Available,
+        'description' => 'Test vehicle',
+    ], $attributes));
+
+    $vehicle->images()->create([
+        'image_path' => 'https://images.unsplash.com/photo-1549924231-f129b911e442',
+        'is_primary' => true,
+    ]);
+
+    return $vehicle;
 }

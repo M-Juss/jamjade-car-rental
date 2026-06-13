@@ -1,21 +1,36 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { ErrorState, VehicleDetailsDrawer, VehicleStoryCarousel } from '@/components/browse';
+import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
 import { toggleBookmarkedVehicle, useBookmarkedVehicleIds } from '@/lib/browse/bookmarks';
-import { getVehicleById } from '@/lib/browse/pricing';
 
 export default function VehicleDetailsScreen() {
   const router = useRouter();
   const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
-  const vehicle = getVehicleById(firstParam(vehicleId));
+  const resolvedVehicleId = firstParam(vehicleId);
+  const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
 
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#F8FAFF]">
+        <ActivityIndicator color="#346EF6" size="large" />
+      </View>
+    );
+  }
+
   if (!vehicle) {
-    return <ErrorState onAction={() => router.replace('/')} />;
+    return (
+      <ErrorState
+        actionLabel={error ? 'Try Again' : 'Back to Browse'}
+        subtitle={error ?? 'The selected vehicle could not be found.'}
+        onAction={() => error ? void reload() : router.replace('/')}
+      />
+    );
   }
 
   return (

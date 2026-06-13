@@ -99,6 +99,10 @@ function getCalendarCells(monthDate: Date) {
   return cells;
 }
 
+function isDateInRange(dateKey: string, ranges: { startDate: string; endDate: string }[]) {
+  return ranges.some((range) => dateKey >= range.startDate && dateKey <= range.endDate);
+}
+
 export function getNextDateKey(value: string) {
   const date = parseDateKey(value);
 
@@ -110,9 +114,23 @@ export function getNextDateKey(value: string) {
   return formatDateKey(date);
 }
 
+export function getPreviousDateKey(value: string) {
+  const date = parseDateKey(value);
+
+  if (!date) {
+    return getTodayKey();
+  }
+
+  date.setDate(date.getDate() - 1);
+  return formatDateKey(date);
+}
+
 export function DateWithLabel({
+  disabledDateRanges = [],
+  error,
   helperText,
   label,
+  maximumDate,
   minimumDate = getTodayKey(),
   onChange,
   placeholder = 'Select date',
@@ -123,11 +141,15 @@ export function DateWithLabel({
   onChange: (value: string) => void;
   placeholder?: string;
   minimumDate?: string;
+  maximumDate?: string;
+  disabledDateRanges?: { startDate: string; endDate: string }[];
   helperText?: string;
+  error?: string;
 }) {
   const insets = useSafeAreaInsets();
   const selectedDate = useMemo(() => parseDateKey(value), [value]);
   const minimumSelectableDate = useMemo(() => startOfDay(parseDateKey(minimumDate) ?? new Date()), [minimumDate]);
+  const maximumSelectableDate = useMemo(() => parseDateKey(maximumDate), [maximumDate]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() =>
     getFirstDayOfMonth(selectedDate ?? minimumSelectableDate),
@@ -136,6 +158,9 @@ export function DateWithLabel({
   const calendarCells = useMemo(() => getCalendarCells(visibleMonth), [visibleMonth]);
   const minimumMonth = getFirstDayOfMonth(minimumSelectableDate);
   const canGoToPreviousMonth = visibleMonth.getTime() > minimumMonth.getTime();
+  const canGoToNextMonth =
+    !maximumSelectableDate ||
+    visibleMonth.getTime() < getFirstDayOfMonth(maximumSelectableDate).getTime();
 
   useEffect(() => {
     if (isCalendarOpen) {
@@ -144,6 +169,10 @@ export function DateWithLabel({
   }, [isCalendarOpen, minimumSelectableDate, selectedDate]);
 
   const goToNextMonth = () => {
+    if (!canGoToNextMonth) {
+      return;
+    }
+
     setVisibleMonth((currentMonth) => new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
@@ -157,17 +186,29 @@ export function DateWithLabel({
 
   const handleSelectDate = (date: Date) => {
     const dateKey = formatDateKey(date);
+
+    if (
+      startOfDay(date).getTime() < minimumSelectableDate.getTime() ||
+      (maximumSelectableDate && startOfDay(date).getTime() > startOfDay(maximumSelectableDate).getTime()) ||
+      isDateInRange(dateKey, disabledDateRanges)
+    ) {
+      return;
+    }
+
     onChange(dateKey);
     setIsCalendarOpen(false);
   };
 
   return (
-    <View className="gap-2">
+    <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
       <Text className="text-[12px] font-black uppercase tracking-[0.7px] text-[#91A0B8]">{label}</Text>
       <Pressable
         accessibilityRole="button"
         onPress={() => setIsCalendarOpen(true)}
-        className="min-h-[54px] flex-row items-center rounded-2xl border border-[#E6EEFF] bg-white px-4">
+        className={cx(
+          'min-h-[54px] flex-row items-center rounded-2xl border bg-white px-4',
+          error ? 'border-[#F4A6A6] bg-[#FFF8F8]' : 'border-[#E6EEFF]',
+        )}>
         <CalendarDays size={18} color="#346EF6" strokeWidth={2.35} />
         <Text
           className={cx(
@@ -177,7 +218,13 @@ export function DateWithLabel({
           {value ? formatDisplayDate(value) : placeholder}
         </Text>
       </Pressable>
-      {helperText ? <Text className="text-[11px] font-bold leading-4 text-[#91A0B8]">{helperText}</Text> : null}
+      <View className="absolute left-1 right-1 top-full mt-1.5">
+        {error || helperText ? (
+          <Text className={cx('text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
+            {error || helperText}
+          </Text>
+        ) : null}
+      </View>
 
       <Modal animationType="fade" transparent visible={isCalendarOpen} onRequestClose={() => setIsCalendarOpen(false)}>
         <View className="flex-1 justify-end bg-black/35">
@@ -191,7 +238,11 @@ export function DateWithLabel({
             <View className="mb-5 flex-row items-center gap-3">
               <View className="min-w-0 flex-1">
                 <Text className="text-[22px] font-black text-[#17315F]">{label}</Text>
-                <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">Past dates are disabled.</Text>
+                <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">
+                  {disabledDateRanges.length > 0
+                    ? 'Past dates and approved booking dates are disabled.'
+                    : 'Past dates are disabled.'}
+                </Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -218,9 +269,14 @@ export function DateWithLabel({
                 <Text className="text-[17px] font-black text-[#17315F]">{getMonthTitle(visibleMonth)}</Text>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: !canGoToNextMonth }}
+                  disabled={!canGoToNextMonth}
                   onPress={goToNextMonth}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-[#EEF4FF]">
-                  <ChevronRight size={19} color="#346EF6" strokeWidth={2.45} />
+                  className={cx(
+                    'h-10 w-10 items-center justify-center rounded-full',
+                    canGoToNextMonth ? 'bg-[#EEF4FF]' : 'bg-[#F1F5F9]',
+                  )}>
+                  <ChevronRight size={19} color={canGoToNextMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
                 </Pressable>
               </View>
 
@@ -244,26 +300,32 @@ export function DateWithLabel({
                   const dateKey = formatDateKey(date);
                   const isSelected = value === dateKey;
                   const isPastDate = startOfDay(date).getTime() < minimumSelectableDate.getTime();
+                  const isAfterMaximum = Boolean(
+                    maximumSelectableDate &&
+                    startOfDay(date).getTime() > startOfDay(maximumSelectableDate).getTime(),
+                  );
+                  const isBookedDate = isDateInRange(dateKey, disabledDateRanges);
+                  const isDisabled = isPastDate || isAfterMaximum || isBookedDate;
 
                   return (
                     <View key={dateKey} className="h-11 items-center justify-center" style={{ width: `${100 / 7}%` }}>
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityState={{ disabled: isPastDate, selected: isSelected }}
-                        disabled={isPastDate}
+                        accessibilityState={{ disabled: isDisabled, selected: isSelected }}
+                        disabled={isDisabled}
                         onPress={() => handleSelectDate(date)}
                         className={cx(
                           'h-9 w-9 items-center justify-center rounded-full',
                           isSelected && 'bg-[#346EF6]',
-                          !isSelected && !isPastDate && 'bg-white',
-                          isPastDate && 'bg-[#F1F5F9]',
+                          !isSelected && !isDisabled && 'bg-white',
+                          isDisabled && 'bg-[#F1F5F9]',
                         )}>
                         <Text
                           className={cx(
                             'text-[13px] font-black',
                             isSelected && 'text-white',
-                            !isSelected && !isPastDate && 'text-[#17315F]',
-                            isPastDate && 'text-[#CBD5E1]',
+                            !isSelected && !isDisabled && 'text-[#17315F]',
+                            isDisabled && 'text-[#CBD5E1]',
                           )}>
                           {date.getDate()}
                         </Text>

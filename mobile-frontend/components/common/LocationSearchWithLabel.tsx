@@ -281,6 +281,8 @@ async function fetchLegacyPlacesSuggestions({
 }
 
 export function LocationSearchWithLabel({
+  disabled = false,
+  error,
   helperText,
   label,
   onChangeText,
@@ -290,8 +292,10 @@ export function LocationSearchWithLabel({
   label: string;
   value: string;
   onChangeText: (value: string) => void;
+  disabled?: boolean;
   placeholder?: string;
   helperText?: string;
+  error?: string;
 }) {
   const [query, setQuery] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
@@ -307,7 +311,7 @@ export function LocationSearchWithLabel({
   useEffect(() => {
     const trimmedQuery = query.trim();
 
-    if (!isFocused || trimmedQuery.length < 1) {
+    if (disabled || !isFocused || trimmedQuery.length < 1) {
       setSuggestions([]);
       setIsLoading(false);
       return undefined;
@@ -363,9 +367,13 @@ export function LocationSearchWithLabel({
       controller.abort();
       clearTimeout(timeout);
     };
-  }, [apiKey, isFocused, query, sessionToken]);
+  }, [apiKey, disabled, isFocused, query, sessionToken]);
 
   const handleChangeText = (nextValue: string) => {
+    if (disabled) {
+      return;
+    }
+
     setQuery(nextValue);
     onChangeText(nextValue);
   };
@@ -382,9 +390,14 @@ export function LocationSearchWithLabel({
   const hasGoogleSuggestions = suggestions.some((suggestion) => suggestion.source !== 'local');
 
   return (
-    <View className="gap-2">
+    <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
       <Text className="text-[12px] font-black uppercase tracking-[0.7px] text-[#91A0B8]">{label}</Text>
-      <View className="min-h-[56px] flex-row items-center rounded-[24px] border border-[#E6EEFF] bg-white px-4">
+      <View
+        className={cx(
+          'min-h-[56px] flex-row items-center rounded-[24px] border bg-white px-4',
+          error ? 'border-[#F4A6A6] bg-[#FFF8F8]' : 'border-[#E6EEFF]',
+          disabled && 'bg-[#F3F6FA] opacity-70',
+        )}>
         <MapPinned size={18} color="#346EF6" strokeWidth={2.35} />
         <TextInput
           value={query}
@@ -392,7 +405,12 @@ export function LocationSearchWithLabel({
             setTimeout(() => setIsFocused(false), 120);
           }}
           onChangeText={handleChangeText}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => {
+            if (!disabled) {
+              setIsFocused(true);
+            }
+          }}
+          editable={!disabled}
           placeholder={placeholder}
           placeholderTextColor="#9AA4B8"
           className="min-w-0 flex-1 px-3 text-[15px] font-bold text-[#17315F]"
@@ -430,7 +448,13 @@ export function LocationSearchWithLabel({
       ) : null}
 
       {isLoading ? <Text className="text-[11px] font-bold text-[#91A0B8]">Searching Google Maps...</Text> : null}
-      {helperText ? <Text className="text-[11px] font-bold leading-4 text-[#91A0B8]">{helperText}</Text> : null}
+      <View className="absolute left-1 right-1 top-full mt-1.5">
+        {error || helperText ? (
+          <Text className={cx('text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
+            {error || helperText}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }

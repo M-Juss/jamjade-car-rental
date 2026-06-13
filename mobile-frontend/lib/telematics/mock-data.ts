@@ -51,7 +51,6 @@ export const mockTelematicsVehicle: TelematicsVehicle = {
   name: 'Toyota Vios 2022',
   brand: 'Toyota',
   modelYear: '2022',
-  plateNumber: 'ABC 1234',
   transmission: 'Automatic',
   fuelType: 'Gasoline',
   seats: 5,

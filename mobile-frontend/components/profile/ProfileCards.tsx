@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ChevronRight,
   CircleAlert,
+  Pencil,
   type LucideIcon,
   WalletCards,
 } from 'lucide-react-native';
@@ -73,6 +74,7 @@ function SummaryItem({
   iconColor,
   label,
   value,
+  valueNumberOfLines = 1,
 }: {
   label: string;
   value: string;
@@ -80,13 +82,17 @@ function SummaryItem({
   icon: LucideIcon;
   iconClassName: string;
   iconColor: string;
+  valueNumberOfLines?: number;
 }) {
   return (
     <View className="min-h-[124px] flex-1 rounded-[22px] border border-[#E6EEFF] bg-white p-3.5 shadow-md shadow-[#17315F]/5">
       <View className={`${iconClassName} h-9 w-9 items-center justify-center rounded-full`}>
         <Icon size={18} color={iconColor} strokeWidth={2.45} />
       </View>
-      <Text className="mt-3 text-[17px] font-black leading-6 text-[#17315F]" numberOfLines={1} adjustsFontSizeToFit>
+      <Text
+        className="mt-3 min-h-[24px] text-[17px] font-black leading-5 text-[#17315F]"
+        numberOfLines={valueNumberOfLines}
+        adjustsFontSizeToFit>
         {value}
       </Text>
       <Text className="mt-1 text-[10px] font-black leading-4 text-[#6C7A96]" numberOfLines={2}>
@@ -101,30 +107,49 @@ function SummaryItem({
 
 export function ProfileSummaryGrid({ profile }: { profile: CustomerProfile }) {
   return (
+    <ProfileKpiGrid
+      joinedDate={profile.joinedSince}
+      successfulBookings={profile.successfulBookings}
+      totalSpent={profile.totalSpent}
+    />
+  );
+}
+
+export function ProfileKpiGrid({
+  joinedDate,
+  successfulBookings,
+  totalSpent,
+}: {
+  successfulBookings: number;
+  totalSpent: number;
+  joinedDate: string;
+}) {
+  return (
     <View className="flex-row gap-2.5">
       <SummaryItem
         icon={CalendarCheck2}
         label="Successful Bookings"
-        value={profile.successfulBookings.toString()}
+        value={successfulBookings.toString()}
         helper="Completed"
         iconClassName="bg-[#ECFDF5]"
         iconColor="#047857"
       />
       <SummaryItem
         icon={WalletCards}
-        label="Total Spent"
-        value={formatPeso(profile.totalSpent)}
+        label="Amount Spent"
+        value={formatPeso(totalSpent)}
         helper="Payments"
         iconClassName="bg-[#EEF4FF]"
         iconColor={profileColors.brand}
       />
       <SummaryItem
         icon={CalendarDays}
-        label="Joined Since"
-        value={profile.joinedSince}
-        helper="Account"
+        label="Joined Date"
+        value={joinedDate}
+        helper="Member since"
         iconClassName="bg-[#FFF7ED]"
         iconColor="#C2410C"
+        valueNumberOfLines={2}
       />
     </View>
   );
@@ -133,17 +158,19 @@ export function ProfileSummaryGrid({ profile }: { profile: CustomerProfile }) {
 export function ProfileSectionCard({
   actionLabel,
   children,
+  headerAction,
   icon: Icon,
   title,
 }: {
   title: string;
   icon: LucideIcon;
   actionLabel?: string;
+  headerAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <View className="rounded-[28px] border border-[#E6EEFF] bg-white p-5 shadow-md shadow-[#17315F]/5">
-      <View className="mb-4 flex-row items-center gap-2.5">
+      <View className="flex-row items-center gap-2.5 pb-4">
         <View className="h-10 w-10 items-center justify-center rounded-full bg-[#EEF4FF]">
           <Icon size={20} color={profileColors.brand} strokeWidth={2.45} />
         </View>
@@ -153,9 +180,41 @@ export function ProfileSectionCard({
             <Text className="text-[10px] font-black uppercase tracking-[0.4px] text-[#047857]">{actionLabel}</Text>
           </View>
         ) : null}
+        {headerAction}
       </View>
-      {children}
+      <View className="border-t border-[#EEF2FF] pt-2">{children}</View>
     </View>
+  );
+}
+
+export function ProfileEditButton({
+  icon: Icon = Pencil,
+  label = 'Edit',
+  onPress,
+  tone = 'default',
+}: {
+  label?: string;
+  icon?: LucideIcon;
+  onPress: PressableProps['onPress'];
+  tone?: 'default' | 'success';
+}) {
+  const isSuccess = tone === 'success';
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className={cx(
+        'min-h-[40px] flex-row items-center gap-1.5 rounded-full border px-3',
+        isSuccess
+          ? 'border-[#BBF7D0] bg-[#ECFDF5]'
+          : 'border-[#DDE8FF] bg-[#F8FAFF]',
+      )}>
+      <Icon size={14} color={isSuccess ? '#047857' : profileColors.brand} strokeWidth={2.5} />
+      <Text className={cx('text-[11px] font-black', isSuccess ? 'text-[#047857]' : 'text-[#346EF6]')}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -250,7 +309,7 @@ export function ProfileErrorState({ onRetry }: { onRetry: () => void }) {
       </View>
       <Text className="mt-4 text-[20px] font-black text-[#991B1B]">Profile unavailable</Text>
       <Text className="mt-2 text-[13px] font-semibold leading-5 text-[#B45309]">
-        We could not load the mock profile information. Try again to return to the saved local profile.
+        We could not load your profile information. Check your connection and try again.
       </Text>
       <Pressable
         accessibilityRole="button"

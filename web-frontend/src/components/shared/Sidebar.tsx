@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
   Car,
   Settings,
   CalendarCheck,
   ShieldCheck,
+  ClipboardCheck,
   BarChart3,
   LogOut,
   ChevronRight,
+  Video,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -23,22 +26,35 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { getAuthenticatedUser, logout as logoutUser } from "@/services/auth";
 
-const ownerNavItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  permission?: string;
+};
+
+const ownerNavItems: NavItem[] = [
   { href: "/owner", label: "Dashboard", icon: LayoutDashboard },
   { href: "/owner/fleet", label: "Fleet Tracker", icon: Car },
+  { href: "/owner/video-auditing", label: "Video Auditing", icon: Video },
   { href: "/owner/vehicle", label: "Vehicle Management", icon: Settings },
   { href: "/owner/booking", label: "Booking Management", icon: CalendarCheck },
+  { href: "/owner/verification-queue", label: "Verification Queue", icon: ClipboardCheck },
   { href: "/owner/admin", label: "Admin Management", icon: ShieldCheck },
   { href: "/owner/report", label: "Reports & Analytics", icon: BarChart3 },
 ];
 
-const adminNavItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/fleet", label: "Fleet Tracker", icon: Car },
-  { href: "/admin/vehicle", label: "Vehicle Management", icon: Settings },
-  { href: "/admin/booking", label: "Booking Management", icon: CalendarCheck },
-  { href: "/admin/report", label: "Reports & Analytics", icon: BarChart3 },
+const adminNavItems: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: "view dashboard" },
+  { href: "/admin/fleet", label: "Fleet Tracker", icon: Car, permission: "view fleet tracker" },
+  { href: "/admin/video-auditing", label: "Video Auditing", icon: Video, permission: "view video auditing" },
+  { href: "/admin/vehicle", label: "Vehicle Management", icon: Settings, permission: "manage vehicles" },
+  { href: "/admin/booking", label: "Booking Management", icon: CalendarCheck, permission: "manage bookings" },
+  { href: "/admin/verification-queue", label: "Verification Queue", icon: ClipboardCheck, permission: "review documents" },
+  { href: "/admin/report", label: "Reports & Analytics", icon: BarChart3, permission: "view reports" },
 ];
 
 type SidebarRole = "owner" | "admin";
@@ -49,13 +65,50 @@ interface SidebarProps {
 
 export default function Sidebar({ role = "owner" }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const navItems = role === "admin" ? adminNavItems : ownerNavItems;
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [permissions, setPermissions] = useState<Set<string> | null>(role === "owner" ? new Set() : null);
 
-  const handleLogout = () => {
-    // Add your logout logic here
-    setLogoutOpen(false);
-    console.log("Logged out");
+  useEffect(() => {
+    if (role === "owner") return;
+
+    let mounted = true;
+
+    getAuthenticatedUser()
+      .then(({ user }) => {
+        if (mounted) {
+          setPermissions(new Set(user.permissions ?? []));
+        }
+      })
+      .catch(() => {
+        if (mounted) router.replace("/login");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [role, router]);
+
+  const navItems = useMemo(() => {
+    if (role === "owner") return ownerNavItems;
+    if (!permissions) return [];
+
+    return adminNavItems.filter((item) => !item.permission || permissions.has(item.permission));
+  }, [permissions, role]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error("Logout request failed.", error);
+    } finally {
+      setIsLoggingOut(false);
+      setLogoutOpen(false);
+      router.replace("/login");
+    }
   };
 
   return (
@@ -64,16 +117,20 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
       {/* Logo / Brand */}
       <div className="px-6 pt-8 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#346EF6] flex items-center justify-center shadow-[0_4px_12px_rgba(52,110,246,0.35)]">
-            <Car size={18} className="text-white" strokeWidth={2.2} />
-          </div>
+          <Image
+            src="/JamJadeLogo.png"
+            alt="JamJade Logo"
+            width={52}
+            height={52}
+            className="object-contain"
+          />
           <div>
-            <p className="text-[13px] font-bold tracking-[0.12em] uppercase text-[#1A2340] leading-none">
-              JamJade
-            </p>
-            <p className="text-[13px] font-bold text-[#1A2340] leading-tight mt-0.5">
-              Car Rental
-            </p>
+          <p className="bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-transparent text-lg font-semibold">
+            JAMJADE
+          </p>
+          <p className="bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-transparent text-lg font-semibold">
+            CAR RENTAL
+          </p>
           </div>
         </div>
       </div>
@@ -148,7 +205,7 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
                 Confirm Logout
               </DialogTitle>
               <DialogDescription className="text-[13.5px] text-[#6B7589] mt-1.5 leading-relaxed">
-                You're about to sign out of your JamJade account. Any unsaved
+                You&apos;re about to sign out of your JamJade account. Any unsaved
                 changes may be lost.
               </DialogDescription>
             </DialogHeader>
@@ -163,9 +220,10 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
               </Button>
               <Button
                 onClick={handleLogout}
+                disabled={isLoggingOut}
                 className="flex-1 rounded-xl bg-[#346EF6] hover:bg-[#2558D8] text-white text-[13.5px] font-semibold h-10 shadow-[0_4px_14px_rgba(52,110,246,0.32)] transition-all duration-200"
               >
-                Yes, Log Out
+                {isLoggingOut ? "Logging out..." : "Yes, Log Out"}
               </Button>
             </DialogFooter>
           </DialogContent>

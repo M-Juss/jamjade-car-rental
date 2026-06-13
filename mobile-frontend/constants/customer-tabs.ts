@@ -37,7 +37,7 @@ export const CUSTOMER_TABS: CustomerTabConfig[] = [
   },
   {
     routeName: 'notifications',
-    label: 'Notifications',
+    label: 'Notif',
     description: 'Booking, payment, vehicle, trip, and service updates',
     icon: 'bell-outline',
   },

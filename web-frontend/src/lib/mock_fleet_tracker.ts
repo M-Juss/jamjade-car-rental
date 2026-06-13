@@ -30,7 +30,6 @@ export type IncidentItem = {
 export type FleetVehicle = {
   id: string;
   bookingId: string;
-  plateNumber: string;
   carName: string;
   customerName: string;
   customerPhone: string;
@@ -68,7 +67,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1001",
     bookingId: "BK-30291",
-    plateNumber: "NAN-2487",
     carName: "Toyota Fortuner",
     customerName: "Ariana Santos",
     customerPhone: "+63 917 332 1044",
@@ -100,7 +98,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1002",
     bookingId: "BK-30292",
-    plateNumber: "NBC-1190",
     carName: "Honda City",
     customerName: "Mark Valdez",
     customerPhone: "+63 917 731 8830",
@@ -131,7 +128,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1003",
     bookingId: "BK-30293",
-    plateNumber: "NDQ-5781",
     carName: "Mitsubishi Montero",
     customerName: "Leanne Cruz",
     customerPhone: "+63 998 773 0045",
@@ -163,7 +159,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1004",
     bookingId: "BK-30294",
-    plateNumber: "NQE-4402",
     carName: "Toyota Innova",
     customerName: "Jose David",
     customerPhone: "+63 927 110 2901",
@@ -197,7 +192,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1005",
     bookingId: "BK-30295",
-    plateNumber: "NAT-6722",
     carName: "Ford Ranger",
     customerName: "Paolo Ignacio",
     customerPhone: "+63 917 922 1049",
@@ -228,7 +222,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1006",
     bookingId: "BK-30296",
-    plateNumber: "NEA-8813",
     carName: "Nissan Navara",
     customerName: "Bianca Flores",
     customerPhone: "+63 977 255 0091",
@@ -259,7 +252,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1007",
     bookingId: "BK-30297",
-    plateNumber: "NFE-1205",
     carName: "Hyundai Staria",
     customerName: "Nico Yap",
     customerPhone: "+63 915 724 9000",
@@ -290,7 +282,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1008",
     bookingId: "BK-30298",
-    plateNumber: "NLC-9098",
     carName: "Toyota Vios",
     customerName: "Rica Manalo",
     customerPhone: "+63 927 880 1166",
@@ -321,7 +312,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1009",
     bookingId: "BK-30299",
-    plateNumber: "NPT-2009",
     carName: "Isuzu Mu-X",
     customerName: "Harvey Lim",
     customerPhone: "+63 939 880 1180",
@@ -353,7 +343,6 @@ export const fleetVehicles: FleetVehicle[] = [
   {
     id: "VH-1010",
     bookingId: "BK-30300",
-    plateNumber: "NSB-5503",
     carName: "Suzuki Ertiga",
     customerName: "Gina Perez",
     customerPhone: "+63 977 123 2033",

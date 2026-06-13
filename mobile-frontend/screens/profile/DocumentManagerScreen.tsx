@@ -19,6 +19,7 @@ import {
   storeRenterDocumentImage,
   useRenterDocuments,
 } from '@/lib/profile/document-store';
+import { pickImageFromDevice } from '@/lib/customer/image-picker';
 import type {
   RenterDocument,
   RenterDocumentId,
@@ -83,29 +84,14 @@ function pickImageFromWeb() {
   });
 }
 
-function createMockDocumentImage(document: RenterDocument) {
-  const label = document.shortName
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  const svg = encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
-      <rect width="900" height="560" rx="42" fill="#EEF4FF"/>
-      <rect x="54" y="60" width="792" height="440" rx="32" fill="#FFFFFF"/>
-      <text x="450" y="270" text-anchor="middle" font-family="Arial" font-size="54" font-weight="800" fill="#17315F">${label}</text>
-      <text x="450" y="330" text-anchor="middle" font-family="Arial" font-size="26" font-weight="700" fill="#346EF6">Stored image preview</text>
-    </svg>`,
-  );
-
-  return `data:image/svg+xml;charset=UTF-8,${svg}`;
-}
-
-async function selectDocumentImage(document: RenterDocument) {
+async function selectDocumentImage() {
   if (Platform.OS === 'web') {
     return pickImageFromWeb();
   }
 
-  return createMockDocumentImage(document);
+  const result = await pickImageFromDevice();
+
+  return result.uri;
 }
 
 function DocumentSummaryPill({
@@ -153,7 +139,7 @@ export function DocumentManagerScreen() {
       return;
     }
 
-    const imageUri = await selectDocumentImage(selectedDocument);
+    const imageUri = await selectDocumentImage();
     if (!imageUri) {
       return;
     }

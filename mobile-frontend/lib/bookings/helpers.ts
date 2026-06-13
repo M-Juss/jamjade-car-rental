@@ -39,7 +39,7 @@ export const matchesBookingSearch = (booking: Booking, searchTerm: string) => {
     return true;
   }
 
-  return [booking.id, booking.vehicleName, booking.plateNumber].join(' ').toLowerCase().includes(normalized);
+  return [booking.id, booking.vehicleName].join(' ').toLowerCase().includes(normalized);
 };
 
 export const getBookingSummaryCounts = (sourceBookings: Booking[]) => {

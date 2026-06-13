@@ -1,19 +1,25 @@
+export type VehicleUnavailableDateRange = {
+  startDate: string;
+  endDate: string;
+};
+
 export type Vehicle = {
   id: string;
   name: string;
+  brand: string;
   model: string;
-  year: number;
   pricePerDay: number;
-  status: 'available' | 'rented' | 'maintenance';
+  status: 'available' | 'rented' | 'maintenance' | 'unavailable';
+  cardImage: string | null;
   images: string[];
-  location: string;
   seats: number;
-  transmission: 'Automatic' | 'Manual';
-  fuelType: 'Gasoline' | 'Diesel';
+  transmission: string;
+  fuelType: string;
   color: string;
   features: string[];
   description: string;
   isMostBooked?: boolean;
+  unavailableDateRanges: VehicleUnavailableDateRange[];
   createdAt: string;
 };
 
@@ -24,6 +30,8 @@ export type BookingFormData = {
   numberOfDays: number;
   pickupOption: 'shop' | 'delivery';
   pickupLocation: string;
+  deliveryTime?: string;
+  returnLocation: string;
   driverOption: 'self_drive' | 'owners_driver';
   ownerDriverCoverage?: 'metro_manila' | 'outside_manila';
   totalAmount: number;
@@ -42,6 +50,7 @@ export type PriceBreakdown = {
   pricePerDay: number;
   numberOfDays: number;
   subtotal: number;
+  deliveryFee: number;
   ownerDriverFee: number;
   ownerDriverRatePerDay?: number;
   totalAmount: number;

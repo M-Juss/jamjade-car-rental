@@ -31,7 +31,7 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
     },
     ref,
   ) => (
-    <View className="gap-2">
+    <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
       <Text className="text-[12px] font-black uppercase text-[#6C7A96]">
         {label}
         {required ? <Text className="text-[#E5484D]"> *</Text> : null}
@@ -61,11 +61,13 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
           {...props}
         />
       </View>
-      {error || helperText ? (
-        <Text className={cx('px-1 text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
-          {error || helperText}
-        </Text>
-      ) : null}
+      <View className="absolute left-1 right-1 top-full mt-1.5">
+        {error || helperText ? (
+          <Text className={cx('text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
+            {error || helperText}
+          </Text>
+        ) : null}
+      </View>
     </View>
   ),
 );

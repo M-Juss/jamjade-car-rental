@@ -47,7 +47,6 @@ export default function FleetTracker() {
       const matchesSearch = [
         vehicle.bookingId,
         vehicle.customerName,
-        vehicle.plateNumber,
         vehicle.carName,
       ]
         .join(" ")
@@ -152,7 +151,7 @@ export default function FleetTracker() {
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Booking, customer, plate"
+                placeholder="Booking, customer, vehicle"
                 className="h-8 rounded-lg border-slate-200 pl-8 text-xs"
               />
             </div>
@@ -227,7 +226,7 @@ export default function FleetTracker() {
           {selectedVehicle ? (
             <>
               <SheetHeader className="shrink-0 border-b border-slate-200 px-6 py-4 md:px-8">
-                <SheetTitle>{selectedVehicle.carName} - {selectedVehicle.plateNumber}</SheetTitle>
+                <SheetTitle>{selectedVehicle.carName}</SheetTitle>
                 <SheetDescription>Live details and driver behavior for this rental.</SheetDescription>
               </SheetHeader>
               <div className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden px-6 py-5 md:px-8">

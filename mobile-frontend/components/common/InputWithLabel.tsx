@@ -43,8 +43,15 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
     const isSecure = Boolean(secureTextEntry && !isPasswordVisible);
     const isEditable = editable !== false && !disabled;
 
+    const hasMessage = Boolean(error || helperText);
+
     return (
-      <View className={cx('w-full gap-1.5', wrapperClassName)}>
+      <View
+        className={cx(
+          'relative w-full gap-1.5',
+          hasMessage ? 'mb-8' : 'mb-4',
+          wrapperClassName,
+        )}>
         <Text className="text-[12px] font-bold text-[#17315F]">
           {label}
           {required && <Text className="text-[#E5484D]"> *</Text>}
@@ -87,15 +94,17 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
           )}
         </View>
 
-        {(error || helperText) && (
-          <Text
-            className={cx(
-              'px-1 text-[11px] leading-[15px] text-[#667085]',
-              error && 'text-[#D92D20]',
-            )}>
-            {error || helperText}
-          </Text>
-        )}
+        <View className="absolute left-1 right-1 top-full mt-1.5">
+          {hasMessage ? (
+            <Text
+              className={cx(
+                'text-[11px] leading-[16px] text-[#667085]',
+                error && 'font-bold text-[#D92D20]',
+              )}>
+              {error || helperText}
+            </Text>
+          ) : null}
+        </View>
       </View>
     );
   },

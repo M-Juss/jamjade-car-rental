@@ -1,7 +1,10 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import {
   Cake,
+  CheckCircle2,
   FileText,
+  LogOut,
   Mail,
   MapPin,
   Phone,
@@ -9,24 +12,34 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react-native';
+import { useCallback, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import {
+  DocumentRequirementRow,
   ProfileActionRow,
+  ProfileEditButton,
   ProfileInfoRow,
+  ProfileKpiGrid,
   ProfileSectionCard,
 } from '@/components/profile';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ProfileEmergencyContactForm } from '@/forms/ProfileEmergencyContactForm';
+import { ProfilePersonalInformationForm } from '@/forms/ProfilePersonalInformationForm';
+import {
+  CUSTOMER_DOCUMENT_DEFINITIONS,
+  hasDocumentDraft,
+} from '@/lib/customer/document-verification';
 import {
   getCustomerFullName,
   getCustomerInitials,
-  getCustomerStatusLabel,
   useCustomer,
 } from '@/lib/customer/customer-store';
 import { formatDisplayDate } from '@/utils/calculateAge';
+import { useAuth } from '@/providers/AuthProvider';
 
 function valueOrMissing(value?: string | number | null) {
   if (value === null || value === undefined || value === '') {
@@ -41,15 +54,24 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const handleTabScroll = useAutoHideCustomerTabBar();
   const customer = useCustomer();
+  const { refreshProfile, signOut } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isPersonalEditorOpen, setIsPersonalEditorOpen] = useState(false);
+  const [isEmergencyEditorOpen, setIsEmergencyEditorOpen] = useState(false);
   const fullName = getCustomerFullName(customer) || 'New Customer';
   const initials = getCustomerInitials(customer);
   const emergencyName = customer.emergencyContact.name || 'Not provided';
   const relationship = customer.emergencyContact.relationship || 'Not provided';
-  const documentStatus = customer.documentVerificationStatus
-    .split('-')
-    .map((word) => word[0].toUpperCase() + word.slice(1))
-    .join(' ');
-  const canVerifyDocuments = !customer.isBelow18 && customer.selfDriveStatus !== 'verified';
+  const canVerifyDocuments = !customer.isBelow18;
+  const requiredDocumentsVerified = CUSTOMER_DOCUMENT_DEFINITIONS
+    .filter((document) => !document.optional || customer.documents.passportRequiredByAdmin)
+    .every((document) => customer.documentStatuses[document.id] === 'verified');
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfile().catch(() => undefined);
+    }, [refreshProfile]),
+  );
 
   return (
     <View className="flex-1 bg-[#F8FAFF]">
@@ -60,7 +82,7 @@ export default function ProfileScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
-          <CustomerTabHeader description="Your customer profile and self-drive readiness." />
+          <CustomerTabHeader description="Your profile and self-drive readiness." />
 
           <View className="mt-6 overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-[#17315F] p-5 shadow-xl shadow-[#17315F]/15">
             <View className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#346EF6]/35" />
@@ -86,27 +108,19 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <View className="mt-5 flex-row gap-2.5">
-            <View className="min-h-[104px] flex-1 rounded-[22px] border border-[#E6EEFF] bg-white p-3.5 shadow-md shadow-[#17315F]/5">
-              <Text className="text-[20px] font-black text-[#17315F]">
-                {customer.isProfileComplete ? 'Complete' : 'Missing'}
-              </Text>
-              <Text className="mt-1 text-[11px] font-bold leading-4 text-[#6C7A96]">Profile completion</Text>
-            </View>
-            <View className="min-h-[104px] flex-1 rounded-[22px] border border-[#E6EEFF] bg-white p-3.5 shadow-md shadow-[#17315F]/5">
-              <Text className="text-[20px] font-black text-[#17315F]">{valueOrMissing(customer.age)}</Text>
-              <Text className="mt-1 text-[11px] font-bold leading-4 text-[#6C7A96]">Computed age</Text>
-            </View>
-            <View className="min-h-[104px] flex-1 rounded-[22px] border border-[#E6EEFF] bg-white p-3.5 shadow-md shadow-[#17315F]/5">
-              <Text className="text-[15px] font-black leading-5 text-[#17315F]" numberOfLines={2}>
-                {getCustomerStatusLabel(customer)}
-              </Text>
-              <Text className="mt-1 text-[11px] font-bold leading-4 text-[#6C7A96]">Self-drive status</Text>
-            </View>
+          <View className="mt-5">
+            <ProfileKpiGrid
+              joinedDate={formatDisplayDate(customer.joinedAt)}
+              successfulBookings={customer.successfulBookings}
+              totalSpent={customer.totalSpent}
+            />
           </View>
 
           <View className="mt-6">
-            <ProfileSectionCard icon={ShieldCheck} title="Personal Information">
+            <ProfileSectionCard
+              headerAction={<ProfileEditButton onPress={() => setIsPersonalEditorOpen(true)} />}
+              icon={ShieldCheck}
+              title="Personal Information">
               <ProfileInfoRow icon={UserRound} label="Full Name" value={fullName} />
               <ProfileInfoRow icon={Mail} label="Email" value={customer.email} />
               <ProfileInfoRow icon={Phone} label="Contact Number" value={valueOrMissing(customer.contactNumber)} />
@@ -120,30 +134,37 @@ export default function ProfileScreen() {
           </View>
 
           <View className="mt-5">
-            <ProfileSectionCard icon={UsersRound} title="Emergency Contact">
-              <ProfileInfoRow icon={UserRound} label="Contact Name" value={emergencyName} />
-              <ProfileInfoRow icon={Phone} label="Contact Number" value={valueOrMissing(customer.emergencyContact.contactNumber)} />
-              <ProfileInfoRow icon={UsersRound} isLast label="Relationship" value={relationship} />
-            </ProfileSectionCard>
-          </View>
-
-          <View className="mt-5">
-            <ProfileSectionCard icon={FileText} title="Self-drive Verification">
-              <ProfileInfoRow icon={ShieldCheck} label="Self-drive Status" value={getCustomerStatusLabel(customer)} />
-              <ProfileInfoRow icon={FileText} isLast label="Document Verification" value={documentStatus} />
-              <View className="mt-4 gap-3">
+            <ProfileSectionCard
+              headerAction={
+                canVerifyDocuments ? (
+                  <ProfileEditButton
+                    icon={requiredDocumentsVerified ? CheckCircle2 : ShieldCheck}
+                    label={requiredDocumentsVerified ? 'Verified' : 'Verify'}
+                    onPress={() => router.push('/profile/documents' as Href)}
+                    tone={requiredDocumentsVerified ? 'success' : 'default'}
+                  />
+                ) : null
+              }
+              icon={FileText}
+              title="Self-drive Verification">
+              <View>
+                {CUSTOMER_DOCUMENT_DEFINITIONS.map((document, index) => (
+                  <DocumentRequirementRow
+                    compact
+                    definition={document}
+                    hasDraft={hasDocumentDraft(document.id, customer.documents)}
+                    isLast={index === CUSTOMER_DOCUMENT_DEFINITIONS.length - 1}
+                    key={document.id}
+                    status={customer.documentStatuses[document.id]}
+                  />
+                ))}
+              </View>
+              <View className="mt-3 gap-3">
                 {!customer.isProfileComplete ? (
                   <ProfileActionRow
                     icon={UserRound}
                     label="Complete missing profile info"
                     onPress={() => router.push('/onboarding/basic-info' as Href)}
-                  />
-                ) : null}
-                {canVerifyDocuments ? (
-                  <ProfileActionRow
-                    icon={FileText}
-                    label={customer.documentVerificationStatus === 'pending-review' ? 'View pending documents' : 'Verify documents'}
-                    onPress={() => router.push('/onboarding/document-verification' as Href)}
                   />
                 ) : null}
                 {customer.isBelow18 ? (
@@ -157,16 +178,53 @@ export default function ProfileScreen() {
             </ProfileSectionCard>
           </View>
 
-          <Text className="mt-4 text-center text-[11px] font-bold text-[#91A0B8]">Mock customer data only</Text>
+          <View className="mt-5">
+            <ProfileSectionCard
+              headerAction={<ProfileEditButton onPress={() => setIsEmergencyEditorOpen(true)} />}
+              icon={UsersRound}
+              title="Emergency Contact">
+              <ProfileInfoRow icon={UserRound} label="Contact Name" value={emergencyName} />
+              <ProfileInfoRow icon={Phone} label="Contact Number" value={valueOrMissing(customer.emergencyContact.contactNumber)} />
+              <ProfileInfoRow icon={UsersRound} isLast label="Relationship" value={relationship} />
+            </ProfileSectionCard>
+          </View>
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.replace('/landing' as Href)}
-            className="mt-8 min-h-[54px] items-center justify-center rounded-full border border-[#DDE8FF] bg-white px-5">
-            <Text className="text-[13px] font-black text-[#17315F]">Back to Landing</Text>
+            disabled={isLoggingOut}
+            onPress={async () => {
+              if (isLoggingOut) {
+                return;
+              }
+
+              setIsLoggingOut(true);
+
+              try {
+                await signOut();
+                router.replace('/login' as Href);
+              } finally {
+                setIsLoggingOut(false);
+              }
+            }}
+            className="mt-8 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-5">
+            <LogOut size={17} color="#DC2626" strokeWidth={2.45} />
+            <Text className="text-[13px] font-black text-[#DC2626]">
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      <ProfilePersonalInformationForm
+        customer={customer}
+        onClose={() => setIsPersonalEditorOpen(false)}
+        visible={isPersonalEditorOpen}
+      />
+      <ProfileEmergencyContactForm
+        contact={customer.emergencyContact}
+        onClose={() => setIsEmergencyEditorOpen(false)}
+        visible={isEmergencyEditorOpen}
+      />
     </View>
   );
 }
