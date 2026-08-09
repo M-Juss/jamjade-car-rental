@@ -12,7 +12,7 @@ type FleetDetailTabsProps = {
 export function FleetDetailTabs({ vehicle }: FleetDetailTabsProps) {
   return (
     <Tabs defaultValue="overview" className="flex h-full min-h-0 w-full flex-col gap-4 overflow-hidden">
-      <TabsList className="h-auto w-full shrink-0 justify-start overflow-x-auto rounded-xl border border-[#EEF1F8] bg-white/60 p-1">
+      <TabsList className="h-auto w-full shrink-0 justify-start overflow-x-auto rounded-xl border border-border bg-white/60 p-1">
         <TabsTrigger value="overview" className="text-[12px]">Overview</TabsTrigger>
         <TabsTrigger value="logs" className="text-[12px]">Driving Logs</TabsTrigger>
         <TabsTrigger value="geofence" className="text-[12px]">Geofencing</TabsTrigger>
@@ -59,10 +59,10 @@ export function FleetDetailTabs({ vehicle }: FleetDetailTabsProps) {
               <div className="space-y-3">
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-[#1A2340]">Retrieved Video Footage</p>
-                    <p className="text-xs text-[#8896A7]">Latest camera clips linked to this active rental.</p>
+                    <p className="text-sm font-bold text-foreground">Retrieved Video Footage</p>
+                    <p className="text-xs text-muted-foreground">Latest camera clips linked to this active rental.</p>
                   </div>
-                  <span className="rounded-full border border-[#DCE6FF] bg-[#EEF4FF] px-2.5 py-1 text-[10.5px] font-semibold text-[#346EF6]">
+                  <span className="rounded-full border border-[#DCE6FF] bg-muted px-2.5 py-1 text-[10.5px] font-semibold text-primary">
                     2 Clips
                   </span>
                 </div>
@@ -102,12 +102,12 @@ function InfoCard({
   return (
     <Card className="rounded-xl border-slate-200 bg-slate-50/70 shadow-none">
       <CardContent className="min-h-20 p-4">
-        <p className="text-[10px] font-medium leading-none text-[#8896A7]">{label}</p>
+        <p className="text-[10px] font-medium leading-none text-muted-foreground">{label}</p>
         <div className="mt-1 flex min-w-0 items-center gap-1">
-          {icon ? <span className="text-[#346EF6]">{icon}</span> : null}
-          <p className="truncate text-[12px] font-semibold leading-tight text-[#1A2340]" title={value}>{value}</p>
+          {icon ? <span className="text-primary">{icon}</span> : null}
+          <p className="truncate text-[12px] font-semibold leading-tight text-foreground" title={value}>{value}</p>
         </div>
-        {subValue ? <p className="mt-0.5 truncate text-[10px] leading-none text-[#8896A7]" title={subValue}>{subValue}</p> : null}
+        {subValue ? <p className="mt-0.5 truncate text-[10px] leading-none text-muted-foreground" title={subValue}>{subValue}</p> : null}
       </CardContent>
     </Card>
   );
@@ -115,10 +115,10 @@ function InfoCard({
 
 function MetricCard({ label, value, highlighted = false }: { label: string; value: string; highlighted?: boolean }) {
   return (
-    <Card className={`rounded-xl border-slate-200 shadow-none ${highlighted ? "bg-[#EEF4FF]" : "bg-slate-50/70"}`}>
+    <Card className={`rounded-xl border-slate-200 shadow-none ${highlighted ? "bg-muted" : "bg-slate-50/70"}`}>
       <CardContent className="p-4">
-        <p className="truncate text-[10px] font-medium leading-none text-[#8896A7]">{label}</p>
-        <p className={`mt-1 text-[13px] font-bold leading-none ${highlighted ? "text-[#346EF6]" : "text-[#1A2340]"}`}>{value}</p>
+        <p className="truncate text-[10px] font-medium leading-none text-muted-foreground">{label}</p>
+        <p className={`mt-1 text-[13px] font-bold leading-none ${highlighted ? "text-primary" : "text-foreground"}`}>{value}</p>
       </CardContent>
     </Card>
   );
@@ -129,13 +129,13 @@ function VideoClipCard({ title, time, description }: { title: string; time: stri
     <Card className="rounded-xl border-slate-200 bg-slate-50/70 shadow-none">
       <CardContent className="p-4">
       <div className="flex min-w-0 items-center justify-between gap-3">
-        <p className="inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-[#1A2340]">
-          <Video className="size-3.5 shrink-0 text-[#346EF6]" />
+        <p className="inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-foreground">
+          <Video className="size-3.5 shrink-0 text-primary" />
           <span className="truncate">{title}</span>
         </p>
-        <span className="shrink-0 text-[11px] text-[#8896A7]">{time}</span>
+        <span className="shrink-0 text-[11px] text-muted-foreground">{time}</span>
       </div>
-      <p className="mt-1 text-[11px] text-[#4A5568]">{description}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{description}</p>
       </CardContent>
     </Card>
   );

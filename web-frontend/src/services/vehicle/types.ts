@@ -1,4 +1,4 @@
-import type { VehicleFormValues } from "@/validations/vehicle.validation";
+import type { VehicleFormValues } from "@/validations/vehicle/schemas";
 
 export type VehicleStatus = "available" | "rented" | "maintenance" | "unavailable";
 

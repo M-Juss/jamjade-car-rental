@@ -207,17 +207,17 @@ export function TermsSignatureModal({
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
       <View className="flex-1 bg-[#0B1220]/55">
         <View
-          className="mt-auto max-h-[94%] overflow-hidden rounded-t-[34px] bg-[#F8FAFF]"
+          className="mt-auto max-h-[94%] overflow-hidden rounded-t-[34px] bg-background"
           style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
-          <View className="flex-row items-center gap-3 border-b border-[#E6EEFF] bg-white px-5 pb-4 pt-5">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-[#EEF4FF]">
+          <View className="flex-row items-center gap-3 border-b border-border bg-surface px-5 pb-4 pt-5">
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
               <FileSignature size={21} color="#346EF6" strokeWidth={2.4} />
             </View>
             <View className="min-w-0 flex-1">
-              <Text className="text-[19px] font-black text-[#17315F]">
+              <Text className="text-[19px] font-black text-foreground">
                 {step === 'terms' ? 'Terms and Conditions' : 'Customer Signature'}
               </Text>
-              <Text className="mt-1 text-[12px] font-semibold text-[#6C7A96]">
+              <Text className="mt-1 text-[12px] font-semibold text-muted-foreground">
                 {step === 'terms'
                   ? 'Review all rental conditions before signing.'
                   : 'Agreement to these terms requires your signature.'}
@@ -227,7 +227,7 @@ export function TermsSignatureModal({
               accessibilityLabel="Close terms and conditions"
               accessibilityRole="button"
               onPress={onClose}
-              className="h-10 w-10 items-center justify-center rounded-full bg-[#F3F7FF]">
+              className="h-10 w-10 items-center justify-center rounded-full bg-muted">
               <X size={19} color="#17315F" strokeWidth={2.5} />
             </Pressable>
           </View>
@@ -238,18 +238,18 @@ export function TermsSignatureModal({
                 <View className="pb-6 pt-5">
                   {TERMS_SECTIONS.map((section, sectionIndex) => (
                     <View className={sectionIndex === 0 ? '' : 'mt-5'} key={section.title}>
-                      <View className="mb-3 rounded-[18px] bg-[#17315F] px-4 py-3">
-                        <Text className="text-[13px] font-black leading-5 text-white">{section.title}</Text>
+                      <View className="mb-3 rounded-[18px] bg-foreground px-4 py-3">
+                        <Text className="text-[13px] font-black leading-5 text-surface">{section.title}</Text>
                       </View>
                       {section.terms.map((term, termIndex) => (
                         <View
-                          className="mb-3 flex-row items-start gap-3 rounded-[22px] border border-[#E6EEFF] bg-white p-4"
+                          className="mb-3 flex-row items-start gap-3 rounded-[22px] border border-border bg-surface p-4"
                           key={term.title}>
-                          <View className="h-7 w-7 items-center justify-center rounded-full bg-[#EEF4FF]">
-                            <Text className="text-[11px] font-black text-[#346EF6]">{termIndex + 1}</Text>
+                          <View className="h-7 w-7 items-center justify-center rounded-full bg-muted">
+                            <Text className="text-[11px] font-black text-primary">{termIndex + 1}</Text>
                           </View>
                           <View className="min-w-0 flex-1">
-                            <Text className="text-[13px] font-bold leading-5 text-[#17315F]">{term.title}</Text>
+                            <Text className="text-[13px] font-bold leading-5 text-foreground">{term.title}</Text>
                             {term.details?.map((detail) => (
                               <View className="mt-2 flex-row items-start gap-2" key={detail}>
                                 <CheckCircle2 size={14} color="#159947" strokeWidth={2.4} />
@@ -265,20 +265,20 @@ export function TermsSignatureModal({
                   ))}
                 </View>
               </ScrollView>
-              <View className="border-t border-[#E6EEFF] bg-white px-5 pt-4">
+              <View className="border-t border-border bg-surface px-5 pt-4">
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setStep('signature')}
-                  className="min-h-[58px] items-center justify-center rounded-full bg-[#346EF6]">
-                  <Text className="text-[15px] font-black text-white">Sign</Text>
+                  className="min-h-[58px] items-center justify-center rounded-full bg-primary">
+                  <Text className="text-[15px] font-black text-surface">Sign</Text>
                 </Pressable>
               </View>
             </>
           ) : (
             <View className="px-5 pb-2 pt-5">
-              <View className="rounded-[24px] border border-[#DDE8FF] bg-white p-4">
-                <Text className="text-[13px] font-black text-[#17315F]">Draw your signature below</Text>
-                <Text className="mt-1 text-[12px] font-semibold leading-5 text-[#6C7A96]">
+              <View className="rounded-[24px] border border-border bg-surface p-4">
+                <Text className="text-[13px] font-black text-foreground">Draw your signature below</Text>
+                <Text className="mt-1 text-[12px] font-semibold leading-5 text-muted-foreground">
                   Use your finger to sign. Submitting confirms that you have read and agree to all rental terms.
                 </Text>
                 <View
@@ -305,9 +305,9 @@ export function TermsSignatureModal({
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setStrokes([])}
-                  className="mt-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-full border border-[#DDE8FF] bg-[#F8FAFF]">
+                  className="mt-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-full border border-border bg-background">
                   <Eraser size={17} color="#346EF6" strokeWidth={2.4} />
-                  <Text className="text-[13px] font-black text-[#346EF6]">Clear Signature</Text>
+                  <Text className="text-[13px] font-black text-primary">Clear Signature</Text>
                 </Pressable>
               </View>
 
@@ -315,8 +315,8 @@ export function TermsSignatureModal({
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setStep('terms')}
-                  className="min-h-[56px] flex-1 items-center justify-center rounded-full border border-[#DDE8FF] bg-white">
-                  <Text className="text-[14px] font-black text-[#17315F]">Review Terms</Text>
+                  className="min-h-[56px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
+                  <Text className="text-[14px] font-black text-foreground">Review Terms</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -324,9 +324,9 @@ export function TermsSignatureModal({
                   disabled={!hasSignature}
                   onPress={handleSubmit}
                   className={`min-h-[56px] flex-1 items-center justify-center rounded-full ${
-                    hasSignature ? 'bg-[#346EF6]' : 'bg-[#C8D4E8]'
+                    hasSignature ? 'bg-primary' : 'bg-[#C8D4E8]'
                   }`}>
-                  <Text className="text-[14px] font-black text-white">Submit</Text>
+                  <Text className="text-[14px] font-black text-surface">Submit</Text>
                 </Pressable>
               </View>
             </View>

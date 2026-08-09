@@ -110,34 +110,34 @@ const categoryConfig: Record<NotificationCategory, CategoryConfig> = {
   booking: {
     label: 'Booking',
     icon: CalendarCheck,
-    iconWrapClass: 'bg-[#EEF4FF]',
+    iconWrapClass: 'bg-muted',
     iconColor: '#346EF6',
-    badgeClass: 'bg-[#EEF4FF] border-[#DDE8FF]',
-    badgeTextClass: 'text-[#346EF6]',
+    badgeClass: 'bg-muted border-border',
+    badgeTextClass: 'text-primary',
   },
   payment: {
     label: 'Payment',
     icon: CreditCard,
-    iconWrapClass: 'bg-[#ECFDF5]',
+    iconWrapClass: 'bg-success-surface',
     iconColor: '#047857',
-    badgeClass: 'bg-[#ECFDF5] border-[#BBF7D0]',
-    badgeTextClass: 'text-[#047857]',
+    badgeClass: 'bg-success-surface border-success-border',
+    badgeTextClass: 'text-success',
   },
   vehicle: {
     label: 'Vehicle',
     icon: Car,
-    iconWrapClass: 'bg-[#F3F7FF]',
+    iconWrapClass: 'bg-muted',
     iconColor: '#1F58E7',
-    badgeClass: 'bg-[#F3F7FF] border-[#DDE8FF]',
-    badgeTextClass: 'text-[#1F58E7]',
+    badgeClass: 'bg-muted border-border',
+    badgeTextClass: 'text-primary',
   },
   trip: {
     label: 'Trip',
     icon: Navigation,
-    iconWrapClass: 'bg-[#FFF7ED]',
+    iconWrapClass: 'bg-warning-surface',
     iconColor: '#C2410C',
-    badgeClass: 'bg-[#FFF7ED] border-[#FED7AA]',
-    badgeTextClass: 'text-[#C2410C]',
+    badgeClass: 'bg-warning-surface border-warning-border',
+    badgeTextClass: 'text-warning',
   },
   system: {
     label: 'System',
@@ -152,16 +152,16 @@ const categoryConfig: Record<NotificationCategory, CategoryConfig> = {
 const priorityConfig: Record<NotificationPriority, PriorityConfig> = {
   normal: {
     label: 'Normal',
-    dotClass: 'bg-[#346EF6]',
-    badgeClass: 'bg-[#EEF4FF] border-[#DDE8FF]',
-    textClass: 'text-[#346EF6]',
-    borderClass: 'border-l-[#346EF6]',
+    dotClass: 'bg-primary',
+    badgeClass: 'bg-muted border-border',
+    textClass: 'text-primary',
+    borderClass: 'border-l-primary',
   },
   success: {
     label: 'Success',
     dotClass: 'bg-[#16A34A]',
-    badgeClass: 'bg-[#ECFDF5] border-[#BBF7D0]',
-    textClass: 'text-[#047857]',
+    badgeClass: 'bg-success-surface border-success-border',
+    textClass: 'text-success',
     borderClass: 'border-l-[#16A34A]',
   },
   warning: {
@@ -173,10 +173,10 @@ const priorityConfig: Record<NotificationPriority, PriorityConfig> = {
   },
   urgent: {
     label: 'Urgent',
-    dotClass: 'bg-[#DC2626]',
-    badgeClass: 'bg-[#FEF2F2] border-[#FECACA]',
-    textClass: 'text-[#B91C1C]',
-    borderClass: 'border-l-[#DC2626]',
+    dotClass: 'bg-destructive',
+    badgeClass: 'bg-destructive-surface border-destructive-border',
+    textClass: 'text-destructive',
+    borderClass: 'border-l-destructive',
   },
 };
 
@@ -303,12 +303,12 @@ function NotificationHeader({
     <View>
       <CustomerTabHeader description="Catch booking, payment, and trip updates" />
 
-      <View className="mt-4 flex-row items-center justify-between gap-3 rounded-[24px] border border-[#DDE8FF] bg-white px-4 py-3 shadow-sm shadow-[#17315F]/5">
+      <View className="mt-4 flex-row items-center justify-between gap-3 rounded-[24px] border border-border bg-surface px-4 py-3 shadow-sm shadow-foreground/5">
         <View className="min-w-0 flex-1 flex-row items-center gap-3">
-          <View className={cx('h-3 w-3 rounded-full', unreadCount > 0 ? 'bg-[#346EF6]' : 'bg-[#CBD5E1]')} />
+          <View className={cx('h-3 w-3 rounded-full', unreadCount > 0 ? 'bg-primary' : 'bg-border')} />
           <View className="min-w-0 flex-1">
-            <Text className="text-[11px] font-black uppercase tracking-[0.45px] text-[#91A0B8]">Unread updates</Text>
-            <Text className="mt-0.5 text-[15px] font-black text-[#17315F]" numberOfLines={1}>
+            <Text className="text-[11px] font-black uppercase tracking-[0.45px] text-subtle-foreground">Unread updates</Text>
+            <Text className="mt-0.5 text-[15px] font-black text-foreground" numberOfLines={1}>
               {unreadCount > 0 ? `${unreadCount} need attention` : 'All caught up'}
             </Text>
           </View>
@@ -320,10 +320,10 @@ function NotificationHeader({
           onPress={onMarkAllAsRead}
           className={cx(
             'min-h-[40px] flex-row items-center justify-center gap-1.5 rounded-full px-3.5',
-            unreadCount > 0 ? 'bg-[#346EF6]' : 'bg-[#F1F5F9]',
+            unreadCount > 0 ? 'bg-primary' : 'bg-[#F1F5F9]',
           )}>
           <CheckCircle2 size={15} color={unreadCount > 0 ? '#FFFFFF' : '#94A3B8'} strokeWidth={2.5} />
-          <Text className={cx('text-[12px] font-black', unreadCount > 0 ? 'text-white' : 'text-[#91A0B8]')}>
+          <Text className={cx('text-[12px] font-black', unreadCount > 0 ? 'text-surface' : 'text-subtle-foreground')}>
             {unreadCount > 0 ? 'Mark read' : 'All read'}
           </Text>
         </Pressable>
@@ -344,14 +344,14 @@ function NotificationSearchBar({
   onFilterPress: () => void;
 }) {
   return (
-    <View className="min-h-[56px] flex-row items-center rounded-full border border-[#E6EEFF] bg-white px-4 shadow-md shadow-[#17315F]/5">
+    <View className="min-h-[56px] flex-row items-center rounded-full border border-border bg-surface px-4 shadow-md shadow-foreground/5">
       <Search size={20} color="#7B879C" strokeWidth={2.3} />
       <TextInput
         value={value}
         onChangeText={onSearchChange}
         placeholder="Search notifications..."
         placeholderTextColor="#9AA4B8"
-        className="min-w-0 flex-1 px-3 text-[14px] font-semibold text-[#17315F]"
+        className="min-w-0 flex-1 px-3 text-[14px] font-semibold text-foreground"
       />
       {value.trim() ? (
         <Pressable
@@ -359,7 +359,7 @@ function NotificationSearchBar({
           accessibilityRole="button"
           hitSlop={8}
           onPress={() => onSearchChange('')}
-          className="h-9 w-9 items-center justify-center rounded-full bg-[#EEF4FF]">
+          className="h-9 w-9 items-center justify-center rounded-full bg-muted">
           <X size={16} color="#346EF6" strokeWidth={2.5} />
         </Pressable>
       ) : null}
@@ -368,11 +368,11 @@ function NotificationSearchBar({
         accessibilityLabel={activeFilterCount > 0 ? `Open filters, ${activeFilterCount} active` : 'Open filters'}
         hitSlop={8}
         onPress={onFilterPress}
-        className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-[#EEF4FF]">
+        className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-muted">
         <SlidersHorizontal size={18} color="#346EF6" strokeWidth={2.5} />
         {activeFilterCount > 0 ? (
-          <View className="absolute -right-0.5 -top-0.5 h-5 min-w-5 items-center justify-center rounded-full bg-[#346EF6] px-1">
-            <Text className="text-[10px] font-black text-white">{activeFilterCount}</Text>
+          <View className="absolute -right-0.5 -top-0.5 h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1">
+            <Text className="text-[10px] font-black text-surface">{activeFilterCount}</Text>
           </View>
         ) : null}
       </Pressable>
@@ -383,7 +383,7 @@ function NotificationSearchBar({
 function FilterGroup({ children, title }: { title: string; children: ReactNode }) {
   return (
     <View className="mb-5">
-      <Text className="mb-3 text-[13px] font-black uppercase tracking-[0.9px] text-[#91A0B8]">{title}</Text>
+      <Text className="mb-3 text-[13px] font-black uppercase tracking-[0.9px] text-subtle-foreground">{title}</Text>
       <View className="flex-row flex-wrap gap-2">{children}</View>
     </View>
   );
@@ -404,9 +404,9 @@ function FilterChip({
       onPress={onPress}
       className={cx(
         'rounded-full border px-4 py-2.5',
-        isSelected ? 'border-[#346EF6] bg-[#346EF6]' : 'border-[#DDE8FF] bg-white',
+        isSelected ? 'border-primary bg-primary' : 'border-border bg-surface',
       )}>
-      <Text className={cx('text-[13px] font-black', isSelected ? 'text-white' : 'text-[#17315F]')}>{label}</Text>
+      <Text className={cx('text-[13px] font-black', isSelected ? 'text-surface' : 'text-foreground')}>{label}</Text>
     </Pressable>
   );
 }
@@ -438,10 +438,10 @@ function NotificationFilterSheet({
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <Pressable className="flex-1 justify-end bg-[#0B1220]/45" onPress={onClose}>
-        <Pressable className="max-h-[86%] rounded-t-[32px] bg-white px-5 pt-4" style={{ paddingBottom: insets.bottom + 28 }}>
+        <Pressable className="max-h-[86%] rounded-t-[32px] bg-surface px-5 pt-4" style={{ paddingBottom: insets.bottom + 28 }}>
           <View className="mb-5 h-1.5 w-12 self-center rounded-full bg-[#D7DDE8]" />
           <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-[22px] font-black text-[#17315F]">Filters</Text>
+            <Text className="text-[22px] font-black text-foreground">Filters</Text>
             <Pressable
               accessibilityRole="button"
               onPress={onClose}
@@ -492,8 +492,8 @@ function NotificationFilterSheet({
                 setDraftCategory('all');
                 setDraftFilters(defaultStatusFilters);
               }}
-              className="min-h-[54px] flex-1 items-center justify-center rounded-full border border-[#DDE8FF] bg-white">
-              <Text className="text-[15px] font-black text-[#17315F]">Reset</Text>
+              className="min-h-[54px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
+              <Text className="text-[15px] font-black text-foreground">Reset</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -501,8 +501,8 @@ function NotificationFilterSheet({
                 onApply(draftCategory, draftFilters);
                 onClose();
               }}
-              className="min-h-[54px] flex-1 items-center justify-center rounded-full bg-[#346EF6]">
-              <Text className="text-[15px] font-black text-white">Apply</Text>
+              className="min-h-[54px] flex-1 items-center justify-center rounded-full bg-primary">
+              <Text className="text-[15px] font-black text-surface">Apply</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -545,8 +545,8 @@ function NotificationCard({
       accessibilityLabel={`Open notification: ${notification.title}`}
       onPress={() => onOpen(notification)}
       className={cx(
-        'overflow-hidden rounded-[24px] border bg-white p-4 shadow-md shadow-[#17315F]/6',
-        notification.isRead ? 'border-[#E6EEFF]' : 'border-[#BFD5FF]',
+        'overflow-hidden rounded-[24px] border bg-surface p-4 shadow-md shadow-foreground/6',
+        notification.isRead ? 'border-border' : 'border-[#BFD5FF]',
       )}>
       <View className="flex-row items-start gap-3">
         <View className={cx('h-11 w-11 items-center justify-center rounded-full', category.iconWrapClass)}>
@@ -557,13 +557,13 @@ function NotificationCard({
           <View className="flex-row items-start gap-2">
             <Text
               className={cx(
-                'min-w-0 flex-1 text-[16px] leading-5 text-[#17315F]',
+                'min-w-0 flex-1 text-[16px] leading-5 text-foreground',
                 notification.isRead ? 'font-extrabold' : 'font-black',
               )}
               numberOfLines={2}>
               {notification.title}
             </Text>
-            {!notification.isRead ? <View className="mt-1 h-2.5 w-2.5 rounded-full bg-[#346EF6]" /> : null}
+            {!notification.isRead ? <View className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" /> : null}
           </View>
 
           <Text className="mt-2 text-[13px] font-semibold leading-5 text-[#53647F]" numberOfLines={2}>
@@ -574,7 +574,7 @@ function NotificationCard({
             <NotificationBadge className={category.badgeClass} textClassName={category.badgeTextClass}>
               {category.label}
             </NotificationBadge>
-            <Text className="min-w-0 flex-1 text-right text-[12px] font-bold text-[#91A0B8]" numberOfLines={1}>
+            <Text className="min-w-0 flex-1 text-right text-[12px] font-bold text-subtle-foreground" numberOfLines={1}>
               {formatTimeAgo(notification.createdAt)}
             </Text>
           </View>
@@ -596,9 +596,9 @@ function NotificationDetailRow({
   }
 
   return (
-    <View className="flex-row items-start justify-between gap-4 border-b border-[#E6EEFF] py-3">
-      <Text className="w-[112px] text-[11px] font-black uppercase text-[#91A0B8]">{label}</Text>
-      <Text className="min-w-0 flex-1 text-right text-[13px] font-bold leading-5 text-[#17315F]">{value}</Text>
+    <View className="flex-row items-start justify-between gap-4 border-b border-border py-3">
+      <Text className="w-[112px] text-[11px] font-black uppercase text-subtle-foreground">{label}</Text>
+      <Text className="min-w-0 flex-1 text-right text-[13px] font-bold leading-5 text-foreground">{value}</Text>
     </View>
   );
 }
@@ -632,7 +632,7 @@ function NotificationDetailModal({
         <Pressable accessibilityLabel="Close notification detail" className="absolute inset-0" onPress={onClose} />
 
         <View
-          className="max-h-[88%] rounded-t-[34px] bg-[#F8FAFF] px-5 pt-4"
+          className="max-h-[88%] rounded-t-[34px] bg-background px-5 pt-4"
           style={{ paddingBottom: insets.bottom + 18 }}>
           <View className="items-center">
             <View className="h-1.5 w-12 rounded-full bg-[#C8D4E8]" />
@@ -648,12 +648,12 @@ function NotificationDetailModal({
                 accessibilityLabel="Close"
                 accessibilityRole="button"
                 onPress={onClose}
-                className="h-10 w-10 items-center justify-center rounded-full bg-white">
+                className="h-10 w-10 items-center justify-center rounded-full bg-surface">
                 <X size={18} color="#17315F" strokeWidth={2.5} />
               </Pressable>
             </View>
 
-            <Text className="mt-4 text-[24px] font-black leading-[29px] text-[#17315F]">{notification.title}</Text>
+            <Text className="mt-4 text-[24px] font-black leading-[29px] text-foreground">{notification.title}</Text>
             <Text className="mt-2 text-[14px] font-semibold leading-6 text-[#53647F]">{notification.fullMessage}</Text>
 
             <View className="mt-4 flex-row flex-wrap items-center gap-2">
@@ -664,12 +664,12 @@ function NotificationDetailModal({
               <NotificationBadge className={priority.badgeClass} textClassName={priority.textClass}>
                 {priority.label}
               </NotificationBadge>
-              <NotificationBadge className="border-[#E6EEFF] bg-white" textClassName="text-[#6C7A96]">
+              <NotificationBadge className="border-border bg-surface" textClassName="text-muted-foreground">
                 {notification.isRead ? 'Read' : 'Unread'}
               </NotificationBadge>
             </View>
 
-            <View className="mt-5 rounded-[26px] border border-[#E6EEFF] bg-white px-4">
+            <View className="mt-5 rounded-[26px] border border-border bg-surface px-4">
               <NotificationDetailRow label="Date" value={formatDateTime(notification.createdAt)} />
               <NotificationDetailRow label="Booking ID" value={notification.bookingId} />
               <NotificationDetailRow label="Vehicle" value={notification.vehicleName} />
@@ -687,7 +687,7 @@ function NotificationDetailModal({
               onPress={() => onAction(notification)}
               className="mt-5 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full bg-[#065F46] px-4">
               <Info size={18} color="#FFFFFF" strokeWidth={2.5} />
-              <Text className="text-[14px] font-black text-white" numberOfLines={1}>
+              <Text className="text-[14px] font-black text-surface" numberOfLines={1}>
                 {notification.actionLabel ?? getDefaultActionLabel(notification.category)}
               </Text>
             </Pressable>
@@ -706,12 +706,12 @@ function NotificationEmptyState({
   onClearFilters: () => void;
 }) {
   return (
-    <View className="items-center rounded-[32px] border border-dashed border-[#C8D4E8] bg-white p-8">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-[#EEF4FF]">
+    <View className="items-center rounded-[32px] border border-dashed border-[#C8D4E8] bg-surface p-8">
+      <View className="h-16 w-16 items-center justify-center rounded-full bg-muted">
         <Bell size={30} color="#346EF6" strokeWidth={2.25} />
       </View>
-      <Text className="mt-4 text-center text-[20px] font-black text-[#17315F]">No notifications found</Text>
-      <Text className="mt-2 text-center text-[14px] font-semibold leading-5 text-[#6C7A96]">
+      <Text className="mt-4 text-center text-[20px] font-black text-foreground">No notifications found</Text>
+      <Text className="mt-2 text-center text-[14px] font-semibold leading-5 text-muted-foreground">
         You are all caught up. New updates will appear here.
       </Text>
       {showClearFilters ? (
@@ -720,7 +720,7 @@ function NotificationEmptyState({
           onPress={onClearFilters}
           className="mt-6 min-h-[52px] flex-row items-center justify-center gap-2 rounded-full bg-[#065F46] px-6">
           <X size={17} color="#FFFFFF" strokeWidth={2.45} />
-          <Text className="text-[15px] font-black text-white">Clear filters</Text>
+          <Text className="text-[15px] font-black text-surface">Clear filters</Text>
         </Pressable>
       ) : null}
     </View>
@@ -729,7 +729,7 @@ function NotificationEmptyState({
 
 function NotificationSkeletonCard() {
   return (
-    <View className="overflow-hidden rounded-[28px] border border-[#E6EEFF] bg-white p-4">
+    <View className="overflow-hidden rounded-[28px] border border-border bg-surface p-4">
       <View className="flex-row items-start gap-3">
         <View className="h-12 w-12 rounded-full bg-[#E9EFFA]" />
         <View className="min-w-0 flex-1">
@@ -749,7 +749,7 @@ function NotificationSkeletonCard() {
 function NotificationLoadingState() {
   return (
     <View className="gap-5">
-      <Text className="text-[13px] font-bold text-[#6C7A96]">Loading your notifications...</Text>
+      <Text className="text-[13px] font-bold text-muted-foreground">Loading your notifications...</Text>
       {[1, 2, 3, 4].map((item) => (
         <NotificationSkeletonCard key={item} />
       ))}
@@ -882,7 +882,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
@@ -902,18 +902,18 @@ export default function NotificationsScreen() {
           </View>
 
           <View className="mt-5 flex-row items-center justify-between gap-3">
-            <Text className="text-[13px] font-black text-[#17315F]">
+            <Text className="text-[13px] font-black text-foreground">
               {filteredNotifications.length} notification{filteredNotifications.length === 1 ? '' : 's'}
             </Text>
             <Pressable accessibilityRole="button" onPress={() => void loadNotifications()}>
-              <Text className="text-[12px] font-bold text-[#346EF6]">Refresh</Text>
+              <Text className="text-[12px] font-bold text-primary">Refresh</Text>
             </Pressable>
           </View>
 
           <View className="mt-4 gap-5">
             {loadError ? (
-              <View className="rounded-[24px] border border-[#FECACA] bg-[#FEF2F2] p-4">
-                <Text className="text-[13px] font-bold text-[#B91C1C]">{loadError}</Text>
+              <View className="rounded-[24px] border border-destructive-border bg-destructive-surface p-4">
+                <Text className="text-[13px] font-bold text-destructive">{loadError}</Text>
               </View>
             ) : null}
             {isLoading ? (

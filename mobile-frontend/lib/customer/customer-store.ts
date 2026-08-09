@@ -17,7 +17,11 @@ import type {
   EmergencyRelationship,
   SelfDriveStatus,
 } from '@/types/customer';
-import { calculateAge } from '@/utils/calculateAge';
+import {
+  BOOKING_AGE_RESTRICTION_MESSAGE,
+  calculateAge,
+  isBookingAgeEligible,
+} from '@/utils/calculateAge';
 
 const emptyEmergencyContact: EmergencyContact = {
   name: '',
@@ -119,7 +123,7 @@ function isCustomerProfileSetupComplete(currentCustomer: Customer) {
   return (
     hasCompleteBasicProfile(currentCustomer) &&
     (hasCompleteEmergencyContact(currentCustomer) || currentCustomer.emergencyContactSkipped) &&
-    (currentCustomer.isBelow18 || currentCustomer.drivingIntent !== null)
+    currentCustomer.drivingIntent !== null
   );
 }
 
@@ -420,7 +424,7 @@ export function finalizeCustomerProfileSetup() {
     return '/onboarding/emergency-contact' as const;
   }
 
-  if (!customer.isBelow18 && customer.drivingIntent === null) {
+  if (customer.drivingIntent === null) {
     return '/onboarding/driving-intent' as const;
   }
 
@@ -569,7 +573,7 @@ export function getSelfDriveBookingAvailability(currentCustomer: Customer) {
   if (currentCustomer.isBelow18 || currentCustomer.selfDriveStatus === 'not-eligible') {
     return {
       canSelfDrive: false,
-      message: 'Self-drive is only available for customers who are 18 years old and above.',
+      message: BOOKING_AGE_RESTRICTION_MESSAGE,
     };
   }
 
@@ -586,9 +590,33 @@ export function getSelfDriveBookingAvailability(currentCustomer: Customer) {
   };
 }
 
+export function getBookingAgeAvailability(currentCustomer: Customer) {
+  if (!currentCustomer.birthdate || currentCustomer.age === null) {
+    return {
+      canBook: false,
+      message: 'Complete your profile and add a valid birthdate before booking.',
+      reason: 'profile' as const,
+    };
+  }
+
+  if (!isBookingAgeEligible(currentCustomer.birthdate)) {
+    return {
+      canBook: false,
+      message: BOOKING_AGE_RESTRICTION_MESSAGE,
+      reason: 'age' as const,
+    };
+  }
+
+  return {
+    canBook: true,
+    message: '',
+    reason: null,
+  };
+}
+
 export function getCustomerStatusLabel(currentCustomer: Customer) {
   if (currentCustomer.selfDriveStatus === 'not-eligible') {
-    return "Owner's Driver Only";
+    return 'Booking Unavailable';
   }
 
   if (currentCustomer.selfDriveStatus === 'pending') {

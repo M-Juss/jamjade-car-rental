@@ -1,7 +1,8 @@
 import { FormInput } from '@/components/ui/FormInput';
-import { sanitizePhoneNumber } from '@/forms/validation';
+import { sanitizePhoneNumber } from '@/validation';
+import type { TextInputProps } from 'react-native';
 
-type PhoneInputProps = {
+type PhoneInputProps = Pick<TextInputProps, 'onBlur'> & {
   label?: string;
   value: string;
   onChangeText: (value: string) => void;
@@ -13,6 +14,7 @@ type PhoneInputProps = {
 export function PhoneInput({
   error,
   label = 'Contact Number',
+  onBlur,
   onChangeText,
   placeholder = '09XX XXX XXXX',
   required = false,
@@ -26,6 +28,7 @@ export function PhoneInput({
       keyboardType="phone-pad"
       label={label}
       maxLength={11}
+      onBlur={onBlur}
       onChangeText={(nextValue) => onChangeText(sanitizePhoneNumber(nextValue))}
       placeholder={placeholder}
       required={required}

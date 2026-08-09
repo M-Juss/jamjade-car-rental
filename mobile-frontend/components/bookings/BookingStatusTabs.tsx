@@ -26,7 +26,7 @@ export function BookingStatusTabs({
               'min-h-[42px] items-center justify-center rounded-full border px-4',
               isSelected ? 'border-[#065F46] bg-[#065F46]' : 'border-[#E5E7EB] bg-[#F3F4F6]',
             )}>
-            <Text className={cx('text-[13px] font-black', isSelected ? 'text-white' : 'text-[#17315F]')}>
+            <Text className={cx('text-[13px] font-black', isSelected ? 'text-surface' : 'text-foreground')}>
               {status}
             </Text>
           </Pressable>

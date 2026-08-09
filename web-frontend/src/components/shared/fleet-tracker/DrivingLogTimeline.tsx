@@ -9,7 +9,7 @@ const severityStyles: Record<DrivingLog["severity"], string> = {
 export function DrivingLogTimeline({ logs }: { logs: DrivingLog[] }) {
   if (!logs.length) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-200 p-3 text-[11px] text-[#8896A7]">
+      <div className="rounded-lg border border-dashed border-slate-200 p-3 text-[11px] text-muted-foreground">
         No driving logs yet.
       </div>
     );
@@ -25,10 +25,10 @@ export function DrivingLogTimeline({ logs }: { logs: DrivingLog[] }) {
           </div>
           <div className="flex-1 rounded-lg border border-slate-200 bg-slate-50/70 p-2 shadow-none">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold text-[#1A2340]">{log.type}</p>
-              <p className="text-[10px] text-[#8896A7]">{log.timestamp}</p>
+              <p className="text-[11px] font-semibold text-foreground">{log.type}</p>
+              <p className="text-[10px] text-muted-foreground">{log.timestamp}</p>
             </div>
-            <p className="mt-0.5 text-[10.5px] text-[#4A5568]">{log.note}</p>
+            <p className="mt-0.5 text-[10.5px] text-muted-foreground">{log.note}</p>
           </div>
         </div>
       ))}

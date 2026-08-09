@@ -27,7 +27,7 @@ type TableActionMenuProps = {
 };
 
 const itemVariantClass: Record<TableActionVariant, string> = {
-  default: "text-[#4A5568]",
+  default: "text-muted-foreground",
   success: "text-emerald-600",
   warning: "text-amber-600",
   danger: "text-rose-500",
@@ -40,15 +40,15 @@ export function TableActionMenu({ label, items }: TableActionMenuProps) {
         <button
           type="button"
           aria-label={label}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-[#A0AABF] transition-colors duration-150 hover:bg-[#EEF4FF] hover:text-[#346EF6]"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-subtle-foreground transition-colors duration-150 hover:bg-muted hover:text-primary"
         >
           <MoreHorizontal size={14} />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44 rounded-xl border-[#EEF1F8] p-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]">
+      <DropdownMenuContent align="end" className="w-44 rounded-xl border-border p-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]">
         {items.map((item) => (
           <Fragment key={item.label}>
-            {item.separatorBefore && <DropdownMenuSeparator className="my-1 bg-[#F0F2F7]" />}
+            {item.separatorBefore && <DropdownMenuSeparator className="my-1 bg-border" />}
             <DropdownMenuItem
               disabled={item.disabled}
               onClick={item.onClick}

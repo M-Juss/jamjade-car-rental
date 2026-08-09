@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\EmergencyContact;
 use App\Models\User;
+use App\Support\CustomerAgePolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -46,15 +47,13 @@ class ProfileService
             $drivingIntent = $data['driving_intent']
                 ?? ($wantsSelfDrive ? 'self_drive' : $profile->driving_intent);
 
-            if ($drivingIntent === 'self_drive' && $birthdate->age < 18) {
+            if (! CustomerAgePolicy::isEligible($birthdate)) {
                 throw ValidationException::withMessages([
-                    'birthdate' => ['Self-drive rental is only available for customers who are 18 years old and above.'],
+                    'birthdate' => [CustomerAgePolicy::MESSAGE],
                 ]);
             }
 
-            if ($birthdate->age < 18) {
-                $drivingIntent = 'owner_driver';
-            } elseif (! $drivingIntent) {
+            if (! $drivingIntent) {
                 throw ValidationException::withMessages([
                     'driving_intent' => ['Choose a driving option before completing the profile.'],
                 ]);
@@ -102,6 +101,15 @@ class ProfileService
                 ->filter(fn ($value) => $value !== null)
                 ->all();
 
+            if (
+                array_key_exists('birthdate', $profileData)
+                && ! CustomerAgePolicy::isEligible($profileData['birthdate'])
+            ) {
+                throw ValidationException::withMessages([
+                    'birthdate' => [CustomerAgePolicy::MESSAGE],
+                ]);
+            }
+
             if ($profilePicture) {
                 $profileData['profile_picture'] = $profilePicture->store('profiles', 'public');
             }
@@ -147,7 +155,7 @@ class ProfileService
     {
         $profile = $user->customerProfile;
 
-        if (! $profile || ! $profile->birthdate || $profile->birthdate->age < 18) {
+        if (! $profile || ! CustomerAgePolicy::isEligible($profile->birthdate)) {
             return false;
         }
 

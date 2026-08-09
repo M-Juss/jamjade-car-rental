@@ -20,12 +20,12 @@ function DetailLine({
 }) {
   return (
     <View className="flex-row items-start gap-2">
-      <View className="mt-0.5 h-7 w-7 items-center justify-center rounded-full bg-[#F3F7FF]">
+      <View className="mt-0.5 h-7 w-7 items-center justify-center rounded-full bg-muted">
         <Icon size={14} color="#346EF6" strokeWidth={2.45} />
       </View>
       <View className="min-w-0 flex-1">
-        <Text className="text-[10px] font-black uppercase text-[#91A0B8]">{label}</Text>
-        <Text className="mt-0.5 text-[12px] font-bold leading-5 text-[#17315F]">{value}</Text>
+        <Text className="text-[10px] font-black uppercase text-subtle-foreground">{label}</Text>
+        <Text className="mt-0.5 text-[12px] font-bold leading-5 text-foreground">{value}</Text>
       </View>
     </View>
   );
@@ -57,7 +57,7 @@ export function BookingCard({
   };
 
   return (
-    <View className="overflow-hidden rounded-[30px] border border-[#E6EEFF] bg-white p-4 shadow-xl shadow-[#17315F]/10">
+    <View className="overflow-hidden rounded-[30px] border border-border bg-surface p-4 shadow-xl shadow-foreground/10">
       <Pressable accessibilityRole="button" accessibilityLabel={`View ${booking.id} details`} onPress={() => onViewDetails(booking)}>
         <Image
           source={{ uri: `${booking.image}?auto=format&fit=crop&w=1200&q=88` }}
@@ -71,7 +71,7 @@ export function BookingCard({
           <Text className="text-[22px] font-black leading-[26px] text-[#10203F]" numberOfLines={2}>
             {booking.vehicleName}
           </Text>
-          <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">Booking ID: {booking.id}</Text>
+          <Text className="mt-1 text-[12px] font-bold text-muted-foreground">Booking ID: {booking.id}</Text>
         </View>
         <BookingStatusBadge status={booking.status} compact />
       </View>
@@ -83,14 +83,14 @@ export function BookingCard({
       </View>
 
       {hasTelematics ? (
-        <View className="mt-4 rounded-[24px] border border-[#BBF7D0] bg-[#ECFDF5] p-4">
+        <View className="mt-4 rounded-[24px] border border-success-border bg-success-surface p-4">
           <View className="flex-row items-start gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
               <Navigation size={20} color="#047857" strokeWidth={2.5} />
             </View>
             <View className="min-w-0 flex-1">
               <Text className="text-[15px] font-black text-[#065F46]">Telematics Enabled</Text>
-              <Text className="mt-1 text-[12px] font-bold leading-5 text-[#047857]">
+              <Text className="mt-1 text-[12px] font-bold leading-5 text-success">
                 This rental is active. You can now open the Telematics Tab to start or monitor your trip.
               </Text>
               <ActionButton
@@ -119,14 +119,14 @@ export function BookingCard({
         <View className="min-w-0 flex-1">
           <View className="flex-row items-center gap-1.5">
             <ReceiptText size={14} color="#91A0B8" strokeWidth={2.4} />
-            <Text className="text-[11px] font-black uppercase text-[#91A0B8]">Total Amount</Text>
+            <Text className="text-[11px] font-black uppercase text-subtle-foreground">Total Amount</Text>
           </View>
-          <Text className="mt-1 text-[23px] font-black text-[#17315F]">{formatPeso(booking.totalAmount)}</Text>
+          <Text className="mt-1 text-[23px] font-black text-foreground">{formatPeso(booking.totalAmount)}</Text>
         </View>
         <View className="items-end gap-1.5">
           <View className="flex-row items-center gap-1.5">
             <Tag size={13} color="#91A0B8" strokeWidth={2.4} />
-            <Text className="text-[10px] font-black uppercase text-[#91A0B8]">Payment</Text>
+            <Text className="text-[10px] font-black uppercase text-subtle-foreground">Payment</Text>
           </View>
           <PaymentStatusBadge status={booking.paymentStatus} />
         </View>

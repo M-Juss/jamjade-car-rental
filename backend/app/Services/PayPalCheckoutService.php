@@ -206,6 +206,8 @@ class PayPalCheckoutService
             return $this->loadBooking($checkout->booking_id);
         }
 
+        $this->bookingService->assertCustomerAgeEligible($user);
+
         if ($checkout->booking->status === BookingStatus::Pending) {
             $this->bookingService->assertVehicleScheduleAvailable(
                 $checkout->booking->vehicle_id,

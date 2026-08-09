@@ -1,5 +1,10 @@
-import { BookingForm } from '@/forms/BookingForm';
+import { AuthenticatedOnly } from '@/components/auth/AuthenticatedOnly';
+import { BookingForm } from '@/forms/booking/BookingForm';
 
 export default function BookingFormScreen() {
-  return <BookingForm />;
+  return (
+    <AuthenticatedOnly>
+      <BookingForm />
+    </AuthenticatedOnly>
+  );
 }

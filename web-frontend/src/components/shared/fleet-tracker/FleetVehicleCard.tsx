@@ -15,28 +15,28 @@ export function FleetVehicleCard({ vehicle, isSelected, onSelect }: FleetVehicle
   return (
     <Card
       onClick={() => onSelect(vehicle.id)}
-      className={`cursor-pointer rounded-xl border shadow-none transition-all hover:border-[#346EF6]/40 hover:bg-[#EEF4FF]/40 ${
-        isSelected ? "border-[#346EF6]/40 bg-[#EEF4FF]/60" : "border-slate-100 bg-white"
+      className={`cursor-pointer rounded-xl border shadow-none transition-all hover:border-primary/40 hover:bg-muted/40 ${
+        isSelected ? "border-primary/40 bg-muted/60" : "border-slate-100 bg-white"
       }`}
     >
       <CardContent className="space-y-2 p-3">
         <div className="flex items-start gap-2">
-          <Avatar className="h-9 w-9 shrink-0 rounded-lg bg-[#EEF4FF]">
-            <AvatarFallback className="rounded-lg bg-[#EEF4FF] text-[#346EF6]">
+          <Avatar className="h-9 w-9 shrink-0 rounded-lg bg-muted">
+            <AvatarFallback className="rounded-lg bg-muted text-primary">
               <CarFront className="size-4" />
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold leading-tight text-[#1A2340]">{vehicle.carName}</p>
-            <p className="truncate text-[11px] text-[#8896A7]">{vehicle.bookingId}</p>
+            <p className="truncate text-[13px] font-semibold leading-tight text-foreground">{vehicle.carName}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{vehicle.bookingId}</p>
           </div>
         </div>
 
-        <div className="space-y-1 text-[11px] text-[#4A5568]">
-          <p className="truncate">Customer: <span className="font-medium text-[#1A2340]">{vehicle.customerName}</span></p>
+        <div className="space-y-1 text-[11px] text-muted-foreground">
+          <p className="truncate">Customer: <span className="font-medium text-foreground">{vehicle.customerName}</span></p>
           <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1"><Gauge className="size-3 text-[#346EF6]" />{vehicle.speedKph} kph</span>
-            <span className="truncate text-[#8896A7]">{vehicle.lastUpdate}</span>
+            <span className="inline-flex items-center gap-1"><Gauge className="size-3 text-primary" />{vehicle.speedKph} kph</span>
+            <span className="truncate text-muted-foreground">{vehicle.lastUpdate}</span>
           </div>
         </div>
 

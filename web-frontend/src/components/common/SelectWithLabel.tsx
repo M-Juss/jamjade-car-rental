@@ -23,6 +23,7 @@ type SelectWithLabelProps = {
   onValueChange?: (value: string) => void;
   disabled?: boolean;
   required?: boolean;
+  error?: string;
   wrapperClassName?: string;
   labelClassName?: string;
   triggerClassName?: string;
@@ -39,6 +40,7 @@ export function SelectWithLabel({
   onValueChange,
   disabled = false,
   required = false,
+  error,
   wrapperClassName,
   labelClassName,
   triggerClassName,
@@ -49,7 +51,7 @@ export function SelectWithLabel({
       <Label
         htmlFor={id}
         className={cn(
-          "text-[11px] font-medium uppercase tracking-[0.08em] text-[#A0AABF]",
+          "text-[11px] font-medium uppercase tracking-[0.08em] text-subtle-foreground",
           labelClassName,
         )}
       >
@@ -64,10 +66,12 @@ export function SelectWithLabel({
       >
         <SelectTrigger
           id={id}
+          aria-invalid={Boolean(error)}
           className={cn(
-            "h-9 w-full rounded-xl border-[#E8ECF4] bg-[#F8F9FC] px-3 text-[12.5px] text-[#4A5568] shadow-none",
-            "data-[placeholder]:text-[#A0AABF] focus:ring-1 focus:ring-[#346EF6]",
+            "h-9 w-full rounded-xl border-border bg-background px-3 text-[12.5px] text-muted-foreground shadow-none",
+            "data-[placeholder]:text-subtle-foreground focus:ring-1 focus:ring-primary",
             "disabled:opacity-50 disabled:cursor-not-allowed",
+            error && "border-destructive focus:ring-destructive/30",
             triggerClassName,
           )}
         >
@@ -76,7 +80,7 @@ export function SelectWithLabel({
         <SelectContent
           align="start"
           className={cn(
-            "w-full min-w-[var(--radix-select-trigger-width)] rounded-xl border-[#E8ECF4]",
+            "w-full min-w-[var(--radix-select-trigger-width)] rounded-xl border-border",
             contentClassName,
           )}
         >
@@ -84,13 +88,18 @@ export function SelectWithLabel({
             <SelectItem
               key={option.value}
               value={option.value}
-              className="text-[12.5px] text-[#4A5568] rounded-lg"
+              className="text-[12.5px] text-muted-foreground rounded-lg"
             >
               {option.label}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
+      {error ? (
+        <p className="text-[10.5px] font-medium leading-tight text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

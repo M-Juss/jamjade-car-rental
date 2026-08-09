@@ -38,6 +38,27 @@ function tryParseJson(text: string) {
   }
 }
 
+function getErrorPayload(payload: unknown) {
+  if (!payload || typeof payload !== 'object') {
+    return {};
+  }
+
+  const errorPayload = payload as {
+    message?: unknown;
+    errors?: unknown;
+  };
+  const message =
+    typeof errorPayload.message === 'string' ? errorPayload.message : undefined;
+  const errors =
+    errorPayload.errors &&
+    typeof errorPayload.errors === 'object' &&
+    !Array.isArray(errorPayload.errors)
+      ? (errorPayload.errors as Record<string, string[]>)
+      : undefined;
+
+  return { errors, message };
+}
+
 function getApiErrorMessage(status: number) {
   if (status === 401 || status === 419) {
     return 'Your session expired. Please sign in again.';
@@ -169,7 +190,13 @@ export async function apiFetch<TData = unknown>(
   const payload = text ? tryParseJson(text) : null;
 
   if (!response.ok) {
-    throw new ApiError(getApiErrorMessage(response.status), response.status);
+    const { errors, message } = getErrorPayload(payload);
+
+    throw new ApiError(
+      message || getApiErrorMessage(response.status),
+      response.status,
+      errors,
+    );
   }
 
   return payload as ApiResponse<TData>;

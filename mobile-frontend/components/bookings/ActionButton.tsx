@@ -7,33 +7,33 @@ export type ActionButtonVariant = 'primary' | 'secondary' | 'soft' | 'success' |
 
 const variantStyles = {
   primary: {
-    button: 'border-[#346EF6] bg-[#346EF6] shadow-md shadow-[#346EF6]/20',
-    text: 'text-white',
+    button: 'border-primary bg-primary shadow-md shadow-primary/20',
+    text: 'text-surface',
     icon: '#FFFFFF',
   },
   secondary: {
-    button: 'border-[#DDE8FF] bg-white',
-    text: 'text-[#17315F]',
+    button: 'border-border bg-surface',
+    text: 'text-foreground',
     icon: '#17315F',
   },
   soft: {
-    button: 'border-[#DDE8FF] bg-[#EEF4FF]',
-    text: 'text-[#346EF6]',
+    button: 'border-border bg-muted',
+    text: 'text-primary',
     icon: '#346EF6',
   },
   success: {
-    button: 'border-[#BBF7D0] bg-[#ECFDF5]',
-    text: 'text-[#047857]',
+    button: 'border-success-border bg-success-surface',
+    text: 'text-success',
     icon: '#047857',
   },
   warning: {
-    button: 'border-[#FED7AA] bg-[#FFF7ED]',
-    text: 'text-[#C2410C]',
+    button: 'border-warning-border bg-warning-surface',
+    text: 'text-warning',
     icon: '#C2410C',
   },
   danger: {
-    button: 'border-[#FECACA] bg-[#FEF2F2]',
-    text: 'text-[#B91C1C]',
+    button: 'border-destructive-border bg-destructive-surface',
+    text: 'text-destructive',
     icon: '#B91C1C',
   },
 } satisfies Record<ActionButtonVariant, { button: string; text: string; icon: string }>;

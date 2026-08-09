@@ -18,7 +18,7 @@ import { getVehicle, type VehicleRecord } from "@/services/vehicle";
 
 const statusStyle: Record<string, string> = {
   Available: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Rented: "bg-[#EEF4FF] text-[#346EF6] border-blue-200",
+  Rented: "bg-muted text-primary border-blue-200",
   Maintenance: "bg-amber-50 text-amber-700 border-amber-200",
   Unavailable: "bg-slate-100 text-slate-600 border-slate-200",
 };
@@ -78,11 +78,11 @@ export default function VehicleDetails() {
   });
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-[#F5F5F5] min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-background min-h-screen">
       <motion.div {...fadeUp(0)} className="flex items-center gap-2">
         <button
           onClick={() => router.push("/owner/vehicle")}
-          className="flex items-center gap-1.5 text-[12.5px] text-[#8896A7] hover:text-[#346EF6] transition-colors duration-150 group"
+          className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground hover:text-primary transition-colors duration-150 group"
         >
           <ChevronLeft
             size={15}
@@ -90,15 +90,15 @@ export default function VehicleDetails() {
           />
           Vehicle Management
         </button>
-        <span className="text-[#D1D5E0] text-sm">/</span>
-        <span className="text-[12.5px] font-semibold text-[#1A2340]">
+        <span className="text-border text-sm">/</span>
+        <span className="text-[12.5px] font-semibold text-foreground">
           {vehicle?.name ?? "Vehicle Details"}
         </span>
       </motion.div>
 
       {isLoading ? (
         <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
-          <CardContent className="p-8 text-center text-[13px] font-medium text-[#8896A7]">
+          <CardContent className="p-8 text-center text-[13px] font-medium text-muted-foreground">
             Loading vehicle...
           </CardContent>
         </Card>
@@ -114,7 +114,7 @@ export default function VehicleDetails() {
             <Card className="rounded-2xl border-0 shadow-[0_2px_16px_rgba(0,0,0,0.06)] bg-white overflow-hidden">
               <CardContent className="p-5 md:p-6">
                 <div className="flex flex-col sm:flex-row items-start gap-5">
-                  <div className="h-20 w-20 overflow-hidden rounded-2xl bg-[#F5F5F5] flex-shrink-0 shadow-inner">
+                  <div className="h-20 w-20 overflow-hidden rounded-2xl bg-background flex-shrink-0 shadow-inner">
                     {getVehicleImage(vehicle) ? (
                       <div
                         aria-label={vehicle.name}
@@ -130,7 +130,7 @@ export default function VehicleDetails() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h2 className="text-xl font-bold text-[#1A2340]">
+                      <h2 className="text-xl font-bold text-foreground">
                         {vehicle.name}
                       </h2>
                       <span
@@ -139,12 +139,12 @@ export default function VehicleDetails() {
                         {getStatusLabel(vehicle)}
                       </span>
                     </div>
-                    <p className="text-[12.5px] text-[#8896A7]">
+                    <p className="text-[12.5px] text-muted-foreground">
                       {[vehicle.brand, vehicle.model].filter(Boolean).join(" · ")}
                     </p>
-                    <p className="text-[20px] font-bold text-[#346EF6] mt-2">
+                    <p className="text-[20px] font-bold text-primary mt-2">
                       ₱{vehicle.pricePerDay.toLocaleString()}
-                      <span className="text-[13px] font-medium text-[#8896A7]">
+                      <span className="text-[13px] font-medium text-muted-foreground">
                         {" "}
                         / day
                       </span>
@@ -159,12 +159,12 @@ export default function VehicleDetails() {
             {vehicle.description && (
               <Card className="rounded-2xl border-0 shadow-[0_2px_12px_rgba(0,0,0,0.05)] bg-white">
                 <CardHeader className="pb-1 px-5 pt-5">
-                  <CardTitle className="text-[13px] font-bold text-[#1A2340] flex items-center gap-2">
-                    <FileText size={14} className="text-[#346EF6]" /> Description
+                  <CardTitle className="text-[13px] font-bold text-foreground flex items-center gap-2">
+                    <FileText size={14} className="text-primary" /> Description
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
-                  <p className="text-[12.5px] leading-6 text-[#4A5568]">
+                  <p className="text-[12.5px] leading-6 text-muted-foreground">
                     {vehicle.description}
                   </p>
                 </CardContent>
@@ -173,8 +173,8 @@ export default function VehicleDetails() {
 
             <Card className="rounded-2xl border-0 shadow-[0_2px_12px_rgba(0,0,0,0.05)] bg-white">
               <CardHeader className="pb-1 px-5 pt-5">
-                <CardTitle className="text-[13px] font-bold text-[#1A2340] flex items-center gap-2">
-                  <Settings2 size={14} className="text-[#346EF6]" /> Specifications
+                <CardTitle className="text-[13px] font-bold text-foreground flex items-center gap-2">
+                  <Settings2 size={14} className="text-primary" /> Specifications
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-5 pb-5">
@@ -195,16 +195,16 @@ export default function VehicleDetails() {
                   ].map(({ icon: Icon, label, val }) => (
                     <div
                       key={label}
-                      className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-[#F8F9FC] hover:bg-[#F0F4FF] transition-colors duration-150"
+                      className="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-background hover:bg-[#F0F4FF] transition-colors duration-150"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-[#EEF4FF] flex items-center justify-center flex-shrink-0">
-                        <Icon size={14} className="text-[#346EF6]" />
+                      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <Icon size={14} className="text-primary" />
                       </div>
                       <div>
-                        <p className="text-[10.5px] text-[#A0AABF] font-medium">
+                        <p className="text-[10.5px] text-subtle-foreground font-medium">
                           {label}
                         </p>
-                        <p className="text-[12.5px] font-semibold text-[#1A2340]">
+                        <p className="text-[12.5px] font-semibold text-foreground">
                           {val}
                         </p>
                       </div>
@@ -216,8 +216,8 @@ export default function VehicleDetails() {
 
             <Card className="rounded-2xl border-0 shadow-[0_2px_12px_rgba(0,0,0,0.05)] bg-white">
               <CardHeader className="pb-1 px-5 pt-5">
-                <CardTitle className="text-[13px] font-bold text-[#1A2340] flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-[#346EF6]" /> Features
+                <CardTitle className="text-[13px] font-bold text-foreground flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-primary" /> Features
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-5 pb-5">
@@ -226,21 +226,21 @@ export default function VehicleDetails() {
                     {vehicle.features.map((feature) => (
                       <span
                         key={feature}
-                        className="text-[11.5px] font-medium px-3 py-1.5 rounded-xl bg-[#EEF4FF] text-[#346EF6] border border-blue-100"
+                        className="text-[11.5px] font-medium px-3 py-1.5 rounded-xl bg-muted text-primary border border-blue-100"
                       >
                         {feature}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12.5px] text-[#8896A7]">No features listed.</p>
+                  <p className="text-[12.5px] text-muted-foreground">No features listed.</p>
                 )}
               </CardContent>
             </Card>
 
             <Card className="rounded-2xl border-0 shadow-[0_2px_12px_rgba(0,0,0,0.05)] bg-white">
               <CardHeader className="pb-1 px-5 pt-5">
-                <CardTitle className="text-[13px] font-bold text-[#1A2340]">
+                <CardTitle className="text-[13px] font-bold text-foreground">
                   Image Gallery
                 </CardTitle>
               </CardHeader>
@@ -248,7 +248,7 @@ export default function VehicleDetails() {
                 {vehicle.images.length > 0 ? (
                   <VehicleImageGallery images={vehicle.images} alt={vehicle.name} />
                 ) : (
-                  <p className="text-[12.5px] text-[#8896A7]">No images uploaded.</p>
+                  <p className="text-[12.5px] text-muted-foreground">No images uploaded.</p>
                 )}
               </CardContent>
             </Card>

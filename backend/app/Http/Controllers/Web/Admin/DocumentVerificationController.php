@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Web\Admin;
 
 use App\Enums\DocumentStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Document\ListDocumentsRequest;
+use App\Http\Requests\Admin\Document\RejectDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Models\CustomerDocument;
 use App\Services\DocumentVerificationService;
@@ -17,14 +19,17 @@ class DocumentVerificationController extends Controller
 
     public function __construct(private readonly DocumentVerificationService $documentService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListDocumentsRequest $request): JsonResponse
     {
+        $status = $request->validated('status');
+        $perPage = $request->integer('per_page', 15);
+
         $documents = CustomerDocument::query()
             ->with(['user.customerProfile', 'reviewer'])
             ->whereIn('document_type', CustomerDocument::ALLOWED_DOCUMENT_TYPES)
-            ->when($request->string('status')->toString(), fn ($query, string $status) => $query->where('status', $status))
+            ->when($status, fn ($query, string $status) => $query->where('status', $status))
             ->latest()
-            ->paginate((int) $request->integer('per_page', 15));
+            ->paginate($perPage);
 
         return $this->paginated('Documents fetched successfully.', $documents, DocumentResource::class);
     }
@@ -36,17 +41,13 @@ class DocumentVerificationController extends Controller
         return $this->success('Document approved successfully.', new DocumentResource($document));
     }
 
-    public function reject(Request $request, CustomerDocument $document): JsonResponse
+    public function reject(RejectDocumentRequest $request, CustomerDocument $document): JsonResponse
     {
-        $validated = $request->validate([
-            'rejection_reason' => ['required', 'string', 'max:1000'],
-        ]);
-
         $document = $this->documentService->review(
             $document,
             $request->user(),
             DocumentStatus::Rejected,
-            $validated['rejection_reason']
+            $request->validated('rejection_reason')
         );
 
         return $this->success('Document rejected successfully.', new DocumentResource($document));

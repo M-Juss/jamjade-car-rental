@@ -52,15 +52,15 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
           hasMessage ? 'mb-8' : 'mb-4',
           wrapperClassName,
         )}>
-        <Text className="text-[12px] font-bold text-[#17315F]">
+        <Text className="text-[12px] font-bold text-foreground">
           {label}
-          {required && <Text className="text-[#E5484D]"> *</Text>}
+          {required && <Text className="text-destructive"> *</Text>}
         </Text>
 
         <View
           className={cx(
-            'min-h-[48px] flex-row items-center rounded-full border border-[#E5EAF2] bg-white px-4',
-            error && 'border-[#F4A6A6] bg-[#FFF8F8]',
+            'min-h-[48px] flex-row items-center rounded-full border border-[#E5EAF2] bg-surface px-4',
+            error && 'border-destructive-border bg-destructive-surface',
             !isEditable && 'opacity-[0.62]',
           )}>
           {icon && (
@@ -74,7 +74,7 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
             editable={isEditable}
             placeholderTextColor="#9AA4B8"
             secureTextEntry={isSecure}
-            className={cx('min-w-0 flex-1 py-0 text-[14px] font-medium text-[#17315F]', inputClassName)}
+            className={cx('min-w-0 flex-1 py-0 text-[14px] font-medium text-foreground', inputClassName)}
             {...props}
           />
 
@@ -99,7 +99,7 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
             <Text
               className={cx(
                 'text-[11px] leading-[16px] text-[#667085]',
-                error && 'font-bold text-[#D92D20]',
+                error && 'font-bold text-destructive',
               )}>
               {error || helperText}
             </Text>

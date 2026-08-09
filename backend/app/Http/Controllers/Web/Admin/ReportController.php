@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Report\ReportRequest;
 use App\Services\ReportService;
 use App\Traits\ApiResponseTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
@@ -16,7 +16,7 @@ class ReportController extends Controller
 
     public function __construct(private readonly ReportService $reportService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ReportRequest $request): JsonResponse
     {
         $range = $this->range($request);
 
@@ -26,7 +26,7 @@ class ReportController extends Controller
         );
     }
 
-    public function pdf(Request $request)
+    public function pdf(ReportRequest $request)
     {
         $range = $this->range($request);
         $report = $this->reportService->analytics($range);
@@ -37,7 +37,7 @@ class ReportController extends Controller
         ])->download('jamjade-report-'.$range.'.pdf');
     }
 
-    public function excel(Request $request): StreamedResponse
+    public function excel(ReportRequest $request): StreamedResponse
     {
         $range = $this->range($request);
         $report = $this->reportService->analytics($range);
@@ -65,12 +65,8 @@ class ReportController extends Controller
         ]);
     }
 
-    private function range(Request $request): string
+    private function range(ReportRequest $request): string
     {
-        $range = $request->string('range', '12_months')->toString();
-
-        return in_array($range, ['6_months', '12_months', 'this_year', 'all_time'], true)
-            ? $range
-            : '12_months';
+        return $request->validated('range', '12_months');
     }
 }

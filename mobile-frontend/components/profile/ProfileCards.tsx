@@ -31,29 +31,29 @@ export function ProfileHeaderCard({ profile }: { profile: CustomerProfile }) {
   const hasProfilePicture = Boolean(profile.profilePicture);
 
   return (
-    <View className="overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-[#17315F] shadow-xl shadow-[#17315F]/15">
-      <View className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#346EF6]/35" />
-      <View className="absolute -bottom-14 left-10 h-32 w-32 rounded-full bg-white/10" />
+    <View className="overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-foreground shadow-xl shadow-foreground/15">
+      <View className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/35" />
+      <View className="absolute -bottom-14 left-10 h-32 w-32 rounded-full bg-surface/10" />
       <View className="p-5">
         <View className="flex-row items-start gap-4">
-          <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-[28px] border-2 border-white/45 bg-white/15">
+          <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-[28px] border-2 border-surface/45 bg-surface/15">
             {hasProfilePicture ? (
               <Image source={{ uri: profile.profilePicture }} resizeMode="cover" className="h-full w-full" />
             ) : (
-              <View className="h-full w-full items-center justify-center bg-[#EEF4FF]">
-                <Text className="text-[24px] font-black text-[#346EF6]">{getInitials(profile)}</Text>
+              <View className="h-full w-full items-center justify-center bg-muted">
+                <Text className="text-[24px] font-black text-primary">{getInitials(profile)}</Text>
               </View>
             )}
           </View>
 
           <View className="min-w-0 flex-1">
-            <View className="self-start flex-row items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5">
+            <View className="self-start flex-row items-center gap-1.5 rounded-full bg-surface/15 px-3 py-1.5">
               <BadgeCheck size={13} color="#B7F7D0" strokeWidth={2.6} />
-              <Text className="text-[10px] font-black uppercase tracking-[0.5px] text-white">
+              <Text className="text-[10px] font-black uppercase tracking-[0.5px] text-surface">
                 {profile.accountStatus} Account
               </Text>
             </View>
-            <Text className="mt-3 text-[24px] font-black leading-[28px] text-white" numberOfLines={2}>
+            <Text className="mt-3 text-[24px] font-black leading-[28px] text-surface" numberOfLines={2}>
               {getFullName(profile)}
             </Text>
             <Text className="mt-1 text-[13px] font-semibold leading-5 text-[#D8E5FF]" numberOfLines={1}>
@@ -85,20 +85,20 @@ function SummaryItem({
   valueNumberOfLines?: number;
 }) {
   return (
-    <View className="min-h-[124px] flex-1 rounded-[22px] border border-[#E6EEFF] bg-white p-3.5 shadow-md shadow-[#17315F]/5">
+    <View className="min-h-[124px] flex-1 rounded-[22px] border border-border bg-surface p-3.5 shadow-md shadow-foreground/5">
       <View className={`${iconClassName} h-9 w-9 items-center justify-center rounded-full`}>
         <Icon size={18} color={iconColor} strokeWidth={2.45} />
       </View>
       <Text
-        className="mt-3 min-h-[24px] text-[17px] font-black leading-5 text-[#17315F]"
+        className="mt-3 min-h-[24px] text-[17px] font-black leading-5 text-foreground"
         numberOfLines={valueNumberOfLines}
         adjustsFontSizeToFit>
         {value}
       </Text>
-      <Text className="mt-1 text-[10px] font-black leading-4 text-[#6C7A96]" numberOfLines={2}>
+      <Text className="mt-1 text-[10px] font-black leading-4 text-muted-foreground" numberOfLines={2}>
         {label}
       </Text>
-      <Text className="mt-0.5 text-[9px] font-bold leading-3 text-[#91A0B8]" numberOfLines={1}>
+      <Text className="mt-0.5 text-[9px] font-bold leading-3 text-subtle-foreground" numberOfLines={1}>
         {helper}
       </Text>
     </View>
@@ -131,7 +131,7 @@ export function ProfileKpiGrid({
         label="Successful Bookings"
         value={successfulBookings.toString()}
         helper="Completed"
-        iconClassName="bg-[#ECFDF5]"
+        iconClassName="bg-success-surface"
         iconColor="#047857"
       />
       <SummaryItem
@@ -139,7 +139,7 @@ export function ProfileKpiGrid({
         label="Amount Spent"
         value={formatPeso(totalSpent)}
         helper="Payments"
-        iconClassName="bg-[#EEF4FF]"
+        iconClassName="bg-muted"
         iconColor={profileColors.brand}
       />
       <SummaryItem
@@ -147,7 +147,7 @@ export function ProfileKpiGrid({
         label="Joined Date"
         value={joinedDate}
         helper="Member since"
-        iconClassName="bg-[#FFF7ED]"
+        iconClassName="bg-warning-surface"
         iconColor="#C2410C"
         valueNumberOfLines={2}
       />
@@ -169,15 +169,15 @@ export function ProfileSectionCard({
   children: ReactNode;
 }) {
   return (
-    <View className="rounded-[28px] border border-[#E6EEFF] bg-white p-5 shadow-md shadow-[#17315F]/5">
+    <View className="rounded-[28px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
       <View className="flex-row items-center gap-2.5 pb-4">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-[#EEF4FF]">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
           <Icon size={20} color={profileColors.brand} strokeWidth={2.45} />
         </View>
-        <Text className="min-w-0 flex-1 text-[18px] font-black text-[#17315F]">{title}</Text>
+        <Text className="min-w-0 flex-1 text-[18px] font-black text-foreground">{title}</Text>
         {actionLabel ? (
-          <View className="rounded-full bg-[#ECFDF5] px-3 py-1.5">
-            <Text className="text-[10px] font-black uppercase tracking-[0.4px] text-[#047857]">{actionLabel}</Text>
+          <View className="rounded-full bg-success-surface px-3 py-1.5">
+            <Text className="text-[10px] font-black uppercase tracking-[0.4px] text-success">{actionLabel}</Text>
           </View>
         ) : null}
         {headerAction}
@@ -207,11 +207,11 @@ export function ProfileEditButton({
       className={cx(
         'min-h-[40px] flex-row items-center gap-1.5 rounded-full border px-3',
         isSuccess
-          ? 'border-[#BBF7D0] bg-[#ECFDF5]'
-          : 'border-[#DDE8FF] bg-[#F8FAFF]',
+          ? 'border-success-border bg-success-surface'
+          : 'border-border bg-background',
       )}>
       <Icon size={14} color={isSuccess ? '#047857' : profileColors.brand} strokeWidth={2.5} />
-      <Text className={cx('text-[11px] font-black', isSuccess ? 'text-[#047857]' : 'text-[#346EF6]')}>
+      <Text className={cx('text-[11px] font-black', isSuccess ? 'text-success' : 'text-primary')}>
         {label}
       </Text>
     </Pressable>
@@ -238,12 +238,12 @@ export function ProfileInfoRow({
       accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
       className={cx('min-h-[58px] flex-row items-center gap-3 py-3', !isLast && 'border-b border-[#EEF2FF]')}>
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-[#F3F7FF]">
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
         <Icon size={18} color={profileColors.brand} strokeWidth={2.35} />
       </View>
       <View className="min-w-0 flex-1">
-        <Text className="text-[11px] font-black uppercase tracking-[0.4px] text-[#91A0B8]">{label}</Text>
-        <Text className="mt-1 text-[14px] font-extrabold leading-5 text-[#17315F]" numberOfLines={2}>
+        <Text className="text-[11px] font-black uppercase tracking-[0.4px] text-subtle-foreground">{label}</Text>
+        <Text className="mt-1 text-[14px] font-extrabold leading-5 text-foreground" numberOfLines={2}>
           {value}
         </Text>
       </View>
@@ -269,12 +269,12 @@ export function ProfileActionRow({
       onPress={onPress}
       className={cx(
         'min-h-[58px] flex-row items-center gap-3 rounded-[20px] border px-4',
-        destructive ? 'border-[#FECACA] bg-[#FEF2F2]' : 'border-[#EDF2FF] bg-[#FBFCFF]',
+        destructive ? 'border-destructive-border bg-destructive-surface' : 'border-[#EDF2FF] bg-[#FBFCFF]',
       )}>
-      <View className={cx('h-10 w-10 items-center justify-center rounded-full', destructive ? 'bg-white' : 'bg-[#EEF4FF]')}>
+      <View className={cx('h-10 w-10 items-center justify-center rounded-full', destructive ? 'bg-surface' : 'bg-muted')}>
         <Icon size={18} color={destructive ? '#DC2626' : profileColors.brand} strokeWidth={2.45} />
       </View>
-      <Text className={cx('min-w-0 flex-1 text-[14px] font-black', destructive ? 'text-[#DC2626]' : 'text-[#17315F]')}>
+      <Text className={cx('min-w-0 flex-1 text-[14px] font-black', destructive ? 'text-destructive' : 'text-foreground')}>
         {label}
       </Text>
       <ChevronRight size={19} color={destructive ? '#DC2626' : '#A8B2C3'} strokeWidth={2.45} />
@@ -285,15 +285,15 @@ export function ProfileActionRow({
 export function ProfileLoadingState() {
   return (
     <View className="mt-6 gap-4">
-      <View className="h-[210px] rounded-[30px] border border-[#DDE8FF] bg-white p-5 shadow-md shadow-[#17315F]/5">
-        <View className="h-20 w-20 rounded-[28px] bg-[#EEF4FF]" />
-        <View className="mt-5 h-5 w-3/5 rounded-full bg-[#EEF4FF]" />
-        <View className="mt-3 h-4 w-4/5 rounded-full bg-[#F3F7FF]" />
-        <View className="mt-6 h-11 rounded-full bg-[#EEF4FF]" />
+      <View className="h-[210px] rounded-[30px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
+        <View className="h-20 w-20 rounded-[28px] bg-muted" />
+        <View className="mt-5 h-5 w-3/5 rounded-full bg-muted" />
+        <View className="mt-3 h-4 w-4/5 rounded-full bg-muted" />
+        <View className="mt-6 h-11 rounded-full bg-muted" />
       </View>
-      <View className="rounded-[28px] border border-[#E6EEFF] bg-white p-5">
-        <Text className="text-[18px] font-black text-[#17315F]">Loading profile information</Text>
-        <Text className="mt-2 text-[13px] font-semibold leading-5 text-[#6C7A96]">
+      <View className="rounded-[28px] border border-border bg-surface p-5">
+        <Text className="text-[18px] font-black text-foreground">Loading profile information</Text>
+        <Text className="mt-2 text-[13px] font-semibold leading-5 text-muted-foreground">
           Fetching your customer account details.
         </Text>
       </View>
@@ -303,19 +303,19 @@ export function ProfileLoadingState() {
 
 export function ProfileErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <View className="mt-6 rounded-[28px] border border-[#FECACA] bg-[#FEF2F2] p-5">
-      <View className="h-12 w-12 items-center justify-center rounded-full bg-white">
+    <View className="mt-6 rounded-[28px] border border-destructive-border bg-destructive-surface p-5">
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-surface">
         <CircleAlert size={23} color="#DC2626" strokeWidth={2.45} />
       </View>
-      <Text className="mt-4 text-[20px] font-black text-[#991B1B]">Profile unavailable</Text>
+      <Text className="mt-4 text-[20px] font-black text-destructive">Profile unavailable</Text>
       <Text className="mt-2 text-[13px] font-semibold leading-5 text-[#B45309]">
         We could not load your profile information. Check your connection and try again.
       </Text>
       <Pressable
         accessibilityRole="button"
         onPress={onRetry}
-        className="mt-5 min-h-[46px] items-center justify-center rounded-full bg-[#DC2626] px-5">
-        <Text className="text-[13px] font-black text-white">Retry</Text>
+        className="mt-5 min-h-[46px] items-center justify-center rounded-full bg-destructive px-5">
+        <Text className="text-[13px] font-black text-surface">Retry</Text>
       </Pressable>
     </View>
   );

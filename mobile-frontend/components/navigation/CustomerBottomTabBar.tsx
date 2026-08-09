@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCustomerTabBarVisibility } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import { type CustomerTabConfig } from '@/constants/customer-tabs';
+import { themeColors } from '@/constants/theme';
 import { useCustomer } from '@/lib/customer/customer-store';
 import {
   setUnreadNotificationCount,
@@ -18,10 +19,10 @@ type CustomerBottomTabBarProps = BottomTabBarProps & {
   tabs: CustomerTabConfig[];
 };
 
-const ACTIVE = '#1F58E7';
-const INACTIVE = '#88A2CF';
-const BAR = '#FFFFFF';
-const FEATURED = '#346EF6';
+const ACTIVE = themeColors.primary;
+const INACTIVE = themeColors.subtleForeground;
+const BAR = themeColors.surface;
+const FEATURED = themeColors.primary;
 const FLOAT_GAP = 10;
 const BAR_HEIGHT = 74;
 
@@ -134,10 +135,10 @@ export function CustomerBottomTabBar({
                 style={styles.featuredButton}>
                 <View style={[styles.featuredOuter, isFocused && styles.featuredOuterActive, isDisabled && styles.disabledFeaturedOuter]}>
                   <View style={[styles.featuredInner, isDisabled && styles.disabledFeaturedInner]}>
-                    <MaterialCommunityIcons name={tab.icon} size={26} color="#FFFFFF" />
+                    <MaterialCommunityIcons name={tab.icon} size={26} color={themeColors.surface} />
                     {isDisabled ? (
                       <View style={styles.featuredInfoBadge}>
-                        <MaterialCommunityIcons name="information-outline" size={13} color="#346EF6" />
+                        <MaterialCommunityIcons name="information-outline" size={13} color={themeColors.primary} />
                       </View>
                     ) : null}
                   </View>
@@ -165,7 +166,7 @@ export function CustomerBottomTabBar({
               onPress={handlePress}
               style={styles.tabButton}>
               <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name={tab.icon} size={22} color={isDisabled ? '#C7D0E2' : color} />
+                <MaterialCommunityIcons name={tab.icon} size={22} color={isDisabled ? themeColors.border : color} />
                 {isNotificationsTab && unreadNotificationCount > 0 ? (
                   <View style={styles.unreadBadge}>
                     <Text style={styles.unreadBadgeText}>
@@ -194,7 +195,7 @@ export function CustomerBottomTabBar({
           style={[styles.infoTooltip, { bottom: insets.bottom + BAR_HEIGHT + FLOAT_GAP + 18 }]}>
           <View style={styles.infoTooltipArrow} />
           <View style={styles.infoTooltipIcon}>
-            <MaterialCommunityIcons name="information-outline" size={18} color="#346EF6" />
+            <MaterialCommunityIcons name="information-outline" size={18} color={themeColors.primary} />
           </View>
           <View style={styles.infoTooltipContent}>
             <Text style={styles.infoTooltipTitle}>Telematics activation</Text>
@@ -222,14 +223,14 @@ const styles = StyleSheet.create({
   bar: {
     alignItems: 'center',
     backgroundColor: BAR,
-    borderColor: '#D6E5FF',
+    borderColor: themeColors.border,
     borderRadius: 30,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     maxWidth: 430,
     paddingHorizontal: 6,
-    shadowColor: '#1F58E7',
+    shadowColor: themeColors.primary,
     shadowOffset: { height: 10, width: 0 },
     shadowOpacity: 0.18,
     shadowRadius: 18,
@@ -256,8 +257,8 @@ const styles = StyleSheet.create({
   },
   unreadBadge: {
     alignItems: 'center',
-    backgroundColor: '#DC2626',
-    borderColor: '#FFFFFF',
+    backgroundColor: themeColors.destructive,
+    borderColor: themeColors.surface,
     borderRadius: 10,
     borderWidth: 2,
     justifyContent: 'center',
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     top: -10,
   },
   unreadBadgeText: {
-    color: '#FFFFFF',
+    color: themeColors.surface,
     fontSize: 9,
     fontWeight: '900',
     lineHeight: 11,
@@ -286,8 +287,8 @@ const styles = StyleSheet.create({
   },
   featuredOuter: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2ECFF',
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
     borderRadius: 42,
     borderWidth: 4,
     height: 84,
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
     width: 84,
   },
   featuredOuterActive: {
-    borderColor: '#FFFFFF',
+    borderColor: themeColors.surface,
   },
   featuredInner: {
     alignItems: 'center',
@@ -312,8 +313,8 @@ const styles = StyleSheet.create({
   },
   featuredInfoBadge: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D6E5FF',
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
     borderRadius: 10,
     borderWidth: 1,
     height: 20,
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
   },
   disabledFeaturedInner: {
-    backgroundColor: '#A8B2C3',
+    backgroundColor: themeColors.subtleForeground,
   },
   featuredLabel: {
     color: INACTIVE,
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   disabledLabel: {
-    color: '#C7D0E2',
+    color: themeColors.border,
   },
   infoBackdrop: {
     backgroundColor: 'rgba(11, 18, 32, 0.2)',
@@ -347,8 +348,8 @@ const styles = StyleSheet.create({
   },
   infoTooltip: {
     alignSelf: 'center',
-    backgroundColor: '#17315F',
-    borderColor: '#346EF6',
+    backgroundColor: themeColors.foreground,
+    borderColor: themeColors.primary,
     borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
@@ -365,7 +366,7 @@ const styles = StyleSheet.create({
   },
   infoTooltipArrow: {
     alignSelf: 'center',
-    backgroundColor: '#17315F',
+    backgroundColor: themeColors.foreground,
     bottom: -7,
     height: 14,
     left: '50%',
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
   },
   infoTooltipIcon: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: themeColors.surface,
     borderRadius: 18,
     height: 36,
     justifyContent: 'center',
@@ -386,13 +387,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   infoTooltipTitle: {
-    color: '#FFFFFF',
+    color: themeColors.surface,
     fontSize: 13,
     fontWeight: '900',
     lineHeight: 17,
   },
   infoTooltipText: {
-    color: '#D8E5FF',
+    color: themeColors.border,
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 18,

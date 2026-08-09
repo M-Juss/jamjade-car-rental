@@ -31,8 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableActionMenu } from "@/components/common/TableActionMenu";
 import { Input } from "@/components/ui/input";
-import { AdminForm } from "@/forms/AdminForm";
-import { AdminRoleForm } from "@/forms/AdminRoleForm";
+import { AdminForm } from "@/forms/admin/AdminForm";
+import { AdminRoleForm } from "@/forms/admin/AdminRoleForm";
 import {
   Select,
   SelectContent,
@@ -227,17 +227,17 @@ export function AdminManagementPage() {
   const modules = data?.modules ?? [];
 
   return (
-    <div className="min-h-screen space-y-5 bg-[#F5F5F5] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1A2340]">Admin Management</h1>
-          <p className="mt-0.5 text-sm text-[#6B7589]">Manage administrator accounts, roles, credentials, and module access.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Admin Management</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">Manage administrator accounts, roles, credentials, and module access.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={() => setRoleDialog({ mode: "add" })}
             disabled={isLoading || !data}
-            className="h-10 rounded-lg bg-[#1A2340] text-sm font-semibold text-white hover:bg-[#2A3659]"
+            className="h-10 rounded-lg bg-foreground text-sm font-semibold text-white hover:bg-[#2A3659]"
           >
             <KeyRound size={15} className="mr-2" />
             Add Role
@@ -245,7 +245,7 @@ export function AdminManagementPage() {
           <Button
             onClick={() => setAccountDialog({ mode: "add" })}
             disabled={isLoading || !data}
-            className="h-10 rounded-lg bg-[#346EF6] text-sm font-semibold text-white hover:bg-[#2558D8]"
+            className="h-10 rounded-lg bg-primary text-sm font-semibold text-white hover:bg-primary-hover"
           >
             <Plus size={15} className="mr-2" />
             Add Admin
@@ -255,7 +255,7 @@ export function AdminManagementPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: "Total Admins", value: summary.total, icon: Users, tone: "bg-[#EEF4FF] text-[#346EF6]" },
+          { label: "Total Admins", value: summary.total, icon: Users, tone: "bg-muted text-primary" },
           { label: "Active", value: summary.active, icon: UserCheck, tone: "bg-emerald-50 text-emerald-600" },
           { label: "Inactive", value: summary.inactive, icon: UserX, tone: "bg-slate-100 text-slate-600" },
           { label: "Roles", value: summary.roles, icon: ShieldCheck, tone: "bg-amber-50 text-amber-700" },
@@ -266,8 +266,8 @@ export function AdminManagementPage() {
                 <Icon size={17} />
               </div>
               <div>
-                <p className="text-[22px] font-bold leading-none text-[#1A2340]">{value}</p>
-                <p className="mt-1 text-xs font-medium text-[#6B7589]">{label}</p>
+                <p className="text-[22px] font-bold leading-none text-foreground">{value}</p>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">{label}</p>
               </div>
             </CardContent>
           </Card>
@@ -287,16 +287,16 @@ export function AdminManagementPage() {
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative min-w-[220px] flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AABF]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search admins..."
-                className="h-10 rounded-lg border-[#E8ECF4] bg-[#F8F9FC] pl-9 text-sm focus-visible:ring-[#346EF6]"
+                className="h-10 rounded-lg border-border bg-background pl-9 text-sm focus-visible:ring-primary"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 w-[140px] rounded-lg border-[#E8ECF4] bg-[#F8F9FC] text-sm">
+              <SelectTrigger className="h-10 w-[140px] rounded-lg border-border bg-background text-sm">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -306,7 +306,7 @@ export function AdminManagementPage() {
               </SelectContent>
             </Select>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="h-10 w-[160px] rounded-lg border-[#E8ECF4] bg-[#F8F9FC] text-sm">
+              <SelectTrigger className="h-10 w-[160px] rounded-lg border-border bg-background text-sm">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
@@ -324,13 +324,13 @@ export function AdminManagementPage() {
                   setStatusFilter("all");
                   setRoleFilter("all");
                 }}
-                className="h-10 rounded-lg border-[#CBD5E1] text-sm text-[#4A5568]"
+                className="h-10 rounded-lg border-[#CBD5E1] text-sm text-muted-foreground"
               >
                 <X size={14} className="mr-2" />
                 Clear
               </Button>
             )}
-            <span className="ml-auto text-xs font-medium text-[#8896A7]">{filteredUsers.length} results</span>
+            <span className="ml-auto text-xs font-medium text-muted-foreground">{filteredUsers.length} results</span>
           </div>
         </CardContent>
       </Card>
@@ -339,9 +339,9 @@ export function AdminManagementPage() {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-[#F0F2F7] bg-[#FAFBFD] hover:bg-[#FAFBFD]">
+              <TableRow className="border-b border-border bg-background hover:bg-background">
                 {["Admin ID", "Name", "Role", "Modules", "Status", "Last Login", "Actions"].map((heading) => (
-                  <TableHead key={heading} className="whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-[#8896A7]">
+                  <TableHead key={heading} className="whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {heading}
                   </TableHead>
                 ))}
@@ -351,7 +351,7 @@ export function AdminManagementPage() {
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-14 text-center">
-                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-[#6B7589]">
+                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
                       <Loader2 size={16} className="animate-spin" />
                       Loading admin management
                     </div>
@@ -359,21 +359,21 @@ export function AdminManagementPage() {
                 </TableRow>
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-14 text-center text-sm font-medium text-[#6B7589]">
+                  <TableCell colSpan={7} className="py-14 text-center text-sm font-medium text-muted-foreground">
                     No admin accounts found.
                   </TableCell>
                 </TableRow>
               ) : filteredUsers.map((admin) => (
-                <TableRow key={admin.id} className="border-b border-[#F8F9FC] hover:bg-[#F8F9FC]">
-                  <TableCell className="px-4 py-3 font-mono text-xs font-semibold text-[#346EF6]">{admin.adminId}</TableCell>
+                <TableRow key={admin.id} className="border-b border-background hover:bg-background">
+                  <TableCell className="px-4 py-3 font-mono text-xs font-semibold text-primary">{admin.adminId}</TableCell>
                   <TableCell className="px-4 py-3">
                     <div className="min-w-[180px]">
-                      <p className="text-sm font-semibold text-[#1A2340]">{admin.name}</p>
-                      <p className="text-xs text-[#6B7589]">{admin.email}</p>
+                      <p className="text-sm font-semibold text-foreground">{admin.name}</p>
+                      <p className="text-xs text-muted-foreground">{admin.email}</p>
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-3">
-                    <Badge variant="outline" className="rounded-md border-blue-100 bg-[#EEF4FF] text-[#346EF6]">
+                    <Badge variant="outline" className="rounded-md border-blue-100 bg-muted text-primary">
                       {admin.role?.label ?? "No role"}
                     </Badge>
                   </TableCell>
@@ -384,7 +384,7 @@ export function AdminManagementPage() {
                           {label}
                         </Badge>
                       )) : (
-                        <span className="text-xs text-[#A0AABF]">No modules</span>
+                        <span className="text-xs text-subtle-foreground">No modules</span>
                       )}
                       {(admin.role?.modules?.length ?? 0) > 3 && (
                         <Badge variant="outline" className="rounded-md border-slate-200 text-slate-600">
@@ -398,7 +398,7 @@ export function AdminManagementPage() {
                       {admin.isActive ? "Active" : "Inactive"}
                     </span>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap px-4 py-3 text-xs text-[#6B7589]">
+                  <TableCell className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
                     {formatDate(admin.lastLoginAt)}
                   </TableCell>
                   <TableCell className="px-4 py-3">
@@ -407,14 +407,14 @@ export function AdminManagementPage() {
                       items={[
                         {
                           label: "View",
-                          icon: <Eye size={13} className="mr-2 text-[#A0AABF]" />,
+                          icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
                           onClick: () => setAccountDialog({ mode: "view", admin }),
                         },
                         ...(admin.canEdit
                           ? [
                               {
                                 label: "Edit",
-                                icon: <Pencil size={13} className="mr-2 text-[#A0AABF]" />,
+                                icon: <Pencil size={13} className="mr-2 text-subtle-foreground" />,
                                 onClick: () => setAccountDialog({ mode: "edit", admin }),
                               },
                             ]
@@ -442,15 +442,15 @@ export function AdminManagementPage() {
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         {data?.roles.map((role) => (
-          <div key={role.id} className="rounded-lg border border-[#E8ECF4] bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+          <div key={role.id} className="rounded-lg border border-border bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold text-[#1A2340]">{role.label}</h2>
+                  <h2 className="text-base font-bold text-foreground">{role.label}</h2>
                   {role.isProtected && <Badge variant="outline" className="rounded-md border-amber-200 bg-amber-50 text-amber-700">Protected</Badge>}
                   <Badge variant="outline" className="rounded-md border-slate-200 text-slate-600">{role.usersCount} users</Badge>
                 </div>
-                <p className="mt-1 font-mono text-xs text-[#8896A7]">{role.name}</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">{role.name}</p>
               </div>
               {(role.canEdit || role.canDelete) && (
                 <TableActionMenu
@@ -460,7 +460,7 @@ export function AdminManagementPage() {
                       ? [
                           {
                             label: "Edit",
-                            icon: <Pencil size={13} className="mr-2 text-[#A0AABF]" />,
+                            icon: <Pencil size={13} className="mr-2 text-subtle-foreground" />,
                             onClick: () => setRoleDialog({ mode: "edit", role }),
                           },
                         ]
@@ -482,11 +482,11 @@ export function AdminManagementPage() {
             </div>
             <div className="mt-4 flex flex-wrap gap-1.5">
               {moduleLabels(modules, role.modules).map((label) => (
-                <Badge key={label} variant="outline" className="rounded-md border-[#D9E5FF] bg-[#F7FAFF] text-[#346EF6]">
+                <Badge key={label} variant="outline" className="rounded-md border-[#D9E5FF] bg-[#F7FAFF] text-primary">
                   {label}
                 </Badge>
               ))}
-              {role.modules.length === 0 && <span className="text-xs text-[#A0AABF]">No module access</span>}
+              {role.modules.length === 0 && <span className="text-xs text-subtle-foreground">No module access</span>}
             </div>
           </div>
         ))}
@@ -527,17 +527,17 @@ export function AdminManagementPage() {
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-rose-50">
               <Trash2 size={19} className="text-rose-600" />
             </div>
-            <AlertDialogTitle className="text-base font-bold text-[#1A2340]">
+            <AlertDialogTitle className="text-base font-bold text-foreground">
               Delete {deleteTarget?.type === "role" ? "Role" : "Admin Account"}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-6 text-[#6B7589]">
+            <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
               {deleteTarget?.type === "role"
                 ? `Delete the ${deleteTarget.role.label} role? This action cannot be undone.`
                 : `Delete ${deleteTarget?.user.name}? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-lg border-[#CBD5E1] text-sm text-[#4A5568]">
+            <AlertDialogCancel className="rounded-lg border-[#CBD5E1] text-sm text-muted-foreground">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

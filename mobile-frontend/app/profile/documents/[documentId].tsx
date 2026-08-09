@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 
-import { ProfileDocumentVerificationForm } from '@/forms/ProfileDocumentVerificationForm';
+import { ProfileDocumentVerificationForm } from '@/forms/profile/ProfileDocumentVerificationForm';
 import { isCustomerDocumentId } from '@/lib/customer/document-verification';
 import { InvalidDocumentScreen } from '@/screens/profile/DocumentVerificationListScreen';
 

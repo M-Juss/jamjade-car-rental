@@ -4,6 +4,7 @@ use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\RentalType;
 use App\Enums\UserRole;
+use App\Enums\VehicleStatus;
 use App\Mail\BookingConfirmationMail;
 use App\Models\Booking;
 use App\Models\CustomerDocument;
@@ -173,9 +174,12 @@ it('rejects web admin accounts from mobile token login', function () {
         ->assertJsonPath('errors.login.0', 'This account does not have mobile customer access.');
 });
 
-it('lists vehicles for authenticated mobile customers', function () {
-    Sanctum::actingAs(customerUser());
+it('lets guests list only available mobile vehicles', function () {
     $vehicle = availableVehicle();
+    availableVehicle([
+        'name' => 'Unavailable Test Vehicle',
+        'status' => VehicleStatus::Maintenance,
+    ]);
     $vehicle->images()->create([
         'image_path' => 'https://images.unsplash.com/photo-later-primary-image',
         'is_primary' => true,
@@ -188,6 +192,8 @@ it('lists vehicles for authenticated mobile customers', function () {
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.0.cardImage', 'https://images.unsplash.com/photo-1549924231-f129b911e442')
         ->assertJsonPath('data.0.images.0', 'https://images.unsplash.com/photo-1549924231-f129b911e442')
+        ->assertJsonMissing(['name' => 'Unavailable Test Vehicle'])
+        ->assertJsonCount(1, 'data')
         ->assertJsonStructure(['data' => [['name', 'pricePerDay', 'cardImage', 'images']], 'meta' => ['total']]);
 
     $vehicle = $response->json('data.0');
@@ -199,6 +205,46 @@ it('lists vehicles for authenticated mobile customers', function () {
         ->and(array_key_exists('mileage', $vehicle))->toBeFalse()
         ->and(array_key_exists('type', $vehicle))->toBeFalse()
         ->and(array_key_exists('location', $vehicle))->toBeFalse();
+});
+
+it('lets guests view available vehicle details but not unavailable vehicles', function () {
+    $availableVehicle = availableVehicle();
+    $unavailableVehicle = availableVehicle([
+        'name' => 'Maintenance Vehicle',
+        'status' => VehicleStatus::Maintenance,
+    ]);
+
+    $this->getJson("/api/mobile/vehicles/{$availableVehicle->id}")
+        ->assertOk()
+        ->assertJsonPath('data.id', (string) $availableVehicle->id)
+        ->assertJsonPath('data.status', VehicleStatus::Available->value);
+
+    $this->getJson("/api/mobile/vehicles/{$unavailableVehicle->id}")
+        ->assertNotFound();
+});
+
+it('requires authentication before a guest can create a booking', function () {
+    $vehicle = availableVehicle();
+
+    $this->postJson('/api/mobile/bookings', [
+        'vehicle_id' => $vehicle->id,
+    ])->assertUnauthorized();
+});
+
+it('validates mobile collection filters and pagination limits', function () {
+    Sanctum::actingAs(customerUser());
+
+    $this->getJson('/api/mobile/vehicles?status=unknown&per_page=101')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['status', 'per_page']);
+
+    $this->getJson('/api/mobile/bookings?status=unknown&per_page=0')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['status', 'per_page']);
+
+    $this->getJson('/api/mobile/notifications?category=unknown&per_page=101')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['category', 'per_page']);
 });
 
 it('returns approved booking date ranges for the specific vehicle', function () {

@@ -220,14 +220,14 @@ export default function TelematicsScreen() {
   const renderCalibration = () => (
     <View className="mt-7 gap-5">
       <CalibrationInstructionCard />
-      <View className="rounded-[28px] border border-[#E6EEFF] bg-white p-5 shadow-md shadow-[#17315F]/5">
+      <View className="rounded-[28px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
         <View className="mb-4 flex-row items-center gap-3">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-[#EEF4FF]">
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
             <Gauge size={20} color="#346EF6" strokeWidth={2.45} />
           </View>
           <View className="min-w-0 flex-1">
-            <Text className="text-[18px] font-black text-[#17315F]">Sensor checklist</Text>
-            <Text className="mt-1 text-[12px] font-semibold leading-5 text-[#6C7A96]">
+            <Text className="text-[18px] font-black text-foreground">Sensor checklist</Text>
+            <Text className="mt-1 text-[12px] font-semibold leading-5 text-muted-foreground">
               GPS, accelerometer, gyroscope, and device stability checks.
             </Text>
           </View>
@@ -300,7 +300,7 @@ export default function TelematicsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"

@@ -25,11 +25,11 @@ export default function GetStartedScreen() {
         title="Let's complete your profile."
       />
 
-      <View className="mt-7 rounded-[28px] border border-[#D6E5FF] bg-[#17315F] p-5 shadow-xl shadow-[#17315F]/15">
-        <Text className="text-[19px] font-black leading-6 text-white">Fast setup, clearer bookings</Text>
+      <View className="mt-7 rounded-[28px] border border-[#D6E5FF] bg-foreground p-5 shadow-xl shadow-foreground/15">
+        <Text className="text-[19px] font-black leading-6 text-surface">Fast setup, clearer bookings</Text>
         <Text className="mt-2 text-[13px] font-semibold leading-5 text-[#D8E5FF]">
-          Browse and owner-driver bookings are available to customers. Self-drive is only unlocked after eligibility
-          and document review.
+          Bookings are available only to customers aged 18 or older. Self-drive is unlocked after eligibility and
+          document review.
         </Text>
       </View>
 

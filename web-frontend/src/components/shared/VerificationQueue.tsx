@@ -190,9 +190,9 @@ function DocumentSidePreview({
   const hasPreview = Boolean(documentSide.url) && !imageError;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#E8ECF4] bg-[#F8F9FC]">
-      <div className="flex items-center justify-between gap-2 border-b border-[#E8ECF4] bg-white px-3 py-2">
-        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#4A5568]">
+    <div className="overflow-hidden rounded-2xl border border-border bg-background">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-white px-3 py-2">
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
           {label}
         </p>
         <Button
@@ -209,7 +209,7 @@ function DocumentSidePreview({
               alt: `${record.documentType} ${label.toLowerCase()} preview`,
             });
           }}
-          className="h-7 rounded-lg border-[#E8ECF4] px-2 text-[11px] text-[#4A5568] hover:bg-[#EEF4FF] hover:text-[#346EF6]"
+          className="h-7 rounded-lg border-border px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-primary"
         >
           <ExternalLink size={12} className="mr-1.5" />
           Open
@@ -227,8 +227,8 @@ function DocumentSidePreview({
         />
       ) : (
         <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
-          <FileText size={34} className="text-[#A0AABF]" />
-          <p className="mt-3 text-[12px] font-semibold text-[#6B7589]">
+          <FileText size={34} className="text-subtle-foreground" />
+          <p className="mt-3 text-[12px] font-semibold text-muted-foreground">
             No {label.toLowerCase()} image was uploaded.
           </p>
         </div>
@@ -245,11 +245,11 @@ function DetailItem({
   value?: string | number;
 }) {
   return (
-    <div className="rounded-xl bg-[#F8F9FC] px-3 py-2 w-full">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#A0AABF]">
+    <div className="rounded-xl bg-background px-3 py-2 w-full">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-subtle-foreground">
         {label}
       </p>
-      <p className="mt-0.5 text-[12.5px] font-semibold text-[#1A2340]">
+      <p className="mt-0.5 text-[12.5px] font-semibold text-foreground">
         {value || "Not provided"}
       </p>
     </div>
@@ -462,12 +462,12 @@ export default function VerificationQueue() {
     : [];
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-[#1A2340]">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
                 Verification Queue
               </h1>
               <Badge
@@ -477,11 +477,11 @@ export default function VerificationQueue() {
                 {counts.pending} pending
               </Badge>
             </div>
-            <p className="mt-0.5 text-sm text-[#8896A7]">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Review customer-submitted documents for self-drive eligibility.
             </p>
           </div>
-          <div className="rounded-2xl border border-[#DDE6FF] bg-[#EEF4FF] px-4 py-3 text-[12px] font-medium text-[#346EF6] shadow-[0_2px_12px_rgba(52,110,246,0.06)]">
+          <div className="rounded-2xl border border-[#DDE6FF] bg-muted px-4 py-3 text-[12px] font-medium text-primary shadow-[0_2px_12px_rgba(52,110,246,0.06)]">
             <ShieldCheck size={15} className="mr-2 inline-block align-[-3px]" />
             Document checks help prevent fake IDs and vehicle misuse.
           </div>
@@ -522,10 +522,10 @@ export default function VerificationQueue() {
                   <Icon size={17} className={color} strokeWidth={2.2} />
                 </div>
                 <div>
-                  <p className="text-[22px] font-bold leading-none text-[#1A2340]">
+                  <p className="text-[22px] font-bold leading-none text-foreground">
                     {value}
                   </p>
-                  <p className="mt-0.5 text-[11px] font-medium text-[#8896A7]">
+                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
                     {label}
                   </p>
                 </div>
@@ -540,13 +540,13 @@ export default function VerificationQueue() {
               <div className="relative min-w-[220px] flex-1">
                 <Search
                   size={13}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AABF]"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle-foreground"
                 />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search name, email, contact, or document type..."
-                  className="h-9 rounded-xl border-[#E8ECF4] bg-[#F8F9FC] pl-8 text-[12.5px] focus-visible:ring-1 focus-visible:ring-[#346EF6]"
+                  className="h-9 rounded-xl border-border bg-background pl-8 text-[12.5px] focus-visible:ring-1 focus-visible:ring-primary"
                 />
               </div>
 
@@ -556,7 +556,7 @@ export default function VerificationQueue() {
                   setStatusFilter(value as FilterStatus)
                 }
               >
-                <SelectTrigger className="h-9 w-full rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px] sm:w-[180px]">
+                <SelectTrigger className="h-9 w-full rounded-xl border-border bg-background text-[12.5px] sm:w-[180px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -575,7 +575,7 @@ export default function VerificationQueue() {
                   setDocumentFilter(value as FilterDocumentType)
                 }
               >
-                <SelectTrigger className="h-9 w-full rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px] sm:w-[180px]">
+                <SelectTrigger className="h-9 w-full rounded-xl border-border bg-background text-[12.5px] sm:w-[180px]">
                   <SelectValue placeholder="Document Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -592,7 +592,7 @@ export default function VerificationQueue() {
                 value={sortOrder}
                 onValueChange={(value) => setSortOrder(value as SortOrder)}
               >
-                <SelectTrigger className="h-9 w-full rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px] sm:w-[145px]">
+                <SelectTrigger className="h-9 w-full rounded-xl border-border bg-background text-[12.5px] sm:w-[145px]">
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
                 <SelectContent>
@@ -608,14 +608,14 @@ export default function VerificationQueue() {
                 <Button
                   variant="outline"
                   onClick={clearFilters}
-                  className="h-9 rounded-xl border-[#E8ECF4] px-3 text-[12px] text-[#8896A7] hover:bg-[#F5F5F5]"
+                  className="h-9 rounded-xl border-border px-3 text-[12px] text-muted-foreground hover:bg-background"
                 >
                   <X size={12} className="mr-1.5" />
                   Clear
                 </Button>
               )}
 
-              <div className="ml-auto flex items-center gap-1.5 text-[11px] text-[#A0AABF]">
+              <div className="ml-auto flex items-center gap-1.5 text-[11px] text-subtle-foreground">
                 <Filter size={11} />
                 {filteredRecords.length} result
                 {filteredRecords.length !== 1 ? "s" : ""}
@@ -636,7 +636,7 @@ export default function VerificationQueue() {
               <col className="w-[6%]" />
             </colgroup>
             <TableHeader>
-              <TableRow className="border-b border-[#F0F2F7] bg-[#FAFBFD] hover:bg-[#FAFBFD]">
+              <TableRow className="border-b border-border bg-background hover:bg-background">
                 {[
                   "Verification ID",
                   "Customer Name",
@@ -648,7 +648,7 @@ export default function VerificationQueue() {
                 ].map((heading) => (
                   <TableHead
                     key={heading}
-                    className="whitespace-normal break-words px-2 py-2 text-[9.5px] font-semibold uppercase leading-tight tracking-wide text-[#A0AABF]"
+                    className="whitespace-normal break-words px-2 py-2 text-[9.5px] font-semibold uppercase leading-tight tracking-wide text-subtle-foreground"
                   >
                     {heading}
                   </TableHead>
@@ -658,13 +658,13 @@ export default function VerificationQueue() {
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, index) => (
-                  <TableRow key={index} className="border-b border-[#F8F9FC]">
+                  <TableRow key={index} className="border-b border-background">
                     {Array.from({ length: 7 }).map((__, cellIndex) => (
                       <TableCell
                         key={cellIndex}
                         className="whitespace-normal px-2 py-3"
                       >
-                        <div className="h-4 w-full animate-pulse rounded-md bg-[#EEF1F8]" />
+                        <div className="h-4 w-full animate-pulse rounded-md bg-border" />
                       </TableCell>
                     ))}
                   </TableRow>
@@ -673,13 +673,13 @@ export default function VerificationQueue() {
                 <TableRow>
                   <TableCell colSpan={7} className="py-16 text-center">
                     <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF4FF]">
-                        <FileCheck size={21} className="text-[#346EF6]" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+                        <FileCheck size={21} className="text-primary" />
                       </div>
-                      <p className="text-[13px] font-semibold text-[#4A5568]">
+                      <p className="text-[13px] font-semibold text-muted-foreground">
                         No documents waiting for verification.
                       </p>
-                      <p className="text-[11.5px] text-[#A0AABF]">
+                      <p className="text-[11.5px] text-subtle-foreground">
                         Submitted customer documents will appear here.
                       </p>
                     </div>
@@ -689,28 +689,28 @@ export default function VerificationQueue() {
                 filteredRecords.map((record) => (
                   <TableRow
                     key={record.id}
-                    className="border-b border-[#F8F9FC] transition-colors duration-100 hover:bg-[#F5F5F5]"
+                    className="border-b border-background transition-colors duration-100 hover:bg-background"
                   >
-                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top font-mono text-[11px] font-semibold leading-snug text-[#346EF6]">
+                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top font-mono text-[11px] font-semibold leading-snug text-primary">
                       {record.id}
                     </TableCell>
                     <TableCell className="whitespace-normal break-words px-2 py-2 align-top">
-                      <span className="text-[11.5px] font-semibold leading-snug text-[#1A2340]">
+                      <span className="text-[11.5px] font-semibold leading-snug text-foreground">
                         {record.customerName}
                       </span>
                     </TableCell>
                     <TableCell className="whitespace-normal break-words px-2 py-2 align-top">
                       <div className="space-y-0.5 text-[11px] leading-snug">
-                        <p className="break-all text-[#4A5568]">
+                        <p className="break-all text-muted-foreground">
                           {record.email}
                         </p>
-                        <p className="text-[#8896A7]">{record.contactNumber}</p>
+                        <p className="text-muted-foreground">{record.contactNumber}</p>
                       </div>
                     </TableCell>
-                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top text-[11px] font-semibold leading-snug text-[#1A2340]">
+                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top text-[11px] font-semibold leading-snug text-foreground">
                       {record.documentType}
                     </TableCell>
-                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top text-[11px] leading-snug text-[#4A5568]">
+                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top text-[11px] leading-snug text-muted-foreground">
                       {formatDate(record.submittedAt)}
                     </TableCell>
                     <TableCell className="whitespace-normal px-2 py-2 align-top">
@@ -723,7 +723,7 @@ export default function VerificationQueue() {
                           {
                             label: "View",
                             icon: (
-                              <Eye size={13} className="mr-2 text-[#A0AABF]" />
+                              <Eye size={13} className="mr-2 text-subtle-foreground" />
                             ),
                             onClick: () => setSelectedRecord(record),
                           },
@@ -759,19 +759,19 @@ export default function VerificationQueue() {
       >
         <SheetContent
           side="right"
-          className="w-full gap-0 border-l border-[#E8ECF4] p-0 sm:max-w-[720px]"
+          className="w-full gap-0 border-l border-border p-0 sm:max-w-[720px]"
         >
-          <SheetHeader className="border-b border-[#F0F2F7] px-5 pb-4 pt-5">
+          <SheetHeader className="border-b border-border px-5 pb-4 pt-5">
             <div className="flex items-start justify-between gap-4 pr-8">
               <div>
-                <SheetTitle className="text-[15px] font-bold text-[#1A2340]">
+                <SheetTitle className="text-[15px] font-bold text-foreground">
                   Document Review
                 </SheetTitle>
                 <SheetDescription className="sr-only">
                   Review customer and uploaded document details before approving
                   or rejecting verification.
                 </SheetDescription>
-                <p className="mt-0.5 font-mono text-[11.5px] text-[#8896A7]">
+                <p className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">
                   {selectedRecord?.id}
                 </p>
               </div>
@@ -782,19 +782,19 @@ export default function VerificationQueue() {
           {selectedRecord && (
             <ScrollArea className="h-[calc(100vh-76px)]">
               <div className="space-y-4 px-5 py-4">
-                <div className="rounded-2xl border border-[#EEF1F8] bg-white p-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#A0AABF]">
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
                     Customer Information
                   </p>
                   <div className="mb-3 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF4FF]">
-                      <User size={18} className="text-[#346EF6]" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted">
+                      <User size={18} className="text-primary" />
                     </div>
                     <div>
-                      <p className="text-[14px] font-bold text-[#1A2340]">
+                      <p className="text-[14px] font-bold text-foreground">
                         {selectedRecord.customerName}
                       </p>
-                      <div className="mt-1 flex flex-wrap gap-2 text-[11.5px] text-[#8896A7]">
+                      <div className="mt-1 flex flex-wrap gap-2 text-[11.5px] text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <Mail size={11} />
                           {selectedRecord.email}
@@ -821,9 +821,9 @@ export default function VerificationQueue() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#EEF1F8] bg-white p-4">
+                <div className="rounded-2xl border border-border bg-white p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#A0AABF]">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
                       Document Preview
                     </p>
                   </div>
@@ -852,12 +852,12 @@ export default function VerificationQueue() {
                       )}
                     </div>
                   ) : (
-                    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E1] bg-[#F8F9FC] p-6 text-center">
-                      <FileText size={42} className="text-[#346EF6]" />
-                      <p className="mt-3 text-[14px] font-bold text-[#1A2340]">
+                    <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E1] bg-background p-6 text-center">
+                      <FileText size={42} className="text-primary" />
+                      <p className="mt-3 text-[14px] font-bold text-foreground">
                         PDF document uploaded
                       </p>
-                      <p className="mt-1 text-[12px] text-[#8896A7]">
+                      <p className="mt-1 text-[12px] text-muted-foreground">
                         Open it in a modal preview when file storage is
                         connected.
                       </p>
@@ -870,7 +870,7 @@ export default function VerificationQueue() {
                             alt: `${selectedRecord.documentType} PDF preview`,
                           })
                         }
-                        className="mt-4 rounded-xl bg-[#346EF6] text-white hover:bg-[#2558D8]"
+                        className="mt-4 rounded-xl bg-primary text-white hover:bg-primary-hover"
                       >
                         <ExternalLink size={14} className="mr-2" />
                         Open PDF
@@ -879,8 +879,8 @@ export default function VerificationQueue() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-[#EEF1F8] bg-white p-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#A0AABF]">
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
                     Document Information
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -907,11 +907,11 @@ export default function VerificationQueue() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#EEF1F8] bg-white p-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#A0AABF]">
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
                     Verification Reminders
                   </p>
-                  <ul className="list-disc space-y-1.5 pl-5 text-[12.5px] font-medium leading-relaxed text-[#4A5568]">
+                  <ul className="list-disc space-y-1.5 pl-5 text-[12.5px] font-medium leading-relaxed text-muted-foreground">
                     {reviewReminders.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
@@ -919,7 +919,7 @@ export default function VerificationQueue() {
                 </div>
 
                 {canReview(selectedRecord) && (
-                  <div className="sticky bottom-0 -mx-5 border-t border-[#F0F2F7] bg-white/95 px-5 py-4 backdrop-blur">
+                  <div className="sticky bottom-0 -mx-5 border-t border-border bg-white/95 px-5 py-4 backdrop-blur">
                     <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                       <Button
                         variant="outline"
@@ -956,15 +956,15 @@ export default function VerificationQueue() {
         }}
       >
         <DialogContent className="flex h-[82vh] max-h-[760px] !w-[75vw] !max-w-[1120px] flex-col gap-0 rounded-2xl border-0 p-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)] max-md:!w-[calc(100vw-1rem)] max-md:!max-w-[calc(100vw-1rem)]">
-          <DialogHeader className="shrink-0 border-b border-[#F0F2F7] px-5 pb-4 pt-5">
+          <DialogHeader className="shrink-0 border-b border-border px-5 pb-4 pt-5">
             <div className="flex flex-wrap items-center justify-between gap-3 pr-8">
               <div>
-                <DialogTitle className="text-[15px] font-bold text-[#1A2340]">
+                <DialogTitle className="text-[15px] font-bold text-foreground">
                   {previewDocument?.title}
                 </DialogTitle>
               </div>
               {previewDocument?.fileType === "image" && (
-                <div className="flex items-center gap-1 rounded-xl border border-[#E8ECF4] bg-white p-1">
+                <div className="flex items-center gap-1 rounded-xl border border-border bg-white p-1">
                   <Button
                     type="button"
                     variant="ghost"
@@ -972,7 +972,7 @@ export default function VerificationQueue() {
                     aria-label="Rotate document left"
                     title="Rotate left"
                     onClick={() => rotatePreview(-90)}
-                    className="h-8 w-8 rounded-lg text-[#4A5568] hover:bg-[#EEF4FF] hover:text-[#346EF6]"
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-primary"
                   >
                     <RotateCcw size={15} />
                   </Button>
@@ -983,11 +983,11 @@ export default function VerificationQueue() {
                     aria-label="Rotate document right"
                     title="Rotate right"
                     onClick={() => rotatePreview(90)}
-                    className="h-8 w-8 rounded-lg text-[#4A5568] hover:bg-[#EEF4FF] hover:text-[#346EF6]"
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-primary"
                   >
                     <RotateCw size={15} />
                   </Button>
-                  <div className="mx-1 h-5 w-px bg-[#E8ECF4]" />
+                  <div className="mx-1 h-5 w-px bg-border" />
                   <Button
                     type="button"
                     variant="ghost"
@@ -996,11 +996,11 @@ export default function VerificationQueue() {
                     title="Zoom out"
                     disabled={previewZoom <= 0.5}
                     onClick={() => adjustPreviewZoom(-0.25)}
-                    className="h-8 w-8 rounded-lg text-[#4A5568] hover:bg-[#EEF4FF] hover:text-[#346EF6]"
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-primary"
                   >
                     <ZoomOut size={15} />
                   </Button>
-                  <span className="min-w-12 text-center text-[11px] font-semibold text-[#6B7589]">
+                  <span className="min-w-12 text-center text-[11px] font-semibold text-muted-foreground">
                     {Math.round(previewZoom * 100)}%
                   </span>
                   <Button
@@ -1011,7 +1011,7 @@ export default function VerificationQueue() {
                     title="Zoom in"
                     disabled={previewZoom >= 2.5}
                     onClick={() => adjustPreviewZoom(0.25)}
-                    className="h-8 w-8 rounded-lg text-[#4A5568] hover:bg-[#EEF4FF] hover:text-[#346EF6]"
+                    className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-primary"
                   >
                     <ZoomIn size={15} />
                   </Button>
@@ -1020,7 +1020,7 @@ export default function VerificationQueue() {
             </div>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-auto bg-[#F8F9FC] p-4">
+          <div className="min-h-0 flex-1 overflow-auto bg-background p-4">
             {previewDocument?.fileType === "image" ? (
               <div className="flex min-h-full items-start justify-center p-4">
                 <Image
@@ -1033,7 +1033,7 @@ export default function VerificationQueue() {
                     setPreviewDocument(null);
                     sonnerToast.error("The uploaded document image could not be loaded.");
                   }}
-                  className="h-auto shrink-0 max-w-none rounded-xl border border-[#E8ECF4] bg-white object-contain shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition-[width,transform] duration-200"
+                  className="h-auto shrink-0 max-w-none rounded-xl border border-border bg-white object-contain shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition-[width,transform] duration-200"
                   style={{
                     width: `${previewZoom * 100}%`,
                     transform: `rotate(${previewRotation}deg)`,
@@ -1044,11 +1044,11 @@ export default function VerificationQueue() {
             ) : (
               <div className="flex min-h-full items-center justify-center">
                 <div className="flex aspect-[3/4] min-h-[360px] w-full max-w-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E1] bg-white p-6 text-center shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                  <FileText size={46} className="text-[#346EF6]" />
-                  <p className="mt-3 text-[14px] font-bold text-[#1A2340]">
+                  <FileText size={46} className="text-primary" />
+                  <p className="mt-3 text-[14px] font-bold text-foreground">
                     PDF preview placeholder
                   </p>
-                  <p className="mt-1 max-w-xs text-[12px] text-[#8896A7]">
+                  <p className="mt-1 max-w-xs text-[12px] text-muted-foreground">
                     Laravel file storage can replace this with an embedded PDF
                     viewer later.
                   </p>
@@ -1065,15 +1065,15 @@ export default function VerificationQueue() {
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50">
               <ShieldCheck size={21} className="text-emerald-500" />
             </div>
-            <AlertDialogTitle className="text-[16px] font-bold text-[#1A2340]">
+            <AlertDialogTitle className="text-[16px] font-bold text-foreground">
               Approve this document?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[13px] leading-relaxed text-[#6B7589]">
+            <AlertDialogDescription className="text-[13px] leading-relaxed text-muted-foreground">
               This will mark the customer document as verified.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-2 flex gap-2">
-            <AlertDialogCancel className="h-10 flex-1 rounded-xl border-[#E2E8F0] text-[13px] text-[#4A5568]">
+            <AlertDialogCancel className="h-10 flex-1 rounded-xl border-border text-[13px] text-muted-foreground">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1089,16 +1089,16 @@ export default function VerificationQueue() {
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent className="max-w-[540px] gap-0 rounded-2xl border-0 p-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
-          <DialogHeader className="border-b border-[#F0F2F7] px-6 pb-4 pt-6">
+          <DialogHeader className="border-b border-border px-6 pb-4 pt-6">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50">
                 <ShieldAlert size={18} className="text-rose-500" />
               </div>
               <div>
-                <DialogTitle className="text-[15px] font-bold text-[#1A2340]">
+                <DialogTitle className="text-[15px] font-bold text-foreground">
                   Reject Document
                 </DialogTitle>
-                <DialogDescription className="text-[11.5px] text-[#8896A7]">
+                <DialogDescription className="text-[11.5px] text-muted-foreground">
                   Add a clear reason so the customer can resubmit from mobile.
                 </DialogDescription>
               </div>
@@ -1107,7 +1107,7 @@ export default function VerificationQueue() {
 
           <div className="space-y-4 px-6 py-5">
             <div>
-              <Label className="mb-2 text-[12px] font-semibold text-[#4A5568]">
+              <Label className="mb-2 text-[12px] font-semibold text-muted-foreground">
                 Quick reasons
               </Label>
               <div className="flex flex-wrap gap-2">
@@ -1116,7 +1116,7 @@ export default function VerificationQueue() {
                     key={reason}
                     variant="outline"
                     onClick={() => appendQuickReason(reason)}
-                    className="h-8 rounded-xl border-[#E8ECF4] px-2.5 text-[12px] text-[#4A5568] hover:bg-[#EEF4FF] hover:text-[#346EF6]"
+                    className="h-8 rounded-xl border-border px-2.5 text-[12px] text-muted-foreground hover:bg-muted hover:text-primary"
                   >
                     {reason}
                   </Button>
@@ -1127,7 +1127,7 @@ export default function VerificationQueue() {
             <div>
               <Label
                 htmlFor="reject-reason"
-                className="mb-2 text-[12px] font-semibold text-[#4A5568]"
+                className="mb-2 text-[12px] font-semibold text-muted-foreground"
               >
                 Rejection notes <span className="text-rose-500">*</span>
               </Label>
@@ -1140,7 +1140,7 @@ export default function VerificationQueue() {
                   setRejectError("");
                 }}
                 placeholder="Explain why this document was rejected. This message may be shown to the customer."
-                className="min-h-32 rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px] focus-visible:ring-1 focus-visible:ring-[#346EF6]"
+                className="min-h-32 rounded-xl border-border bg-background text-[12.5px] focus-visible:ring-1 focus-visible:ring-primary"
               />
               {rejectError && (
                 <p className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-rose-600">
@@ -1151,11 +1151,11 @@ export default function VerificationQueue() {
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-2 border-t border-[#F0F2F7] bg-[#FAFBFD] px-6 py-4 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-2 border-t border-border bg-background px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setRejectOpen(false)}
-              className="h-10 rounded-xl border-[#E2E8F0] px-4 text-[13px] text-[#4A5568]"
+              className="h-10 rounded-xl border-border px-4 text-[13px] text-muted-foreground"
             >
               Cancel
             </Button>

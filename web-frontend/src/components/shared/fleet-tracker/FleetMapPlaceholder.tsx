@@ -32,7 +32,7 @@ export function FleetMapPlaceholder({
       <div className="absolute inset-4 rounded-xl border border-dashed border-slate-300 bg-[radial-gradient(#cbd5e122_1px,transparent_1px)] [background-size:18px_18px]" />
 
       {showGeofence && (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#346EF6]/40 bg-[#346EF6]/10" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary/40 bg-primary/10" />
       )}
 
       <div className="relative z-10 h-full w-full">
@@ -54,7 +54,7 @@ export function FleetMapPlaceholder({
         })}
       </div>
 
-      <div className="absolute left-7 top-7 z-20 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-[#4A5568] backdrop-blur">
+      <div className="absolute left-7 top-7 z-20 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
         Google Maps integration placeholder
       </div>
 

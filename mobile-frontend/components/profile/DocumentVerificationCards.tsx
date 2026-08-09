@@ -29,23 +29,23 @@ const STATUS_STYLES: Record<
 > = {
   'not-submitted': {
     background: 'bg-[#F1F5F9]',
-    border: 'border-[#CBD5E1]',
+    border: 'border-border',
     text: 'text-[#475569]',
   },
   'pending-review': {
-    background: 'bg-[#FFF7ED]',
-    border: 'border-[#FED7AA]',
-    text: 'text-[#C2410C]',
+    background: 'bg-warning-surface',
+    border: 'border-warning-border',
+    text: 'text-warning',
   },
   rejected: {
-    background: 'bg-[#FEF2F2]',
-    border: 'border-[#FECACA]',
-    text: 'text-[#DC2626]',
+    background: 'bg-destructive-surface',
+    border: 'border-destructive-border',
+    text: 'text-destructive',
   },
   verified: {
-    background: 'bg-[#ECFDF5]',
-    border: 'border-[#BBF7D0]',
-    text: 'text-[#047857]',
+    background: 'bg-success-surface',
+    border: 'border-success-border',
+    text: 'text-success',
   },
 };
 
@@ -91,19 +91,19 @@ export function DocumentRequirementRow({
         'flex-row items-center gap-3 py-3.5',
         !isLast && 'border-b border-[#EEF2FF]',
       )}>
-      <View className="h-11 w-11 items-center justify-center rounded-full bg-[#F3F7FF]">
+      <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
         <Icon size={20} color={profileColors.brand} strokeWidth={2.35} />
       </View>
       <View className="min-w-0 flex-1">
-        <Text className="min-w-0 flex-shrink text-[14px] font-black leading-5 text-[#17315F]">
+        <Text className="min-w-0 flex-shrink text-[14px] font-black leading-5 text-foreground">
           {definition.name}
         </Text>
         {!compact ? (
-          <Text className="mt-1 text-[11px] font-semibold leading-4 text-[#6C7A96]">
+          <Text className="mt-1 text-[11px] font-semibold leading-4 text-muted-foreground">
             {definition.shortDescription}
           </Text>
         ) : hasDraft && status === 'not-submitted' ? (
-          <Text className="mt-1 text-[10px] font-bold text-[#346EF6]">Draft saved</Text>
+          <Text className="mt-1 text-[10px] font-bold text-primary">Draft saved</Text>
         ) : null}
       </View>
       <View className="items-end gap-2">

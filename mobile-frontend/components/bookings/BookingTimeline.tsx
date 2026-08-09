@@ -17,21 +17,21 @@ export function BookingTimeline({ items }: { items: BookingTimelineItem[] }) {
               <View
                 className={
                   item.completed
-                    ? 'h-9 w-9 items-center justify-center rounded-full bg-[#ECFDF5]'
+                    ? 'h-9 w-9 items-center justify-center rounded-full bg-success-surface'
                     : 'h-9 w-9 items-center justify-center rounded-full bg-[#F3F6FB]'
                 }>
                 <Icon size={18} color={iconColor} strokeWidth={2.5} />
               </View>
-              {!isLast && <View className={item.completed ? 'h-12 w-px bg-[#BBF7D0]' : 'h-12 w-px bg-[#E5E7EB]'} />}
+              {!isLast && <View className={item.completed ? 'h-12 w-px bg-success-border' : 'h-12 w-px bg-[#E5E7EB]'} />}
             </View>
             <View className="min-w-0 flex-1 pb-5">
-              <Text className={item.completed ? 'text-[15px] font-black text-[#17315F]' : 'text-[15px] font-black text-[#91A0B8]'}>
+              <Text className={item.completed ? 'text-[15px] font-black text-foreground' : 'text-[15px] font-black text-subtle-foreground'}>
                 {item.title}
               </Text>
-              <Text className={item.completed ? 'mt-1 text-[13px] font-semibold leading-5 text-[#6C7A96]' : 'mt-1 text-[13px] font-semibold leading-5 text-[#9AA4B8]'}>
+              <Text className={item.completed ? 'mt-1 text-[13px] font-semibold leading-5 text-muted-foreground' : 'mt-1 text-[13px] font-semibold leading-5 text-subtle-foreground'}>
                 {item.description}
               </Text>
-              <Text className={item.completed ? 'mt-2 text-[11px] font-black uppercase text-[#047857]' : 'mt-2 text-[11px] font-black uppercase text-[#A8B2C3]'}>
+              <Text className={item.completed ? 'mt-2 text-[11px] font-black uppercase text-success' : 'mt-2 text-[11px] font-black uppercase text-[#A8B2C3]'}>
                 {item.timestamp || 'Upcoming'}
               </Text>
             </View>

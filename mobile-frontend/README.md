@@ -37,7 +37,17 @@ The API client prefers LAN at home and the configured backend tunnel when Expo i
 ## Defense Tunnel
 
 1. Keep Laravel running with `composer run serve-mobile`.
-2. From `mobile-frontend`, run `node_modules/.bin/ngrok http 8000`.
+2. Install and authenticate a current ngrok agent once, then expose Laravel:
+
+   ```bash
+   ngrok config add-authtoken YOUR_PRIVATE_TOKEN
+   ngrok http 8000
+   ```
+
+   The `@expo/ngrok` dependency is used internally by Expo's Metro tunnel.
+   Do not use its bundled `node_modules/.bin/ngrok` executable for the
+   Laravel tunnel because that legacy agent may no longer be accepted by
+   ngrok.
 3. Put the HTTPS forwarding URL in `.env.local`, appending `/api`:
 
    ```bash

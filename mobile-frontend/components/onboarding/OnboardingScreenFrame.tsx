@@ -12,7 +12,7 @@ export function OnboardingScreenFrame({
   const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
         <ScrollView
           className="flex-1"

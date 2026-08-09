@@ -9,21 +9,21 @@ const summaryItems = [
     key: 'total',
     label: 'Total Bookings',
     icon: ClipboardList,
-    iconBg: 'bg-[#EEF4FF]',
+    iconBg: 'bg-muted',
     iconColor: '#346EF6',
   },
   {
     key: 'pending',
     label: 'Pending',
     icon: CalendarClock,
-    iconBg: 'bg-[#FFF7ED]',
+    iconBg: 'bg-warning-surface',
     iconColor: '#C2410C',
   },
   {
     key: 'active',
     label: 'Active',
     icon: Navigation,
-    iconBg: 'bg-[#ECFDF5]',
+    iconBg: 'bg-success-surface',
     iconColor: '#047857',
   },
   {
@@ -46,14 +46,14 @@ export function BookingSummaryCards({ bookings }: { bookings: Booking[] }) {
         return (
           <View
             key={item.key}
-            className="min-h-[92px] w-[146px] rounded-[24px] border border-[#E6EEFF] bg-white p-4 shadow-md shadow-[#17315F]/5">
+            className="min-h-[92px] w-[146px] rounded-[24px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
             <View className="flex-row items-start justify-between gap-2">
               <View className={`${item.iconBg} h-10 w-10 items-center justify-center rounded-full`}>
                 <Icon size={19} color={item.iconColor} strokeWidth={2.45} />
               </View>
-              <Text className="text-[23px] font-black leading-7 text-[#17315F]">{counts[item.key]}</Text>
+              <Text className="text-[23px] font-black leading-7 text-foreground">{counts[item.key]}</Text>
             </View>
-            <Text className="mt-3 text-[12px] font-black leading-4 text-[#6C7A96]">{item.label}</Text>
+            <Text className="mt-3 text-[12px] font-black leading-4 text-muted-foreground">{item.label}</Text>
           </View>
         );
       })}

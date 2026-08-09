@@ -96,3 +96,10 @@ it('requires the add vehicle form core fields', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['description', 'features', 'images']);
 });
+
+it('validates vehicle list filters and pagination limits', function () {
+    $this->actingAs(ownerUser())
+        ->getJson('/admin/vehicles?status=unknown&per_page=101')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['status', 'per_page']);
+});

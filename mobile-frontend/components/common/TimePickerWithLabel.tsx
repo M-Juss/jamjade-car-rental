@@ -72,10 +72,10 @@ function TimeOption({
       className={cx(
         'min-h-[44px] items-center justify-center rounded-2xl border px-3',
         isSelected
-          ? 'border-[#346EF6] bg-[#346EF6]'
-          : 'border-[#E6EEFF] bg-white',
+          ? 'border-primary bg-primary'
+          : 'border-border bg-surface',
       )}>
-      <Text className={cx('text-[14px] font-black', isSelected ? 'text-white' : 'text-[#17315F]')}>
+      <Text className={cx('text-[14px] font-black', isSelected ? 'text-surface' : 'text-foreground')}>
         {label}
       </Text>
     </Pressable>
@@ -123,23 +123,23 @@ export function TimePickerWithLabel({
 
   return (
     <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4', wrapperClassName)}>
-      <Text className="text-[12px] font-bold text-[#17315F]">
+      <Text className="text-[12px] font-bold text-foreground">
         {label}
-        {required ? <Text className="text-[#E5484D]"> *</Text> : null}
+        {required ? <Text className="text-destructive"> *</Text> : null}
       </Text>
 
       <Pressable
         accessibilityRole="button"
         onPress={() => setIsOpen(true)}
         className={cx(
-          'min-h-[48px] flex-row items-center rounded-full border bg-white px-4',
-          error ? 'border-[#F4A6A6] bg-[#FFF8F8]' : 'border-[#E5EAF2]',
+          'min-h-[48px] flex-row items-center rounded-full border bg-surface px-4',
+          error ? 'border-destructive-border bg-destructive-surface' : 'border-[#E5EAF2]',
         )}>
         <MaterialIcons name="schedule" size={20} color="#7D8798" />
         <Text
           className={cx(
             'min-w-0 flex-1 px-3 text-[14px] font-semibold',
-            value ? 'text-[#17315F]' : 'font-medium text-[#9AA4B8]',
+            value ? 'text-foreground' : 'font-medium text-subtle-foreground',
           )}>
           {value ? formatTimeWithPeriod(value) : placeholder}
         </Text>
@@ -148,7 +148,7 @@ export function TimePickerWithLabel({
 
       <View className="absolute left-1 right-1 top-full mt-1.5">
         {error || helperText ? (
-          <Text className={cx('text-[11px] leading-4 text-[#667085]', error && 'font-bold text-[#D92D20]')}>
+          <Text className={cx('text-[11px] leading-4 text-[#667085]', error && 'font-bold text-destructive')}>
             {error || helperText}
           </Text>
         ) : null}
@@ -163,15 +163,15 @@ export function TimePickerWithLabel({
             onPress={() => setIsOpen(false)}
           />
           <View
-            className="rounded-t-[32px] bg-[#F8FAFF] px-5 pt-4"
+            className="rounded-t-[32px] bg-background px-5 pt-4"
             style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
             <View className="mb-4 items-center">
-              <View className="h-1.5 w-12 rounded-full bg-[#CBD5E1]" />
+              <View className="h-1.5 w-12 rounded-full bg-border" />
             </View>
             <View className="mb-5 flex-row items-start justify-between gap-3">
               <View className="min-w-0 flex-1">
-                <Text className="text-[22px] font-black text-[#17315F]">{label}</Text>
-                <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">
+                <Text className="text-[22px] font-black text-foreground">{label}</Text>
+                <Text className="mt-1 text-[12px] font-bold text-muted-foreground">
                   Choose the hour, minute, and AM or PM.
                 </Text>
               </View>
@@ -180,14 +180,14 @@ export function TimePickerWithLabel({
                 accessibilityRole="button"
                 hitSlop={8}
                 onPress={() => setIsOpen(false)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-white">
+                className="h-10 w-10 items-center justify-center rounded-full bg-surface">
                 <MaterialIcons name="close" size={20} color="#64748B" />
               </Pressable>
             </View>
 
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-[#91A0B8]">
+                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">
                   Hour
                 </Text>
                 <ScrollView className="h-[220px]" showsVerticalScrollIndicator={false}>
@@ -205,7 +205,7 @@ export function TimePickerWithLabel({
               </View>
 
               <View className="flex-1">
-                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-[#91A0B8]">
+                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">
                   Minute
                 </Text>
                 <ScrollView className="h-[220px]" showsVerticalScrollIndicator={false}>
@@ -223,7 +223,7 @@ export function TimePickerWithLabel({
               </View>
 
               <View className="flex-1">
-                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-[#91A0B8]">
+                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">
                   Period
                 </Text>
                 <View className="gap-2">
@@ -239,9 +239,9 @@ export function TimePickerWithLabel({
               </View>
             </View>
 
-            <View className="mt-5 rounded-[22px] border border-[#DDE8FF] bg-white px-4 py-3">
-              <Text className="text-center text-[12px] font-bold text-[#6C7A96]">Selected time</Text>
-              <Text className="mt-1 text-center text-[22px] font-black text-[#17315F]">
+            <View className="mt-5 rounded-[22px] border border-border bg-surface px-4 py-3">
+              <Text className="text-center text-[12px] font-bold text-muted-foreground">Selected time</Text>
+              <Text className="mt-1 text-center text-[22px] font-black text-foreground">
                 {formatTimeWithPeriod(toTimeValue(selectedHour, selectedMinute, selectedPeriod))}
               </Text>
             </View>
@@ -249,8 +249,8 @@ export function TimePickerWithLabel({
             <Pressable
               accessibilityRole="button"
               onPress={handleApply}
-              className="mt-4 min-h-[56px] items-center justify-center rounded-full bg-[#346EF6]">
-              <Text className="text-[15px] font-black text-white">Apply Time</Text>
+              className="mt-4 min-h-[56px] items-center justify-center rounded-full bg-primary">
+              <Text className="text-[15px] font-black text-surface">Apply Time</Text>
             </Pressable>
           </View>
         </View>

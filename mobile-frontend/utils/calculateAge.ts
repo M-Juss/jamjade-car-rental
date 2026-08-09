@@ -18,6 +18,34 @@ function parseDateKey(value: string) {
   return date;
 }
 
+export const MINIMUM_BOOKING_AGE = 18;
+
+export const BOOKING_AGE_REQUIREMENT_MESSAGE =
+  'You must be at least 18 years old to book with JamJade.';
+
+export const BOOKING_AGE_RESTRICTION_MESSAGE =
+  'JamJade only accepts bookings from customers aged 18 or older. If your saved birthdate is incorrect, update your profile before trying again.';
+
+export function getLatestEligibleBirthdateKey(today = new Date()) {
+  const targetYear = today.getFullYear() - MINIMUM_BOOKING_AGE;
+  const lastDayOfTargetMonth = new Date(
+    targetYear,
+    today.getMonth() + 1,
+    0,
+  ).getDate();
+  const cutoff = new Date(
+    targetYear,
+    today.getMonth(),
+    Math.min(today.getDate(), lastDayOfTargetMonth),
+  );
+
+  return [
+    cutoff.getFullYear(),
+    String(cutoff.getMonth() + 1).padStart(2, '0'),
+    String(cutoff.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 export function calculateAge(birthdate: string, today = new Date()) {
   const birthDate = parseDateKey(birthdate);
 
@@ -37,6 +65,12 @@ export function calculateAge(birthdate: string, today = new Date()) {
   return age;
 }
 
+export function isBookingAgeEligible(birthdate: string, today = new Date()) {
+  const age = calculateAge(birthdate, today);
+
+  return age !== null && age >= MINIMUM_BOOKING_AGE;
+}
+
 export function isFutureDate(value: string, today = new Date()) {
   const date = parseDateKey(value);
 
@@ -47,6 +81,18 @@ export function isFutureDate(value: string, today = new Date()) {
   const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   return date.getTime() > normalizedToday.getTime();
+}
+
+export function isPastDate(value: string, today = new Date()) {
+  const date = parseDateKey(value);
+
+  if (!date) {
+    return false;
+  }
+
+  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  return date.getTime() < normalizedToday.getTime();
 }
 
 export function formatDisplayDate(value: string) {

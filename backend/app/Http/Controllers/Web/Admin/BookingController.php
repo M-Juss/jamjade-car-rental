@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Booking\ListBookingsRequest;
 use App\Http\Requests\Admin\BookingStatusRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
@@ -12,7 +13,6 @@ use App\Services\BookingEmailService;
 use App\Services\BookingService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
@@ -23,11 +23,11 @@ class BookingController extends Controller
         private readonly BookingEmailService $bookingEmailService
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListBookingsRequest $request): JsonResponse
     {
         $bookings = $this->bookingService->paginateForAdmin(
-            $request->only(['search', 'status', 'payment_status']),
-            (int) $request->integer('per_page', 15)
+            $request->safe()->only(['search', 'status', 'payment_status']),
+            $request->integer('per_page', 15)
         );
 
         return $this->paginated('Bookings fetched successfully.', $bookings, BookingResource::class);

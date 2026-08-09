@@ -112,3 +112,13 @@ it('downloads PDF and CSV reports', function () {
         ->assertOk()
         ->assertHeader('content-type', 'text/csv; charset=UTF-8');
 });
+
+it('rejects unsupported report ranges', function () {
+    $owner = User::factory()->create();
+    $owner->assignRole(UserRole::Owner->value);
+
+    $this->actingAs($owner)
+        ->getJson('/admin/reports?range=custom')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('range');
+});

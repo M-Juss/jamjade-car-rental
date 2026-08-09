@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AdminAccessService;
 use App\Traits\ApiResponseTrait;
@@ -17,16 +18,9 @@ class AuthController extends Controller
 
     public function __construct(private readonly AdminAccessService $access) {}
 
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
-        $request->merge([
-            'email' => strtolower(trim((string) $request->input('email'))),
-        ]);
-
-        $credentials = $request->validate([
-            'email' => ['required', 'email', 'max:160'],
-            'password' => ['required', 'string', 'max:255'],
-        ]);
+        $credentials = $request->safe()->only(['email', 'password']);
 
         if (! Auth::attempt($credentials, (bool) $request->boolean('remember'))) {
             throw ValidationException::withMessages([

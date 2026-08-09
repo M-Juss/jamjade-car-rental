@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Cog, Fuel, Armchair, Palette } from "lucide-react";
 import {
@@ -79,9 +80,12 @@ export default function CarShowcase() {
             >
               <div className="w-full h-fit max-w-sm rounded-2xl my-2 shadow-md overflow-hidden bg-white">
                 {image ? (
-                  <img
+                  <Image
                     src={image}
                     alt={vehicle.name}
+                    height={480}
+                    unoptimized
+                    width={640}
                     className="w-full h-60 object-cover"
                   />
                 ) : (

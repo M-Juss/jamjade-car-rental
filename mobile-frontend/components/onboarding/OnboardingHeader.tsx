@@ -35,22 +35,22 @@ export function OnboardingHeader({
             accessibilityLabel="Go back"
             accessibilityRole="button"
             onPress={onBackPress ?? (() => router.back())}
-            className="h-12 w-12 items-center justify-center rounded-full border border-[#E6EEFF] bg-white">
+            className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
             <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
           </Pressable>
         ) : null}
         {navigationTitle ? (
-          <Text className="min-w-0 flex-1 text-center text-[19px] font-black text-[#17315F]" numberOfLines={1}>
+          <Text className="min-w-0 flex-1 text-center text-[19px] font-black text-foreground" numberOfLines={1}>
             {navigationTitle}
           </Text>
         ) : (
           <View className="min-w-0 flex-1">
-            <Text className="text-[13px] font-black text-[#346EF6]">Jamjade Car Rental</Text>
-            <Text className="text-[12px] font-bold text-[#6C7A96]">Customer setup</Text>
+            <Text className="text-[13px] font-black text-primary">Jamjade Car Rental</Text>
+            <Text className="text-[12px] font-bold text-muted-foreground">Customer setup</Text>
           </View>
         )}
         {navigationTitle && showBack ? <View className="h-12 w-12" /> : Icon ? (
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-[#EEF4FF]">
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-muted">
             <Icon size={22} color="#346EF6" strokeWidth={2.45} />
           </View>
         ) : null}
@@ -62,8 +62,8 @@ export function OnboardingHeader({
         </View>
       ) : null}
 
-      <Text className="mt-6 text-[30px] font-black leading-[35px] text-[#17315F]">{title}</Text>
-      <Text className="mt-2 text-[14px] font-semibold leading-6 text-[#6C7A96]">{subtitle}</Text>
+      <Text className="mt-6 text-[30px] font-black leading-[35px] text-foreground">{title}</Text>
+      <Text className="mt-2 text-[14px] font-semibold leading-6 text-muted-foreground">{subtitle}</Text>
     </View>
   );
 }

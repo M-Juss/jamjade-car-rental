@@ -44,7 +44,7 @@ class VehicleRequest extends BaseFormRequest
             'is_most_booked' => ['nullable', 'boolean'],
             'features' => [$relationRequirement, 'array', 'min:1'],
             'features.*' => ['string', 'max:120'],
-            'images' => [$relationRequirement, 'array', 'min:1'],
+            'images' => [$relationRequirement, 'array', 'min:1', 'max:5'],
             'images.*' => ['required', $this->imageRule()],
         ];
     }

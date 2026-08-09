@@ -25,18 +25,18 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { TableActionMenu } from "@/components/common/TableActionMenu";
-import { VehicleFormDialog } from "@/forms/VehicleForm";
+import { VehicleFormDialog } from "@/forms/vehicle/VehicleForm";
 import {
   createVehicle,
   deleteVehicle,
   getVehicles,
   type VehicleRecord,
 } from "@/services/vehicle";
-import type { VehicleFormValues } from "@/validations/vehicle.validation";
+import type { VehicleFormValues } from "@/validations/vehicle/schemas";
 
 const statusStyle: Record<string, string> = {
   Available: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Rented: "bg-[#EEF4FF] text-[#346EF6] border-blue-200",
+  Rented: "bg-muted text-primary border-blue-200",
   Maintenance: "bg-amber-50 text-amber-700 border-amber-200",
   Unavailable: "bg-slate-100 text-slate-600 border-slate-200",
 };
@@ -163,7 +163,7 @@ export default function Vehicle() {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-[#F5F5F5] min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-background min-h-screen">
       {/* ================= HEADER ================= */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -172,16 +172,16 @@ export default function Vehicle() {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
       >
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2340] tracking-tight">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
             Vehicle Management
           </h1>
-          <p className="text-sm text-[#8896A7] mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Manage your entire fleet from one place.
           </p>
         </div>
         <Button
           onClick={() => setVehicleFormOpen(true)}
-          className="rounded-xl bg-[#346EF6] hover:bg-[#2558D8] text-white text-[13px] font-semibold h-10 px-4 shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 w-full sm:w-auto"
+          className="rounded-xl bg-primary hover:bg-primary-hover text-white text-[13px] font-semibold h-10 px-4 shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 w-full sm:w-auto"
         >
           <Plus size={15} className="mr-2" />
           Add Vehicle
@@ -200,7 +200,7 @@ export default function Vehicle() {
               <div className="relative flex-1 min-w-[180px]">
                 <Search
                   size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AABF]"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle-foreground"
                 />
                 <Input
                   placeholder="Search vehicles..."
@@ -209,7 +209,7 @@ export default function Vehicle() {
                     setSearch(e.target.value);
                     setPage(1);
                   }}
-                  className="pl-8 h-9 text-[12.5px] rounded-xl border-[#E8ECF4] bg-[#F8F9FC] focus-visible:ring-[#346EF6] focus-visible:ring-1"
+                  className="pl-8 h-9 text-[12.5px] rounded-xl border-border bg-background focus-visible:ring-primary focus-visible:ring-1"
                 />
               </div>
 
@@ -272,7 +272,7 @@ export default function Vehicle() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[780px]">
               <thead>
-                <tr className="border-b border-[#F0F2F7] bg-[#FAFBFD]">
+                <tr className="border-b border-border bg-background">
                   {[
                     "Vehicle",
                     "Brand",
@@ -285,7 +285,7 @@ export default function Vehicle() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="text-left text-[10.5px] font-semibold text-[#A0AABF] uppercase tracking-wider px-4 py-3 whitespace-nowrap"
+                      className="text-left text-[10.5px] font-semibold text-subtle-foreground uppercase tracking-wider px-4 py-3 whitespace-nowrap"
                     >
                       {h}
                     </th>
@@ -297,7 +297,7 @@ export default function Vehicle() {
                   <tr>
                     <td
                       colSpan={8}
-                      className="text-center py-12 text-[13px] text-[#A0AABF]"
+                      className="text-center py-12 text-[13px] text-subtle-foreground"
                     >
                       Loading vehicles...
                     </td>
@@ -306,7 +306,7 @@ export default function Vehicle() {
                   <tr>
                     <td
                       colSpan={8}
-                      className="text-center py-12 text-[13px] text-[#A0AABF]"
+                      className="text-center py-12 text-[13px] text-subtle-foreground"
                     >
                       No vehicles found.
                     </td>
@@ -315,11 +315,11 @@ export default function Vehicle() {
                   paginated.map((v) => (
                     <tr
                       key={v.id}
-                      className="border-b border-[#F8F9FC] hover:bg-[#F5F5F5] transition-colors duration-100 group"
+                      className="border-b border-background hover:bg-background transition-colors duration-100 group"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] flex items-center justify-center text-xl flex-shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-background flex items-center justify-center text-xl flex-shrink-0">
                             {getVehicleImage(v) ? (
                               <div
                                 aria-label={v.name}
@@ -333,24 +333,24 @@ export default function Vehicle() {
                               "🚗"
                             )}
                           </div>
-                          <span className="text-[12.5px] font-semibold text-[#1A2340] whitespace-nowrap">
+                          <span className="text-[12.5px] font-semibold text-foreground whitespace-nowrap">
                             {v.name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-[#4A5568]">
+                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.brand}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-[#4A5568]">
+                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.transmission}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-[#4A5568]">
+                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.model}
                       </td>
-                      <td className="px-4 py-3 text-[12px] text-[#4A5568]">
+                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.seats}
                       </td>
-                      <td className="px-4 py-3 text-[12.5px] font-semibold text-[#1A2340]">
+                      <td className="px-4 py-3 text-[12.5px] font-semibold text-foreground">
                         ₱{v.pricePerDay.toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
@@ -369,7 +369,7 @@ export default function Vehicle() {
                               icon: (
                                 <Eye
                                   size={13}
-                                  className="mr-2 text-[#A0AABF]"
+                                  className="mr-2 text-subtle-foreground"
                                 />
                               ),
                               onClick: () =>
@@ -380,7 +380,7 @@ export default function Vehicle() {
                               icon: (
                                 <Pencil
                                   size={13}
-                                  className="mr-2 text-[#A0AABF]"
+                                  className="mr-2 text-subtle-foreground"
                                 />
                               ),
                               onClick: () =>
@@ -404,8 +404,8 @@ export default function Vehicle() {
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-t border-[#F0F2F7]">
-            <p className="text-[11.5px] text-[#A0AABF]">
+          <div className="flex items-center justify-between px-5 py-3.5 border-t border-border">
+            <p className="text-[11.5px] text-subtle-foreground">
               Showing {Math.min((page - 1) * perPage + 1, filtered.length)}–
               {Math.min(page * perPage, filtered.length)} of {filtered.length}{" "}
               vehicles
@@ -414,7 +414,7 @@ export default function Vehicle() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="w-7 h-7 rounded-lg border border-[#E8ECF4] flex items-center justify-center text-[#4A5568] hover:bg-[#F5F5F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft size={13} />
               </button>
@@ -424,8 +424,8 @@ export default function Vehicle() {
                   onClick={() => setPage(p)}
                   className={`w-7 h-7 rounded-lg text-[12px] font-semibold transition-colors ${
                     p === page
-                      ? "bg-[#346EF6] text-white shadow-[0_2px_8px_rgba(52,110,246,0.3)]"
-                      : "border border-[#E8ECF4] text-[#4A5568] hover:bg-[#F5F5F5]"
+                      ? "bg-primary text-white shadow-[0_2px_8px_rgba(52,110,246,0.3)]"
+                      : "border border-border text-muted-foreground hover:bg-background"
                   }`}
                 >
                   {p}
@@ -434,7 +434,7 @@ export default function Vehicle() {
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages || totalPages === 0}
-                className="w-7 h-7 rounded-lg border border-[#E8ECF4] flex items-center justify-center text-[#4A5568] hover:bg-[#F5F5F5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight size={13} />
               </button>
@@ -445,15 +445,15 @@ export default function Vehicle() {
 
       {/* ================= DELETE CONFIRMATION DIALOG ================= */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-[400px] rounded-2xl border-[#EEF1F8]">
+        <DialogContent className="sm:max-w-[400px] rounded-2xl border-border">
           <DialogHeader>
             <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center mb-3">
               <Trash2 size={20} className="text-rose-500" />
             </div>
-            <DialogTitle className="text-[16px] font-bold text-[#1A2340]">
+            <DialogTitle className="text-[16px] font-bold text-foreground">
               Delete Vehicle
             </DialogTitle>
-            <DialogDescription className="text-[13px] text-[#6B7589] mt-1">
+            <DialogDescription className="text-[13px] text-muted-foreground mt-1">
               This action cannot be undone. The vehicle and all its data will be
               permanently removed.
             </DialogDescription>
@@ -462,7 +462,7 @@ export default function Vehicle() {
             <Button
               variant="outline"
               onClick={() => setDeleteTarget(null)}
-              className="flex-1 rounded-xl border-[#E2E8F0] text-[#4A5568] h-10 text-[13px]"
+              className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-[13px]"
             >
               Cancel
             </Button>

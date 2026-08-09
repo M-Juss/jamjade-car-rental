@@ -41,14 +41,14 @@ export function DocumentVerificationListScreen({
         title="Required documents"
       />
 
-      <View className="mt-6 overflow-hidden rounded-[26px] border border-[#D6E5FF] bg-[#F8FAFF]">
-        <View className="flex-row items-center gap-3 border-b border-[#DCE8FF] bg-[#EEF4FF] px-4 py-3.5">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+      <View className="mt-6 overflow-hidden rounded-[26px] border border-[#D6E5FF] bg-background">
+        <View className="flex-row items-center gap-3 border-b border-[#DCE8FF] bg-muted px-4 py-3.5">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
             <ShieldCheck size={19} color="#346EF6" strokeWidth={2.45} />
           </View>
           <View className="min-w-0 flex-1">
-            <Text className="text-[14px] font-black text-[#17315F]">Before you upload</Text>
-            <Text className="mt-0.5 text-[11px] font-semibold leading-4 text-[#6C7A96]">
+            <Text className="text-[14px] font-black text-foreground">Before you upload</Text>
+            <Text className="mt-0.5 text-[11px] font-semibold leading-4 text-muted-foreground">
               Follow these reminders to avoid verification delays.
             </Text>
           </View>
@@ -69,7 +69,7 @@ export function DocumentVerificationListScreen({
         </View>
       </View>
 
-      <View className="mt-5 rounded-[28px] border border-[#E6EEFF] bg-white px-4 shadow-md shadow-[#17315F]/5">
+      <View className="mt-5 rounded-[28px] border border-border bg-surface px-4 shadow-md shadow-foreground/5">
         {CUSTOMER_DOCUMENT_DEFINITIONS.map((document, index) => (
           <DocumentRequirementRow
             definition={document}

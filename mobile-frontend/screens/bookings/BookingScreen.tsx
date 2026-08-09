@@ -37,9 +37,9 @@ function BookingFilterChip({
       onPress={onPress}
       className={cx(
         'rounded-full border px-4 py-2.5',
-        isSelected ? 'border-[#346EF6] bg-[#346EF6]' : 'border-[#DDE8FF] bg-white',
+        isSelected ? 'border-primary bg-primary' : 'border-border bg-surface',
       )}>
-      <Text className={cx('text-[13px] font-black', isSelected ? 'text-white' : 'text-[#17315F]')}>{label}</Text>
+      <Text className={cx('text-[13px] font-black', isSelected ? 'text-surface' : 'text-foreground')}>{label}</Text>
     </Pressable>
   );
 }
@@ -67,10 +67,10 @@ function BookingFilterSheet({
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <Pressable className="flex-1 justify-end bg-[#0B1220]/45" onPress={onClose}>
-        <Pressable className="rounded-t-[32px] bg-white px-5 pt-4" style={{ paddingBottom: insets.bottom + 28 }}>
+        <Pressable className="rounded-t-[32px] bg-surface px-5 pt-4" style={{ paddingBottom: insets.bottom + 28 }}>
           <View className="mb-5 h-1.5 w-12 self-center rounded-full bg-[#D7DDE8]" />
           <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-[22px] font-black text-[#17315F]">Filter bookings</Text>
+            <Text className="text-[22px] font-black text-foreground">Filter bookings</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close booking filters"
@@ -80,7 +80,7 @@ function BookingFilterSheet({
             </Pressable>
           </View>
 
-          <Text className="mb-3 text-[13px] font-black uppercase tracking-[0.9px] text-[#91A0B8]">Status</Text>
+          <Text className="mb-3 text-[13px] font-black uppercase tracking-[0.9px] text-subtle-foreground">Status</Text>
           <View className="flex-row flex-wrap gap-2">
             {BOOKING_STATUS_FILTERS.map((status) => (
               <BookingFilterChip
@@ -96,8 +96,8 @@ function BookingFilterSheet({
             <Pressable
               accessibilityRole="button"
               onPress={() => setDraftStatus('All')}
-              className="min-h-[54px] flex-1 items-center justify-center rounded-full border border-[#DDE8FF] bg-white">
-              <Text className="text-[15px] font-black text-[#17315F]">Reset</Text>
+              className="min-h-[54px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
+              <Text className="text-[15px] font-black text-foreground">Reset</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -105,8 +105,8 @@ function BookingFilterSheet({
                 onApply(draftStatus);
                 onClose();
               }}
-              className="min-h-[54px] flex-1 items-center justify-center rounded-full bg-[#346EF6]">
-              <Text className="text-[15px] font-black text-white">Apply</Text>
+              className="min-h-[54px] flex-1 items-center justify-center rounded-full bg-primary">
+              <Text className="text-[15px] font-black text-surface">Apply</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -198,7 +198,7 @@ export function BookingScreen() {
       : `You do not have any ${selectedStatus.toLowerCase()} bookings right now. Start browsing available vehicles and create a new booking.`;
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
@@ -208,43 +208,43 @@ export function BookingScreen() {
         <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
           <CustomerTabHeader description="Track every rental from request to return." />
 
-          <View className="mt-6 min-h-[56px] flex-row items-center rounded-full border border-[#E6EEFF] bg-white px-4 shadow-md shadow-[#17315F]/5">
+          <View className="mt-6 min-h-[56px] flex-row items-center rounded-full border border-border bg-surface px-4 shadow-md shadow-foreground/5">
             <Search size={20} color="#7B879C" strokeWidth={2.3} />
             <TextInput
               value={searchTerm}
               onChangeText={setSearchTerm}
               placeholder="Search booking ID or vehicle name..."
               placeholderTextColor="#9AA4B8"
-              className="min-w-0 flex-1 px-3 text-[14px] font-semibold text-[#17315F]"
+              className="min-w-0 flex-1 px-3 text-[14px] font-semibold text-foreground"
             />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={activeFilterCount > 0 ? `Open filters, ${activeFilterCount} active` : 'Open filters'}
               hitSlop={8}
               onPress={() => setIsFilterOpen(true)}
-              className="h-10 w-10 items-center justify-center rounded-full bg-[#EEF4FF]">
+              className="h-10 w-10 items-center justify-center rounded-full bg-muted">
               <SlidersHorizontal size={18} color="#346EF6" strokeWidth={2.5} />
               {activeFilterCount > 0 ? (
-                <View className="absolute -right-0.5 -top-0.5 h-5 min-w-5 items-center justify-center rounded-full bg-[#346EF6] px-1">
-                  <Text className="text-[10px] font-black text-white">{activeFilterCount}</Text>
+                <View className="absolute -right-0.5 -top-0.5 h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1">
+                  <Text className="text-[10px] font-black text-surface">{activeFilterCount}</Text>
                 </View>
               ) : null}
             </Pressable>
           </View>
 
           <View className="mt-5 flex-row items-center justify-between gap-3">
-            <Text className="text-[13px] font-black text-[#17315F]">
+            <Text className="text-[13px] font-black text-foreground">
               {filteredBookings.length} booking{filteredBookings.length === 1 ? '' : 's'}
             </Text>
             <Pressable accessibilityRole="button" onPress={() => void loadBookings()}>
-              <Text className="text-[12px] font-bold text-[#346EF6]">Refresh</Text>
+              <Text className="text-[12px] font-bold text-primary">Refresh</Text>
             </Pressable>
           </View>
 
           <View className="mt-4 gap-5">
             {loadError ? (
-              <View className="rounded-[24px] border border-[#FECACA] bg-[#FEF2F2] p-4">
-                <Text className="text-[13px] font-bold text-[#B91C1C]">{loadError}</Text>
+              <View className="rounded-[24px] border border-destructive-border bg-destructive-surface p-4">
+                <Text className="text-[13px] font-bold text-destructive">{loadError}</Text>
               </View>
             ) : null}
             {isLoading ? (

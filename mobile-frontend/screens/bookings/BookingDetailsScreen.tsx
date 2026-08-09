@@ -45,19 +45,19 @@ const documentStyles = {
     border: 'border-[#BFDBFE]',
   },
   Pending: {
-    bg: 'bg-[#FFF7ED]',
-    text: 'text-[#C2410C]',
-    border: 'border-[#FED7AA]',
+    bg: 'bg-warning-surface',
+    text: 'text-warning',
+    border: 'border-warning-border',
   },
   Missing: {
-    bg: 'bg-[#FEF2F2]',
-    text: 'text-[#B91C1C]',
-    border: 'border-[#FECACA]',
+    bg: 'bg-destructive-surface',
+    text: 'text-destructive',
+    border: 'border-destructive-border',
   },
   Verified: {
-    bg: 'bg-[#ECFDF5]',
-    text: 'text-[#047857]',
-    border: 'border-[#BBF7D0]',
+    bg: 'bg-success-surface',
+    text: 'text-success',
+    border: 'border-success-border',
   },
 } satisfies Record<DocumentStatus, { bg: string; text: string; border: string }>;
 
@@ -81,10 +81,10 @@ function VehicleSpec({
   icon: typeof Car;
 }) {
   return (
-    <View className="min-h-[82px] flex-1 basis-[47%] rounded-[22px] border border-[#EAF0FB] bg-[#F8FAFF] p-4">
+    <View className="min-h-[82px] flex-1 basis-[47%] rounded-[22px] border border-[#EAF0FB] bg-background p-4">
       <Icon size={18} color="#346EF6" strokeWidth={2.35} />
-      <Text className="mt-2 text-[10px] font-black uppercase text-[#91A0B8]">{label}</Text>
-      <Text className="mt-1 text-[13px] font-black leading-5 text-[#17315F]" numberOfLines={2}>
+      <Text className="mt-2 text-[10px] font-black uppercase text-subtle-foreground">{label}</Text>
+      <Text className="mt-1 text-[13px] font-black leading-5 text-foreground" numberOfLines={2}>
         {value}
       </Text>
     </View>
@@ -186,7 +186,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F8FAFF]">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#346EF6" size="large" />
       </View>
     );
@@ -194,7 +194,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
 
   if (!booking) {
     return (
-      <View className="flex-1 justify-center bg-[#F8FAFF] px-5">
+      <View className="flex-1 justify-center bg-background px-5">
         <BookingEmptyState
           title="Booking Not Found"
           subtitle={loadError ?? 'We could not find that booking.'}
@@ -206,7 +206,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
   }
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="never">
         <View className="px-5" style={{ paddingBottom: 34 + insets.bottom, paddingTop: insets.top + 10 }}>
           <View className="flex-row items-center gap-3">
@@ -214,12 +214,12 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               accessibilityLabel="Go back"
               accessibilityRole="button"
               onPress={() => router.back()}
-              className="h-12 w-12 items-center justify-center rounded-full border border-[#E6EEFF] bg-white">
+              className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
               <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
             </Pressable>
             <View className="min-w-0 flex-1">
-              <Text className="text-[25px] font-black leading-[30px] text-[#17315F]">Booking Details</Text>
-              <Text className="mt-0.5 text-[13px] font-bold text-[#6C7A96]">{booking.id}</Text>
+              <Text className="text-[25px] font-black leading-[30px] text-foreground">Booking Details</Text>
+              <Text className="mt-0.5 text-[13px] font-bold text-muted-foreground">{booking.id}</Text>
             </View>
             <BookingStatusBadge status={booking.status} compact />
           </View>
@@ -241,13 +241,13 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <View className="mb-4 flex-row items-start justify-between gap-3">
                 <View className="min-w-0 flex-1">
                   <Text className="text-[22px] font-black leading-[26px] text-[#10203F]">{booking.vehicleName}</Text>
-                  <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">
+                  <Text className="mt-1 text-[12px] font-bold text-muted-foreground">
                     {booking.brand} {booking.model}
                   </Text>
                 </View>
-                <Text className="text-right text-[17px] font-black text-[#346EF6]">
+                <Text className="text-right text-[17px] font-black text-primary">
                   {formatPeso(booking.pricePerDay)}
-                  <Text className="text-[11px] font-extrabold text-[#91A0B8]"> / day</Text>
+                  <Text className="text-[11px] font-extrabold text-subtle-foreground"> / day</Text>
                 </Text>
               </View>
               <View className="flex-row flex-wrap gap-3">
@@ -281,14 +281,14 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <InfoRow label="Driver Type" value={booking.driverType} />
               {booking.driverType === 'Self-Drive' ? (
                 <View className="mt-3 gap-2">
-                  <Text className="text-[12px] font-black uppercase text-[#91A0B8]">Required Documents</Text>
+                  <Text className="text-[12px] font-black uppercase text-subtle-foreground">Required Documents</Text>
                   {booking.documents.map((document) => (
                     <View
                       key={document.name}
-                      className="min-h-[50px] flex-row items-center justify-between gap-3 rounded-[18px] border border-[#EAF0FB] bg-[#F8FAFF] px-3 py-2">
+                      className="min-h-[50px] flex-row items-center justify-between gap-3 rounded-[18px] border border-[#EAF0FB] bg-background px-3 py-2">
                       <View className="min-w-0 flex-1 flex-row items-center gap-2">
                         <FileCheck2 size={16} color="#346EF6" strokeWidth={2.35} />
-                        <Text className="min-w-0 flex-1 text-[13px] font-black text-[#17315F]">
+                        <Text className="min-w-0 flex-1 text-[13px] font-black text-foreground">
                           {document.name}
                         </Text>
                       </View>
@@ -297,9 +297,9 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                   ))}
                 </View>
               ) : (
-                <View className="mt-3 flex-row items-start gap-3 rounded-[22px] border border-[#DDE8FF] bg-[#F8FAFF] p-4">
+                <View className="mt-3 flex-row items-start gap-3 rounded-[22px] border border-border bg-background p-4">
                   <UserRound size={20} color="#346EF6" strokeWidth={2.35} />
-                  <Text className="min-w-0 flex-1 text-[13px] font-bold leading-5 text-[#6C7A96]">
+                  <Text className="min-w-0 flex-1 text-[13px] font-bold leading-5 text-muted-foreground">
                     Owner&apos;s driver selected. Additional fees may apply outside Manila.
                   </Text>
                 </View>

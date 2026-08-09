@@ -13,7 +13,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookingStepper, ErrorState, SelectedVehicleSummary, browseIcons } from '@/components/browse';
-import { FormToast, useFormToast } from '@/forms/FormToast';
+import { AuthenticatedOnly } from '@/components/auth/AuthenticatedOnly';
+import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
 import { getBookingFlow, resetBookingFlow } from '@/lib/browse/booking-flow';
@@ -44,6 +45,12 @@ function getErrorMessage(error: unknown) {
     if (error.status === 0) {
       return 'PayPal checkout could not connect. Please try again.';
     }
+
+    const validationMessage = error.errors
+      ? Object.values(error.errors).flat()[0]
+      : undefined;
+
+    return validationMessage || error.message;
   }
 
   return 'PayPal checkout failed. Please try again.';
@@ -69,23 +76,23 @@ function PaymentChoiceCard({
       onPress={onPress}
       className={cx(
         'rounded-[26px] border p-5',
-        isSelected ? 'border-[#346EF6] bg-[#EEF4FF]' : 'border-[#E6EEFF] bg-white',
+        isSelected ? 'border-primary bg-muted' : 'border-border bg-surface',
       )}>
       <View className="flex-row items-start justify-between gap-4">
         <View className="min-w-0 flex-1">
-          <Text className="text-[17px] font-black text-[#17315F]">{title}</Text>
-          <Text className="mt-2 text-[13px] font-semibold leading-5 text-[#6C7A96]">{description}</Text>
+          <Text className="text-[17px] font-black text-foreground">{title}</Text>
+          <Text className="mt-2 text-[13px] font-semibold leading-5 text-muted-foreground">{description}</Text>
         </View>
-        <View className={cx('h-8 w-8 items-center justify-center rounded-full border', isSelected ? 'border-[#346EF6] bg-[#346EF6]' : 'border-[#C8D4E8] bg-white')}>
+        <View className={cx('h-8 w-8 items-center justify-center rounded-full border', isSelected ? 'border-primary bg-primary' : 'border-[#C8D4E8] bg-surface')}>
           {isSelected && <browseIcons.Check size={17} color="#FFFFFF" strokeWidth={3} />}
         </View>
       </View>
-      <Text className="mt-4 text-[24px] font-black text-[#346EF6]">{amount}</Text>
+      <Text className="mt-4 text-[24px] font-black text-primary">{amount}</Text>
     </Pressable>
   );
 }
 
-export default function PaymentScreen() {
+function PaymentScreen() {
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
   const params = useLocalSearchParams<{
@@ -145,7 +152,7 @@ export default function PaymentScreen() {
 
   if (booking && isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F8FAFF]">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#346EF6" size="large" />
       </View>
     );
@@ -275,7 +282,7 @@ export default function PaymentScreen() {
     : booking.downPaymentAmount;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8FAFF]">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-5 pb-8 pt-2">
           <View className="flex-row items-center gap-3">
@@ -283,12 +290,12 @@ export default function PaymentScreen() {
               accessibilityLabel="Restart booking"
               accessibilityRole="button"
               onPress={restartBooking}
-              className="h-12 w-12 items-center justify-center rounded-full bg-white">
+              className="h-12 w-12 items-center justify-center rounded-full bg-surface">
               <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
             </Pressable>
             <View className="min-w-0 flex-1">
-              <Text className="text-[27px] font-black text-[#17315F]">Payment</Text>
-              <Text className="mt-1 text-[13px] font-semibold text-[#6C7A96]">Choose your payment amount</Text>
+              <Text className="text-[27px] font-black text-foreground">Payment</Text>
+              <Text className="mt-1 text-[13px] font-semibold text-muted-foreground">Choose your payment amount</Text>
             </View>
           </View>
 
@@ -317,7 +324,7 @@ export default function PaymentScreen() {
                 }}
               />
             ) : (
-              <Text className="rounded-[22px] border border-[#DDE8FF] bg-[#F3F7FF] px-4 py-3 text-[12px] font-semibold leading-5 text-[#536888]">
+              <Text className="rounded-[22px] border border-border bg-muted px-4 py-3 text-[12px] font-semibold leading-5 text-[#536888]">
                 Full payment is required because the rental starts in less than {DOWN_PAYMENT_MINIMUM_LEAD_DAYS} days. The down-payment option appears when the rental date is at least {DOWN_PAYMENT_MINIMUM_LEAD_DAYS} days from today.
               </Text>
             )}
@@ -337,24 +344,24 @@ export default function PaymentScreen() {
             />
           </View>
 
-          <View className="mt-6 rounded-[30px] border border-[#DDE8FF] bg-white p-5 shadow-md shadow-[#17315F]/5">
+          <View className="mt-6 rounded-[30px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
             <View className="flex-row items-start justify-between gap-4">
               <View className="min-w-0 flex-1">
-                <Text className="text-[18px] font-black text-[#17315F]">PayPal Sandbox</Text>
-                <Text className="mt-2 text-[13px] font-semibold leading-5 text-[#6C7A96]">
+                <Text className="text-[18px] font-black text-foreground">PayPal Sandbox</Text>
+                <Text className="mt-2 text-[13px] font-semibold leading-5 text-muted-foreground">
                   You will sign in to PayPal and approve the payment securely.
                 </Text>
               </View>
               <View className="rounded-full bg-[#FFF4D8] px-3 py-2">
-                <Text className="text-[12px] font-black text-[#17315F]">PHP</Text>
+                <Text className="text-[12px] font-black text-foreground">PHP</Text>
               </View>
             </View>
 
-            <View className="my-5 h-px bg-[#E6EEFF]" />
+            <View className="my-5 h-px bg-border" />
 
             <View className="flex-row items-center justify-between gap-4">
-              <Text className="text-[13px] font-bold text-[#6C7A96]">Amount to pay</Text>
-              <Text className="text-[23px] font-black text-[#17315F]">
+              <Text className="text-[13px] font-bold text-muted-foreground">Amount to pay</Text>
+              <Text className="text-[23px] font-black text-foreground">
                 {formatPeso(checkout?.amount ?? selectedAmount)}
               </Text>
             </View>
@@ -370,13 +377,13 @@ export default function PaymentScreen() {
               {isProcessing ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text className="text-[16px] font-black text-white">
+                <Text className="text-[16px] font-black text-surface">
                   {approvalCompleted ? 'Retry Payment Confirmation' : 'Continue with PayPal'}
                 </Text>
               )}
             </Pressable>
 
-            <Text className="mt-3 text-center text-[11px] font-semibold leading-4 text-[#91A0B8]">
+            <Text className="mt-3 text-center text-[11px] font-semibold leading-4 text-subtle-foreground">
               PayPal credentials stay on the JamJade backend. All checkout orders use Philippine pesos.
             </Text>
           </View>
@@ -389,5 +396,13 @@ export default function PaymentScreen() {
         variant={toast.variant}
       />
     </SafeAreaView>
+  );
+}
+
+export default function ProtectedPaymentScreen() {
+  return (
+    <AuthenticatedOnly>
+      <PaymentScreen />
+    </AuthenticatedOnly>
   );
 }

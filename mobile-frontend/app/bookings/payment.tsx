@@ -119,44 +119,44 @@ export default function RemainingBalancePaymentScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F8FAFF]">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#346EF6" size="large" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8FAFF]">
+    <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 px-5 py-3">
         <View className="flex-row items-center gap-3">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Go back"
             onPress={() => router.back()}
-            className="h-12 w-12 items-center justify-center rounded-full border border-[#E6EEFF] bg-white">
+            className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
             <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
           </Pressable>
           <View className="min-w-0 flex-1">
-            <Text className="text-[25px] font-black text-[#17315F]">Settle Balance</Text>
-            <Text className="mt-1 text-[13px] font-bold text-[#6C7A96]">{booking?.id}</Text>
+            <Text className="text-[25px] font-black text-foreground">Settle Balance</Text>
+            <Text className="mt-1 text-[13px] font-bold text-muted-foreground">{booking?.id}</Text>
           </View>
         </View>
 
         {booking ? (
-          <View className="mt-8 rounded-[32px] border border-[#DDE8FF] bg-white p-5">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-[#EEF4FF]">
+          <View className="mt-8 rounded-[32px] border border-border bg-surface p-5">
+            <View className="h-14 w-14 items-center justify-center rounded-full bg-muted">
               <CreditCard size={27} color="#346EF6" strokeWidth={2.4} />
             </View>
-            <Text className="mt-5 text-[13px] font-black uppercase text-[#91A0B8]">Amount Due</Text>
-            <Text className="mt-1 text-[34px] font-black text-[#17315F]">
+            <Text className="mt-5 text-[13px] font-black uppercase text-subtle-foreground">Amount Due</Text>
+            <Text className="mt-1 text-[34px] font-black text-foreground">
               {formatPeso(booking.remainingBalance)}
             </Text>
-            <Text className="mt-3 text-[14px] font-bold text-[#6C7A96]">{booking.vehicleName}</Text>
-            <Text className="mt-1 text-[12px] font-semibold text-[#91A0B8]">
+            <Text className="mt-3 text-[14px] font-bold text-muted-foreground">{booking.vehicleName}</Text>
+            <Text className="mt-1 text-[12px] font-semibold text-subtle-foreground">
               PayPal Sandbox payment in PHP
             </Text>
 
-            <View className="mt-6 flex-row items-start gap-3 rounded-[22px] border border-[#FED7AA] bg-[#FFF7ED] p-4">
+            <View className="mt-6 flex-row items-start gap-3 rounded-[22px] border border-warning-border bg-warning-surface p-4">
               <ShieldAlert size={20} color="#C2410C" strokeWidth={2.4} />
               <Text className="min-w-0 flex-1 text-[12px] font-bold leading-5 text-[#9A3412]">
                 Due {booking.balanceDueAt ? new Date(booking.balanceDueAt).toLocaleString() : 'before pickup'}.
@@ -164,7 +164,7 @@ export default function RemainingBalancePaymentScreen() {
               </Text>
             </View>
 
-            {error ? <Text className="mt-4 text-[13px] font-bold text-[#B91C1C]">{error}</Text> : null}
+            {error ? <Text className="mt-4 text-[13px] font-bold text-destructive">{error}</Text> : null}
 
             <Pressable
               accessibilityRole="button"
@@ -174,13 +174,13 @@ export default function RemainingBalancePaymentScreen() {
               {isProcessing ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text className="text-[16px] font-black text-white">Pay Remaining Balance</Text>
+                <Text className="text-[16px] font-black text-surface">Pay Remaining Balance</Text>
               )}
             </Pressable>
           </View>
         ) : (
-          <View className="mt-8 rounded-[24px] border border-[#FECACA] bg-[#FEF2F2] p-5">
-            <Text className="text-[14px] font-bold text-[#B91C1C]">{error ?? 'Booking not found.'}</Text>
+          <View className="mt-8 rounded-[24px] border border-destructive-border bg-destructive-surface p-5">
+            <Text className="text-[14px] font-bold text-destructive">{error ?? 'Booking not found.'}</Text>
           </View>
         )}
       </View>

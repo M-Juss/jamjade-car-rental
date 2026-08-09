@@ -12,12 +12,12 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <View className="rounded-[28px] border border-[#E6EEFF] bg-white p-5 shadow-md shadow-[#17315F]/5">
+    <View className="rounded-[28px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
       <View className="mb-3 flex-row items-center gap-2.5">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-[#EEF4FF]">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
           <Icon size={20} color="#346EF6" strokeWidth={2.45} />
         </View>
-        <Text className="min-w-0 flex-1 text-[18px] font-black text-[#17315F]">{title}</Text>
+        <Text className="min-w-0 flex-1 text-[18px] font-black text-foreground">{title}</Text>
       </View>
       {children}
     </View>

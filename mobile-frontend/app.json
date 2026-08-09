@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "JamJade Car Rental",
-    "slug": "JamJade Car Rental",
+    "slug": "jamjade-car-rental",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/JamJadeLogo.png",
@@ -30,7 +30,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "JamJade needs photo library access so you can upload clear document images."
+          "photosPermission": "JamJade needs photo library access so you can upload clear document images.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [

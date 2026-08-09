@@ -54,9 +54,9 @@ export function SelectWithLabel({
 
   return (
     <View className={cx('w-full gap-1.5', wrapperClassName)}>
-      <Text className="text-[12px] font-bold text-[#17315F]">
+      <Text className="text-[12px] font-bold text-foreground">
         {label}
-        {required && <Text className="text-[#E5484D]"> *</Text>}
+        {required && <Text className="text-destructive"> *</Text>}
       </Text>
 
       <Pressable
@@ -64,8 +64,8 @@ export function SelectWithLabel({
         disabled={disabled}
         onPress={() => setIsOpen(true)}
         className={cx(
-          'min-h-[48px] flex-row items-center rounded-full border border-[#E5EAF2] bg-white px-4',
-          error && 'border-[#F4A6A6] bg-[#FFF8F8]',
+          'min-h-[48px] flex-row items-center rounded-full border border-[#E5EAF2] bg-surface px-4',
+          error && 'border-destructive-border bg-destructive-surface',
           disabled && 'opacity-[0.62]',
         )}>
         {icon && (
@@ -75,9 +75,9 @@ export function SelectWithLabel({
         )}
         <Text
           className={cx(
-            'min-w-0 flex-1 text-[15px] font-semibold text-[#17315F]',
+            'min-w-0 flex-1 text-[15px] font-semibold text-foreground',
             'text-[14px]',
-            !selectedOption && 'font-medium text-[#9AA4B8]',
+            !selectedOption && 'font-medium text-subtle-foreground',
           )}
           numberOfLines={1}>
           {selectedOption?.label ?? placeholder}
@@ -89,7 +89,7 @@ export function SelectWithLabel({
         <Text
           className={cx(
             'px-1 text-[11px] leading-[15px] text-[#667085]',
-            error && 'text-[#D92D20]',
+            error && 'text-destructive',
           )}>
           {error || helperText}
         </Text>
@@ -101,11 +101,11 @@ export function SelectWithLabel({
         visible={isOpen}
         onRequestClose={() => setIsOpen(false)}>
         <Pressable
-          className="flex-1 justify-end bg-[#17315F]/35 px-4 pb-4"
+          className="flex-1 justify-end bg-foreground/35 px-4 pb-4"
           onPress={() => setIsOpen(false)}>
-          <Pressable className="max-h-[72%] rounded-3xl bg-white p-4 shadow-lg shadow-[#346EF6]/20">
+          <Pressable className="max-h-[72%] rounded-3xl bg-surface p-4 shadow-lg shadow-primary/20">
             <View className="mb-3 h-1 w-10 self-center rounded-full bg-[#D7DDE8]" />
-            <Text className="mb-2 text-[16px] font-extrabold text-[#17315F]">{label}</Text>
+            <Text className="mb-2 text-[16px] font-extrabold text-foreground">{label}</Text>
             <FlatList
               data={options}
               keyExtractor={(item) => item.value}
@@ -118,12 +118,12 @@ export function SelectWithLabel({
                     onPress={() => handleSelect(item.value)}
                     className={cx(
                       'min-h-[46px] flex-row items-center justify-between rounded-2xl px-3',
-                      isSelected && 'bg-[#EEF4FF]',
+                      isSelected && 'bg-muted',
                     )}>
                     <Text
                       className={cx(
                         'text-[14px] font-semibold text-[#344054]',
-                        isSelected && 'text-[#17315F]',
+                        isSelected && 'text-foreground',
                       )}>
                       {item.label}
                     </Text>

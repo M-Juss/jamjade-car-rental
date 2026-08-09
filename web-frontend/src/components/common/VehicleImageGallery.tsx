@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { X } from "lucide-react";
 
 type VehicleImageGalleryProps = {
@@ -12,21 +13,24 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
   const remainingCount = Math.max(0, images.length - 5);
   const [primaryImage, ...thumbnailImages] = visibleImages;
   const removeButtonClass =
-    "absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-[#1A2340] shadow-md transition-colors hover:bg-rose-50 hover:text-rose-500";
+    "absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md transition-colors hover:bg-rose-50 hover:text-rose-500";
 
   if (!primaryImage) {
     return (
-      <div className={`h-64 rounded-2xl border border-[#E8ECF4] bg-[#F5F5F5] ${className}`} />
+      <div className={`h-64 rounded-2xl border border-border bg-background ${className}`} />
     );
   }
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="relative overflow-hidden rounded-2xl border border-[#E8ECF4] bg-[#F5F5F5]">
-        <img
+      <div className="relative h-64 overflow-hidden rounded-2xl border border-border bg-background md:h-80">
+        <Image
           src={primaryImage}
           alt={alt}
-          className="h-64 w-full object-cover md:h-80"
+          fill
+          sizes="(min-width: 768px) 80vw, 100vw"
+          unoptimized
+          className="object-cover"
         />
         {onRemoveImage && (
           <button
@@ -48,11 +52,14 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
             return (
               <div
                 key={`${image}-${index}`}
-                className="relative h-20 overflow-hidden rounded-xl border border-[#E8ECF4] bg-[#F5F5F5] md:h-24"
+                className="relative h-20 overflow-hidden rounded-xl border border-border bg-background md:h-24"
               >
-                <img
+                <Image
                   src={image}
                   alt={`${alt} ${index + 2}`}
+                  fill
+                  sizes="(min-width: 768px) 20vw, 25vw"
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
                 {showMoreOverlay && (

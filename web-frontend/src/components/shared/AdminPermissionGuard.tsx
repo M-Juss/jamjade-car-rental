@@ -60,7 +60,7 @@ export function AdminPermissionGuard({ children }: { children: React.ReactNode }
 
   if (!access?.isAuthorized || access.pathname !== pathname) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F5F5] text-sm font-medium text-[#6B7589]">
+      <div className="flex min-h-screen items-center justify-center bg-background text-sm font-medium text-muted-foreground">
         <Loader2 size={16} className="mr-2 animate-spin" />
         Loading access
       </div>

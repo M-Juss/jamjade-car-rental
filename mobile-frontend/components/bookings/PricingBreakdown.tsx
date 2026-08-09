@@ -17,10 +17,10 @@ function PricingRow({
 }) {
   return (
     <View className="flex-row items-center justify-between gap-4 py-2">
-      <Text className={cx('min-w-0 flex-1 text-[13px]', emphasized ? 'font-black text-[#17315F]' : 'font-bold text-[#6C7A96]')}>
+      <Text className={cx('min-w-0 flex-1 text-[13px]', emphasized ? 'font-black text-foreground' : 'font-bold text-muted-foreground')}>
         {label}
       </Text>
-      <Text className={cx('text-right text-[14px]', emphasized ? 'font-black text-[#065F46]' : 'font-extrabold text-[#17315F]')}>
+      <Text className={cx('text-right text-[14px]', emphasized ? 'font-black text-[#065F46]' : 'font-extrabold text-foreground')}>
         {value}
       </Text>
     </View>
@@ -32,7 +32,7 @@ export function PricingBreakdown({ booking }: { booking: Booking }) {
     <View>
       <View className="mb-3 flex-row items-center gap-2">
         <CreditCard size={18} color="#346EF6" strokeWidth={2.35} />
-        <Text className="text-[13px] font-black uppercase text-[#91A0B8]">Price summary</Text>
+        <Text className="text-[13px] font-black uppercase text-subtle-foreground">Price summary</Text>
       </View>
       <PricingRow label="Price per day" value={formatPeso(booking.pricePerDay)} />
       <PricingRow label="Number of days" value={`${booking.duration} days`} />
@@ -44,10 +44,10 @@ export function PricingBreakdown({ booking }: { booking: Booking }) {
       <PricingRow label="Add-ons" value={formatPeso(booking.addOns)} />
       <PricingRow label="Discount" value={formatPesoDeduction(booking.discount)} />
       <PricingRow label="Down Payment" value={formatPesoDeduction(booking.downPayment)} />
-      <View className="my-3 h-px bg-[#E6EEFF]" />
-      <View className="rounded-[22px] bg-[#F8FAFF] p-4">
+      <View className="my-3 h-px bg-border" />
+      <View className="rounded-[22px] bg-background p-4">
         <PricingRow label="Total Amount" value={formatPeso(booking.totalAmount)} emphasized />
-        <View className="h-px bg-[#E6EEFF]" />
+        <View className="h-px bg-border" />
         <PricingRow label="Remaining Balance" value={formatPeso(booking.remainingBalance)} emphasized />
       </View>
     </View>

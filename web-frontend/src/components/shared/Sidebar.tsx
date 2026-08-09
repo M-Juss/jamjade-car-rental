@@ -112,7 +112,7 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[var(--sidebar-w)] shrink-0 flex-col overflow-hidden bg-white border-r border-[#E8ECF4] shadow-[4px_0_24px_rgba(52,110,246,0.06)]">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[var(--sidebar-w)] shrink-0 flex-col overflow-hidden bg-white border-r border-border shadow-[4px_0_24px_rgba(52,110,246,0.06)]">
       
       {/* Logo / Brand */}
       <div className="px-6 pt-8 pb-6">
@@ -136,7 +136,7 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
       </div>
 
       {/* Divider */}
-      <div className="mx-6 h-px bg-[#EEF1F8] mb-4" />
+      <div className="mx-6 h-px bg-border mb-4" />
 
       {/* Navigation */}
       <nav className="flex-1 px-3 flex flex-col gap-0.5">
@@ -150,8 +150,8 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
                 group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs  font-medium transition-all duration-200
                 ${
                   isActive
-                    ? "bg-[#346EF6] text-white shadow-[0_4px_14px_rgba(52,110,246,0.32)]"
-                    : "text-[#4A5568] hover:bg-[#F5F5F5] hover:text-[#346EF6]"
+                    ? "bg-primary text-white shadow-[0_4px_14px_rgba(52,110,246,0.32)]"
+                    : "text-muted-foreground hover:bg-background hover:text-primary"
                 }
               `}
             >
@@ -166,7 +166,7 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
                 className={`flex-shrink-0 transition-colors duration-200 ${
                   isActive
                     ? "text-white"
-                    : "text-[#8896A7] group-hover:text-[#346EF6]"
+                    : "text-muted-foreground group-hover:text-primary"
                 }`}
               />
               <span className="flex-1 tracking-[-0.01em]">{label}</span>
@@ -184,7 +184,7 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
 
       {/* Bottom section */}
       <div className="px-3 pb-6 pt-4">
-        <div className="mx-3 h-px bg-[#EEF1F8] mb-4" />
+        <div className="mx-3 h-px bg-border mb-4" />
 
         {/* Logout */}
         <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
@@ -199,12 +199,12 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
             </button>
           </DialogTrigger>
 
-          <DialogContent className="sm:max-w-[400px] rounded-2xl border-[#EEF1F8] shadow-2xl">
+          <DialogContent className="sm:max-w-[400px] rounded-2xl border-border shadow-2xl">
             <DialogHeader className="text-left pb-1">
-              <DialogTitle className="text-[17px] font-bold text-[#1A2340] leading-tight">
+              <DialogTitle className="text-[17px] font-bold text-foreground leading-tight">
                 Confirm Logout
               </DialogTitle>
-              <DialogDescription className="text-[13.5px] text-[#6B7589] mt-1.5 leading-relaxed">
+              <DialogDescription className="text-[13.5px] text-muted-foreground mt-1.5 leading-relaxed">
                 You&apos;re about to sign out of your JamJade account. Any unsaved
                 changes may be lost.
               </DialogDescription>
@@ -214,14 +214,14 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
               <Button
                 variant="outline"
                 onClick={() => setLogoutOpen(false)}
-                className="flex-1 rounded-xl border-[#E2E8F0] text-[#4A5568] hover:bg-[#F5F5F5] hover:border-[#CBD5E1] text-[13.5px] font-medium h-10"
+                className="flex-1 rounded-xl border-border text-muted-foreground hover:bg-background hover:border-[#CBD5E1] text-[13.5px] font-medium h-10"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="flex-1 rounded-xl bg-[#346EF6] hover:bg-[#2558D8] text-white text-[13.5px] font-semibold h-10 shadow-[0_4px_14px_rgba(52,110,246,0.32)] transition-all duration-200"
+                className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-white text-[13.5px] font-semibold h-10 shadow-[0_4px_14px_rgba(52,110,246,0.32)] transition-all duration-200"
               >
                 {isLoggingOut ? "Logging out..." : "Yes, Log Out"}
               </Button>

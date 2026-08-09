@@ -182,9 +182,9 @@ export function DatePickerInput({
 
   return (
     <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
-      <Text className="text-[12px] font-black uppercase text-[#6C7A96]">
+      <Text className="text-[12px] font-black uppercase text-muted-foreground">
         {label}
-        {required ? <Text className="text-[#E5484D]"> *</Text> : null}
+        {required ? <Text className="text-destructive"> *</Text> : null}
       </Text>
       <Pressable
         accessibilityRole="button"
@@ -192,22 +192,22 @@ export function DatePickerInput({
         disabled={disabled}
         onPress={() => setIsCalendarOpen(true)}
         className={cx(
-          'min-h-[54px] flex-row items-center rounded-[20px] border bg-white px-4',
-          error ? 'border-[#F4A6A6] bg-[#FFF8F8]' : 'border-[#E6EEFF]',
+          'min-h-[54px] flex-row items-center rounded-[20px] border bg-surface px-4',
+          error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
           disabled && 'opacity-70',
         )}>
         <CalendarDays size={18} color="#346EF6" strokeWidth={2.35} />
         <Text
           className={cx(
             'min-w-0 flex-1 px-3 text-[14px] font-semibold',
-            value ? 'text-[#17315F]' : 'text-[#9AA4B8]',
+            value ? 'text-foreground' : 'text-subtle-foreground',
           )}>
           {value ? formatDisplayDate(value) : placeholder}
         </Text>
       </Pressable>
       <View className="absolute left-1 right-1 top-full mt-1.5">
         {error || helperText ? (
-          <Text className={cx('text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
+          <Text className={cx('text-[11px] font-bold leading-4 text-subtle-foreground', error && 'text-destructive')}>
             {error || helperText}
           </Text>
         ) : null}
@@ -217,32 +217,32 @@ export function DatePickerInput({
         <View className="flex-1 justify-end bg-black/35">
           <Pressable accessibilityRole="button" className="flex-1" onPress={() => setIsCalendarOpen(false)} />
           <View
-            className="rounded-t-[32px] bg-[#F8FAFF] px-5 pt-4"
+            className="rounded-t-[32px] bg-background px-5 pt-4"
             style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
             <View className="mb-4 items-center">
-              <View className="h-1.5 w-12 rounded-full bg-[#CBD5E1]" />
+              <View className="h-1.5 w-12 rounded-full bg-border" />
             </View>
             <View className="mb-5 flex-row items-center gap-3">
               <View className="min-w-0 flex-1">
-                <Text className="text-[22px] font-black text-[#17315F]">{label}</Text>
-                <Text className="mt-1 text-[12px] font-bold text-[#6C7A96]">Choose a date from the calendar.</Text>
+                <Text className="text-[22px] font-black text-foreground">{label}</Text>
+                <Text className="mt-1 text-[12px] font-bold text-muted-foreground">Choose a date from the calendar.</Text>
               </View>
               <Pressable
                 accessibilityLabel="Close calendar"
                 accessibilityRole="button"
                 hitSlop={8}
                 onPress={() => setIsCalendarOpen(false)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-white">
+                className="h-10 w-10 items-center justify-center rounded-full bg-surface">
                 <X size={19} color="#64748B" strokeWidth={2.45} />
               </Pressable>
             </View>
 
-            <View className="rounded-[26px] border border-[#E6EEFF] bg-white p-4">
+            <View className="rounded-[26px] border border-border bg-surface p-4">
               <View className="flex-row items-center justify-between gap-2">
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => shiftYear(-1)}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-[#F3F7FF]">
+                  className="h-10 w-10 items-center justify-center rounded-full bg-muted">
                   <ChevronsLeft size={18} color="#346EF6" strokeWidth={2.45} />
                 </Pressable>
                 <Pressable
@@ -252,11 +252,11 @@ export function DatePickerInput({
                   onPress={() => shiftMonth(-1)}
                   className={cx(
                     'h-10 w-10 items-center justify-center rounded-full',
-                    canGoToPreviousMonth ? 'bg-[#EEF4FF]' : 'bg-[#F1F5F9]',
+                    canGoToPreviousMonth ? 'bg-muted' : 'bg-[#F1F5F9]',
                   )}>
                   <ChevronLeft size={19} color={canGoToPreviousMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
                 </Pressable>
-                <Text className="min-w-0 flex-1 text-center text-[16px] font-black text-[#17315F]">
+                <Text className="min-w-0 flex-1 text-center text-[16px] font-black text-foreground">
                   {getMonthTitle(visibleMonth)}
                 </Text>
                 <Pressable
@@ -266,14 +266,14 @@ export function DatePickerInput({
                   onPress={() => shiftMonth(1)}
                   className={cx(
                     'h-10 w-10 items-center justify-center rounded-full',
-                    canGoToNextMonth ? 'bg-[#EEF4FF]' : 'bg-[#F1F5F9]',
+                    canGoToNextMonth ? 'bg-muted' : 'bg-[#F1F5F9]',
                   )}>
                   <ChevronRight size={19} color={canGoToNextMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => shiftYear(1)}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-[#F3F7FF]">
+                  className="h-10 w-10 items-center justify-center rounded-full bg-muted">
                   <ChevronsRight size={18} color="#346EF6" strokeWidth={2.45} />
                 </Pressable>
               </View>
@@ -282,7 +282,7 @@ export function DatePickerInput({
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
                   <Text
                     key={weekday}
-                    className="text-center text-[10px] font-black uppercase text-[#91A0B8]"
+                    className="text-center text-[10px] font-black uppercase text-subtle-foreground"
                     style={{ width: `${100 / 7}%` }}>
                     {weekday}
                   </Text>
@@ -309,16 +309,16 @@ export function DatePickerInput({
                         onPress={() => handleSelectDate(date)}
                         className={cx(
                           'h-9 w-9 items-center justify-center rounded-full',
-                          isSelected && 'bg-[#346EF6]',
-                          !isSelected && !isDisabled && 'bg-white',
+                          isSelected && 'bg-primary',
+                          !isSelected && !isDisabled && 'bg-surface',
                           isDisabled && 'bg-[#F1F5F9]',
                         )}>
                         <Text
                           className={cx(
                             'text-[13px] font-black',
-                            isSelected && 'text-white',
-                            !isSelected && !isDisabled && 'text-[#17315F]',
-                            isDisabled && 'text-[#CBD5E1]',
+                            isSelected && 'text-surface',
+                            !isSelected && !isDisabled && 'text-foreground',
+                            isDisabled && 'text-border',
                           )}>
                           {date.getDate()}
                         </Text>

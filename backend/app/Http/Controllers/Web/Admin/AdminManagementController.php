@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web\Admin;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AccessControl\ListAdminUsersRequest;
 use App\Http\Requests\Admin\AccessControl\StoreAdminRoleRequest;
 use App\Http\Requests\Admin\AccessControl\StoreAdminUserRequest;
 use App\Http\Requests\Admin\AccessControl\UpdateAdminRoleRequest;
@@ -26,23 +27,23 @@ class AdminManagementController extends Controller
 
     public function __construct(private readonly AdminAccessService $access) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListAdminUsersRequest $request): JsonResponse
     {
-        $users = $this->adminUserQuery()
-            ->when($request->filled('search'), function ($query) use ($request) {
-                $search = (string) $request->string('search');
+        $filters = $request->validated();
 
+        $users = $this->adminUserQuery()
+            ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
                         ->orWhere('phone_number', 'like', "%{$search}%");
                 });
             })
-            ->when($request->filled('status') && $request->string('status')->toString() !== 'all', function ($query) use ($request) {
-                $query->where('is_active', $request->string('status')->toString() === 'active');
+            ->when(($filters['status'] ?? 'all') !== 'all', function ($query) use ($filters) {
+                $query->where('is_active', $filters['status'] === 'active');
             })
-            ->when($request->filled('role') && $request->string('role')->toString() !== 'all', function ($query) use ($request) {
-                $query->role($request->string('role')->toString());
+            ->when(($filters['role'] ?? 'all') !== 'all', function ($query) use ($filters) {
+                $query->role($filters['role']);
             })
             ->latest()
             ->get();

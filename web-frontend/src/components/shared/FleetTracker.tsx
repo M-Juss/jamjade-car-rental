@@ -80,14 +80,14 @@ export default function FleetTracker() {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#F5F5F5] p-4 md:p-5 lg:p-6">
+    <div className="flex h-screen flex-col overflow-hidden bg-background p-4 md:p-5 lg:p-6">
       <section className="shrink-0 pb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1A2340]">Fleet Tracker</h1>
-            <p className="mt-0.5 text-sm text-[#8896A7]">Real-time monitoring of all active rentals</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Fleet Tracker</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Real-time monitoring of all active rentals</p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-[#4A5568]">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
               <CircleDot className="size-3" />
               Live
@@ -104,7 +104,7 @@ export default function FleetTracker() {
       <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[3fr_1fr]">
         <Card className="flex min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <CardHeader className="shrink-0 px-4 pb-2 pt-4">
-            <CardTitle className="text-sm font-bold text-[#1A2340]">Live Map</CardTitle>
+            <CardTitle className="text-sm font-bold text-foreground">Live Map</CardTitle>
             <CardDescription>Vehicle marker colors reflect real-time status.</CardDescription>
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 pt-0">
@@ -116,7 +116,7 @@ export default function FleetTracker() {
               onToggleGeofence={() => setShowGeofence((prev) => !prev)}
               className="min-h-0 flex-1"
             />
-            <div className="shrink-0 flex flex-wrap gap-2 text-xs text-[#4A5568]">
+            <div className="shrink-0 flex flex-wrap gap-2 text-xs text-muted-foreground">
               {[
                 ["Active", "bg-emerald-500"],
                 ["Paused", "bg-amber-500"],
@@ -137,8 +137,8 @@ export default function FleetTracker() {
           <CardHeader className="shrink-0 space-y-2 border-b border-slate-100 px-3 py-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <CardTitle className="truncate text-sm font-bold text-[#1A2340]">Ongoing Booking</CardTitle>
-                <p className="text-[11px] text-[#8896A7]">Active rentals now</p>
+                <CardTitle className="truncate text-sm font-bold text-foreground">Ongoing Booking</CardTitle>
+                <p className="text-[11px] text-muted-foreground">Active rentals now</p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <SummaryPill label="Active" value={filteredVehicles.length} />
@@ -147,7 +147,7 @@ export default function FleetTracker() {
             </div>
 
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[#8896A7]" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -207,8 +207,8 @@ export default function FleetTracker() {
                     />
                   )) : (
                     <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center">
-                      <p className="text-xs font-medium text-[#1A2340]">No vehicles found</p>
-                      <p className="mt-1 text-[11px] text-[#8896A7]">Try a different search or filter.</p>
+                      <p className="text-xs font-medium text-foreground">No vehicles found</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Try a different search or filter.</p>
                     </div>
                   )}
                 </div>
@@ -221,7 +221,7 @@ export default function FleetTracker() {
       <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <SheetContent
           side="bottom"
-          className="h-[70dvh] min-h-[70dvh] max-h-[70dvh] gap-0 overflow-hidden rounded-t-2xl border border-slate-200 bg-[#F5F5F5]"
+          className="h-[70dvh] min-h-[70dvh] max-h-[70dvh] gap-0 overflow-hidden rounded-t-2xl border border-slate-200 bg-background"
         >
           {selectedVehicle ? (
             <>
@@ -257,8 +257,8 @@ function FilterSelect({
     <div className="min-w-0">
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger className="h-7 w-full min-w-0 rounded-lg border-slate-200 px-2 text-[11px]">
-          <span className="mr-1 shrink-0 font-semibold text-[#8896A7]">{label}</span>
-          <span className="min-w-0 flex-1 truncate text-left text-[#1A2340]">
+          <span className="mr-1 shrink-0 font-semibold text-muted-foreground">{label}</span>
+          <span className="min-w-0 flex-1 truncate text-left text-foreground">
             <SelectValue placeholder={placeholder} />
           </span>
         </SelectTrigger>
@@ -275,7 +275,7 @@ function FilterSelect({
 function SummaryPill({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "warning" }) {
   const toneClass = tone === "warning"
     ? "border-amber-200 bg-amber-50 text-amber-700"
-    : "border-blue-200 bg-[#EEF4FF] text-[#346EF6]";
+    : "border-blue-200 bg-muted text-primary";
 
   return (
     <div className={`rounded-full border px-2 py-1 text-[10.5px] font-semibold leading-none ${toneClass}`}>

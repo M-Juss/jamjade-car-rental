@@ -108,12 +108,12 @@ function DocumentSummaryPill({
   iconColor: string;
 }) {
   return (
-    <View className="min-h-[82px] flex-1 rounded-[20px] border border-[#E6EEFF] bg-white p-3.5">
+    <View className="min-h-[82px] flex-1 rounded-[20px] border border-border bg-surface p-3.5">
       <View className={`${iconBgClassName} h-9 w-9 items-center justify-center rounded-full`}>
         <Icon size={18} color={iconColor} strokeWidth={2.45} />
       </View>
-      <Text className="mt-2 text-[20px] font-black text-[#17315F]">{value}</Text>
-      <Text className="mt-0.5 text-[10px] font-black uppercase text-[#91A0B8]">{label}</Text>
+      <Text className="mt-2 text-[20px] font-black text-foreground">{value}</Text>
+      <Text className="mt-0.5 text-[10px] font-black uppercase text-subtle-foreground">{label}</Text>
     </View>
   );
 }
@@ -148,18 +148,18 @@ export function DocumentManagerScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="never">
         <View className="px-5" style={{ paddingBottom: 34 + insets.bottom, paddingTop: insets.top + 10 }}>
-          <View className="relative min-h-[48px] flex-row items-center justify-center border-b border-[#E6EEFF] pb-4">
+          <View className="relative min-h-[48px] flex-row items-center justify-center border-b border-border pb-4">
             <Pressable
               accessibilityLabel="Go back"
               accessibilityRole="button"
               onPress={() => router.back()}
-              className="absolute left-0 h-12 w-12 items-center justify-center rounded-full border border-[#E6EEFF] bg-white">
+              className="absolute left-0 h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
               <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
             </Pressable>
-            <Text className="px-16 text-center text-[22px] font-black leading-[27px] text-[#17315F]" numberOfLines={1}>
+            <Text className="px-16 text-center text-[22px] font-black leading-[27px] text-foreground" numberOfLines={1}>
               Manage Document
             </Text>
           </View>
@@ -167,14 +167,14 @@ export function DocumentManagerScreen() {
           <View className="mt-6 flex-row gap-2.5">
             <DocumentSummaryPill
               icon={CheckCircle2}
-              iconBgClassName="bg-[#ECFDF5]"
+              iconBgClassName="bg-success-surface"
               iconColor="#047857"
               label="Verified"
               value={summary.verified}
             />
             <DocumentSummaryPill
               icon={Clock3}
-              iconBgClassName="bg-[#FFF7ED]"
+              iconBgClassName="bg-warning-surface"
               iconColor="#C2410C"
               label="Pending"
               value={summary.pending}

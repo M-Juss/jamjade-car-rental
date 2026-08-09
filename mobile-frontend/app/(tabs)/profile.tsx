@@ -27,8 +27,8 @@ import {
   ProfileSectionCard,
 } from '@/components/profile';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { ProfileEmergencyContactForm } from '@/forms/ProfileEmergencyContactForm';
-import { ProfilePersonalInformationForm } from '@/forms/ProfilePersonalInformationForm';
+import { ProfileEmergencyContactForm } from '@/forms/profile/ProfileEmergencyContactForm';
+import { ProfilePersonalInformationForm } from '@/forms/profile/ProfilePersonalInformationForm';
 import {
   CUSTOMER_DOCUMENT_DEFINITIONS,
   hasDocumentDraft,
@@ -74,7 +74,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
@@ -84,21 +84,21 @@ export default function ProfileScreen() {
         <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
           <CustomerTabHeader description="Your profile and self-drive readiness." />
 
-          <View className="mt-6 overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-[#17315F] p-5 shadow-xl shadow-[#17315F]/15">
-            <View className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#346EF6]/35" />
+          <View className="mt-6 overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-foreground p-5 shadow-xl shadow-foreground/15">
+            <View className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/35" />
             <View className="flex-row items-start gap-4">
-              <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-[28px] border-2 border-white/45 bg-white/15">
+              <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-[28px] border-2 border-surface/45 bg-surface/15">
                 {customer.profilePicture ? (
                   <Image source={{ uri: customer.profilePicture }} resizeMode="cover" className="h-full w-full" />
                 ) : (
-                  <View className="h-full w-full items-center justify-center bg-[#EEF4FF]">
-                    <Text className="text-[24px] font-black text-[#346EF6]">{initials}</Text>
+                  <View className="h-full w-full items-center justify-center bg-muted">
+                    <Text className="text-[24px] font-black text-primary">{initials}</Text>
                   </View>
                 )}
               </View>
               <View className="min-w-0 flex-1">
                 <StatusBadge status={customer.selfDriveStatus} />
-                <Text className="mt-3 text-[24px] font-black leading-[28px] text-white" numberOfLines={2}>
+                <Text className="mt-3 text-[24px] font-black leading-[28px] text-surface" numberOfLines={2}>
                   {fullName}
                 </Text>
                 <Text className="mt-1 text-[13px] font-semibold leading-5 text-[#D8E5FF]" numberOfLines={1}>
@@ -168,9 +168,9 @@ export default function ProfileScreen() {
                   />
                 ) : null}
                 {customer.isBelow18 ? (
-                  <View className="rounded-[20px] border border-[#FED7AA] bg-[#FFF7ED] px-4 py-3">
-                    <Text className="text-[12px] font-bold leading-5 text-[#806128]">
-                      Self-drive verification is not available for customers below 18.
+                  <View className="rounded-[20px] border border-warning-border bg-warning-surface px-4 py-3">
+                    <Text className="text-[12px] font-bold leading-5 text-warning">
+                      Booking is unavailable because JamJade only accepts bookings from customers aged 18 or older.
                     </Text>
                   </View>
                 ) : null}
@@ -206,9 +206,9 @@ export default function ProfileScreen() {
                 setIsLoggingOut(false);
               }
             }}
-            className="mt-8 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full border border-[#FECACA] bg-[#FEF2F2] px-5">
+            className="mt-8 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full border border-destructive-border bg-destructive-surface px-5">
             <LogOut size={17} color="#DC2626" strokeWidth={2.45} />
-            <Text className="text-[13px] font-black text-[#DC2626]">
+            <Text className="text-[13px] font-black text-destructive">
               {isLoggingOut ? 'Logging out...' : 'Logout'}
             </Text>
           </Pressable>

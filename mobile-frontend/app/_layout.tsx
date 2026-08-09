@@ -4,21 +4,22 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import '../global.css';
 
+import { themeColors } from '@/constants/theme';
 import { AuthProvider } from '@/providers/AuthProvider';
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  initialRouteName: 'index',
 };
 
 const JamJadeNavigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: '#F8FAFF',
-    border: '#DDE8FF',
-    card: '#FFFFFF',
-    primary: '#346EF6',
-    text: '#17315F',
+    background: themeColors.background,
+    border: themeColors.border,
+    card: themeColors.surface,
+    primary: themeColors.primary,
+    text: themeColors.foreground,
   },
 };
 
@@ -27,9 +28,11 @@ export default function RootLayout() {
     <AuthProvider>
       <ThemeProvider value={JamJadeNavigationTheme}>
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="vehicles" options={{ headerShown: false }} />
           <Stack.Screen name="browse" options={{ headerShown: false }} />
           <Stack.Screen name="bookings" options={{ headerShown: false }} />
           <Stack.Screen name="profile" options={{ headerShown: false }} />

@@ -1,0 +1,224 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter, type Href } from 'expo-router';
+import { ShieldCheck } from 'lucide-react-native';
+import { Controller, useForm } from 'react-hook-form';
+import { View } from 'react-native';
+
+import { AvatarUploader } from '@/components/onboarding/AvatarUploader';
+import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
+import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenFrame';
+import { BottomActionButton } from '@/components/ui/BottomActionButton';
+import { DatePickerInput } from '@/components/ui/DatePickerInput';
+import { FormInput } from '@/components/ui/FormInput';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { FormToast, useFormToast } from '@/forms/shared/FormToast';
+import {
+  basicInfoSchema,
+  sanitizePersonName,
+} from '@/validation';
+import {
+  createCustomerProfile,
+  getCustomerInitials,
+  useCustomer,
+} from '@/lib/customer/customer-store';
+import type { BasicCustomerProfileInput } from '@/types/customer';
+import {
+  BOOKING_AGE_REQUIREMENT_MESSAGE,
+  getLatestEligibleBirthdateKey,
+} from '@/utils/calculateAge';
+import { updateProfile } from '@/services/api';
+import { ApiError } from '@/services/http';
+
+export function BasicInfoForm() {
+  const router = useRouter();
+  const customer = useCustomer();
+  const toast = useFormToast();
+  const {
+    control,
+    formState: { errors, isSubmitting },
+    handleSubmit,
+    setError,
+    setValue,
+    watch,
+  } = useForm<BasicCustomerProfileInput>({
+    defaultValues: {
+      address: customer.address,
+      birthdate: customer.birthdate,
+      contactNumber: customer.contactNumber,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      profilePicture: customer.profilePicture,
+    },
+    resolver: zodResolver(basicInfoSchema),
+  });
+  const form = watch();
+  const initials = [form.firstName, form.lastName]
+    .filter(Boolean)
+    .map((name) => name[0])
+    .join('')
+    .toUpperCase() || getCustomerInitials(customer);
+
+  const onSubmit = async (values: BasicCustomerProfileInput) => {
+    try {
+      await updateProfile(values);
+      createCustomerProfile(values);
+      router.push('/onboarding/emergency-contact' as Href);
+    } catch (error) {
+      if (error instanceof ApiError && error.errors) {
+        const fieldMap: Record<string, keyof BasicCustomerProfileInput> = {
+          address: 'address',
+          birthdate: 'birthdate',
+          first_name: 'firstName',
+          last_name: 'lastName',
+          phone_number: 'contactNumber',
+          profile_picture: 'profilePicture',
+        };
+
+        Object.entries(error.errors).forEach(([serverField, messages]) => {
+          const field = fieldMap[serverField];
+          const message = messages[0];
+
+          if (field && message) {
+            setError(field, { message, type: 'server' });
+          }
+        });
+      }
+
+      toast.showToast(
+        error instanceof ApiError && error.status === 0
+          ? 'Unable to connect right now. Please try again.'
+          : 'Unable to save your profile. Check the highlighted fields.',
+      );
+    }
+  };
+
+  return (
+    <View className="flex-1">
+      <OnboardingScreenFrame
+        action={
+          <BottomActionButton
+            disabled={isSubmitting}
+            label={isSubmitting ? 'Saving...' : 'Continue'}
+            onPress={handleSubmit(onSubmit, () => {
+              toast.showToast('Check the highlighted profile fields.');
+            })}
+          />
+        }>
+        <OnboardingHeader
+          currentStep={1}
+          icon={ShieldCheck}
+          subtitle="This helps Jamjade prepare your account and rental requirements."
+          title="Basic information"
+          totalSteps={3}
+        />
+
+        <View className="mt-7 gap-4">
+          <AvatarUploader
+            imageUri={form.profilePicture}
+            initials={initials}
+            onChange={(imageUri) => {
+              setValue('profilePicture', imageUri, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+            }}
+          />
+
+          <View className="gap-4 rounded-[28px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
+            <Controller
+              control={control}
+              name="firstName"
+              render={({ field, fieldState }) => (
+                <FormInput
+                  autoCapitalize="words"
+                  error={fieldState.error?.message}
+                  icon="person-outline"
+                  label="First Name"
+                  maxLength={100}
+                  onBlur={field.onBlur}
+                  onChangeText={(value) => field.onChange(sanitizePersonName(value))}
+                  placeholder="Enter first name"
+                  required
+                  value={field.value}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="lastName"
+              render={({ field, fieldState }) => (
+                <FormInput
+                  autoCapitalize="words"
+                  error={fieldState.error?.message}
+                  icon="person-outline"
+                  label="Last Name"
+                  maxLength={100}
+                  onBlur={field.onBlur}
+                  onChangeText={(value) => field.onChange(sanitizePersonName(value))}
+                  placeholder="Enter last name"
+                  required
+                  value={field.value}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="contactNumber"
+              render={({ field, fieldState }) => (
+                <PhoneInput
+                  error={fieldState.error?.message}
+                  onBlur={field.onBlur}
+                  onChangeText={field.onChange}
+                  required
+                  value={field.value}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="birthdate"
+              render={({ field, fieldState }) => (
+                <DatePickerInput
+                  error={fieldState.error?.message}
+                  helperText={BOOKING_AGE_REQUIREMENT_MESSAGE}
+                  initialVisibleDate="2000-01-01"
+                  label="Birthdate"
+                  maximumDate={getLatestEligibleBirthdateKey()}
+                  minimumDate="1900-01-01"
+                  onChange={field.onChange}
+                  placeholder="Select your birthdate"
+                  required
+                  value={field.value}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="address"
+              render={({ field, fieldState }) => (
+                <FormInput
+                  autoCapitalize="sentences"
+                  error={fieldState.error?.message}
+                  icon="location-on"
+                  label="Address"
+                  multiline
+                  onBlur={field.onBlur}
+                  onChangeText={field.onChange}
+                  placeholder="House number, street, city, province"
+                  required
+                  value={field.value}
+                />
+              )}
+            />
+          </View>
+        </View>
+      </OnboardingScreenFrame>
+      <FormToast
+        message={toast.message}
+        onDismiss={toast.clearToast}
+        title={toast.title}
+        variant={toast.variant}
+      />
+    </View>
+  );
+}

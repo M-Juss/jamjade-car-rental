@@ -94,6 +94,25 @@ it('lets an owner log in with an existing password and open admin management', f
         ->assertJsonPath('data.summary.total', 0);
 });
 
+it('validates and normalizes admin login credentials through the request contract', function () {
+    $this->postJson('/admin/login', [
+        'email' => 'not-an-email',
+        'password' => '',
+        'remember' => 'not-a-boolean',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['email', 'password', 'remember']);
+});
+
+it('validates admin management list filters', function () {
+    $owner = User::factory()->create();
+    $owner->assignRole(UserRole::Owner->value);
+
+    $this->actingAs($owner)
+        ->getJson('/admin/management?status=unknown')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('status');
+});
+
 it('prevents protected roles from being edited', function () {
     $owner = User::factory()->create();
     $owner->assignRole(UserRole::Owner->value);

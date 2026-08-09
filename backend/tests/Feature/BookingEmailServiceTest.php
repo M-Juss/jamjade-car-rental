@@ -3,6 +3,7 @@
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\RentalType;
+use App\Mail\BookingConfirmationMail;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\BookingEmailService;
@@ -131,8 +132,8 @@ it('can queue booking confirmations when production queue delivery is enabled', 
     expect(app(BookingEmailService::class)->sendBookingConfirmation($booking))->toBeTrue();
 
     Mail::assertQueued(
-        \App\Mail\BookingConfirmationMail::class,
-        fn (\App\Mail\BookingConfirmationMail $mail) => $mail->booking->is($booking)
+        BookingConfirmationMail::class,
+        fn (BookingConfirmationMail $mail) => $mail->booking->is($booking)
     );
 
     expect($booking->fresh()->confirmation_email_status)

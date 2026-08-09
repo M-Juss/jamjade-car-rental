@@ -32,15 +32,15 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
     ref,
   ) => (
     <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
-      <Text className="text-[12px] font-black uppercase text-[#6C7A96]">
+      <Text className="text-[12px] font-black uppercase text-muted-foreground">
         {label}
-        {required ? <Text className="text-[#E5484D]"> *</Text> : null}
+        {required ? <Text className="text-destructive"> *</Text> : null}
       </Text>
       <View
         className={cx(
-          'flex-row rounded-[20px] border bg-white px-4',
+          'flex-row rounded-[20px] border bg-surface px-4',
           multiline ? 'min-h-[104px] items-start py-3' : 'min-h-[54px] items-center',
-          error ? 'border-[#F4A6A6] bg-[#FFF8F8]' : 'border-[#E6EEFF]',
+          error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
           !editable && 'opacity-70',
         )}>
         {icon ? (
@@ -55,7 +55,7 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
           placeholderTextColor="#9AA4B8"
           textAlignVertical={multiline ? 'top' : 'center'}
           className={cx(
-            'min-w-0 flex-1 py-0 text-[14px] font-semibold text-[#17315F]',
+            'min-w-0 flex-1 py-0 text-[14px] font-semibold text-foreground',
             multiline && 'min-h-[76px]',
           )}
           {...props}
@@ -63,7 +63,7 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
       </View>
       <View className="absolute left-1 right-1 top-full mt-1.5">
         {error || helperText ? (
-          <Text className={cx('text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
+          <Text className={cx('text-[11px] font-bold leading-4 text-subtle-foreground', error && 'text-destructive')}>
             {error || helperText}
           </Text>
         ) : null}

@@ -17,8 +17,10 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/login', [AuthController::class, 'login'])->name('login');
     });
 
-    Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
-    Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('vehicles.show');
+    Route::middleware('throttle:mobile-api')->group(function () {
+        Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
+        Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('vehicles.show');
+    });
 
     Route::middleware(['auth:sanctum', 'throttle:mobile-api'])->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');

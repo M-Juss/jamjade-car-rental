@@ -14,270 +14,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-
-type GooglePlacePrediction = {
-  description: string;
-  place_id: string;
-  structured_formatting?: {
-    main_text?: string;
-    secondary_text?: string;
-  };
-  source?: 'google' | 'local';
-};
-
-type GooglePlacesAutocompleteResponse = {
-  predictions?: GooglePlacePrediction[];
-  status?: string;
-  error_message?: string;
-};
-
-type GooglePlacesNewSuggestion = {
-  placePrediction?: {
-    placeId?: string;
-    text?: {
-      text?: string;
-    };
-    structuredFormat?: {
-      mainText?: {
-        text?: string;
-      };
-      secondaryText?: {
-        text?: string;
-      };
-    };
-  };
-};
-
-type GooglePlacesNewAutocompleteResponse = {
-  suggestions?: GooglePlacesNewSuggestion[];
-  error?: {
-    code?: number;
-    message?: string;
-    status?: string;
-  };
-};
-
-const PHILIPPINE_LOCATION_CHOICES: GooglePlacePrediction[] = [
-  {
-    description: 'Dasmarinas, Cavite, Philippines',
-    place_id: 'local-ph-dasmarinas-cavite',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Dasmarinas',
-      secondary_text: 'Cavite, Philippines',
-    },
-  },
-  {
-    description: 'Imus, Cavite, Philippines',
-    place_id: 'local-ph-imus-cavite',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Imus',
-      secondary_text: 'Cavite, Philippines',
-    },
-  },
-  {
-    description: 'Bacoor, Cavite, Philippines',
-    place_id: 'local-ph-bacoor-cavite',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Bacoor',
-      secondary_text: 'Cavite, Philippines',
-    },
-  },
-  {
-    description: 'General Trias, Cavite, Philippines',
-    place_id: 'local-ph-general-trias-cavite',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'General Trias',
-      secondary_text: 'Cavite, Philippines',
-    },
-  },
-  {
-    description: 'Tagaytay, Cavite, Philippines',
-    place_id: 'local-ph-tagaytay-cavite',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Tagaytay',
-      secondary_text: 'Cavite, Philippines',
-    },
-  },
-  {
-    description: 'Alabang, Muntinlupa, Metro Manila, Philippines',
-    place_id: 'local-ph-alabang-muntinlupa',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Alabang',
-      secondary_text: 'Muntinlupa, Metro Manila, Philippines',
-    },
-  },
-  {
-    description: 'Makati, Metro Manila, Philippines',
-    place_id: 'local-ph-makati',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Makati',
-      secondary_text: 'Metro Manila, Philippines',
-    },
-  },
-  {
-    description: 'Bonifacio Global City, Taguig, Metro Manila, Philippines',
-    place_id: 'local-ph-bgc-taguig',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Bonifacio Global City',
-      secondary_text: 'Taguig, Metro Manila, Philippines',
-    },
-  },
-  {
-    description: 'Mall of Asia, Pasay, Metro Manila, Philippines',
-    place_id: 'local-ph-moa-pasay',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Mall of Asia',
-      secondary_text: 'Pasay, Metro Manila, Philippines',
-    },
-  },
-  {
-    description: 'Ninoy Aquino International Airport, Pasay, Metro Manila, Philippines',
-    place_id: 'local-ph-naia-pasay',
-    source: 'local',
-    structured_formatting: {
-      main_text: 'Ninoy Aquino International Airport',
-      secondary_text: 'Pasay, Metro Manila, Philippines',
-    },
-  },
-];
-
-const GOOGLE_FETCH_MINIMUM_LENGTH = 3;
+import {
+  canSearchGooglePlaces,
+  createGooglePlacesSessionToken,
+  getPhilippinePlaceSuggestions,
+  searchGooglePlaces,
+  type PlacePrediction,
+} from '@/services/maps/google-places.service';
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
-}
-
-function getGoogleMapsApiKey() {
-  return process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-}
-
-function createManualSuggestion(query: string): GooglePlacePrediction {
-  const trimmedQuery = query.trim();
-
-  return {
-    description: trimmedQuery,
-    place_id: `manual-ph-${trimmedQuery.toLowerCase()}`,
-    source: 'local',
-    structured_formatting: {
-      main_text: `Use "${trimmedQuery}"`,
-      secondary_text: 'Manual pickup address in the Philippines',
-    },
-  };
-}
-
-function getPhilippineFallbackSuggestions(query: string) {
-  const normalizedQuery = query.trim().toLowerCase();
-
-  if (!normalizedQuery) {
-    return [];
-  }
-
-  const matchedLocations = PHILIPPINE_LOCATION_CHOICES.filter((location) =>
-    location.description.toLowerCase().includes(normalizedQuery),
-  );
-
-  return [createManualSuggestion(query), ...matchedLocations].slice(0, 5);
-}
-
-function normalizePlacesNewSuggestion(suggestion: GooglePlacesNewSuggestion): GooglePlacePrediction | null {
-  const prediction = suggestion.placePrediction;
-  const description = prediction?.text?.text;
-
-  if (!prediction || !description) {
-    return null;
-  }
-
-  return {
-    description,
-    place_id: prediction.placeId ?? description,
-    source: 'google',
-    structured_formatting: {
-      main_text: prediction.structuredFormat?.mainText?.text ?? description,
-      secondary_text: prediction.structuredFormat?.secondaryText?.text ?? 'Philippines',
-    },
-  };
-}
-
-async function fetchPlacesNewSuggestions({
-  apiKey,
-  query,
-  sessionToken,
-  signal,
-}: {
-  apiKey: string;
-  query: string;
-  sessionToken: string;
-  signal: AbortSignal;
-}) {
-  const response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-    body: JSON.stringify({
-      includedRegionCodes: ['ph'],
-      input: query,
-      languageCode: 'en',
-      regionCode: 'PH',
-      sessionToken,
-    }),
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask':
-        'suggestions.placePrediction.placeId,suggestions.placePrediction.text.text,suggestions.placePrediction.structuredFormat.mainText.text,suggestions.placePrediction.structuredFormat.secondaryText.text',
-    },
-    method: 'POST',
-    signal,
-  });
-  const data = (await response.json()) as GooglePlacesNewAutocompleteResponse;
-
-  if (!response.ok || data.error) {
-    return [];
-  }
-
-  return (data.suggestions ?? [])
-    .map(normalizePlacesNewSuggestion)
-    .filter((suggestion): suggestion is GooglePlacePrediction => Boolean(suggestion))
-    .slice(0, 5);
-}
-
-async function fetchLegacyPlacesSuggestions({
-  apiKey,
-  query,
-  sessionToken,
-  signal,
-}: {
-  apiKey: string;
-  query: string;
-  sessionToken: string;
-  signal: AbortSignal;
-}) {
-  const params = new URLSearchParams({
-    components: 'country:ph',
-    input: query,
-    key: apiKey,
-    language: 'en',
-    region: 'ph',
-    sessiontoken: sessionToken,
-  });
-  const response = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params.toString()}`, {
-    signal,
-  });
-  const data = (await response.json()) as GooglePlacesAutocompleteResponse;
-
-  if (data.status === 'OK') {
-    return (data.predictions ?? [])
-      .slice(0, 5)
-      .map((prediction) => ({ ...prediction, source: 'google' as const }));
-  }
-
-  return [];
 }
 
 export function LocationSearchWithLabel({
@@ -300,9 +46,8 @@ export function LocationSearchWithLabel({
   const [query, setQuery] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<GooglePlacePrediction[]>([]);
-  const sessionToken = useMemo(() => Math.random().toString(36).slice(2), []);
-  const apiKey = getGoogleMapsApiKey();
+  const [suggestions, setSuggestions] = useState<PlacePrediction[]>([]);
+  const sessionToken = useMemo(createGooglePlacesSessionToken, []);
 
   useEffect(() => {
     setQuery(value);
@@ -317,10 +62,10 @@ export function LocationSearchWithLabel({
       return undefined;
     }
 
-    const fallbackSuggestions = getPhilippineFallbackSuggestions(trimmedQuery);
+    const fallbackSuggestions = getPhilippinePlaceSuggestions(trimmedQuery);
     setSuggestions(fallbackSuggestions);
 
-    if (!apiKey || trimmedQuery.length < GOOGLE_FETCH_MINIMUM_LENGTH) {
+    if (!canSearchGooglePlaces(trimmedQuery)) {
       setIsLoading(false);
       return undefined;
     }
@@ -330,8 +75,7 @@ export function LocationSearchWithLabel({
       setIsLoading(true);
 
       try {
-        const placesNewSuggestions = await fetchPlacesNewSuggestions({
-          apiKey,
+        const placesNewSuggestions = await searchGooglePlaces({
           query: trimmedQuery,
           sessionToken,
           signal: controller.signal,
@@ -342,14 +86,7 @@ export function LocationSearchWithLabel({
           return;
         }
 
-        const legacySuggestions = await fetchLegacyPlacesSuggestions({
-          apiKey,
-          query: trimmedQuery,
-          sessionToken,
-          signal: controller.signal,
-        });
-
-        setSuggestions(legacySuggestions.length > 0 ? legacySuggestions : fallbackSuggestions);
+        setSuggestions(fallbackSuggestions);
       } catch {
         if (controller.signal.aborted) {
           return;
@@ -367,7 +104,7 @@ export function LocationSearchWithLabel({
       controller.abort();
       clearTimeout(timeout);
     };
-  }, [apiKey, disabled, isFocused, query, sessionToken]);
+  }, [disabled, isFocused, query, sessionToken]);
 
   const handleChangeText = (nextValue: string) => {
     if (disabled) {
@@ -378,7 +115,7 @@ export function LocationSearchWithLabel({
     onChangeText(nextValue);
   };
 
-  const handleSelectSuggestion = (suggestion: GooglePlacePrediction) => {
+  const handleSelectSuggestion = (suggestion: PlacePrediction) => {
     setQuery(suggestion.description);
     onChangeText(suggestion.description);
     setSuggestions([]);
@@ -391,11 +128,11 @@ export function LocationSearchWithLabel({
 
   return (
     <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
-      <Text className="text-[12px] font-black uppercase tracking-[0.7px] text-[#91A0B8]">{label}</Text>
+      <Text className="text-[12px] font-black uppercase tracking-[0.7px] text-subtle-foreground">{label}</Text>
       <View
         className={cx(
-          'min-h-[56px] flex-row items-center rounded-[24px] border bg-white px-4',
-          error ? 'border-[#F4A6A6] bg-[#FFF8F8]' : 'border-[#E6EEFF]',
+          'min-h-[56px] flex-row items-center rounded-[24px] border bg-surface px-4',
+          error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
           disabled && 'bg-[#F3F6FA] opacity-70',
         )}>
         <MapPinned size={18} color="#346EF6" strokeWidth={2.35} />
@@ -413,14 +150,14 @@ export function LocationSearchWithLabel({
           editable={!disabled}
           placeholder={placeholder}
           placeholderTextColor="#9AA4B8"
-          className="min-w-0 flex-1 px-3 text-[15px] font-bold text-[#17315F]"
+          className="min-w-0 flex-1 px-3 text-[15px] font-bold text-foreground"
         />
         <Search size={16} color="#9AA4B8" strokeWidth={2.35} />
       </View>
 
       {showSuggestions ? (
         <View
-          className="overflow-hidden rounded-[24px] border border-[#E6EEFF] bg-white shadow-md shadow-[#17315F]/5"
+          className="overflow-hidden rounded-[24px] border border-border bg-surface shadow-md shadow-foreground/5"
           style={{ elevation: 8, zIndex: 30 }}>
           {suggestions.map((suggestion, index) => (
             <Pressable
@@ -428,29 +165,29 @@ export function LocationSearchWithLabel({
               accessibilityRole="button"
               onPress={() => handleSelectSuggestion(suggestion)}
               className={cx('flex-row gap-3 px-4 py-3', index !== suggestions.length - 1 && 'border-b border-[#EEF2FF]')}>
-              <View className="mt-0.5 h-8 w-8 items-center justify-center rounded-full bg-[#EEF4FF]">
+              <View className="mt-0.5 h-8 w-8 items-center justify-center rounded-full bg-muted">
                 <MapPinned size={15} color="#346EF6" strokeWidth={2.35} />
               </View>
               <View className="min-w-0 flex-1">
-                <Text className="text-[13px] font-black leading-5 text-[#17315F]" numberOfLines={1}>
+                <Text className="text-[13px] font-black leading-5 text-foreground" numberOfLines={1}>
                   {suggestion.structured_formatting?.main_text ?? suggestion.description}
                 </Text>
-                <Text className="mt-0.5 text-[11px] font-semibold leading-4 text-[#6C7A96]" numberOfLines={2}>
+                <Text className="mt-0.5 text-[11px] font-semibold leading-4 text-muted-foreground" numberOfLines={2}>
                   {suggestion.structured_formatting?.secondary_text ?? suggestion.description}
                 </Text>
               </View>
             </Pressable>
           ))}
-          <Text className="border-t border-[#EEF2FF] px-4 py-2 text-right text-[10px] font-black text-[#91A0B8]">
+          <Text className="border-t border-[#EEF2FF] px-4 py-2 text-right text-[10px] font-black text-subtle-foreground">
             {hasGoogleSuggestions ? 'Powered by Google' : 'Philippines only'}
           </Text>
         </View>
       ) : null}
 
-      {isLoading ? <Text className="text-[11px] font-bold text-[#91A0B8]">Searching Google Maps...</Text> : null}
+      {isLoading ? <Text className="text-[11px] font-bold text-subtle-foreground">Searching Google Maps...</Text> : null}
       <View className="absolute left-1 right-1 top-full mt-1.5">
         {error || helperText ? (
-          <Text className={cx('text-[11px] font-bold leading-4 text-[#91A0B8]', error && 'text-[#D92D20]')}>
+          <Text className={cx('text-[11px] font-bold leading-4 text-subtle-foreground', error && 'text-destructive')}>
             {error || helperText}
           </Text>
         ) : null}

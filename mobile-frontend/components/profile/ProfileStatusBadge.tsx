@@ -10,22 +10,22 @@ import type { RenterDocumentStatus } from '@/lib/profile/profile-data';
 
 const statusStyles = {
   Verified: {
-    className: 'border-[#BBF7D0] bg-[#ECFDF5]',
+    className: 'border-success-border bg-success-surface',
     icon: CheckCircle2,
     iconColor: '#047857',
-    textClassName: 'text-[#047857]',
+    textClassName: 'text-success',
   },
   Pending: {
-    className: 'border-[#FED7AA] bg-[#FFF7ED]',
+    className: 'border-warning-border bg-warning-surface',
     icon: Clock3,
     iconColor: '#C2410C',
-    textClassName: 'text-[#C2410C]',
+    textClassName: 'text-warning',
   },
   'Not Uploaded': {
     className: 'border-[#E5E7EB] bg-[#F8FAFC]',
     icon: CircleDashed,
     iconColor: '#64748B',
-    textClassName: 'text-[#64748B]',
+    textClassName: 'text-muted-foreground',
   },
 } satisfies Record<
   RenterDocumentStatus,

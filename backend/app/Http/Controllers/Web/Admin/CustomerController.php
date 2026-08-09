@@ -3,22 +3,24 @@
 namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Customer\ListCustomersRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
     use ApiResponseTrait;
 
-    public function index(Request $request): JsonResponse
+    public function index(ListCustomersRequest $request): JsonResponse
     {
+        $search = $request->validated('search');
+
         $customers = User::role('customer')
             ->with(['customerProfile', 'roles'])
             ->withCount(['bookings'])
-            ->when($request->string('search')->toString(), function ($query, string $search) {
+            ->when($search, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
@@ -26,7 +28,7 @@ class CustomerController extends Controller
                 });
             })
             ->latest()
-            ->paginate((int) $request->integer('per_page', 15));
+            ->paginate($request->integer('per_page', 15));
 
         return $this->paginated('Customers fetched successfully.', $customers, UserResource::class);
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Profile;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\CustomerAgePolicy;
 
 class UpdateProfileRequest extends BaseFormRequest
 {
@@ -16,7 +17,12 @@ class UpdateProfileRequest extends BaseFormRequest
         return [
             'first_name' => ['sometimes', 'required', 'string', 'max:100', 'regex:/^[\pL ]+$/u'],
             'last_name' => ['sometimes', 'required', 'string', 'max:100', 'regex:/^[\pL ]+$/u'],
-            'birthdate' => ['sometimes', 'required', 'date', 'before_or_equal:today'],
+            'birthdate' => [
+                'sometimes',
+                'required',
+                'date',
+                'before_or_equal:'.CustomerAgePolicy::latestEligibleBirthdate(),
+            ],
             'address' => ['sometimes', 'required', 'string', 'max:1000'],
             'phone_number' => ['sometimes', 'required', 'string', 'size:11', 'regex:/^09\d{9}$/', 'unique:users,phone_number,'.$this->user()->id],
             'profile_picture' => ['nullable', 'image', 'max:5120'],
@@ -45,6 +51,7 @@ class UpdateProfileRequest extends BaseFormRequest
         return [
             'first_name.regex' => 'The first name may only contain letters and spaces.',
             'last_name.regex' => 'The last name may only contain letters and spaces.',
+            'birthdate.before_or_equal' => CustomerAgePolicy::MESSAGE,
             'phone_number.size' => 'The contact number must contain 11 digits.',
             'phone_number.regex' => 'The contact number must start with 09 and contain 11 digits.',
         ];

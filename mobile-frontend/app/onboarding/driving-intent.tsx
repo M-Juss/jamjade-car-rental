@@ -14,7 +14,7 @@ import {
   useCustomer,
 } from '@/lib/customer/customer-store';
 import type { DrivingIntent } from '@/types/customer';
-import { FormToast, useFormToast } from '@/forms/FormToast';
+import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { completeProfile } from '@/services/api';
 import { ApiError } from '@/services/http';
 
@@ -119,7 +119,7 @@ export default function DrivingIntentScreen() {
       </View>
 
       {error ? (
-        <Text className="mt-3 rounded-[20px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-[12px] font-bold leading-5 text-[#D92D20]">
+        <Text className="mt-3 rounded-[20px] border border-destructive-border bg-destructive-surface px-4 py-3 text-[12px] font-bold leading-5 text-destructive">
           {error}
         </Text>
       ) : null}

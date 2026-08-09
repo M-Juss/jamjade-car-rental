@@ -185,7 +185,7 @@ export function FleetGoogleMap({
       <div ref={mapNodeRef} className="h-full w-full" />
 
       {isLoading ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 text-xs font-medium text-[#4A5568]">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 text-xs font-medium text-muted-foreground">
           Loading Google Maps...
         </div>
       ) : null}
@@ -196,7 +196,7 @@ export function FleetGoogleMap({
         </div>
       ) : null}
 
-      <div className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs font-medium text-[#4A5568] shadow-sm backdrop-blur">
+      <div className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
         Google Maps live fleet view
       </div>
 

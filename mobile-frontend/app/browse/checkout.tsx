@@ -17,6 +17,7 @@ import {
   PriceBreakdownCard,
   SelectedVehicleSummary,
 } from '@/components/browse';
+import { AuthenticatedOnly } from '@/components/auth/AuthenticatedOnly';
 import { TermsSignatureModal } from '@/components/browse/TermsSignatureModal';
 import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
@@ -33,8 +34,8 @@ import { formatDeliveryTime } from '@/lib/browse/rental-config';
 
 function SummaryCard({ children, title }: { title: string; children: ReactNode }) {
   return (
-    <View className="mt-5 rounded-[28px] border border-[#E6EEFF] bg-white p-5 shadow-md shadow-[#17315F]/5">
-      <Text className="mb-3 text-[18px] font-black text-[#17315F]">{title}</Text>
+    <View className="mt-5 rounded-[28px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
+      <Text className="mb-3 text-[18px] font-black text-foreground">{title}</Text>
       {children}
     </View>
   );
@@ -43,13 +44,13 @@ function SummaryCard({ children, title }: { title: string; children: ReactNode }
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-row items-start justify-between gap-4 py-2">
-      <Text className="min-w-0 flex-1 text-[13px] font-bold text-[#6C7A96]">{label}</Text>
-      <Text className="max-w-[58%] text-right text-[13px] font-black text-[#17315F]">{value}</Text>
+      <Text className="min-w-0 flex-1 text-[13px] font-bold text-muted-foreground">{label}</Text>
+      <Text className="max-w-[58%] text-right text-[13px] font-black text-foreground">{value}</Text>
     </View>
   );
 }
 
-export default function CheckoutScreen() {
+function CheckoutScreen() {
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
   const params = useLocalSearchParams<{
@@ -115,7 +116,7 @@ export default function CheckoutScreen() {
 
   if (booking && flowId && isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F8FAFF]">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#346EF6" size="large" />
       </View>
     );
@@ -160,7 +161,7 @@ export default function CheckoutScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8FAFF]">
+    <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-5 pb-8 pt-2">
           <View className="flex-row items-center gap-3">
@@ -168,12 +169,12 @@ export default function CheckoutScreen() {
               accessibilityLabel="Back to booking details"
               accessibilityRole="button"
               onPress={restartBooking}
-              className="h-12 w-12 items-center justify-center rounded-full bg-white">
+              className="h-12 w-12 items-center justify-center rounded-full bg-surface">
               <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
             </Pressable>
             <View className="min-w-0 flex-1">
-              <Text className="text-[27px] font-black text-[#17315F]">Review Booking</Text>
-              <Text className="mt-1 text-[13px] font-semibold text-[#6C7A96]">
+              <Text className="text-[27px] font-black text-foreground">Review Booking</Text>
+              <Text className="mt-1 text-[13px] font-semibold text-muted-foreground">
                 Confirm details and sign the rental terms
               </Text>
             </View>
@@ -217,14 +218,14 @@ export default function CheckoutScreen() {
           </View>
 
           <SummaryCard title="Terms and Conditions">
-            <Text className="text-[13px] font-semibold leading-5 text-[#6C7A96]">
+            <Text className="text-[13px] font-semibold leading-5 text-muted-foreground">
               Review the full rental conditions and provide your signature. Payment remains locked until the signed terms are submitted.
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => setIsTermsOpen(true)}
-              className="mt-4 min-h-[54px] items-center justify-center rounded-full bg-[#346EF6]">
-              <Text className="text-[14px] font-black text-white">Read Terms and Conditions</Text>
+              className="mt-4 min-h-[54px] items-center justify-center rounded-full bg-primary">
+              <Text className="text-[14px] font-black text-surface">Read Terms and Conditions</Text>
             </Pressable>
           </SummaryCard>
         </View>
@@ -236,5 +237,13 @@ export default function CheckoutScreen() {
         visible={isTermsOpen}
       />
     </SafeAreaView>
+  );
+}
+
+export default function ProtectedCheckoutScreen() {
+  return (
+    <AuthenticatedOnly>
+      <CheckoutScreen />
+    </AuthenticatedOnly>
   );
 }

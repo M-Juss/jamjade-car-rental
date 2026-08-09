@@ -145,3 +145,21 @@ it('hides legacy valid ID records from the active verification queue', function 
         ->assertOk()
         ->assertJsonCount(0, 'data');
 });
+
+it('validates verification queue filters and page size', function () {
+    $this->actingAs(documentReviewer())
+        ->getJson('/admin/document-verification?status=unknown&per_page=101')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['status', 'per_page']);
+});
+
+it('requires a non-empty rejection reason', function () {
+    $document = pendingCustomerDocument();
+
+    $this->actingAs(documentReviewer())
+        ->postJson("/admin/document-verification/{$document->id}/reject", [
+            'rejection_reason' => '   ',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('rejection_reason');
+});

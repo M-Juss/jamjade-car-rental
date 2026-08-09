@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Enums\VehicleStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Vehicle\ListVehiclesRequest;
 use App\Http\Resources\VehicleResource;
 use App\Models\Vehicle;
 use App\Services\VehicleService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
@@ -16,12 +17,14 @@ class VehicleController extends Controller
 
     public function __construct(private readonly VehicleService $vehicleService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListVehiclesRequest $request): JsonResponse
     {
-        $perPage = max(1, min(100, (int) $request->integer('per_page', 10)));
+        $filters = $request->safe()->only(['search', 'brand', 'transmission']);
+        $filters['status'] = VehicleStatus::Available->value;
+
         $vehicles = $this->vehicleService->paginate(
-            $request->only(['search', 'status', 'brand', 'transmission']),
-            $perPage
+            $filters,
+            $request->integer('per_page', 10)
         );
 
         return $this->paginated('Vehicles fetched successfully.', $vehicles, VehicleResource::class);
@@ -29,6 +32,8 @@ class VehicleController extends Controller
 
     public function show(Vehicle $vehicle): JsonResponse
     {
+        abort_unless($vehicle->status === VehicleStatus::Available, 404);
+
         return $this->success(
             'Vehicle fetched successfully.',
             new VehicleResource($vehicle->load(['images', 'features', 'dateBlockingBookings']))

@@ -185,12 +185,12 @@ function DetailItem({
   icon?: typeof User;
 }) {
   return (
-    <div className="rounded-xl bg-[#F8F9FC] px-3 py-2">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#A0AABF]">
+    <div className="rounded-xl bg-background px-3 py-2">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-subtle-foreground">
         {Icon ? <Icon size={11} /> : null}
         {label}
       </div>
-      <p className="mt-0.5 break-words text-[12.5px] font-semibold text-[#1A2340]">{value || "Not provided"}</p>
+      <p className="mt-0.5 break-words text-[12.5px] font-semibold text-foreground">{value || "Not provided"}</p>
     </div>
   );
 }
@@ -208,7 +208,7 @@ function FilterSelect<T extends string>({
 }) {
   return (
     <Select value={value} onValueChange={(nextValue) => onValueChange(nextValue as FilterValue<T>)}>
-      <SelectTrigger className="h-9 w-full rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px] sm:w-[178px]">
+      <SelectTrigger className="h-9 w-full rounded-xl border-border bg-background text-[12.5px] sm:w-[178px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -369,17 +369,17 @@ export default function VideoEvidenceAuditing() {
     filters.severity !== "all";
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-[#1A2340]">Video Evidence Auditing</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Video Evidence Auditing</h1>
               <Badge variant="outline" className="h-6 rounded-lg border-blue-200 bg-blue-50 px-2.5 text-[10.5px] font-semibold text-blue-700">
                 Mock data
               </Badge>
             </div>
-            <p className="mt-0.5 text-sm text-[#8896A7]">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Review flagged driving events and attach dashcam video evidence for manual audit.
             </p>
           </div>
@@ -398,8 +398,8 @@ export default function VideoEvidenceAuditing() {
                   <Icon size={17} className={color} strokeWidth={2.2} />
                 </div>
                 <div>
-                  <p className="text-[22px] font-bold leading-none text-[#1A2340]">{value}</p>
-                  <p className="mt-0.5 text-[11px] font-medium text-[#8896A7]">{label}</p>
+                  <p className="text-[22px] font-bold leading-none text-foreground">{value}</p>
+                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -410,12 +410,12 @@ export default function VideoEvidenceAuditing() {
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="relative min-w-[240px] flex-1">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AABF]" />
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle-foreground" />
                 <Input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by event ID, booking ID, customer, vehicle, or location..."
-                  className="h-9 rounded-xl border-[#E8ECF4] bg-[#F8F9FC] pl-8 text-[12.5px] focus-visible:ring-1 focus-visible:ring-[#346EF6]"
+                  className="h-9 rounded-xl border-border bg-background pl-8 text-[12.5px] focus-visible:ring-1 focus-visible:ring-primary"
                 />
               </div>
 
@@ -445,13 +445,13 @@ export default function VideoEvidenceAuditing() {
               />
 
               {hasFilters && (
-                <Button variant="outline" onClick={clearFilters} className="h-9 rounded-xl border-[#E8ECF4] px-3 text-[12px] text-[#8896A7] hover:bg-[#F5F5F5]">
+                <Button variant="outline" onClick={clearFilters} className="h-9 rounded-xl border-border px-3 text-[12px] text-muted-foreground hover:bg-background">
                   <X size={12} className="mr-1.5" />
                   Clear
                 </Button>
               )}
 
-              <div className="ml-auto flex items-center gap-1.5 text-[11px] text-[#A0AABF]">
+              <div className="ml-auto flex items-center gap-1.5 text-[11px] text-subtle-foreground">
                 <FileSearch size={11} />
                 {filteredEvents.length} result{filteredEvents.length !== 1 ? "s" : ""}
               </div>
@@ -473,7 +473,7 @@ export default function VideoEvidenceAuditing() {
               <col className="w-[9%]" />
             </colgroup>
             <TableHeader>
-              <TableRow className="border-b border-[#F0F2F7] bg-[#FAFBFD] hover:bg-[#FAFBFD]">
+              <TableRow className="border-b border-border bg-background hover:bg-background">
                 {[
                   "Event ID",
                   "Booking ID",
@@ -485,7 +485,7 @@ export default function VideoEvidenceAuditing() {
                   "Audit Status",
                   "Actions",
                 ].map((heading) => (
-                  <TableHead key={heading} className="whitespace-normal px-2 py-2 text-[9.5px] font-semibold uppercase leading-tight tracking-wide text-[#A0AABF]">
+                  <TableHead key={heading} className="whitespace-normal px-2 py-2 text-[9.5px] font-semibold uppercase leading-tight tracking-wide text-subtle-foreground">
                     {heading}
                   </TableHead>
                 ))}
@@ -496,22 +496,22 @@ export default function VideoEvidenceAuditing() {
                 <TableRow>
                   <TableCell colSpan={9} className="py-16 text-center">
                     <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF4FF]">
-                        <Video size={21} className="text-[#346EF6]" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
+                        <Video size={21} className="text-primary" />
                       </div>
-                      <p className="text-[13px] font-semibold text-[#4A5568]">No flagged events found.</p>
-                      <p className="text-[11.5px] text-[#A0AABF]">Try a different search term or filter.</p>
+                      <p className="text-[13px] font-semibold text-muted-foreground">No flagged events found.</p>
+                      <p className="text-[11.5px] text-subtle-foreground">Try a different search term or filter.</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredEvents.map((event) => (
-                  <TableRow key={event.id} className="border-b border-[#F8F9FC] transition-colors duration-100 hover:bg-[#F5F5F5]">
-                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top font-mono text-[11px] font-semibold text-[#346EF6]">{event.id}</TableCell>
-                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top font-mono text-[11px] text-[#4A5568]">{event.bookingId}</TableCell>
-                    <TableCell className="max-w-[150px] whitespace-normal break-words px-2 py-2 align-top text-[11.5px] font-semibold text-[#1A2340]">{event.customerName}</TableCell>
-                    <TableCell className="max-w-[150px] whitespace-normal break-words px-2 py-2 align-top text-[11px] text-[#4A5568]">{event.vehicleName}</TableCell>
-                    <TableCell className="max-w-[140px] whitespace-normal break-words px-2 py-2 align-top text-[11px] font-semibold text-[#1A2340]">{event.eventType}</TableCell>
+                  <TableRow key={event.id} className="border-b border-background transition-colors duration-100 hover:bg-background">
+                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top font-mono text-[11px] font-semibold text-primary">{event.id}</TableCell>
+                    <TableCell className="whitespace-normal break-words px-2 py-2 align-top font-mono text-[11px] text-muted-foreground">{event.bookingId}</TableCell>
+                    <TableCell className="max-w-[150px] whitespace-normal break-words px-2 py-2 align-top text-[11.5px] font-semibold text-foreground">{event.customerName}</TableCell>
+                    <TableCell className="max-w-[150px] whitespace-normal break-words px-2 py-2 align-top text-[11px] text-muted-foreground">{event.vehicleName}</TableCell>
+                    <TableCell className="max-w-[140px] whitespace-normal break-words px-2 py-2 align-top text-[11px] font-semibold text-foreground">{event.eventType}</TableCell>
                     <TableCell className="whitespace-normal px-2 py-2 align-top">
                       <SeverityBadge severity={event.severity} />
                     </TableCell>
@@ -525,7 +525,7 @@ export default function VideoEvidenceAuditing() {
                       <Button
                         variant="outline"
                         onClick={() => openAudit(event)}
-                        className="h-8 rounded-lg border-[#E8ECF4] px-2.5 text-[11.5px] font-semibold text-[#346EF6] hover:bg-[#EEF4FF]"
+                        className="h-8 rounded-lg border-border px-2.5 text-[11.5px] font-semibold text-primary hover:bg-muted"
                       >
                         <Eye size={12} className="mr-1.5" />
                         Audit
@@ -543,24 +543,24 @@ export default function VideoEvidenceAuditing() {
         <SheetContent
           side="right"
           showCloseButton={false}
-          className="!left-[var(--sidebar-w)] !right-0 !w-[calc(100vw-var(--sidebar-w))] !max-w-none gap-0 overflow-hidden border-l border-[#E8ECF4] bg-[#F5F5F5] p-0 max-md:!left-0 max-md:!w-screen"
+          className="!left-[var(--sidebar-w)] !right-0 !w-[calc(100vw-var(--sidebar-w))] !max-w-none gap-0 overflow-hidden border-l border-border bg-background p-0 max-md:!left-0 max-md:!w-screen"
         >
-          <SheetHeader className="shrink-0 border-b border-[#F0F2F7] bg-white px-5 pb-4 pt-5 md:px-8">
+          <SheetHeader className="shrink-0 border-b border-border bg-white px-5 pb-4 pt-5 md:px-8">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <button
                   type="button"
                   onClick={() => setSelectedEventId(null)}
-                  className="mb-2 flex items-center gap-1.5 text-[12.5px] font-medium text-[#8896A7] transition-colors duration-150 hover:text-[#346EF6]"
+                  className="mb-2 flex items-center gap-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors duration-150 hover:text-primary"
                 >
                   <ChevronLeft size={15} />
                   Video Evidence Auditing
                 </button>
-                <SheetTitle className="text-xl font-bold tracking-tight text-[#1A2340]">Video Audit Review</SheetTitle>
+                <SheetTitle className="text-xl font-bold tracking-tight text-foreground">Video Audit Review</SheetTitle>
                 <SheetDescription className="sr-only">
                   Review flagged event details, attach dashcam evidence, and save an audit decision.
                 </SheetDescription>
-                <p className="mt-0.5 font-mono text-[11.5px] text-[#8896A7]">{selectedEvent?.id}</p>
+                <p className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">{selectedEvent?.id}</p>
               </div>
               {selectedEvent ? <AuditStatusBadge status={selectedEvent.auditStatus} /> : null}
             </div>
@@ -574,13 +574,13 @@ export default function VideoEvidenceAuditing() {
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-xl font-bold text-[#1A2340]">{selectedEvent.eventType}</h2>
+                          <h2 className="text-xl font-bold text-foreground">{selectedEvent.eventType}</h2>
                           <SeverityBadge severity={selectedEvent.severity} />
                         </div>
-                        <p className="mt-1 text-[12.5px] text-[#8896A7]">
+                        <p className="mt-1 text-[12.5px] text-muted-foreground">
                           {selectedEvent.bookingId} - {selectedEvent.customerName} - {selectedEvent.vehicleName}
                         </p>
-                        <p className="mt-3 text-[13px] font-medium leading-6 text-[#4A5568]">{selectedEvent.sensorSummary}</p>
+                        <p className="mt-3 text-[13px] font-medium leading-6 text-muted-foreground">{selectedEvent.sensorSummary}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <VideoStatusBadge status={selectedEvent.videoStatus} />
@@ -593,7 +593,7 @@ export default function VideoEvidenceAuditing() {
                 <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
                   <CardContent className="p-5">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-[13px] font-bold text-[#1A2340]">Video Evidence</p>
+                      <p className="text-[13px] font-bold text-foreground">Video Evidence</p>
                       <VideoStatusBadge status={selectedEvent.videoStatus} />
                     </div>
 
@@ -608,10 +608,10 @@ export default function VideoEvidenceAuditing() {
                         </p>
                       </div>
                     ) : (
-                      <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E1] bg-[#F8F9FC] p-6 text-center">
-                        <FileVideo size={42} className="text-[#346EF6]" />
-                        <p className="mt-3 text-[14px] font-bold text-[#1A2340]">No video evidence uploaded yet</p>
-                        <p className="mt-1 max-w-md text-[12px] leading-relaxed text-[#8896A7]">
+                      <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E1] bg-background p-6 text-center">
+                        <FileVideo size={42} className="text-primary" />
+                        <p className="mt-3 text-[14px] font-bold text-foreground">No video evidence uploaded yet</p>
+                        <p className="mt-1 max-w-md text-[12px] leading-relaxed text-muted-foreground">
                           Attach the matching dashcam clip after retrieving it from SD card, Wi-Fi file access, or local storage.
                         </p>
                       </div>
@@ -626,7 +626,7 @@ export default function VideoEvidenceAuditing() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Label
                         htmlFor="video-evidence-input"
-                        className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-[#346EF6] px-4 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-[#2558D8]"
+                        className="inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-primary px-4 text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover"
                       >
                         <Upload size={14} className="mr-2" />
                         {selectedEvent.evidence ? "Replace Video" : "Upload Video"}
@@ -652,7 +652,7 @@ export default function VideoEvidenceAuditing() {
 
                 <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
                   <CardContent className="p-5">
-                    <p className="mb-4 text-[13px] font-bold text-[#1A2340]">Event Details</p>
+                    <p className="mb-4 text-[13px] font-bold text-foreground">Event Details</p>
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <DetailItem label="Event ID" value={selectedEvent.id} icon={FileSearch} />
                       <DetailItem label="Booking ID" value={selectedEvent.bookingId} icon={BadgeCheck} />
@@ -676,10 +676,10 @@ export default function VideoEvidenceAuditing() {
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.6fr)]">
                   <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
                     <CardContent className="p-5">
-                      <p className="mb-4 text-[13px] font-bold text-[#1A2340]">Audit Decision</p>
+                      <p className="mb-4 text-[13px] font-bold text-foreground">Audit Decision</p>
                       <div className="space-y-3">
                         <div>
-                          <Label className="mb-2 text-[12px] font-semibold text-[#4A5568]">Audit Status</Label>
+                          <Label className="mb-2 text-[12px] font-semibold text-muted-foreground">Audit Status</Label>
                           <Select
                             value={auditForm.auditStatus}
                             onValueChange={(value) =>
@@ -689,7 +689,7 @@ export default function VideoEvidenceAuditing() {
                               }))
                             }
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px]">
+                            <SelectTrigger className="h-10 rounded-xl border-border bg-background text-[12.5px]">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -703,7 +703,7 @@ export default function VideoEvidenceAuditing() {
                         </div>
 
                         <div>
-                          <Label className="mb-2 text-[12px] font-semibold text-[#4A5568]">Decision</Label>
+                          <Label className="mb-2 text-[12px] font-semibold text-muted-foreground">Decision</Label>
                           <Select
                             value={auditForm.decision}
                             onValueChange={(value) =>
@@ -713,7 +713,7 @@ export default function VideoEvidenceAuditing() {
                               }))
                             }
                           >
-                            <SelectTrigger className="h-10 rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px]">
+                            <SelectTrigger className="h-10 rounded-xl border-border bg-background text-[12.5px]">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -727,7 +727,7 @@ export default function VideoEvidenceAuditing() {
                         </div>
 
                         <div>
-                          <Label htmlFor="audit-remarks" className="mb-2 text-[12px] font-semibold text-[#4A5568]">
+                          <Label htmlFor="audit-remarks" className="mb-2 text-[12px] font-semibold text-muted-foreground">
                             Remarks
                           </Label>
                           <Textarea
@@ -740,11 +740,11 @@ export default function VideoEvidenceAuditing() {
                               }))
                             }
                             placeholder="Write audit notes based on the uploaded dashcam evidence..."
-                            className="min-h-32 rounded-xl border-[#E8ECF4] bg-[#F8F9FC] text-[12.5px] focus-visible:ring-1 focus-visible:ring-[#346EF6]"
+                            className="min-h-32 rounded-xl border-border bg-background text-[12.5px] focus-visible:ring-1 focus-visible:ring-primary"
                           />
                         </div>
 
-                        <Button onClick={saveAudit} className="h-10 w-full rounded-xl bg-[#346EF6] text-[13px] font-semibold text-white hover:bg-[#2558D8]">
+                        <Button onClick={saveAudit} className="h-10 w-full rounded-xl bg-primary text-[13px] font-semibold text-white hover:bg-primary-hover">
                           <Save size={14} className="mr-2" />
                           Save Audit
                         </Button>
@@ -754,11 +754,11 @@ export default function VideoEvidenceAuditing() {
 
                   <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
                     <CardContent className="p-5">
-                      <p className="mb-4 text-[13px] font-bold text-[#1A2340]">Audit History</p>
+                      <p className="mb-4 text-[13px] font-bold text-foreground">Audit History</p>
                       <div className="space-y-2">
                         {selectedEvent.auditHistory.map((item) => (
-                          <div key={item.id} className="flex gap-2 rounded-xl bg-[#F8F9FC] px-3 py-2 text-[12px] font-medium leading-relaxed text-[#4A5568]">
-                            <History size={13} className="mt-0.5 shrink-0 text-[#346EF6]" />
+                          <div key={item.id} className="flex gap-2 rounded-xl bg-background px-3 py-2 text-[12px] font-medium leading-relaxed text-muted-foreground">
+                            <History size={13} className="mt-0.5 shrink-0 text-primary" />
                             <span>{item.label}</span>
                           </div>
                         ))}

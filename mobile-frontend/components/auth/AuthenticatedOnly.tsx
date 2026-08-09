@@ -9,7 +9,7 @@ export function AuthenticatedOnly({ children }: { children: ReactNode }) {
 
   if (status === 'loading') {
     return (
-      <View className="flex-1 items-center justify-center bg-[#F8FAFF]">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color="#346EF6" size="large" />
       </View>
     );

@@ -86,11 +86,11 @@ function statusBadge(status: string) {
   const normalized = status.toLowerCase();
 
   if (normalized === "completed" || normalized === "paid") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (normalized === "ongoing" || normalized === "confirmed") return "border-blue-200 bg-[#EEF4FF] text-[#346EF6]";
+  if (normalized === "ongoing" || normalized === "confirmed") return "border-blue-200 bg-muted text-primary";
   if (normalized.includes("partial") || normalized === "pending") return "border-amber-200 bg-amber-50 text-amber-700";
   if (normalized === "cancelled" || normalized === "rejected" || normalized === "refunded") return "border-rose-200 bg-rose-50 text-rose-600";
 
-  return "border-[#E8ECF4] bg-[#F5F5F5] text-[#6B7589]";
+  return "border-border bg-background text-muted-foreground";
 }
 
 function maintenanceBadge(status: string) {
@@ -108,7 +108,7 @@ function severityBadge(severity: string) {
 }
 
 function EmptyState({ message }: { message: string }) {
-  return <div className="py-10 text-center text-[12px] text-[#8896A7]">{message}</div>;
+  return <div className="py-10 text-center text-[12px] text-muted-foreground">{message}</div>;
 }
 
 export function ReportsAnalytics() {
@@ -200,7 +200,7 @@ export function ReportsAnalytics() {
 
   if (!data && isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F5F5] text-[#6B7589]">
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
         <Loader2 className="mr-2 size-5 animate-spin" />
         Loading reports and analytics
       </div>
@@ -209,14 +209,14 @@ export function ReportsAnalytics() {
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F5F5F5] p-6">
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <Card className="max-w-md rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <CardContent className="p-5">
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 size-5 shrink-0 text-rose-500" />
               <div>
-                <p className="font-semibold text-[#1A2340]">Reports could not be loaded</p>
-                <p className="mt-1 text-sm text-[#6B7589]">{error}</p>
+                <p className="font-semibold text-foreground">Reports could not be loaded</p>
+                <p className="mt-1 text-sm text-muted-foreground">{error}</p>
               </div>
             </div>
             <Button
@@ -236,7 +236,7 @@ export function ReportsAnalytics() {
   }
 
   const kpis = [
-    { label: "Total Revenue", value: formatCurrency(data.summary.totalRevenue, true), icon: PhilippinePeso, bg: "bg-[#EEF4FF]", color: "text-[#346EF6]" },
+    { label: "Total Revenue", value: formatCurrency(data.summary.totalRevenue, true), icon: PhilippinePeso, bg: "bg-muted", color: "text-primary" },
     { label: "Total Bookings", value: data.summary.totalBookings.toLocaleString(), icon: BookOpen, bg: "bg-emerald-50", color: "text-emerald-600" },
     { label: "Completed Rentals", value: data.summary.completedBookings.toLocaleString(), icon: CheckCircle2, bg: "bg-slate-50", color: "text-slate-600" },
     { label: "Active Rentals", value: data.summary.activeRentals.toLocaleString(), icon: Car, bg: "bg-blue-50", color: "text-blue-600" },
@@ -245,11 +245,11 @@ export function ReportsAnalytics() {
   ];
 
   return (
-    <div className="min-h-screen space-y-5 bg-[#F5F5F5] p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <motion.div {...fadeUp(0)} className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1A2340]">Reports & Analytics</h1>
-          <p className="mt-0.5 text-sm text-[#8896A7]">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports & Analytics</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Live revenue, booking, fleet, customer, and telematics reporting.
           </p>
         </div>
@@ -262,7 +262,7 @@ export function ReportsAnalytics() {
               setRange(value as ReportRange);
             }}
           >
-            <SelectTrigger className="h-10 w-full rounded-xl border-[#E2E8F0] bg-white text-[13px] sm:w-[170px]">
+            <SelectTrigger className="h-10 w-full rounded-xl border-border bg-white text-[13px] sm:w-[170px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +276,7 @@ export function ReportsAnalytics() {
             variant="outline"
             disabled={downloading !== null}
             onClick={() => void handleDownload("excel")}
-            className="h-10 rounded-xl border-[#E2E8F0] text-[13px] text-[#4A5568]"
+            className="h-10 rounded-xl border-border text-[13px] text-muted-foreground"
           >
             {downloading === "excel" ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Download size={14} className="mr-2" />}
             Export CSV
@@ -285,7 +285,7 @@ export function ReportsAnalytics() {
             variant="outline"
             disabled={downloading !== null}
             onClick={() => void handleDownload("pdf")}
-            className="h-10 rounded-xl border-[#E2E8F0] text-[13px] text-[#4A5568]"
+            className="h-10 rounded-xl border-border text-[13px] text-muted-foreground"
           >
             {downloading === "pdf" ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Download size={14} className="mr-2" />}
             Export PDF
@@ -307,27 +307,27 @@ export function ReportsAnalytics() {
               <div className={`mb-2.5 flex size-9 items-center justify-center rounded-xl ${bg}`}>
                 <Icon size={16} className={color} />
               </div>
-              <p className="text-[18px] font-bold leading-none text-[#1A2340] md:text-[20px]">{value}</p>
-              <p className="mt-1 text-[10.5px] text-[#8896A7]">{label}</p>
+              <p className="text-[18px] font-bold leading-none text-foreground md:text-[20px]">{value}</p>
+              <p className="mt-1 text-[10.5px] text-muted-foreground">{label}</p>
             </CardContent>
           </Card>
         ))}
       </motion.div>
 
       <div className="relative">
-        <Search size={13} className="absolute top-1/2 left-3 -translate-y-1/2 text-[#A0AABF]" />
+        <Search size={13} className="absolute top-1/2 left-3 -translate-y-1/2 text-subtle-foreground" />
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search report records..."
-          className="h-10 rounded-xl border-[#E2E8F0] bg-white pl-9 text-[12.5px]"
+          className="h-10 rounded-xl border-border bg-white pl-9 text-[12.5px]"
         />
-        {isLoading && <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-[#346EF6]" />}
+        {isLoading && <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-primary" />}
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
         <motion.div {...fadeUp(0.12)}>
-          <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-[#EEF1F8] bg-white/60 p-1">
+          <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-border bg-white/60 p-1">
             <TabsTrigger value="overview" className="text-[12px]">Overview</TabsTrigger>
             <TabsTrigger value="revenue" className="text-[12px]">Revenue</TabsTrigger>
             <TabsTrigger value="bookings" className="text-[12px]">Bookings</TabsTrigger>
@@ -376,12 +376,12 @@ export function ReportsAnalytics() {
                   </ChartContainer>
                   <div className="w-full flex-1 space-y-2">
                     {data.bookingStatusDistribution.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between rounded-xl bg-[#F8F9FC] px-3 py-2">
+                      <div key={item.name} className="flex items-center justify-between rounded-xl bg-background px-3 py-2">
                         <div className="flex items-center gap-2">
                           <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-[12px] text-[#4A5568]">{item.name}</span>
+                          <span className="text-[12px] text-muted-foreground">{item.name}</span>
                         </div>
-                        <span className="text-[12px] font-semibold text-[#1A2340]">{item.value}</span>
+                        <span className="text-[12px] font-semibold text-foreground">{item.value}</span>
                       </div>
                     ))}
                   </div>
@@ -417,9 +417,9 @@ export function ReportsAnalytics() {
               </CardHeader>
               <CardContent className="space-y-2.5">
                 {data.highlights.map((item) => (
-                  <div key={item} className="flex items-start gap-2 rounded-xl bg-[#F8F9FC] px-3 py-2.5">
-                    <BarChart3 size={13} className="mt-0.5 shrink-0 text-[#346EF6]" />
-                    <p className="text-[12px] text-[#4A5568]">{item}</p>
+                  <div key={item} className="flex items-start gap-2 rounded-xl bg-background px-3 py-2.5">
+                    <BarChart3 size={13} className="mt-0.5 shrink-0 text-primary" />
+                    <p className="text-[12px] text-muted-foreground">{item}</p>
                   </div>
                 ))}
               </CardContent>
@@ -470,8 +470,8 @@ export function ReportsAnalytics() {
             {data.revenueBreakdown.map((item) => (
               <Card key={item.label} className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
                 <CardContent className="p-4">
-                  <p className="text-[11px] text-[#8896A7]">{item.label}</p>
-                  <p className="text-[18px] font-bold text-[#1A2340]">{formatCurrency(item.value, true)}</p>
+                  <p className="text-[11px] text-muted-foreground">{item.label}</p>
+                  <p className="text-[18px] font-bold text-foreground">{formatCurrency(item.value, true)}</p>
                 </CardContent>
               </Card>
             ))}
@@ -483,7 +483,7 @@ export function ReportsAnalytics() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-[#FAFBFD]">
+                    <TableRow className="bg-background">
                       {["Booking ID", "Customer", "Vehicle", "Rental Type", "Payment Method", "Amount", "Paid Date", "Status"].map((heading) => (
                         <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
                       ))}
@@ -494,13 +494,13 @@ export function ReportsAnalytics() {
                       <TableRow><TableCell colSpan={8}><EmptyState message="No revenue transactions found." /></TableCell></TableRow>
                     ) : filteredRevenueRows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="px-4 py-3 font-mono text-[12px] text-[#346EF6]">{row.bookingId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-[#1A2340]">{row.customer}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.rentalType}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.paymentMethod}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-[#1A2340]">{formatCurrency(row.amount)}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.paidDate ?? "N/A"}</TableCell>
+                        <TableCell className="px-4 py-3 font-mono text-[12px] text-primary">{row.bookingId}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.customer}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.rentalType}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.paymentMethod}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatCurrency(row.amount)}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.paidDate ?? "N/A"}</TableCell>
                         <TableCell className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
                       </TableRow>
                     ))}
@@ -531,17 +531,17 @@ export function ReportsAnalytics() {
             <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
               <CardHeader className="pb-2"><CardTitle className="text-[14px]">Cancellation Analytics</CardTitle></CardHeader>
               <CardContent className="space-y-2.5">
-                <div className="rounded-xl bg-[#F8F9FC] p-3">
-                  <p className="text-[11px] text-[#8896A7]">Cancellation & Rejection Rate</p>
+                <div className="rounded-xl bg-background p-3">
+                  <p className="text-[11px] text-muted-foreground">Cancellation & Rejection Rate</p>
                   <p className="text-[18px] font-bold text-rose-500">{data.cancellation.rate}%</p>
                 </div>
-                <div className="rounded-xl bg-[#F8F9FC] p-3">
-                  <p className="text-[11px] text-[#8896A7]">Cancelled</p>
-                  <p className="text-[18px] font-bold text-[#1A2340]">{data.cancellation.cancelled}</p>
+                <div className="rounded-xl bg-background p-3">
+                  <p className="text-[11px] text-muted-foreground">Cancelled</p>
+                  <p className="text-[18px] font-bold text-foreground">{data.cancellation.cancelled}</p>
                 </div>
-                <div className="rounded-xl bg-[#F8F9FC] p-3">
-                  <p className="text-[11px] text-[#8896A7]">Rejected</p>
-                  <p className="text-[18px] font-bold text-[#1A2340]">{data.cancellation.rejected}</p>
+                <div className="rounded-xl bg-background p-3">
+                  <p className="text-[11px] text-muted-foreground">Rejected</p>
+                  <p className="text-[18px] font-bold text-foreground">{data.cancellation.rejected}</p>
                 </div>
               </CardContent>
             </Card>
@@ -553,7 +553,7 @@ export function ReportsAnalytics() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-[#FAFBFD]">
+                    <TableRow className="bg-background">
                       {["Booking ID", "Customer", "Vehicle", "Rental Date", "Return Date", "Total Cost", "Status"].map((heading) => (
                         <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
                       ))}
@@ -564,12 +564,12 @@ export function ReportsAnalytics() {
                       <TableRow><TableCell colSpan={7}><EmptyState message="No booking records found." /></TableCell></TableRow>
                     ) : filteredBookingRows.map((row) => (
                       <TableRow key={row.internalId}>
-                        <TableCell className="px-4 py-3 font-mono text-[12px] text-[#346EF6]">{row.bookingId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-[#1A2340]">{row.customer}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.rentalDate ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.returnDate ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-[#1A2340]">{formatCurrency(row.totalCost)}</TableCell>
+                        <TableCell className="px-4 py-3 font-mono text-[12px] text-primary">{row.bookingId}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.customer}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.rentalDate ?? "N/A"}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.returnDate ?? "N/A"}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatCurrency(row.totalCost)}</TableCell>
                         <TableCell className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
                       </TableRow>
                     ))}
@@ -585,9 +585,9 @@ export function ReportsAnalytics() {
             {data.fleetHighlights.map((item) => (
               <Card key={item.label} className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
                 <CardContent className="p-4">
-                  <p className="text-[11px] text-[#8896A7]">{item.label}</p>
-                  <p className="text-[16px] font-bold text-[#1A2340]">{item.value}</p>
-                  <p className="text-[11px] text-[#346EF6]">{item.sub}</p>
+                  <p className="text-[11px] text-muted-foreground">{item.label}</p>
+                  <p className="text-[16px] font-bold text-foreground">{item.value}</p>
+                  <p className="text-[11px] text-primary">{item.sub}</p>
                 </CardContent>
               </Card>
             ))}
@@ -599,7 +599,7 @@ export function ReportsAnalytics() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-[#FAFBFD]">
+                    <TableRow className="bg-background">
                       {["Vehicle", "Model", "Total Bookings", "Received Revenue", "Utilization", "Maintenance", "Incidents"].map((heading) => (
                         <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
                       ))}
@@ -610,13 +610,13 @@ export function ReportsAnalytics() {
                       <TableRow><TableCell colSpan={7}><EmptyState message="No fleet records found." /></TableCell></TableRow>
                     ) : filteredFleetRows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-[#1A2340]">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.model ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.totalBookings}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-[#1A2340]">{formatCurrency(row.revenue)}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.utilization}%</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.vehicle}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.model ?? "N/A"}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.totalBookings}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatCurrency(row.revenue)}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.utilization}%</TableCell>
                         <TableCell className="px-4 py-3"><Badge className={`border ${maintenanceBadge(row.maintenanceStatus)}`}>{row.maintenanceStatus}</Badge></TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.incidents}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.incidents}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -650,10 +650,10 @@ export function ReportsAnalytics() {
                 {data.customerCancellationLeaders.length === 0 ? (
                   <EmptyState message="No customer cancellations in this period." />
                 ) : data.customerCancellationLeaders.map((customer) => (
-                  <div key={customer.id} className="flex items-center justify-between rounded-xl bg-[#F8F9FC] px-3 py-2.5">
+                  <div key={customer.id} className="flex items-center justify-between rounded-xl bg-background px-3 py-2.5">
                     <div>
-                      <p className="text-[12px] font-medium text-[#1A2340]">{customer.name}</p>
-                      <p className="text-[11px] text-[#8896A7]">{customer.email}</p>
+                      <p className="text-[12px] font-medium text-foreground">{customer.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{customer.email}</p>
                     </div>
                     <Badge className="border border-rose-200 bg-rose-50 text-rose-600">
                       {customer.cancelledBookings}
@@ -670,7 +670,7 @@ export function ReportsAnalytics() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-[#FAFBFD]">
+                    <TableRow className="bg-background">
                       {["Customer", "Email", "Total Bookings", "Completed", "Cancelled / Rejected", "Total Spent", "Last Booking"].map((heading) => (
                         <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
                       ))}
@@ -681,13 +681,13 @@ export function ReportsAnalytics() {
                       <TableRow><TableCell colSpan={7}><EmptyState message="No customer records found." /></TableCell></TableRow>
                     ) : filteredCustomerRows.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-[#1A2340]">{row.name}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.email}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.totalBookings}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.name}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.email}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.totalBookings}</TableCell>
                         <TableCell className="px-4 py-3 text-[12px] text-emerald-700">{row.completedBookings}</TableCell>
                         <TableCell className="px-4 py-3 text-[12px] text-rose-600">{row.cancelledBookings}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-[#1A2340]">{formatCurrency(row.totalSpent)}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.lastBookingDate}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatCurrency(row.totalSpent)}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.lastBookingDate}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -724,10 +724,10 @@ export function ReportsAnalytics() {
                 {data.riskSummary.length === 0 ? (
                   <EmptyState message="No risk summary is available." />
                 ) : data.riskSummary.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between rounded-xl bg-[#F8F9FC] px-3 py-2.5">
+                  <div key={item.label} className="flex items-center justify-between rounded-xl bg-background px-3 py-2.5">
                     <div>
-                      <p className="text-[12px] text-[#4A5568]">{item.label}</p>
-                      <p className="text-[11px] text-[#8896A7]">{item.count} events</p>
+                      <p className="text-[12px] text-muted-foreground">{item.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{item.count} events</p>
                     </div>
                     <Badge className={`border ${severityBadge(item.severity)}`}>{item.severity}</Badge>
                   </div>
@@ -742,7 +742,7 @@ export function ReportsAnalytics() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-[#FAFBFD]">
+                    <TableRow className="bg-background">
                       {["Event ID", "Booking ID", "Vehicle", "Customer", "Event Type", "Location", "Time Stamp", "Severity"].map((heading) => (
                         <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
                       ))}
@@ -753,13 +753,13 @@ export function ReportsAnalytics() {
                       <TableRow><TableCell colSpan={8}><EmptyState message="No risk events found." /></TableCell></TableRow>
                     ) : filteredRiskRows.map((row) => (
                       <TableRow key={row.eventId}>
-                        <TableCell className="px-4 py-3 font-mono text-[12px] text-[#346EF6]">{row.eventId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.bookingId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.customer}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#1A2340]">{row.eventType}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.location}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-[#4A5568]">{row.timestamp ?? "N/A"}</TableCell>
+                        <TableCell className="px-4 py-3 font-mono text-[12px] text-primary">{row.eventId}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.bookingId}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.customer}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-foreground">{row.eventType}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.location}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.timestamp ?? "N/A"}</TableCell>
                         <TableCell className="px-4 py-3"><Badge className={`border ${severityBadge(row.severity)}`}>{row.severity}</Badge></TableCell>
                       </TableRow>
                     ))}

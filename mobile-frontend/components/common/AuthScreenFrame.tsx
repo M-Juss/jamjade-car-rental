@@ -58,28 +58,28 @@ function AuthHeroHeader({ isCompact, isTiny, topPadding }: BreakpointFlags) {
         isTiny && 'min-h-[170px] px-6 pb-9',
       )}
       style={{ paddingTop: topPadding }}>
-      <DecorativeCircle className="absolute right-[-112px] top-[-42px] h-[260px] w-[260px] rounded-full bg-[#DDE8FF]" />
-      <DecorativeCircle className="absolute left-[-124px] top-[-126px] h-[250px] w-[250px] rounded-full bg-white" />
+      <DecorativeCircle className="absolute right-[-112px] top-[-42px] h-[260px] w-[260px] rounded-full bg-border" />
+      <DecorativeCircle className="absolute left-[-124px] top-[-126px] h-[250px] w-[250px] rounded-full bg-surface" />
       <DecorativeCircle className="absolute right-12 top-[118px] h-5 w-5 rounded-full bg-[#BFD7FF]" />
 
       <View className="z-10 w-full max-w-[430px] items-center self-center">
         <Text
           className={cx(
-            'text-center text-[42px] font-black italic leading-[44px] text-[#346EF6]',
+            'text-center text-[42px] font-black italic leading-[44px] text-primary',
             isTiny && 'text-[35px] leading-[38px]',
           )}>
           {AUTH_HEADER_COPY.brand}
         </Text>
         <Text
           className={cx(
-            'text-center text-[34px] font-black italic leading-[36px] text-[#346EF6]',
+            'text-center text-[34px] font-black italic leading-[36px] text-primary',
             isTiny && 'text-[28px] leading-[31px]',
           )}>
           {AUTH_HEADER_COPY.service}
         </Text>
         <Text
           className={cx(
-            'mt-2 text-center text-[11px] font-bold uppercase tracking-[1.8px] text-[#6C7A96]',
+            'mt-2 text-center text-[11px] font-bold uppercase tracking-[1.8px] text-muted-foreground',
             isTiny && 'text-[10px] tracking-[1.4px]',
           )}>
           {AUTH_HEADER_COPY.tagline}
@@ -105,7 +105,7 @@ function AuthModeSwitch({
   onModeChange: (nextMode: AuthMode) => void;
 }) {
   return (
-    <View className="z-10 mb-5 min-h-[54px] flex-row items-center rounded-full bg-[#EEF4FF] p-1.5">
+    <View className="z-10 mb-5 min-h-[54px] flex-row items-center rounded-full bg-muted p-1.5">
       {(Object.keys(AUTH_MODE_CONFIG) as AuthMode[]).map((authMode) => {
         const isActive = mode === authMode;
 
@@ -116,12 +116,12 @@ function AuthModeSwitch({
             onPress={() => onModeChange(authMode)}
             className={cx(
               'min-h-[42px] flex-1 items-center justify-center rounded-full',
-              isActive && 'bg-[#346EF6] shadow-md shadow-[#346EF6]/20',
+              isActive && 'bg-primary shadow-md shadow-primary/20',
             )}>
             <Text
               className={cx(
                 'text-[15px] font-bold',
-                isActive ? 'text-white' : 'text-[#17315F]',
+                isActive ? 'text-surface' : 'text-foreground',
               )}>
               {AUTH_MODE_CONFIG[authMode].label}
             </Text>
@@ -156,12 +156,12 @@ export function AuthScreenFrame({ mode, children }: AuthScreenFrameProps) {
   };
 
   return (
-    <View className="flex-1 bg-[#F8FAFF]">
+    <View className="flex-1 bg-background">
       <StatusBar backgroundColor="transparent" style="dark" translucent />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1">
-        <View className="flex-1 w-full overflow-hidden bg-[#F8FAFF]">
+        <View className="flex-1 w-full overflow-hidden bg-background">
           <AuthHeroHeader isCompact={isCompact} isTiny={isTiny} topPadding={headerTopPadding} />
 
           <ScrollView
@@ -171,7 +171,7 @@ export function AuthScreenFrame({ mode, children }: AuthScreenFrameProps) {
             className="-mt-8 flex-1"
             contentContainerStyle={{ paddingBottom: sheetBottomPadding }}
             contentContainerClassName={cx(
-              'relative grow overflow-hidden rounded-t-[34px] border border-[#DDE8FF] bg-white px-5 pt-4 shadow-2xl shadow-[#346EF6]/15',
+              'relative grow overflow-hidden rounded-t-[34px] border border-border bg-surface px-5 pt-4 shadow-2xl shadow-primary/15',
               isCompact && 'pt-[18px]',
             )}>
             <AuthCardDecorations />
@@ -200,10 +200,10 @@ export function AuthSubmitButton({ label, onPress, disabled = false }: AuthSubmi
       disabled={disabled}
       onPress={onPress}
       className={cx(
-        'min-h-[52px] items-center justify-center rounded-full bg-[#346EF6] shadow-lg shadow-[#004BFA]/20',
+        'min-h-[52px] items-center justify-center rounded-full bg-primary shadow-lg shadow-[#004BFA]/20',
         disabled && 'bg-[#AFC5FF] shadow-none',
       )}>
-      <Text className="text-[15px] font-extrabold text-white">{label}</Text>
+      <Text className="text-[15px] font-extrabold text-surface">{label}</Text>
     </Pressable>
   );
 }

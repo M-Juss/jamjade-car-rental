@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Notification\ListNotificationsRequest;
 use App\Http\Resources\NotificationResource;
 use App\Models\Notification;
 use App\Services\NotificationService;
@@ -16,12 +17,12 @@ class NotificationController extends Controller
 
     public function __construct(private readonly NotificationService $notificationService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListNotificationsRequest $request): JsonResponse
     {
         $notifications = $this->notificationService->paginateForUser(
             $request->user(),
-            $request->only('category'),
-            (int) $request->integer('per_page', 15)
+            $request->safe()->only(['category']),
+            $request->integer('per_page', 15)
         );
 
         return $this->paginated('Notifications fetched successfully.', $notifications, NotificationResource::class);

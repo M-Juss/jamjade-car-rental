@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Vehicle\ListVehiclesRequest;
 use App\Http\Requests\Vehicle\VehicleRequest;
 use App\Http\Resources\VehicleResource;
 use App\Models\Vehicle;
 use App\Services\VehicleService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
@@ -17,11 +17,11 @@ class VehicleController extends Controller
 
     public function __construct(private readonly VehicleService $vehicleService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListVehiclesRequest $request): JsonResponse
     {
         $vehicles = $this->vehicleService->paginate(
-            $request->only(['search', 'status', 'brand', 'transmission']),
-            (int) $request->integer('per_page', 15)
+            $request->safe()->only(['search', 'status', 'brand', 'transmission']),
+            $request->integer('per_page', 15)
         );
 
         return $this->paginated('Vehicles fetched successfully.', $vehicles, VehicleResource::class);

@@ -153,7 +153,7 @@ export default function Home() {
   const bottomRow = testimonials.slice(4, 7);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F5F5F5] flex flex-col ">
+    <div className="min-h-screen overflow-x-hidden bg-background flex flex-col ">
 
       {/* ── Download App Modal ── */}
       <DownloadAppModal
@@ -224,7 +224,7 @@ export default function Home() {
             <motion.div
               variants={heroItem}
               transition={{ duration: 0.45 }}
-              className="mb-4 inline-flex w-fit items-center gap-2 border-l-2 border-[#346EF6] pl-3 text-xs font-semibold uppercase text-white/75"
+              className="mb-4 inline-flex w-fit items-center gap-2 border-l-2 border-primary pl-3 text-xs font-semibold uppercase text-white/75"
             >
               Premium car rentals in Cavite
             </motion.div>
@@ -234,7 +234,7 @@ export default function Home() {
               className="max-w-4xl text-5xl font-bold leading-none text-white sm:text-6xl lg:text-8xl"
             >
               Your Journey Starts with
-              <span className="block text-[#346EF6] italic">JamJade</span>
+              <span className="block text-primary italic">JamJade</span>
             </motion.h1>
             <motion.p
               variants={heroItem}
@@ -254,7 +254,7 @@ export default function Home() {
                 onClick={() => setDownloadModalOpen(true)}
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
-                className="min-w-32 rounded-md bg-white px-5 py-3 text-center text-sm font-semibold text-[#1A2340] shadow-lg shadow-black/20 transition-all ease-in-out hover:-translate-y-0.5 hover:bg-[#EEF4FF] cursor-pointer"
+                className="min-w-32 rounded-md bg-white px-5 py-3 text-center text-sm font-semibold text-foreground shadow-lg shadow-black/20 transition-all ease-in-out hover:-translate-y-0.5 hover:bg-muted cursor-pointer"
               >
                 Rent Now
               </motion.button>
@@ -274,9 +274,9 @@ export default function Home() {
               className="mt-12 flex flex-wrap items-center gap-5 text-xs font-medium uppercase text-white/70"
             >
               <span>Clean Cars</span>
-              <span className="h-1 w-1 rounded-full bg-[#346EF6]" />
+              <span className="h-1 w-1 rounded-full bg-primary" />
               <span>Flexible Booking</span>
-              <span className="h-1 w-1 rounded-full bg-[#346EF6]" />
+              <span className="h-1 w-1 rounded-full bg-primary" />
               <span>Local Support</span>
             </motion.div>
           </motion.div>
@@ -307,7 +307,7 @@ export default function Home() {
         <motion.section
           {...revealUp(0)}
           id="testimonials"
-          className="py-20 px-40 bg-[#F5F5F5]"
+          className="py-20 px-40 bg-background"
         >
           <p className="font-semibold text-4xl mb-2">What Our Customers Say</p>
           <p className="text-sm mb-10 text-gray-600">
@@ -364,7 +364,7 @@ export default function Home() {
               <Map size={22} fill="#346EF6" className="text-blue-600" />
               <a
                 target="_blank"
-                className="text-[#346EF6] text-sm font-medium"
+                className="text-primary text-sm font-medium"
                 href="https://www.google.com/maps/dir//jamjade+rent+a+car+services,+9R8H%2BP3X,+Sahud-Ulan,+Tanza,+Cavite,+tanza+cavite,+4108+Cavite/@14.3662062,120.8289549,15.69z/data=!4m16!1m7!3m6!1s0x33962b94daf6d49f:0xef9e1799b42c57c0!2sjamjade+rent+a+car+services!8m2!3d14.3668717!4d120.8277429!16s%2Fg%2F11c1t4v_gv!4m7!1m0!1m5!1m1!1s0x33962b94daf6d49f:0xef9e1799b42c57c0!2m2!1d120.8277749!2d14.3668309?entry=ttu&g_ep=EgoyMDI2MDQyOS4wIKXMDSoASAFQAw%3D%3D"
               >
                 Get Directions
@@ -388,7 +388,7 @@ export default function Home() {
                 height={44}
                 className="object-contain brightness-0 invert"
               />
-              <p className="text-[#346EF6] font-bold text-lg tracking-wide">
+              <p className="text-primary font-bold text-lg tracking-wide">
                 JAMJADE
               </p>
             </div>
@@ -399,7 +399,7 @@ export default function Home() {
               href="https://www.facebook.com/alvin.macalam2"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-[#346EF6] hover:text-blue-400 transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:text-blue-400 transition-colors"
             >
               <FaFacebook size={16} />
               Follow us on Facebook
@@ -426,7 +426,7 @@ export default function Home() {
                 >
                   <ChevronRight
                     size={12}
-                    className="text-[#346EF6] opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                   />
                   {item.label}
                 </a>
@@ -441,8 +441,8 @@ export default function Home() {
             </p>
             <div className="flex flex-col gap-4">
               <a href="tel:09186853429" className="flex items-start gap-3 group">
-                <div className="w-8 h-8 rounded-lg bg-[#346EF6]/15 flex items-center justify-center flex-shrink-0 group-hover:bg-[#346EF6]/30 transition-colors">
-                  <Phone size={14} className="text-[#346EF6]" />
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/30 transition-colors">
+                  <Phone size={14} className="text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-white/40 mb-0.5">Phone / Viber</p>
@@ -453,8 +453,8 @@ export default function Home() {
               </a>
 
               <a href="mailto:jamjade.carrentalofficial@gmail.com" className="flex items-start gap-3 group">
-                <div className="w-8 h-8 rounded-lg bg-[#346EF6]/15 flex items-center justify-center flex-shrink-0 group-hover:bg-[#346EF6]/30 transition-colors">
-                  <Mail size={14} className="text-[#346EF6]" />
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/30 transition-colors">
+                  <Mail size={14} className="text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-white/40 mb-0.5">Email</p>
@@ -470,8 +470,8 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="flex items-start gap-3 group"
               >
-                <div className="w-8 h-8 rounded-lg bg-[#346EF6]/15 flex items-center justify-center flex-shrink-0 group-hover:bg-[#346EF6]/30 transition-colors">
-                  <FaFacebook size={14} className="text-[#346EF6]" />
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/30 transition-colors">
+                  <FaFacebook size={14} className="text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-white/40 mb-0.5">Facebook Page</p>
@@ -489,19 +489,19 @@ export default function Home() {
               Operating Hours
             </p>
             <div className="flex items-start gap-3 mb-5">
-              <div className="w-8 h-8 rounded-lg bg-[#346EF6]/15 flex items-center justify-center flex-shrink-0">
-                <Clock size={14} className="text-[#346EF6]" />
+              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+                <Clock size={14} className="text-primary" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-white mb-1">Open 24 / 7</p>
                 <p className="text-xs text-white/50 leading-relaxed">
-                  Monday to Sunday — we're always here for your rental needs, day or night.
+                  Monday to Sunday — we&apos;re always here for your rental needs, day or night.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#346EF6]/15 flex items-center justify-center flex-shrink-0">
-                <Map size={14} className="text-[#346EF6]" />
+              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+                <Map size={14} className="text-primary" />
               </div>
               <div>
                 <p className="text-xs text-white/40 mb-0.5">Address</p>

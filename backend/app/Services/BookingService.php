@@ -11,6 +11,7 @@ use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\CustomerAgePolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
@@ -172,6 +173,17 @@ class BookingService
         if ($hasConflict) {
             throw ValidationException::withMessages([
                 'rental_start_at' => ['This vehicle is already booked for one or more of the selected dates.'],
+            ]);
+        }
+    }
+
+    public function assertCustomerAgeEligible(User $user): void
+    {
+        $profile = $user->customerProfile;
+
+        if (! $profile || ! CustomerAgePolicy::isEligible($profile->birthdate)) {
+            throw ValidationException::withMessages([
+                'booking' => [CustomerAgePolicy::MESSAGE],
             ]);
         }
     }
@@ -354,16 +366,10 @@ class BookingService
 
     private function assertRentalAllowed(User $user, RentalType $rentalType): void
     {
+        $this->assertCustomerAgeEligible($user);
+
         if ($rentalType !== RentalType::SelfDrive) {
             return;
-        }
-
-        $profile = $user->customerProfile;
-
-        if (! $profile || ! $profile->birthdate || $profile->birthdate->age < 18) {
-            throw ValidationException::withMessages([
-                'driver_option' => ['Self-drive rental is only available for customers who are 18 years old and above.'],
-            ]);
         }
 
         $requiredDocuments = CustomerDocument::requiredSelfDriveDocumentsFor($user);

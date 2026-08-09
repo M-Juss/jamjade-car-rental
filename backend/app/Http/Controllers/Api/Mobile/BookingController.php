@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\CancelBookingRequest;
+use App\Http\Requests\Booking\ListCustomerBookingsRequest;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
@@ -18,12 +19,12 @@ class BookingController extends Controller
 
     public function __construct(private readonly BookingService $bookingService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListCustomerBookingsRequest $request): JsonResponse
     {
         $bookings = $this->bookingService->paginateForUser(
             $request->user(),
-            $request->only('status'),
-            (int) $request->integer('per_page', 10)
+            $request->safe()->only(['status']),
+            $request->integer('per_page', 10)
         );
 
         return $this->paginated('Bookings fetched successfully.', $bookings, BookingResource::class);

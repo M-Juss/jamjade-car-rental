@@ -4,28 +4,28 @@ import type { SelfDriveStatus } from '@/types/customer';
 
 const STATUS_STYLES: Record<SelfDriveStatus, { bg: string; border: string; text: string; label: string }> = {
   'not-eligible': {
-    bg: 'bg-[#FFF7ED]',
-    border: 'border-[#FED7AA]',
-    label: "Owner's Driver Only",
-    text: 'text-[#C2410C]',
+    bg: 'bg-warning-surface',
+    border: 'border-warning-border',
+    label: 'Booking Unavailable',
+    text: 'text-warning',
   },
   'not-verified': {
     bg: 'bg-[#F1F5F9]',
-    border: 'border-[#CBD5E1]',
+    border: 'border-border',
     label: 'Self-drive Not Verified',
     text: 'text-[#475569]',
   },
   pending: {
-    bg: 'bg-[#FFF9E8]',
-    border: 'border-[#FFE7A6]',
+    bg: 'bg-warning-surface',
+    border: 'border-warning-border',
     label: 'Verification Pending',
-    text: 'text-[#806128]',
+    text: 'text-warning',
   },
   verified: {
-    bg: 'bg-[#ECFDF5]',
-    border: 'border-[#BBF7D0]',
+    bg: 'bg-success-surface',
+    border: 'border-success-border',
     label: 'Self-drive Verified',
-    text: 'text-[#047857]',
+    text: 'text-success',
   },
 };
 
