@@ -36,7 +36,7 @@ class VehicleController extends Controller
 
         return $this->success(
             'Vehicle fetched successfully.',
-            new VehicleResource($vehicle->load(['images', 'features', 'dateBlockingBookings']))
+            new VehicleResource($vehicle->load(['images', 'features', 'dateBlockingBookings', 'scheduledMaintenanceWindows']))
         );
     }
 }

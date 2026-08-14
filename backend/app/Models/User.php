@@ -63,6 +63,16 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function createdVehicleInspections(): HasMany
+    {
+        return $this->hasMany(VehicleInspection::class, 'created_by');
+    }
+
+    public function vehicleInspectionSignatures(): HasMany
+    {
+        return $this->hasMany(VehicleInspectionSignature::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

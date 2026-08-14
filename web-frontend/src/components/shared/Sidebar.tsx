@@ -14,17 +14,18 @@ import {
   LogOut,
   ChevronRight,
   Video,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  FormDialogContent,
+  FormDialogFooter,
+  FormDialogHeader,
+} from "@/components/common/FormDialogLayout";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { getAuthenticatedUser, logout as logoutUser } from "@/services/auth";
@@ -36,25 +37,67 @@ type NavItem = {
   permission?: string;
 };
 
-const ownerNavItems: NavItem[] = [
-  { href: "/owner", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/owner/fleet", label: "Fleet Tracker", icon: Car },
-  { href: "/owner/video-auditing", label: "Video Auditing", icon: Video },
-  { href: "/owner/vehicle", label: "Vehicle Management", icon: Settings },
-  { href: "/owner/booking", label: "Booking Management", icon: CalendarCheck },
-  { href: "/owner/verification-queue", label: "Verification Queue", icon: ClipboardCheck },
-  { href: "/owner/admin", label: "Admin Management", icon: ShieldCheck },
-  { href: "/owner/report", label: "Reports & Analytics", icon: BarChart3 },
+type NavSection = {
+  label: string;
+  items: NavItem[];
+};
+
+const ownerNavSections: NavSection[] = [
+  {
+    label: "Overview",
+    items: [{ href: "/owner", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Rental Operations",
+    items: [
+      { href: "/owner/booking", label: "Booking", icon: CalendarCheck },
+      { href: "/owner/verification-queue", label: "ID Verification", icon: ClipboardCheck },
+    ],
+  },
+  {
+    label: "Fleet Operations",
+    items: [
+      { href: "/owner/vehicle", label: "Vehicle", icon: Settings },
+      { href: "/owner/maintenance", label: "Maintenance", icon: Wrench },
+      { href: "/owner/fleet", label: "Fleet Tracker", icon: Car },
+      { href: "/owner/video-auditing", label: "Video Auditing", icon: Video },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [{ href: "/owner/report", label: "Reports & Analytics", icon: BarChart3 }],
+  },
+  {
+    label: "Administration",
+    items: [{ href: "/owner/admin", label: "Admin", icon: ShieldCheck }],
+  },
 ];
 
-const adminNavItems: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: "view dashboard" },
-  { href: "/admin/fleet", label: "Fleet Tracker", icon: Car, permission: "view fleet tracker" },
-  { href: "/admin/video-auditing", label: "Video Auditing", icon: Video, permission: "view video auditing" },
-  { href: "/admin/vehicle", label: "Vehicle Management", icon: Settings, permission: "manage vehicles" },
-  { href: "/admin/booking", label: "Booking Management", icon: CalendarCheck, permission: "manage bookings" },
-  { href: "/admin/verification-queue", label: "Verification Queue", icon: ClipboardCheck, permission: "review documents" },
-  { href: "/admin/report", label: "Reports & Analytics", icon: BarChart3, permission: "view reports" },
+const adminNavSections: NavSection[] = [
+  {
+    label: "Overview",
+    items: [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: "view dashboard" }],
+  },
+  {
+    label: "Rental Operations",
+    items: [
+      { href: "/admin/booking", label: "Booking", icon: CalendarCheck, permission: "manage bookings" },
+      { href: "/admin/verification-queue", label: "ID Verification", icon: ClipboardCheck, permission: "review documents" },
+    ],
+  },
+  {
+    label: "Fleet Operations",
+    items: [
+      { href: "/admin/vehicle", label: "Vehicle", icon: Settings, permission: "manage vehicles" },
+      { href: "/admin/maintenance", label: "Maintenance", icon: Wrench, permission: "manage maintenance" },
+      { href: "/admin/fleet", label: "Fleet Tracker", icon: Car, permission: "view fleet tracker" },
+      { href: "/admin/video-auditing", label: "Video Auditing", icon: Video, permission: "view video auditing" },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [{ href: "/admin/report", label: "Reports & Analytics", icon: BarChart3, permission: "view reports" }],
+  },
 ];
 
 type SidebarRole = "owner" | "admin";
@@ -90,11 +133,16 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
     };
   }, [role, router]);
 
-  const navItems = useMemo(() => {
-    if (role === "owner") return ownerNavItems;
+  const navSections = useMemo(() => {
+    if (role === "owner") return ownerNavSections;
     if (!permissions) return [];
 
-    return adminNavItems.filter((item) => !item.permission || permissions.has(item.permission));
+    return adminNavSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => !item.permission || permissions.has(item.permission)),
+      }))
+      .filter((section) => section.items.length > 0);
   }, [permissions, role]);
 
   const handleLogout = async () => {
@@ -124,14 +172,9 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
             height={52}
             className="object-contain"
           />
-          <div>
-          <p className="bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-transparent text-lg font-semibold">
+          <p className="bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-lg font-semibold text-transparent">
             JAMJADE
           </p>
-          <p className="bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-transparent text-lg font-semibold">
-            CAR RENTAL
-          </p>
-          </div>
         </div>
       </div>
 
@@ -139,47 +182,61 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
       <div className="mx-6 h-px bg-border mb-4" />
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 flex flex-col gap-0.5">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`
-                group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs  font-medium transition-all duration-200
-                ${
-                  isActive
-                    ? "bg-primary text-white shadow-[0_4px_14px_rgba(52,110,246,0.32)]"
-                    : "text-muted-foreground hover:bg-background hover:text-primary"
-                }
-              `}
-            >
-              {/* Active left accent bar */}
-              {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white/40 rounded-r-full" />
-              )}
+      <nav
+        aria-label={`${role === "owner" ? "Owner" : "Admin"} navigation`}
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-2"
+      >
+        {navSections.map((section) => (
+          <div key={section.label} className="flex flex-col gap-0.5">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-subtle-foreground">
+              {section.label}
+            </p>
 
-              <Icon
-                size={17}
-                strokeWidth={isActive ? 2.4 : 2}
-                className={`flex-shrink-0 transition-colors duration-200 ${
-                  isActive
-                    ? "text-white"
-                    : "text-muted-foreground group-hover:text-primary"
-                }`}
-              />
-              <span className="flex-1 tracking-[-0.01em]">{label}</span>
+            {section.items.map(({ href, label, icon: Icon }) => {
+              const isDashboard = href === "/owner" || href === "/admin";
+              const isActive = pathname === href || (!isDashboard && pathname.startsWith(`${href}/`));
 
-              {isActive && (
-                <ChevronRight
-                  size={14}
-                  className="text-white/60 flex-shrink-0"
-                />
-              )}
-            </Link>
-          );
-        })}
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`
+                    group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-primary text-white shadow-[0_4px_14px_rgba(52,110,246,0.32)]"
+                        : "text-muted-foreground hover:bg-background hover:text-primary"
+                    }
+                  `}
+                >
+                  {/* Active left accent bar */}
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-white/40" />
+                  )}
+
+                  <Icon
+                    size={17}
+                    strokeWidth={isActive ? 2.4 : 2}
+                    className={`flex-shrink-0 transition-colors duration-200 ${
+                      isActive
+                        ? "text-white"
+                        : "text-muted-foreground group-hover:text-primary"
+                    }`}
+                  />
+                  <span className="flex-1 tracking-[-0.01em]">{label}</span>
+
+                  {isActive && (
+                    <ChevronRight
+                      size={14}
+                      className="flex-shrink-0 text-white/60"
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Bottom section */}
@@ -199,34 +256,35 @@ export default function Sidebar({ role = "owner" }: SidebarProps) {
             </button>
           </DialogTrigger>
 
-          <DialogContent className="sm:max-w-[400px] rounded-2xl border-border shadow-2xl">
-            <DialogHeader className="text-left pb-1">
-              <DialogTitle className="text-[17px] font-bold text-foreground leading-tight">
-                Confirm Logout
-              </DialogTitle>
-              <DialogDescription className="text-[13.5px] text-muted-foreground mt-1.5 leading-relaxed">
-                You&apos;re about to sign out of your JamJade account. Any unsaved
-                changes may be lost.
-              </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter className="flex gap-2 pt-2 sm:flex-row flex-col">
+          <FormDialogContent width="compact">
+            <FormDialogHeader
+              title="Confirm Logout"
+              icon={LogOut}
+              onClose={() => setLogoutOpen(false)}
+              closeLabel="Close logout confirmation"
+              iconClassName="bg-destructive-surface text-destructive"
+            />
+            <p className="px-4 py-5 text-sm leading-6 text-muted-foreground sm:px-6">
+              You&apos;re about to sign out of your JamJade account. Any unsaved
+              changes may be lost.
+            </p>
+            <FormDialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setLogoutOpen(false)}
-                className="flex-1 rounded-xl border-border text-muted-foreground hover:bg-background hover:border-[#CBD5E1] text-[13.5px] font-medium h-10"
+                className="border-border text-[13.5px] font-medium text-muted-foreground hover:bg-background"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-white text-[13.5px] font-semibold h-10 shadow-[0_4px_14px_rgba(52,110,246,0.32)] transition-all duration-200"
+                className="bg-primary text-[13.5px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.32)] hover:bg-primary-hover"
               >
                 {isLoggingOut ? "Logging out..." : "Yes, Log Out"}
               </Button>
-            </DialogFooter>
-          </DialogContent>
+            </FormDialogFooter>
+          </FormDialogContent>
         </Dialog>
       </div>
     </aside>

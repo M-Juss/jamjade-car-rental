@@ -15,7 +15,7 @@ import {
   Search,
   XCircle,
 } from "lucide-react";
-import { appToast as toast } from "@/lib/toast";
+import { appToast } from "@/lib/toast";
 import {
   Area,
   AreaChart,
@@ -32,6 +32,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { KpiCard } from "@/components/common/KpiCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
@@ -192,7 +193,9 @@ export function ReportsAnalytics() {
     try {
       await downloadReport(format, range);
     } catch {
-      toast.error(messageFromError());
+      appToast.error(
+        `The ${format === "pdf" ? "PDF" : "Excel"} report could not be downloaded. Please try again.`,
+      );
     } finally {
       setDownloading(null);
     }
@@ -243,6 +246,8 @@ export function ReportsAnalytics() {
     { label: "Cancelled Bookings", value: data.summary.cancelledBookings.toLocaleString(), icon: XCircle, bg: "bg-rose-50", color: "text-rose-500" },
     { label: "Average Duration", value: `${data.summary.averageBookingDuration} days`, icon: Clock3, bg: "bg-violet-50", color: "text-violet-600" },
   ];
+  const revenueBreakdownIcons = [PhilippinePeso, Car, BarChart3, AlertCircle];
+  const fleetHighlightIcons = [BarChart3, Clock3, AlertCircle, Car];
 
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
@@ -300,17 +305,15 @@ export function ReportsAnalytics() {
         </div>
       )}
 
-      <motion.div {...fadeUp(0.08)} className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {kpis.map(({ label, value, icon: Icon, bg, color }) => (
-          <Card key={label} className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardContent className="p-4">
-              <div className={`mb-2.5 flex size-9 items-center justify-center rounded-xl ${bg}`}>
-                <Icon size={16} className={color} />
-              </div>
-              <p className="text-[18px] font-bold leading-none text-foreground md:text-[20px]">{value}</p>
-              <p className="mt-1 text-[10.5px] text-muted-foreground">{label}</p>
-            </CardContent>
-          </Card>
+      <motion.div {...fadeUp(0.08)} className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-3">
+        {kpis.map(({ label, value, icon, bg, color }) => (
+          <KpiCard
+            key={label}
+            label={label}
+            value={value}
+            icon={icon}
+            iconClassName={`${bg} ${color}`}
+          />
         ))}
       </motion.div>
 
@@ -466,15 +469,20 @@ export function ReportsAnalytics() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {data.revenueBreakdown.map((item) => (
-              <Card key={item.label} className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-                <CardContent className="p-4">
-                  <p className="text-[11px] text-muted-foreground">{item.label}</p>
-                  <p className="text-[18px] font-bold text-foreground">{formatCurrency(item.value, true)}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {data.revenueBreakdown.map((item, index) => {
+              const Icon = revenueBreakdownIcons[index] ?? PhilippinePeso;
+
+              return (
+                <KpiCard
+                  key={item.label}
+                  label={item.label}
+                  value={formatCurrency(item.value, true)}
+                  icon={Icon}
+                  iconClassName="bg-muted text-primary"
+                />
+              );
+            })}
           </div>
 
           <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
@@ -581,16 +589,21 @@ export function ReportsAnalytics() {
         </TabsContent>
 
         <TabsContent value="fleet" className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {data.fleetHighlights.map((item) => (
-              <Card key={item.label} className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-                <CardContent className="p-4">
-                  <p className="text-[11px] text-muted-foreground">{item.label}</p>
-                  <p className="text-[16px] font-bold text-foreground">{item.value}</p>
-                  <p className="text-[11px] text-primary">{item.sub}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {data.fleetHighlights.map((item, index) => {
+              const Icon = fleetHighlightIcons[index] ?? Car;
+
+              return (
+                <KpiCard
+                  key={item.label}
+                  label={item.label}
+                  value={item.value}
+                  description={item.sub}
+                  icon={Icon}
+                  iconClassName="bg-muted text-primary"
+                />
+              );
+            })}
           </div>
 
           <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">

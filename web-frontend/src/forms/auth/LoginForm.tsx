@@ -11,7 +11,7 @@ import {
   loginSchema,
   LoginSchemaFormValues,
 } from "@/validations/auth/schemas";
-import { appToast as toast } from "@/lib/toast";
+import { appToast } from "@/lib/toast";
 
 function withLoginFailedPrefix(message: string) {
   const trimmed = message.trim();
@@ -67,11 +67,11 @@ export function LoginForm() {
       const dashboardPath = getDashboardPathForUser(user);
 
       if (dashboardPath === "/login") {
-        toast.error("Login failed. This account does not have web admin access.");
+        appToast.error("Login failed. This account does not have web admin access.");
         return;
       }
 
-      toast.success("Login successful.");
+      appToast.success("Login successful.");
       router.replace(dashboardPath);
     } catch (error) {
       if (error instanceof ApiError && error.errors?.email?.[0]) {
@@ -81,12 +81,12 @@ export function LoginForm() {
         });
       }
 
-      toast.error(getLoginErrorMessage(error));
+      appToast.error(getLoginErrorMessage(error));
     }
   };
 
   const onInvalid = (errors: FieldErrors<LoginSchemaFormValues>) => {
-    toast.error(getValidationErrorMessage(errors));
+    appToast.error(getValidationErrorMessage(errors));
   };
 
   return (

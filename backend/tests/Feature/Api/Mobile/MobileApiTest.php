@@ -79,6 +79,12 @@ it('registers a mobile customer and returns a bearer token', function () {
         ->assertJsonPath('data.user.email', 'new.customer@example.com');
 });
 
+it('returns a JSON unauthorized response for protected mobile endpoints', function () {
+    $this->getJson('/api/mobile/profile')
+        ->assertUnauthorized()
+        ->assertJsonPath('message', 'Unauthenticated.');
+});
+
 it('logs in a mobile customer with sanctum token auth', function () {
     customerUser(['email' => 'login.customer@example.com', 'phone_number' => '09181234568']);
 

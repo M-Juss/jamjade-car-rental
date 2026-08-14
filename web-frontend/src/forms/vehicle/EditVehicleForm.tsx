@@ -8,6 +8,7 @@ import { useForm, useWatch } from "react-hook-form";
 import {
   ChevronLeft,
   Car,
+  ClipboardPenLine,
   PhilippinePeso,
   Users,
   Settings2,
@@ -25,12 +26,8 @@ import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import { VehicleImageGallery } from "@/components/common/VehicleImageGallery";
 import { getVehicle, updateVehicle } from "@/services/vehicle";
-import {
-  ApiError,
-  GENERIC_ERROR_MESSAGE,
-  GENERIC_SUCCESS_MESSAGE,
-} from "@/services/http";
-import { appToast as toast } from "@/lib/toast";
+import { ApiError } from "@/services/http";
+import { appToast } from "@/lib/toast";
 import {
   editVehicleFormSchema,
   type EditVehicleFormValues,
@@ -60,6 +57,7 @@ interface EditVehicleFormProps {
 export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
   const router = useRouter();
   const [images, setImages] = useState<string[]>([]);
+  const [vehicleName, setVehicleName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const {
@@ -111,6 +109,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
             features: vehicle.features,
           });
           setImages(vehicle.images);
+          setVehicleName(vehicle.name);
         }
       } catch {
         if (!ignore) {
@@ -150,7 +149,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
   const onSubmit = async (values: EditVehicleFormValues) => {
     try {
       await updateVehicle(vehicleId, values);
-      toast.success(GENERIC_SUCCESS_MESSAGE);
+      appToast.success("Vehicle updated successfully.");
       router.push(`/owner/vehicle/${vehicleId}`);
     } catch (saveError) {
       if (saveError instanceof ApiError && saveError.errors) {
@@ -166,7 +165,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
         });
       }
 
-      toast.error(GENERIC_ERROR_MESSAGE);
+      appToast.error("The vehicle could not be updated. Check the highlighted fields and try again.");
     }
   };
 
@@ -184,15 +183,28 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
           Vehicle Management
         </button>
         <span className="text-border text-sm">/</span>
-        <span className="text-[12.5px] font-semibold text-foreground">Edit {vehicleId}</span>
+        <span className="text-[12.5px] font-semibold text-foreground">
+          {vehicleName || "Vehicle"}
+        </span>
       </motion.div>
 
       <motion.div {...fadeUp(0.05)}>
         <Card className="rounded-2xl border-0 shadow-[0_2px_16px_rgba(0,0,0,0.06)] bg-white overflow-hidden">
-          <CardHeader className="px-5 pt-5 pb-3 border-b border-border">
-            <CardTitle className="text-[16px] font-bold text-foreground flex items-center gap-2">
-              <Car size={16} className="text-primary" /> Edit Vehicle
+          <CardHeader className="flex flex-col items-stretch justify-between gap-3 border-b border-border px-5 pb-3 pt-5 sm:flex-row sm:items-center">
+            <CardTitle className="flex items-center gap-2 text-[16px] font-bold text-foreground">
+              <Car size={16} className="text-primary" /> {vehicleName || "Vehicle"}
             </CardTitle>
+            {!isLoading && !error && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full rounded-xl border-border font-semibold text-primary sm:w-auto"
+                onClick={() => router.push(`/owner/vehicle/${vehicleId}/condition`)}
+              >
+                <ClipboardPenLine size={14} /> Edit Vehicle Condition
+              </Button>
+            )}
           </CardHeader>
 
           <CardContent className="p-5 md:p-6 space-y-6">
@@ -208,7 +220,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
               <form
                 className="space-y-6"
                 onSubmit={handleSubmit(onSubmit, () => {
-                  toast.error("Check the highlighted vehicle fields.");
+                  appToast.error("Check the highlighted vehicle fields.");
                 })}
               >
             <div>

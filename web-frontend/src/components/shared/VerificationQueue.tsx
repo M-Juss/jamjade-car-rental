@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { appToast as sonnerToast } from "@/lib/toast";
+import { appToast } from "@/lib/toast";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -32,11 +32,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  FormDialogContent,
+  FormDialogFooter,
+  FormDialogHeader,
+} from "@/components/common/FormDialogLayout";
 import { TableActionMenu } from "@/components/common/TableActionMenu";
+import { KpiCard } from "@/components/common/KpiCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -82,12 +87,7 @@ import {
   type VerificationRecord,
   type VerificationStatus,
 } from "@/services/verification";
-import {
-  GENERIC_ERROR_MESSAGE,
-  GENERIC_SUCCESS_MESSAGE,
-} from "@/services/http";
 
-type SortOrder = "newest" | "oldest";
 type FilterStatus = "all" | VerificationStatus;
 type FilterDocumentType = "all" | DocumentType;
 
@@ -263,7 +263,6 @@ export default function VerificationQueue() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [documentFilter, setDocumentFilter] =
     useState<FilterDocumentType>("all");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [selectedRecord, setSelectedRecord] =
     useState<VerificationRecord | null>(null);
   const [approveOpen, setApproveOpen] = useState(false);
@@ -290,7 +289,7 @@ export default function VerificationQueue() {
       .catch(() => {
         if (!isMounted) return;
         setRecords([]);
-        sonnerToast.error(GENERIC_ERROR_MESSAGE);
+        appToast.error("Verification records could not be loaded. Please try again.");
       })
       .finally(() => {
         if (!isMounted) return;
@@ -302,13 +301,24 @@ export default function VerificationQueue() {
     };
   }, []);
 
-  const showMessage = (tone: "success" | "error" = "success") => {
+  const showMessage = (
+    action: "approve" | "reject",
+    tone: "success" | "error" = "success",
+  ) => {
     if (tone === "success") {
-      sonnerToast.success(GENERIC_SUCCESS_MESSAGE);
+      appToast.success(
+        action === "approve"
+          ? "Document approved successfully."
+          : "Document rejected successfully.",
+      );
       return;
     }
 
-    sonnerToast.error(GENERIC_ERROR_MESSAGE);
+    appToast.error(
+      action === "approve"
+        ? "The document could not be approved. Please try again."
+        : "The document could not be rejected. Please try again.",
+    );
   };
 
   const openDocumentPreview = (preview: DocumentPreviewSelection) => {
@@ -358,11 +368,12 @@ export default function VerificationQueue() {
         return matchesSearch && matchesStatus && matchesDocument;
       })
       .sort((a, b) => {
-        const dateA = new Date(a.submittedAt).getTime();
-        const dateB = new Date(b.submittedAt).getTime();
-        return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+        if (a.status === b.status) return 0;
+        if (a.status === "pending") return -1;
+        if (b.status === "pending") return 1;
+        return 0;
       });
-  }, [documentFilter, records, search, sortOrder, statusFilter]);
+  }, [documentFilter, records, search, statusFilter]);
 
   const openApprove = (record: VerificationRecord) => {
     setActionRecord(record);
@@ -396,9 +407,9 @@ export default function VerificationQueue() {
       const updatedRecord = await approveVerification(actionRecord);
       replaceRecord(updatedRecord);
       setApproveOpen(false);
-      showMessage();
+      showMessage("approve");
     } catch {
-      showMessage("error");
+      showMessage("approve", "error");
     } finally {
       setIsActionSubmitting(false);
     }
@@ -422,9 +433,9 @@ export default function VerificationQueue() {
       replaceRecord(updatedRecord);
       setRejectOpen(false);
       setRejectReason("");
-      showMessage();
+      showMessage("reject");
     } catch {
-      showMessage("error");
+      showMessage("reject", "error");
     } finally {
       setIsActionSubmitting(false);
     }
@@ -434,7 +445,6 @@ export default function VerificationQueue() {
     setSearch("");
     setStatusFilter("all");
     setDocumentFilter("all");
-    setSortOrder("newest");
   };
 
   const appendQuickReason = (reason: string) => {
@@ -464,30 +474,17 @@ export default function VerificationQueue() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
       <div className="space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Verification Queue
-              </h1>
-              <Badge
-                variant="outline"
-                className="h-6 rounded-lg border-amber-200 bg-amber-50 px-2.5 text-[10.5px] font-semibold text-amber-700"
-              >
-                {counts.pending} pending
-              </Badge>
-            </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Review customer-submitted documents for self-drive eligibility.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[#DDE6FF] bg-muted px-4 py-3 text-[12px] font-medium text-primary shadow-[0_2px_12px_rgba(52,110,246,0.06)]">
-            <ShieldCheck size={15} className="mr-2 inline-block align-[-3px]" />
-            Document checks help prevent fake IDs and vehicle misuse.
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            ID Verification Management
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Track and manage all customer identification documents submitted to
+            the system.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
           {[
             {
               label: "Pending Review",
@@ -510,27 +507,14 @@ export default function VerificationQueue() {
               bg: "bg-rose-50",
               color: "text-rose-500",
             },
-          ].map(({ label, value, icon: Icon, bg, color }) => (
-            <Card
+          ].map(({ label, value, icon, bg, color }) => (
+            <KpiCard
               key={label}
-              className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(52,110,246,0.1)]"
-            >
-              <CardContent className="flex items-center gap-3 p-4">
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${bg}`}
-                >
-                  <Icon size={17} className={color} strokeWidth={2.2} />
-                </div>
-                <div>
-                  <p className="text-[22px] font-bold leading-none text-foreground">
-                    {value}
-                  </p>
-                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-                    {label}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+              label={label}
+              value={value}
+              icon={icon}
+              iconClassName={`${bg} ${color}`}
+            />
           ))}
         </div>
 
@@ -588,23 +572,9 @@ export default function VerificationQueue() {
                 </SelectContent>
               </Select>
 
-              <Select
-                value={sortOrder}
-                onValueChange={(value) => setSortOrder(value as SortOrder)}
-              >
-                <SelectTrigger className="h-9 w-full rounded-xl border-border bg-background text-[12.5px] sm:w-[145px]">
-                  <SelectValue placeholder="Sort" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest first</SelectItem>
-                  <SelectItem value="oldest">Oldest first</SelectItem>
-                </SelectContent>
-              </Select>
-
               {(search ||
                 statusFilter !== "all" ||
-                documentFilter !== "all" ||
-                sortOrder !== "newest") && (
+                documentFilter !== "all") && (
                 <Button
                   variant="outline"
                   onClick={clearFilters}
@@ -677,7 +647,7 @@ export default function VerificationQueue() {
                         <FileCheck size={21} className="text-primary" />
                       </div>
                       <p className="text-[13px] font-semibold text-muted-foreground">
-                        No documents waiting for verification.
+                        No ID verification records found.
                       </p>
                       <p className="text-[11.5px] text-subtle-foreground">
                         Submitted customer documents will appear here.
@@ -1031,7 +1001,7 @@ export default function VerificationQueue() {
                   unoptimized
                   onError={() => {
                     setPreviewDocument(null);
-                    sonnerToast.error("The uploaded document image could not be loaded.");
+                    appToast.error("The uploaded document image could not be loaded.");
                   }}
                   className="h-auto shrink-0 max-w-none rounded-xl border border-border bg-white object-contain shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition-[width,transform] duration-200"
                   style={{
@@ -1072,7 +1042,7 @@ export default function VerificationQueue() {
               This will mark the customer document as verified.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-2 flex gap-2">
+          <AlertDialogFooter className="mt-2">
             <AlertDialogCancel className="h-10 flex-1 rounded-xl border-border text-[13px] text-muted-foreground">
               Cancel
             </AlertDialogCancel>
@@ -1088,22 +1058,14 @@ export default function VerificationQueue() {
       </AlertDialog>
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent className="max-w-[540px] gap-0 rounded-2xl border-0 p-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
-          <DialogHeader className="border-b border-border px-6 pb-4 pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-50">
-                <ShieldAlert size={18} className="text-rose-500" />
-              </div>
-              <div>
-                <DialogTitle className="text-[15px] font-bold text-foreground">
-                  Reject Document
-                </DialogTitle>
-                <DialogDescription className="text-[11.5px] text-muted-foreground">
-                  Add a clear reason so the customer can resubmit from mobile.
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
+        <FormDialogContent width="compact">
+          <FormDialogHeader
+            title="Reject Document"
+            icon={ShieldAlert}
+            onClose={() => setRejectOpen(false)}
+            closeLabel="Close document rejection form"
+            iconClassName="bg-destructive-surface text-destructive"
+          />
 
           <div className="space-y-4 px-6 py-5">
             <div>
@@ -1151,23 +1113,23 @@ export default function VerificationQueue() {
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-2 border-t border-border bg-background px-6 py-4 sm:flex-row sm:justify-end">
+          <FormDialogFooter>
             <Button
               variant="outline"
               onClick={() => setRejectOpen(false)}
-              className="h-10 rounded-xl border-border px-4 text-[13px] text-muted-foreground"
+              className="border-border text-[13px] text-muted-foreground"
             >
               Cancel
             </Button>
             <Button
               onClick={handleReject}
               disabled={isActionSubmitting}
-              className="h-10 rounded-xl bg-rose-500 px-4 text-[13px] font-semibold text-white hover:bg-rose-600"
+              className="bg-destructive text-[13px] font-semibold text-white hover:bg-destructive/90"
             >
               {isActionSubmitting ? "Rejecting..." : "Reject Document"}
             </Button>
-          </div>
-        </DialogContent>
+          </FormDialogFooter>
+        </FormDialogContent>
       </Dialog>
     </div>
   );

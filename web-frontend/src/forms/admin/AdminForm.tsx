@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { appToast as toast } from "@/lib/toast";
+import { appToast } from "@/lib/toast";
 import {
   Eye,
   KeyRound,
@@ -15,22 +15,22 @@ import {
   Save,
   ShieldCheck,
   User,
-  X,
 } from "lucide-react";
+import {
+  FormDialogContent,
+  FormDialogFooter,
+  FormDialogHeader,
+} from "@/components/common/FormDialogLayout";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { AdminRole, AdminUser, AdminUserPayload } from "@/services/admin";
-import { ApiError, GENERIC_ERROR_MESSAGE } from "@/services/http";
+import { ApiError } from "@/services/http";
 import {
   createAdminAccountSchema,
   sanitizeMobileNumber,
@@ -57,10 +57,6 @@ function AbsoluteFieldError({ message }: { message?: string }) {
       {message}
     </p>
   );
-}
-
-function getAdminSaveErrorMessage() {
-  return GENERIC_ERROR_MESSAGE;
 }
 
 export function AdminForm({
@@ -144,7 +140,7 @@ export function AdminForm({
 
     try {
       await onSave(payload);
-      toast.success(
+      appToast.success(
         mode === "add"
           ? "Admin account created successfully."
           : "Admin account updated successfully.",
@@ -152,6 +148,8 @@ export function AdminForm({
       resetForm();
       onOpenChange(false);
     } catch (error) {
+      let hasFieldErrors = false;
+
       if (error instanceof ApiError && error.errors) {
         const fieldMap: Record<string, keyof AdminAccountFormValues> = {
           email: "email",
@@ -170,16 +168,25 @@ export function AdminForm({
 
           if (field && message) {
             setError(field, { message, type: "server" });
+            hasFieldErrors = true;
           }
         });
       }
 
-      toast.error(getAdminSaveErrorMessage());
+      appToast.error(
+        hasFieldErrors
+          ? "Check the highlighted admin account fields."
+          : mode === "add"
+            ? "The admin account could not be created. Please try again."
+            : "The admin account could not be updated. Please try again.",
+      );
     }
   };
 
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    void handleSubmit(handleSave)(event);
+    void handleSubmit(handleSave, () => {
+      appToast.error("Check the highlighted admin account fields.");
+    })(event);
   };
 
   const title = mode === "add"
@@ -187,57 +194,22 @@ export function AdminForm({
     : mode === "edit"
       ? "Edit Admin"
       : "View Admin";
-  const description = mode === "add"
-    ? "Fill in the details to create a new admin account."
-    : mode === "edit"
-      ? "Update the admin account details and login credentials."
-      : "Review the admin account information and access.";
   const HeaderIcon = mode === "add" ? Plus : mode === "edit" ? Pencil : Eye;
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent
-        className="
-          w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] lg:w-[50vw]
-          max-w-[960px] sm:max-w-none p-0 gap-0 rounded-2xl border-0
-          shadow-[0_24px_64px_rgba(0,0,0,0.14)]
-          flex flex-col max-h-[88vh]
-          [&>button]:hidden
-        "
-      >
+      <FormDialogContent width="wide">
         <form
           onSubmit={handleFormSubmit}
           noValidate
           className="flex min-h-0 flex-1 flex-col"
         >
-          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b border-border">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                  <HeaderIcon
-                    size={17}
-                    className="text-primary"
-                    strokeWidth={2.2}
-                  />
-                </div>
-                <div>
-                  <DialogTitle className="text-[16px] font-bold text-foreground leading-tight">
-                    {title}
-                  </DialogTitle>
-                  <DialogDescription className="text-[12px] text-muted-foreground mt-0.5">
-                    {description}
-                  </DialogDescription>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-subtle-foreground hover:text-muted-foreground hover:bg-background transition-all duration-150 flex-shrink-0 mt-0.5"
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </DialogHeader>
+          <FormDialogHeader
+            title={title}
+            icon={HeaderIcon}
+            onClose={handleCancel}
+            closeLabel="Close admin form"
+          />
 
           <ScrollArea className="flex-1 overflow-y-auto">
             <div className="px-6 py-5 space-y-5">
@@ -469,14 +441,13 @@ export function AdminForm({
             </div>
           </ScrollArea>
 
-          <div className="flex-shrink-0 border-t border-border px-6 py-4 bg-white rounded-b-2xl">
-            <div className="flex flex-col-reverse sm:flex-row gap-2.5">
+          <FormDialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isSubmitting}
-                className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-[13px] font-medium hover:bg-background"
+                className="border-border text-[13px] font-medium text-muted-foreground hover:bg-background"
               >
                 {isViewMode ? "Close" : "Cancel"}
               </Button>
@@ -484,7 +455,7 @@ export function AdminForm({
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-white h-10 text-[13px] font-semibold shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Save size={14} className="mr-2" />
                   {isSubmitting
@@ -494,17 +465,9 @@ export function AdminForm({
                       : "Update Admin"}
                 </Button>
               )}
-            </div>
-            {!isViewMode && (
-              <p className="text-center text-[10.5px] text-subtle-foreground mt-2.5">
-                Fields marked{" "}
-                <span className="text-rose-400 font-semibold">*</span> are
-                required
-              </p>
-            )}
-          </div>
+          </FormDialogFooter>
         </form>
-      </DialogContent>
+      </FormDialogContent>
     </Dialog>
   );
 }

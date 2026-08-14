@@ -6,6 +6,7 @@ use App\Enums\VehicleStatus;
 use App\Models\CustomerDocument;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\VehicleInspectionDefinition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -125,4 +126,33 @@ function availableVehicle(array $attributes = []): Vehicle
     ]);
 
     return $vehicle;
+}
+
+function vehicleManagerUser(): User
+{
+    $user = User::factory()->create();
+    $user->assignRole(UserRole::Owner->value);
+
+    return $user;
+}
+
+function vehicleSignatureDataUrl(): string
+{
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+}
+
+function vehicleConditionPayload(array $overrides = []): array
+{
+    $checklist = collect(VehicleInspectionDefinition::checklist())
+        ->map(fn (array $items) => collect($items)->mapWithKeys(fn (string $label, string $key) => [$key => true])->all())
+        ->all();
+
+    return array_replace_recursive([
+        'odometer' => 1250,
+        'fuel_level' => 6,
+        'comments' => 'Initial inspection completed.',
+        'checklist' => $checklist,
+        'markers' => [],
+        'signature_data' => vehicleSignatureDataUrl(),
+    ], $overrides);
 }

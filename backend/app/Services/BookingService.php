@@ -34,7 +34,9 @@ class BookingService
 
     public function __construct(
         private readonly NotificationService $notificationService,
-        private readonly BookingEmailService $bookingEmailService
+        private readonly BookingEmailService $bookingEmailService,
+        private readonly VehicleAvailabilityService $availabilityService,
+        private readonly VehicleOperationalStatusService $operationalStatusService
     ) {}
 
     public function paginateForUser(User $user, array $filters = [], int $perPage = 10): LengthAwarePaginator
@@ -115,7 +117,7 @@ class BookingService
             }
 
             if (in_array($targetStatus, [BookingStatus::Completed, BookingStatus::Cancelled, BookingStatus::Rejected], true)) {
-                $booking->vehicle->update(['status' => VehicleStatus::Available]);
+                $this->operationalStatusService->afterBookingEnded($booking->vehicle);
             }
 
             $booking->statusLogs()->create([
@@ -163,18 +165,7 @@ class BookingService
         mixed $end,
         ?int $ignoreBookingId = null
     ): void {
-        $hasConflict = Booking::query()
-            ->where('vehicle_id', $vehicleId)
-            ->blockingVehicleDates()
-            ->overlappingSchedule($start, $end)
-            ->when($ignoreBookingId, fn ($query, int $bookingId) => $query->where('id', '!=', $bookingId))
-            ->exists();
-
-        if ($hasConflict) {
-            throw ValidationException::withMessages([
-                'rental_start_at' => ['This vehicle is already booked for one or more of the selected dates.'],
-            ]);
-        }
+        $this->availabilityService->assertBookingIntervalAvailable($vehicleId, $start, $end, $ignoreBookingId);
     }
 
     public function assertCustomerAgeEligible(User $user): void

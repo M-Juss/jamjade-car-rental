@@ -7,6 +7,7 @@ use App\Http\Controllers\Web\Admin\CustomerController;
 use App\Http\Controllers\Web\Admin\DashboardController;
 use App\Http\Controllers\Web\Admin\DocumentVerificationController;
 use App\Http\Controllers\Web\Admin\FleetTrackerController;
+use App\Http\Controllers\Web\Admin\MaintenanceController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\ReportController;
 use App\Http\Controllers\Web\Admin\VehicleController;
@@ -38,6 +39,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
             Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
             Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('vehicles.show');
+            Route::get('/vehicles/{vehicle}/current-condition', [VehicleController::class, 'currentCondition'])->name('vehicles.current-condition');
+            Route::get('/vehicles/{vehicle}/inspections', [VehicleController::class, 'inspectionHistory'])->name('vehicles.inspections.index');
+            Route::get('/vehicles/{vehicle}/inspections/{inspection}', [VehicleController::class, 'inspection'])->name('vehicles.inspections.show');
+            Route::post('/vehicles/{vehicle}/initial-condition', [VehicleController::class, 'storeInitialCondition'])->name('vehicles.initial-condition.store');
+            Route::post('/vehicles/{vehicle}/condition-updates', [VehicleController::class, 'storeConditionUpdate'])->name('vehicles.condition-updates.store');
             Route::put('/vehicles/{vehicle}', [VehicleController::class, 'update'])->name('vehicles.update');
             Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('vehicles.destroy');
         });
@@ -53,6 +59,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bookings/{booking}/resend-confirmation-email', [BookingController::class, 'resendConfirmationEmail'])
                 ->middleware('role:owner|admin')
                 ->name('bookings.resend-confirmation-email');
+        });
+
+        Route::middleware('permission:manage maintenance')->group(function () {
+            Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
+            Route::get('/maintenance/summary', [MaintenanceController::class, 'summary'])->name('maintenance.summary');
+            Route::get('/maintenance/vehicles', [MaintenanceController::class, 'vehicles'])->name('maintenance.vehicles');
+            Route::post('/maintenance', [MaintenanceController::class, 'schedule'])->name('maintenance.store');
+            Route::get('/maintenance/{maintenanceRecord}', [MaintenanceController::class, 'show'])->name('maintenance.show');
+            Route::post('/maintenance/{maintenanceRecord}/start', [MaintenanceController::class, 'start'])->name('maintenance.start');
+            Route::post('/maintenance/{maintenanceRecord}/complete', [MaintenanceController::class, 'complete'])->name('maintenance.complete');
+            Route::post('/maintenance/{maintenanceRecord}/cancel', [MaintenanceController::class, 'cancel'])->name('maintenance.cancel');
+            Route::post('/maintenance/{maintenanceRecord}/condition', [MaintenanceController::class, 'linkCondition'])->name('maintenance.condition');
+            Route::get('/maintenance-plans', [MaintenanceController::class, 'plans'])->name('maintenance-plans.index');
+            Route::get('/vehicles/{vehicle}/maintenance-plans', [MaintenanceController::class, 'vehiclePlans'])->name('vehicles.maintenance-plans.index');
+            Route::post('/maintenance-plans', [MaintenanceController::class, 'storePlan'])->name('maintenance-plans.store');
+            Route::put('/maintenance-plans/{plan}', [MaintenanceController::class, 'updatePlan'])->name('maintenance-plans.update');
+            Route::post('/maintenance-plans/{plan}/deactivate', [MaintenanceController::class, 'deactivatePlan'])->name('maintenance-plans.deactivate');
         });
 
         Route::middleware('permission:manage customers')->group(function () {

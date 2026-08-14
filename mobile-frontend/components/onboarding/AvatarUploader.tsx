@@ -4,7 +4,12 @@ import { Image, Pressable, Text, View } from 'react-native';
 
 import { pickImageFromDevice } from '@/lib/customer/image-picker';
 
+function cx(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
+}
+
 export function AvatarUploader({
+  error,
   imageUri,
   initials,
   onChange,
@@ -12,11 +17,12 @@ export function AvatarUploader({
   imageUri: string;
   initials: string;
   onChange: (imageUri: string) => void;
+  error?: string;
 }) {
   const [pickError, setPickError] = useState('');
 
   const handlePickImage = async () => {
-    const result = await pickImageFromDevice();
+    const result = await pickImageFromDevice({ allowsEditing: true });
 
     if (result.error === 'too-large') {
       setPickError('The selected image is larger than the 5 MB limit.');
@@ -43,7 +49,10 @@ export function AvatarUploader({
     <Pressable
       accessibilityRole="button"
       onPress={handlePickImage}
-      className="rounded-[26px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
+      className={cx(
+        'rounded-[26px] border bg-surface p-4 shadow-md shadow-foreground/5',
+        error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
+      )}>
       <View className="flex-row items-center gap-4">
         <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-[28px] bg-muted">
           {imageUri ? (
@@ -68,6 +77,11 @@ export function AvatarUploader({
       {pickError ? (
         <Text className="mt-3 text-[11px] font-bold leading-4 text-destructive">
           {pickError}
+        </Text>
+      ) : null}
+      {error ? (
+        <Text className="mt-3 text-[11px] font-bold leading-4 text-destructive">
+          {error}
         </Text>
       ) : null}
     </Pressable>

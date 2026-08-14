@@ -9,10 +9,9 @@ import {
   useForm,
   useWatch,
 } from "react-hook-form";
-import { appToast as toast } from "@/lib/toast";
+import { appToast } from "@/lib/toast";
 import {
   Upload,
-  X,
   Car,
   PhilippinePeso,
   Users,
@@ -37,10 +36,6 @@ import {
 } from "lucide-react";
 import {
   Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -51,11 +46,17 @@ import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/TextAreaWithLabel";
 import { VehicleImageGallery } from "@/components/common/VehicleImageGallery";
 import {
-  ApiError,
-  GENERIC_ERROR_MESSAGE,
-} from "@/services/http";
+  FormDialogContent,
+  FormDialogFooter,
+  FormDialogHeader,
+} from "@/components/common/FormDialogLayout";
+import { VehicleConditionForm } from "@/components/vehicle-inspection";
+import { ApiError } from "@/services/http";
 import {
   vehicleFormSchema,
+  vehicleInformationSchema,
+  createVehicleConditionDefaults,
+  type VehicleConditionFormValues,
   type VehicleFormValues,
 } from "@/validations/vehicle/schemas";
 
@@ -108,6 +109,7 @@ const INITIAL_FORM: VehicleFormValues = {
   status: "available",
   features: [],
   images: [],
+  initial_condition: createVehicleConditionDefaults(),
 };
 
 const STATUS_OPTIONS = [
@@ -145,10 +147,16 @@ function fieldMessage(message: unknown) {
 
 function getVehicleSaveErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
-    return Object.values(error.errors ?? {}).flat()[0] ?? error.message;
+    if (error.errors && Object.keys(error.errors).length > 0) {
+      return "The vehicle could not be added. Check the highlighted fields.";
+    }
+
+    if (error.status === 0) {
+      return "The vehicle could not be added. Check your connection and try again.";
+    }
   }
 
-  return GENERIC_ERROR_MESSAGE;
+  return "The vehicle could not be added. Please try again.";
 }
 
 function getVehicleFormErrorMessage(errors: FieldErrors<VehicleFormValues>) {
@@ -165,10 +173,58 @@ function getVehicleFormErrorMessage(errors: FieldErrors<VehicleFormValues>) {
     errors.fuel_type?.message,
     errors.features?.message,
     errors.status?.message,
+    errors.initial_condition ? "Complete the required initial condition fields." : undefined,
   ];
 
   return messages.find((message): message is string => typeof message === "string")
     ?? "Please check the highlighted fields.";
+}
+
+const VEHICLE_FIELD_TARGETS: Partial<Record<keyof VehicleFormValues, string>> = {
+  images: "vehicle-images",
+  brand: "vehicle-brand",
+  name: "vehicle-name",
+  model: "vehicle-model",
+  description: "vehicle-description",
+  price_per_day: "vehicle-price",
+  seats: "vehicle-seats",
+  color: "vehicle-color",
+  transmission: "vehicle-transmission",
+  fuel_type: "vehicle-fuel",
+  features: "vehicle-features",
+  status: "vehicle-status",
+};
+
+function focusTarget(targetId?: string) {
+  if (!targetId) return;
+
+  const target = document.getElementById(targetId);
+  if (!target) return;
+
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (target instanceof HTMLElement) {
+    target.focus({ preventScroll: true });
+  }
+}
+
+function firstVehicleErrorTarget(errors: FieldErrors<VehicleFormValues>) {
+  return Object.keys(VEHICLE_FIELD_TARGETS).find(
+    (field) => errors[field as keyof VehicleFormValues],
+  ) as keyof VehicleFormValues | undefined;
+}
+
+function firstConditionErrorTarget(
+  errors?: FieldErrors<VehicleConditionFormValues>,
+) {
+  if (!errors) return undefined;
+  if (errors.odometer) return "condition-odometer";
+  if (errors.fuel_level) return "condition-fuel-level";
+  if (errors.checklist) return "condition-checklist";
+  if (errors.markers) return "condition-body";
+  if (errors.comments) return "condition-comments-section";
+  if (errors.signature_data) return "condition-signature";
+
+  return undefined;
 }
 
 function vehicleImageFileName(file: File) {
@@ -293,6 +349,8 @@ export function VehicleFormDialog({
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [step, setStep] = useState<"vehicle" | "condition">("vehicle");
+  const [conditionValidationAttempted, setConditionValidationAttempted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<string[]>([]);
 
@@ -302,6 +360,7 @@ export function VehicleFormDialog({
     setValue,
     setError,
     getValues,
+    clearErrors,
     control,
     reset,
     formState: { errors, isSubmitting },
@@ -315,6 +374,7 @@ export function VehicleFormDialog({
   const selectedTransmission = useWatch({ control, name: "transmission" });
   const selectedFuelType = useWatch({ control, name: "fuel_type" });
   const selectedStatus = useWatch({ control, name: "status" });
+  const initialCondition = useWatch({ control, name: "initial_condition" });
 
   useEffect(() => {
     return () => {
@@ -333,6 +393,8 @@ export function VehicleFormDialog({
 
   const resetForm = () => {
     reset(INITIAL_FORM);
+    setStep("vehicle");
+    setConditionValidationAttempted(false);
     clearImages();
     setDragOver(false);
   };
@@ -362,14 +424,14 @@ export function VehicleFormDialog({
     const availableSlots = MAX_VEHICLE_IMAGES - currentImages.length;
 
     if (availableSlots <= 0) {
-      toast.error(`Vehicle images are limited to ${MAX_VEHICLE_IMAGES}.`);
+      appToast.error(`Vehicle images are limited to ${MAX_VEHICLE_IMAGES}.`);
       return;
     }
 
     const selectedImages = imageFiles.slice(0, availableSlots);
 
     if (imageFiles.length > availableSlots) {
-      toast.error(`Only ${MAX_VEHICLE_IMAGES} vehicle images can be uploaded.`);
+      appToast.error(`Only ${MAX_VEHICLE_IMAGES} vehicle images can be uploaded.`);
     }
 
     setIsProcessingImages(true);
@@ -382,7 +444,7 @@ export function VehicleFormDialog({
       const totalBytes = nextImages.reduce((total, file) => total + file.size, 0);
 
       if (totalBytes > VEHICLE_IMAGE_TOTAL_BYTES) {
-        toast.error("Vehicle images are too large. Remove one image or choose smaller photos.");
+        appToast.error("Vehicle images are too large. Remove one image or choose smaller photos.");
         return;
       }
 
@@ -395,11 +457,12 @@ export function VehicleFormDialog({
       setValue("images", nextImages, {
         shouldDirty: true,
         shouldTouch: true,
-        shouldValidate: true,
+        shouldValidate: false,
       });
+      clearErrors("images");
       setImagePreviews((current) => [...current, ...nextPreviews]);
     } catch {
-      toast.error("Unable to prepare one of the selected images.");
+      appToast.error("Unable to prepare one of the selected images.");
     } finally {
       setIsProcessingImages(false);
     }
@@ -427,7 +490,7 @@ export function VehicleFormDialog({
     setValue("images", images, {
       shouldDirty: true,
       shouldTouch: true,
-      shouldValidate: true,
+      shouldValidate: false,
     });
     setImagePreviews((current) =>
       current.filter((_, index) => index !== indexToRemove),
@@ -443,23 +506,29 @@ export function VehicleFormDialog({
     setValue("features", nextFeatures, {
       shouldDirty: true,
       shouldTouch: true,
-      shouldValidate: true,
+      shouldValidate: false,
     });
+    if (nextFeatures.length > 0) clearErrors("features");
   };
 
   const handleSave = async (values: VehicleFormValues) => {
     try {
       await onSave?.(values);
-      toast.success("Vehicle added successfully.");
+      appToast.success("Vehicle added successfully.");
       resetForm();
       onOpenChange(false);
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
         Object.entries(error.errors).forEach(([serverField, messages]) => {
-          const field = serverField.split(".")[0];
+          const clientField = serverField
+            .replace(/\.sequence_number/g, ".sequenceNumber")
+            .replace(/\.x_position/g, ".xPosition")
+            .replace(/\.y_position/g, ".yPosition")
+            .replace(/\.issue_type/g, ".issueType");
+          const rootField = clientField.split(".")[0];
 
-          if (field in INITIAL_FORM && messages[0]) {
-            setError(field as Path<VehicleFormValues>, {
+          if (rootField in INITIAL_FORM && messages[0]) {
+            setError(clientField as Path<VehicleFormValues>, {
               type: "server",
               message: messages[0],
             });
@@ -467,59 +536,110 @@ export function VehicleFormDialog({
         });
       }
 
-      toast.error(getVehicleSaveErrorMessage(error));
+      appToast.error(getVehicleSaveErrorMessage(error));
     }
   };
 
+  const vehicleFieldNames: Path<VehicleFormValues>[] = [
+    "images",
+    "brand",
+    "name",
+    "model",
+    "description",
+    "price_per_day",
+    "seats",
+    "color",
+    "transmission",
+    "fuel_type",
+    "features",
+    "status",
+  ];
+
+  const continueToCondition = () => {
+    const result = vehicleInformationSchema.safeParse(getValues());
+
+    clearErrors(vehicleFieldNames);
+    if (!result.success) {
+      result.error.issues.forEach((issue) => {
+        setError(issue.path.join(".") as Path<VehicleFormValues>, {
+          type: "zod",
+          message: issue.message,
+        });
+      });
+      const firstField = result.error.issues[0]?.path[0] as keyof VehicleFormValues | undefined;
+      requestAnimationFrame(() => focusTarget(firstField ? VEHICLE_FIELD_TARGETS[firstField] : undefined));
+      appToast.error("Please complete the highlighted vehicle information.");
+      return;
+    }
+    setStep("condition");
+  };
+
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (step === "vehicle") {
+      event.preventDefault();
+      void continueToCondition();
+      return;
+    }
+
     void handleSubmit(handleSave, (formErrors) => {
-      toast.error(getVehicleFormErrorMessage(formErrors));
+      const conditionTarget = firstConditionErrorTarget(formErrors.initial_condition);
+
+      if (conditionTarget) {
+        setConditionValidationAttempted(true);
+        requestAnimationFrame(() => focusTarget(conditionTarget));
+      } else {
+        const vehicleField = firstVehicleErrorTarget(formErrors);
+        if (vehicleField) {
+          setStep("vehicle");
+          requestAnimationFrame(() => focusTarget(VEHICLE_FIELD_TARGETS[vehicleField]));
+        }
+      }
+      appToast.error(getVehicleFormErrorMessage(formErrors));
     })(event);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent
-        className="
-          w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] lg:w-[50vw]
-          max-w-[960px] sm:max-w-none p-0 gap-0 rounded-2xl border-0
-          shadow-[0_24px_64px_rgba(0,0,0,0.14)]
-          flex flex-col max-h-[88vh]
-          [&>button]:hidden
-        "
-      >
+      <FormDialogContent width="wide">
         <form
           onSubmit={handleFormSubmit}
           noValidate
           className="flex min-h-0 flex-1 flex-col"
         >
-          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b border-border">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                  <Car size={18} className="text-primary" strokeWidth={2.2} />
-                </div>
-                <div>
-                  <DialogTitle className="text-[16px] font-bold text-foreground leading-tight">
-                    Add Vehicle
-                  </DialogTitle>
-                  <DialogDescription className="text-[12px] text-muted-foreground mt-0.5">
-                    Fill in the details to add a new vehicle to the fleet.
-                  </DialogDescription>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-subtle-foreground hover:text-muted-foreground hover:bg-background transition-all duration-150 flex-shrink-0 mt-0.5"
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </DialogHeader>
+          <FormDialogHeader
+            title="Add Vehicle"
+            icon={Car}
+            onClose={handleCancel}
+            closeLabel="Close vehicle form"
+          />
 
           <ScrollArea className="flex-1 overflow-y-auto">
-            <div className="px-6 py-5 space-y-5">
+            <div className="space-y-5 px-4 py-4 sm:px-6 sm:py-5">
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-background p-1">
+                {[
+                  ["vehicle", "1. Vehicle Information"],
+                  ["condition", "2. Initial Condition"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`min-w-0 rounded-lg px-2 py-2 text-[11px] font-bold leading-4 transition-colors sm:px-3 sm:text-xs ${
+                      step === value
+                        ? "bg-surface text-primary shadow-sm"
+                        : "text-muted-foreground"
+                    }`}
+                    onClick={() => {
+                      if (value === "vehicle") setStep("vehicle");
+                      else void continueToCondition();
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {step === "vehicle" ? (
+                <>
               <div className="relative pb-5">
                 <Label className="text-[11.5px] font-semibold text-muted-foreground mb-2 block">
                   Vehicle Images <span className="text-rose-400">*</span>
@@ -545,6 +665,10 @@ export function VehicleFormDialog({
                   </div>
                 ) : (
                   <motion.div
+                    id="vehicle-images"
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Upload vehicle images"
                     whileHover={{ scale: 1.005 }}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -553,6 +677,12 @@ export function VehicleFormDialog({
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
                     onClick={() => fileRef.current?.click()}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        fileRef.current?.click();
+                      }
+                    }}
                     className={`
                       relative h-40 rounded-2xl border-2 border-dashed cursor-pointer
                       flex flex-col items-center justify-center gap-2.5 transition-all duration-200
@@ -633,7 +763,7 @@ export function VehicleFormDialog({
                         setValue("brand", value, {
                           shouldDirty: true,
                           shouldTouch: true,
-                          shouldValidate: true,
+                          shouldValidate: false,
                         })
                       }
                       disabled={isSubmitting}
@@ -760,7 +890,7 @@ export function VehicleFormDialog({
                         setValue("transmission", value, {
                           shouldDirty: true,
                           shouldTouch: true,
-                          shouldValidate: true,
+                          shouldValidate: false,
                         })
                       }
                       disabled={isSubmitting}
@@ -789,7 +919,7 @@ export function VehicleFormDialog({
                         setValue("fuel_type", value, {
                           shouldDirty: true,
                           shouldTouch: true,
-                          shouldValidate: true,
+                          shouldValidate: false,
                         })
                       }
                       disabled={isSubmitting}
@@ -803,7 +933,7 @@ export function VehicleFormDialog({
 
               <Separator className="bg-border" />
 
-              <div className="relative pb-5">
+              <div id="vehicle-features" tabIndex={-1} className="relative scroll-mt-4 pb-5 outline-none">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
@@ -897,7 +1027,7 @@ export function VehicleFormDialog({
                     setValue("status", value as VehicleFormValues["status"], {
                       shouldDirty: true,
                       shouldTouch: true,
-                      shouldValidate: true,
+                      shouldValidate: false,
                     })
                   }
                   disabled={isSubmitting}
@@ -906,37 +1036,50 @@ export function VehicleFormDialog({
                 />
                 <AbsoluteFieldError message={errors.status?.message} />
               </div>
+                </>
+              ) : (
+                <VehicleConditionForm
+                  value={initialCondition}
+                  errors={errors.initial_condition}
+                  disabled={isSubmitting}
+                  onChange={(condition) => setValue("initial_condition", condition, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: conditionValidationAttempted,
+                  })}
+                />
+              )}
             </div>
           </ScrollArea>
 
-          <div className="flex-shrink-0 border-t border-border px-6 py-4 bg-white rounded-b-2xl">
-            <div className="flex flex-col-reverse sm:flex-row gap-2.5">
+          <FormDialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleCancel}
+                onClick={step === "condition" ? () => setStep("vehicle") : handleCancel}
                 disabled={isSubmitting || isProcessingImages}
-                className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-[13px] font-medium hover:bg-background"
+                className="border-border text-[13px] font-medium text-muted-foreground hover:bg-background"
               >
-                Cancel
+                {step === "condition" ? "Back" : "Cancel"}
               </Button>
               <Button
-                type="submit"
+                type={step === "condition" ? "submit" : "button"}
+                onClick={step === "vehicle" ? () => void continueToCondition() : undefined}
                 disabled={isSubmitting || isProcessingImages}
-                className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-white h-10 text-[13px] font-semibold shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70"
+                className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Car size={14} className="mr-2" />
-                {isProcessingImages ? "Preparing..." : isSubmitting ? "Saving..." : "Save Vehicle"}
+                {isProcessingImages
+                  ? "Preparing..."
+                  : isSubmitting
+                    ? "Saving..."
+                    : step === "vehicle"
+                      ? "Continue to Condition"
+                      : "Create Vehicle & Finalize Condition"}
               </Button>
-            </div>
-            <p className="text-center text-[10.5px] text-subtle-foreground mt-2.5">
-              Fields marked{" "}
-              <span className="text-rose-400 font-semibold">*</span> are
-              required
-            </p>
-          </div>
+          </FormDialogFooter>
         </form>
-      </DialogContent>
+      </FormDialogContent>
     </Dialog>
   );
 }

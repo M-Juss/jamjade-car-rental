@@ -3,22 +3,23 @@
 import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
-import { appToast as toast } from "@/lib/toast";
-import { KeyRound, Save, ShieldCheck, X } from "lucide-react";
+import { appToast } from "@/lib/toast";
+import { KeyRound, Save, ShieldCheck } from "lucide-react";
+import {
+  FormDialogContent,
+  FormDialogFooter,
+  FormDialogHeader,
+} from "@/components/common/FormDialogLayout";
 import { InputWithLabel } from "@/components/common/InputWithLabel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { AdminModule, AdminRole, AdminRolePayload } from "@/services/admin";
-import { ApiError, GENERIC_ERROR_MESSAGE } from "@/services/http";
+import { ApiError } from "@/services/http";
 import {
   adminRoleSchema,
   type AdminRoleFormValues,
@@ -41,10 +42,6 @@ function AbsoluteFieldError({ message }: { message?: string }) {
       {message}
     </p>
   );
-}
-
-function getRoleSaveErrorMessage() {
-  return GENERIC_ERROR_MESSAGE;
 }
 
 export function AdminRoleForm({
@@ -114,7 +111,7 @@ export function AdminRoleForm({
   const handleSave = async (values: AdminRoleFormValues) => {
     try {
       await onSave(values);
-      toast.success(
+      appToast.success(
         mode === "add"
           ? "Admin role created successfully."
           : "Admin role updated successfully.",
@@ -122,6 +119,8 @@ export function AdminRoleForm({
       resetForm();
       onOpenChange(false);
     } catch (error) {
+      let hasFieldErrors = false;
+
       if (error instanceof ApiError && error.errors) {
         const fieldMap: Record<string, keyof AdminRoleFormValues> = {
           modules: "modules",
@@ -134,62 +133,41 @@ export function AdminRoleForm({
 
           if (field && message) {
             setError(field, { message, type: "server" });
+            hasFieldErrors = true;
           }
         });
       }
 
-      toast.error(getRoleSaveErrorMessage());
+      appToast.error(
+        hasFieldErrors
+          ? "Check the highlighted admin role fields."
+          : mode === "add"
+            ? "The admin role could not be created. Please try again."
+            : "The admin role could not be updated. Please try again.",
+      );
     }
   };
 
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    void handleSubmit(handleSave)(event);
+    void handleSubmit(handleSave, () => {
+      appToast.error("Check the highlighted admin role fields.");
+    })(event);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent
-        className="
-          w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] lg:w-[50vw]
-          max-w-[900px] sm:max-w-none p-0 gap-0 rounded-2xl border-0
-          shadow-[0_24px_64px_rgba(0,0,0,0.14)]
-          flex flex-col max-h-[88vh]
-          [&>button]:hidden
-        "
-      >
+      <FormDialogContent width="wide">
         <form
           onSubmit={handleFormSubmit}
           noValidate
           className="flex min-h-0 flex-1 flex-col"
         >
-          <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0 border-b border-border">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck
-                    size={17}
-                    className="text-primary"
-                    strokeWidth={2.2}
-                  />
-                </div>
-                <div>
-                  <DialogTitle className="text-[16px] font-bold text-foreground leading-tight">
-                    {mode === "add" ? "Add Role" : "Edit Role"}
-                  </DialogTitle>
-                  <DialogDescription className="text-[12px] text-muted-foreground mt-0.5">
-                    Configure the role name and available admin modules.
-                  </DialogDescription>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-subtle-foreground hover:text-muted-foreground hover:bg-background transition-all duration-150 flex-shrink-0 mt-0.5"
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </DialogHeader>
+          <FormDialogHeader
+            title={mode === "add" ? "Add Role" : "Edit Role"}
+            icon={ShieldCheck}
+            onClose={handleCancel}
+            closeLabel="Close admin role form"
+          />
 
           <ScrollArea className="flex-1 overflow-y-auto">
             <div className="px-6 py-5 space-y-5">
@@ -275,21 +253,20 @@ export function AdminRoleForm({
             </div>
           </ScrollArea>
 
-          <div className="flex-shrink-0 border-t border-border px-6 py-4 bg-white rounded-b-2xl">
-            <div className="flex flex-col-reverse sm:flex-row gap-2.5">
+          <FormDialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isSubmitting}
-                className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-[13px] font-medium hover:bg-background"
+                className="border-border text-[13px] font-medium text-muted-foreground hover:bg-background"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-white h-10 text-[13px] font-semibold shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70"
+                className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Save size={14} className="mr-2" />
                 {isSubmitting
@@ -298,15 +275,9 @@ export function AdminRoleForm({
                     ? "Save Role"
                     : "Update Role"}
               </Button>
-            </div>
-            <p className="text-center text-[10.5px] text-subtle-foreground mt-2.5">
-              Fields marked{" "}
-              <span className="text-rose-400 font-semibold">*</span> are
-              required
-            </p>
-          </div>
+          </FormDialogFooter>
         </form>
-      </DialogContent>
+      </FormDialogContent>
     </Dialog>
   );
 }

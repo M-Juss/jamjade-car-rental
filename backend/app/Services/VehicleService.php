@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
@@ -12,10 +13,12 @@ class VehicleService
 {
     private const VEHICLE_UPLOAD_DIRECTORY = 'vehicles';
 
+    public function __construct(private readonly VehicleInspectionService $inspectionService) {}
+
     public function paginate(array $filters = [], int $perPage = 10): LengthAwarePaginator
     {
         return Vehicle::query()
-            ->with(['images', 'features', 'dateBlockingBookings'])
+            ->with(['images', 'features', 'dateBlockingBookings', 'scheduledMaintenanceWindows'])
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
@@ -31,27 +34,45 @@ class VehicleService
             ->paginate($perPage);
     }
 
-    public function create(array $data): Vehicle
+    public function create(array $data, User $user): Vehicle
     {
-        return DB::transaction(function () use ($data) {
-            $vehicle = Vehicle::create($this->vehiclePayload($data));
-            $this->syncRelations($vehicle, $data);
+        $storedImagePaths = [];
+        $signaturePath = $this->inspectionService->storePersonnelSignature($data['initial_condition']['signature_data']);
 
-            activity()
-                ->causedBy(auth()->user())
-                ->performedOn($vehicle)
-                ->event('vehicle_created')
-                ->log('Vehicle created by admin.');
+        try {
+            return DB::transaction(function () use ($data, $user, &$storedImagePaths, $signaturePath) {
+                $vehicle = Vehicle::create($this->vehiclePayload($data));
+                $this->syncRelations($vehicle, $data, $storedImagePaths);
 
-            return $vehicle->fresh(['images', 'features']);
-        });
+                $this->inspectionService->createInitial(
+                    $vehicle,
+                    $data['initial_condition'],
+                    $user,
+                    $signaturePath
+                );
+
+                activity()
+                    ->causedBy($user)
+                    ->performedOn($vehicle)
+                    ->event('vehicle_created')
+                    ->log('Vehicle created by admin.');
+
+                return $vehicle->fresh(['images', 'features', 'currentCondition']);
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($storedImagePaths);
+            $this->inspectionService->deleteSignature($signaturePath);
+
+            throw $exception;
+        }
     }
 
     public function update(Vehicle $vehicle, array $data): Vehicle
     {
         return DB::transaction(function () use ($vehicle, $data) {
             $vehicle->update($this->vehiclePayload($data));
-            $this->syncRelations($vehicle, $data);
+            $storedImagePaths = [];
+            $this->syncRelations($vehicle, $data, $storedImagePaths);
 
             activity()
                 ->causedBy(auth()->user())
@@ -96,7 +117,7 @@ class VehicleService
             ->all();
     }
 
-    private function syncRelations(Vehicle $vehicle, array $data): void
+    private function syncRelations(Vehicle $vehicle, array $data, array &$storedImagePaths): void
     {
         if (array_key_exists('features', $data)) {
             $vehicle->features()->delete();
@@ -113,6 +134,7 @@ class VehicleService
             foreach ($data['images'] ?? [] as $index => $imagePath) {
                 if ($imagePath instanceof UploadedFile) {
                     $imagePath = $this->storeVehicleImage($imagePath);
+                    $storedImagePaths[] = $imagePath;
                 }
 
                 if (! is_string($imagePath) || $imagePath === '') {

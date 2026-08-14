@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Vehicle;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\VehicleConditionRules;
 use Closure;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Validator;
 
 class VehicleRequest extends BaseFormRequest
 {
@@ -23,6 +25,12 @@ class VehicleRequest extends BaseFormRequest
             'price_per_day' => $this->input('price_per_day', $this->input('price')),
             'fuel_type' => $this->input('fuel_type', $this->input('fuel')),
         ]);
+
+        if ($this->isMethod('post') && is_array($this->input('initial_condition'))) {
+            $condition = $this->input('initial_condition');
+            $condition['markers'] ??= [];
+            $this->merge(['initial_condition' => $condition]);
+        }
     }
 
     public function rules(): array
@@ -30,7 +38,7 @@ class VehicleRequest extends BaseFormRequest
         $relationRequirement = $this->isMethod('post') ? 'required' : 'sometimes';
         $formFieldRequirement = $this->isMethod('post') ? 'required' : 'sometimes';
 
-        return [
+        $rules = [
             'name' => [$formFieldRequirement, 'string', 'max:160'],
             'brand' => [$formFieldRequirement, 'string', 'max:80'],
             'model' => [$formFieldRequirement, 'string', 'max:120'],
@@ -47,6 +55,26 @@ class VehicleRequest extends BaseFormRequest
             'images' => [$relationRequirement, 'array', 'min:1', 'max:5'],
             'images.*' => ['required', $this->imageRule()],
         ];
+
+        if ($this->isMethod('post')) {
+            $rules = [...$rules, ...VehicleConditionRules::rules()];
+        }
+
+        return $rules;
+    }
+
+    /** @return array<int, callable> */
+    public function after(): array
+    {
+        if (! $this->isMethod('post')) {
+            return [];
+        }
+
+        return [function (Validator $validator): void {
+            foreach (VehicleConditionRules::markerSequenceErrors($this->input('initial_condition.markers', [])) as $message) {
+                $validator->errors()->add('initial_condition.markers', $message);
+            }
+        }];
     }
 
     private function imageRule(): Closure

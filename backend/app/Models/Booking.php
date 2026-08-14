@@ -141,6 +141,11 @@ class Booking extends Model
         return $this->hasMany(TelematicsTrip::class);
     }
 
+    public function vehicleInspections(): HasMany
+    {
+        return $this->hasMany(VehicleInspection::class);
+    }
+
     public function telematicsEvents(): HasManyThrough
     {
         return $this->hasManyThrough(TelematicsEvent::class, TelematicsTrip::class, 'booking_id', 'trip_id');

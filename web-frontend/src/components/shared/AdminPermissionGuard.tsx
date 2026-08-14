@@ -10,6 +10,7 @@ const adminRoutePermissions = [
   { path: "/admin/video-auditing", permission: "view video auditing" },
   { path: "/admin/vehicle", permission: "manage vehicles" },
   { path: "/admin/booking", permission: "manage bookings" },
+  { path: "/admin/maintenance", permission: "manage maintenance" },
   { path: "/admin/verification-queue", permission: "review documents" },
   { path: "/admin/report", permission: "view reports" },
   { path: "/admin", permission: "view dashboard", exact: true },

@@ -15,7 +15,7 @@ import {
   UserX,
   X,
 } from "lucide-react";
-import { appToast as toast } from "@/lib/toast";
+import { appToast } from "@/lib/toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableActionMenu } from "@/components/common/TableActionMenu";
+import { KpiCard } from "@/components/common/KpiCard";
 import { Input } from "@/components/ui/input";
 import { AdminForm } from "@/forms/admin/AdminForm";
 import { AdminRoleForm } from "@/forms/admin/AdminRoleForm";
@@ -206,10 +207,10 @@ export function AdminManagementPage() {
     try {
       if (deleteTarget.type === "user") {
         await deleteAdminUser(deleteTarget.user.id);
-        toast.success("Admin account deleted successfully.");
+        appToast.success("Admin account deleted successfully.");
       } else {
         await deleteAdminRole(deleteTarget.role.id);
-        toast.success("Admin role deleted successfully.");
+        appToast.success("Admin role deleted successfully.");
       }
 
       setDeleteTarget(null);
@@ -217,7 +218,13 @@ export function AdminManagementPage() {
     } catch (deleteError) {
       const message = messageFromError(deleteError);
       setError(message);
-      toast.error(message);
+      appToast.error(
+        message === GENERIC_ERROR_MESSAGE
+          ? deleteTarget.type === "user"
+            ? "The admin account could not be deleted. Please try again."
+            : "The admin role could not be deleted. Please try again."
+          : message,
+      );
     } finally {
       setIsSaving(false);
     }
@@ -253,24 +260,20 @@ export function AdminManagementPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[
           { label: "Total Admins", value: summary.total, icon: Users, tone: "bg-muted text-primary" },
           { label: "Active", value: summary.active, icon: UserCheck, tone: "bg-emerald-50 text-emerald-600" },
           { label: "Inactive", value: summary.inactive, icon: UserX, tone: "bg-slate-100 text-slate-600" },
           { label: "Roles", value: summary.roles, icon: ShieldCheck, tone: "bg-amber-50 text-amber-700" },
-        ].map(({ label, value, icon: Icon, tone }) => (
-          <Card key={label} className="rounded-lg border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${tone}`}>
-                <Icon size={17} />
-              </div>
-              <div>
-                <p className="text-[22px] font-bold leading-none text-foreground">{value}</p>
-                <p className="mt-1 text-xs font-medium text-muted-foreground">{label}</p>
-              </div>
-            </CardContent>
-          </Card>
+        ].map(({ label, value, icon, tone }) => (
+          <KpiCard
+            key={label}
+            label={label}
+            value={value}
+            icon={icon}
+            iconClassName={tone}
+          />
         ))}
       </div>
 
@@ -522,7 +525,7 @@ export function AdminManagementPage() {
           if (!open && !isSaving) setDeleteTarget(null);
         }}
       >
-        <AlertDialogContent className="max-w-[420px] rounded-lg border-0 shadow-[0_24px_64px_rgba(0,0,0,0.14)]">
+        <AlertDialogContent className="max-w-[420px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.14)]">
           <AlertDialogHeader>
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-rose-50">
               <Trash2 size={19} className="text-rose-600" />
@@ -536,7 +539,7 @@ export function AdminManagementPage() {
                 : `Delete ${deleteTarget?.user.name}? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
+          <AlertDialogFooter>
             <AlertDialogCancel className="rounded-lg border-[#CBD5E1] text-sm text-muted-foreground">
               Cancel
             </AlertDialogCancel>

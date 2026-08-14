@@ -1,5 +1,12 @@
 import { API_BASE_URL, apiDelete, apiGet, apiPost, apiPut } from "@/services/http";
-import type { CreateVehicleRequestPayload, VehicleRecord, VehicleStatus } from "./types";
+import type {
+  CreateVehicleRequestPayload,
+  VehicleConditionRequestPayload,
+  VehicleConditionUpdateRequestPayload,
+  VehicleInspectionRecord,
+  VehicleRecord,
+  VehicleStatus,
+} from "./types";
 
 export const DEFAULT_VEHICLE_STATUS: VehicleStatus = "available";
 
@@ -31,7 +38,49 @@ function toVehicleFormData(payload: CreateVehicleRequestPayload) {
     formData.append("images[]", image);
   });
 
+  appendIfPresent(formData, "initial_condition[odometer]", payload.initial_condition.odometer);
+  appendIfPresent(formData, "initial_condition[fuel_level]", payload.initial_condition.fuel_level);
+  appendIfPresent(formData, "initial_condition[comments]", payload.initial_condition.comments);
+  formData.append("initial_condition[signature_data]", payload.initial_condition.signature_data);
+
+  Object.entries(payload.initial_condition.checklist).forEach(([category, items]) => {
+    Object.entries(items).forEach(([key, value]) => {
+      formData.append(
+        `initial_condition[checklist][${category}][${key}]`,
+        value ? "1" : "0",
+      );
+    });
+  });
+
+  payload.initial_condition.markers.forEach((marker, index) => {
+    const prefix = `initial_condition[markers][${index}]`;
+    formData.append(`${prefix}[sequence_number]`, String(marker.sequenceNumber));
+    formData.append(`${prefix}[panel]`, marker.panel);
+    formData.append(`${prefix}[x_position]`, marker.xPosition.toFixed(3));
+    formData.append(`${prefix}[y_position]`, marker.yPosition.toFixed(3));
+    formData.append(`${prefix}[issue_type]`, marker.issueType);
+    formData.append(`${prefix}[description]`, marker.description);
+  });
+
   return formData;
+}
+
+function toConditionRequest(condition: VehicleConditionRequestPayload) {
+  return {
+    odometer: Number(condition.odometer),
+    fuel_level: condition.fuel_level,
+    comments: condition.comments || null,
+    checklist: condition.checklist,
+    markers: condition.markers.map((marker) => ({
+      sequence_number: marker.sequenceNumber,
+      panel: marker.panel,
+      x_position: marker.xPosition,
+      y_position: marker.yPosition,
+      issue_type: marker.issueType,
+      description: marker.description,
+    })),
+    signature_data: condition.signature_data,
+  };
 }
 
 function resolveVehicleImageUrl(url?: string | null) {
@@ -85,4 +134,51 @@ export async function updateVehicle(vehicleId: string, payload: Partial<CreateVe
 
 export async function deleteVehicle(vehicleId: string) {
   await apiDelete<null>(`/admin/vehicles/${vehicleId}`);
+}
+
+export async function getCurrentVehicleCondition(vehicleId: string) {
+  const response = await apiGet<VehicleInspectionRecord | null>(
+    `/admin/vehicles/${vehicleId}/current-condition`,
+  );
+  return response.data;
+}
+
+export async function getVehicleInspectionHistory(vehicleId: string) {
+  const response = await apiGet<VehicleInspectionRecord[]>(
+    `/admin/vehicles/${vehicleId}/inspections`,
+  );
+  return response.data;
+}
+
+export async function getVehicleInspection(vehicleId: string, inspectionId: string) {
+  const response = await apiGet<VehicleInspectionRecord>(
+    `/admin/vehicles/${vehicleId}/inspections/${inspectionId}`,
+  );
+  return response.data;
+}
+
+export async function setInitialVehicleCondition(
+  vehicleId: string,
+  condition: VehicleConditionRequestPayload,
+) {
+  const response = await apiPost<VehicleInspectionRecord>(
+    `/admin/vehicles/${vehicleId}/initial-condition`,
+    { condition: toConditionRequest(condition) },
+  );
+  return response.data;
+}
+
+export async function updateCurrentVehicleCondition(
+  vehicleId: string,
+  payload: VehicleConditionUpdateRequestPayload,
+) {
+  const response = await apiPost<VehicleInspectionRecord>(
+    `/admin/vehicles/${vehicleId}/condition-updates`,
+    {
+      reason: payload.reason,
+      notes: payload.notes || null,
+      condition: toConditionRequest(payload.condition),
+    },
+  );
+  return response.data;
 }

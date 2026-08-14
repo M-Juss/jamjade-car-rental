@@ -8,6 +8,7 @@ import { AuthScreenFrame, AuthSubmitButton, InputWithLabel } from '@/components/
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { loginSchema } from '@/validation';
 import { useAuth } from '@/providers/AuthProvider';
+import type { MobileUser } from '@/services/api';
 import { ApiError } from '@/services/http';
 
 function withLoginFailedPrefix(message: string) {
@@ -42,6 +43,19 @@ function getValidationErrorMessage(errors: FieldErrors<LoginFormValues>) {
   return message ? withLoginFailedPrefix(message) : 'Login failed. Please check your login details.';
 }
 
+function needsBasicProfileSetup(user: MobileUser) {
+  const profile = user.profile;
+  const contactNumber = user.phoneNumber ?? profile?.phoneNumber;
+
+  return !(
+    profile?.firstName?.trim() &&
+    profile.lastName?.trim() &&
+    contactNumber?.trim() &&
+    profile.birthdate &&
+    profile.address?.trim()
+  );
+}
+
 export function LoginForm() {
   const router = useRouter();
   const { signIn } = useAuth();
@@ -60,11 +74,11 @@ export function LoginForm() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      await signIn({
+      const user = await signIn({
         email: values.email,
         password: values.password,
       });
-      router.replace('/(tabs)');
+      router.replace(needsBasicProfileSetup(user) ? '/onboarding/basic-info' : '/(tabs)');
     } catch (error) {
       toast.showToast(getLoginErrorMessage(error));
     }

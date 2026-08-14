@@ -41,6 +41,14 @@ return [
         'owner_path' => '/owner/booking',
         'assignable' => true,
     ],
+    'maintenance_management' => [
+        'label' => 'Maintenance Management',
+        'description' => 'Manage vehicle maintenance plans, schedules, and service history.',
+        'permission' => 'manage maintenance',
+        'admin_path' => '/admin/maintenance',
+        'owner_path' => '/owner/maintenance',
+        'assignable' => true,
+    ],
     'verification_queue' => [
         'label' => 'Verification Queue',
         'description' => 'Review customer identity and address documents.',

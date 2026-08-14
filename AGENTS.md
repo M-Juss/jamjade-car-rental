@@ -196,6 +196,10 @@ Accelerometer, GPS, geofencing, gyroscope, and video features are future work. D
 - Never start hidden or unexpected recording. Review applicable privacy, surveillance, employment, and data-protection requirements before video or driver-monitoring features are released.
 - Keep raw high-volume telemetry out of ordinary request and UI paths. Plan ingestion, aggregation, retention, and access separately before implementation.
 
+## Vehicle Condition Snapshots
+
+Before changing vehicle inspections, current condition, or future outgoing/incoming booking workflows, read `docs/vehicle-condition-architecture.md`. Finalized inspection snapshots are immutable internal records, and the public/mobile vehicle resource must not expose their checklist, marker, comment, history, or signature data.
+
 ## Existing Technical Debt
 
 The current repository does not yet satisfy every rule above. Known gaps include non-centralized color literals, inconsistent frontend validation placement, a manually validated web form, different Zod API conventions, incomplete dark-mode support, and missing frontend test foundations.

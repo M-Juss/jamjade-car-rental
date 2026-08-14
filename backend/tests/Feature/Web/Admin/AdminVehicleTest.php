@@ -36,6 +36,7 @@ function vehiclePayload(array $overrides = []): array
         'description' => 'Compact sedan for city rentals.',
         'features' => ['Air Conditioning'],
         'images' => ['vehicles/sample-vios.jpg'],
+        'initial_condition' => vehicleConditionPayload(),
     ], $overrides);
 }
 

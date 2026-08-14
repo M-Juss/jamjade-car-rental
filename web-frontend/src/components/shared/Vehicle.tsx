@@ -15,17 +15,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { SelectWithLabel } from "@/components/common/SelectWithLabel";
 import { TableActionMenu } from "@/components/common/TableActionMenu";
 import { VehicleFormDialog } from "@/forms/vehicle/VehicleForm";
+import { appToast } from "@/lib/toast";
 import {
   createVehicle,
   deleteVehicle,
@@ -157,6 +160,9 @@ export default function Vehicle() {
         current.filter((vehicle) => vehicle.id !== deleteTarget),
       );
       setDeleteTarget(null);
+      appToast.success("Vehicle deleted successfully.");
+    } catch {
+      appToast.error("The vehicle could not be deleted. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -443,39 +449,37 @@ export default function Vehicle() {
         </Card>
       </motion.div>
 
-      {/* ================= DELETE CONFIRMATION DIALOG ================= */}
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-[400px] rounded-2xl border-border">
-          <DialogHeader>
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center mb-3">
-              <Trash2 size={20} className="text-rose-500" />
-            </div>
-            <DialogTitle className="text-[16px] font-bold text-foreground">
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-[400px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[16px] font-bold text-foreground">
               Delete Vehicle
-            </DialogTitle>
-            <DialogDescription className="text-[13px] text-muted-foreground mt-1">
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-1 text-[13px] text-muted-foreground">
               This action cannot be undone. The vehicle and all its data will be
               permanently removed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2 pt-1">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteTarget(null)}
-              className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-[13px]"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDeleteVehicle}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Keep Vehicle</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
               disabled={isDeleting}
-              className="flex-1 rounded-xl bg-rose-500 hover:bg-rose-600 text-white h-10 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteVehicle();
+              }}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {isDeleting ? "Deleting..." : "Delete Vehicle"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <VehicleFormDialog
         open={vehicleFormOpen}

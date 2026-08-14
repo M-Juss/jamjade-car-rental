@@ -29,6 +29,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiCard } from "@/components/common/KpiCard";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { GENERIC_ERROR_MESSAGE } from "@/services/http";
 import {
@@ -153,26 +154,23 @@ export default function Dashboard() {
       </motion.div>
 
       <motion.div
-        className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
+        className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-3"
         initial="hidden"
         animate="visible"
         variants={{ visible: { transition: { staggerChildren: 0.07 } }, hidden: {} }}
       >
-        {kpis.map(({ label, value, icon: Icon, iconBg, iconColor }) => (
+        {kpis.map(({ label, value, icon, iconBg, iconColor }) => (
           <motion.div
             key={label}
             variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.35, ease: "easeOut" as const }}
           >
-            <Card className="h-full rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-              <CardContent className="p-4">
-                <div className={`mb-3 flex size-9 items-center justify-center rounded-xl ${iconBg}`}>
-                  <Icon size={17} className={iconColor} strokeWidth={2.2} />
-                </div>
-                <p className="text-[22px] font-bold leading-none text-foreground">{value}</p>
-                <p className="mt-1 text-[11px] font-medium text-muted-foreground">{label}</p>
-              </CardContent>
-            </Card>
+            <KpiCard
+              label={label}
+              value={value}
+              icon={icon}
+              iconClassName={`${iconBg} ${iconColor}`}
+            />
           </motion.div>
         ))}
       </motion.div>

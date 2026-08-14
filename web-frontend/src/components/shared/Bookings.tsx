@@ -51,6 +51,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableActionMenu } from "@/components/common/TableActionMenu";
+import { KpiCard } from "@/components/common/KpiCard";
+import { appToast } from "@/lib/toast";
 import {
   cancelBooking,
   getBookings,
@@ -305,8 +307,10 @@ export function Bookings() {
       );
       setSelectedBooking(updatedBooking);
       setCancelOpen(false);
+      appToast.success("Booking cancelled successfully.");
     } catch {
       setError("Unable to cancel this booking.");
+      appToast.error("The booking could not be cancelled. Please try again.");
     } finally {
       setIsCancelling(false);
     }
@@ -325,24 +329,20 @@ export function Bookings() {
         </div>
       ) : null}
 
-      <motion.div {...fadeUp(0.05)} className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <motion.div {...fadeUp(0.05)} className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[
           { label: "Total", value: counts.total, icon: CalendarCheck, color: "text-primary", background: "bg-muted" },
           { label: "Active", value: counts.active, icon: Activity, color: "text-emerald-600", background: "bg-emerald-50" },
           { label: "Pending", value: counts.pending, icon: Clock, color: "text-amber-600", background: "bg-amber-50" },
           { label: "Completed", value: counts.completed, icon: CheckCircle2, color: "text-muted-foreground", background: "bg-background" },
-        ].map(({ label, value, icon: Icon, color, background }) => (
-          <Card key={label} className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${background}`}>
-                <Icon size={17} className={color} />
-              </div>
-              <div>
-                <p className="text-[22px] font-bold leading-none text-foreground">{value}</p>
-                <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{label}</p>
-              </div>
-            </CardContent>
-          </Card>
+        ].map(({ label, value, icon, color, background }) => (
+          <KpiCard
+            key={label}
+            label={label}
+            value={value}
+            icon={icon}
+            iconClassName={`${background} ${color}`}
+          />
         ))}
       </motion.div>
 

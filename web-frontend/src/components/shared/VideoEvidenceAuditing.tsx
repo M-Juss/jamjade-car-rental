@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { appToast as sonnerToast } from "@/lib/toast";
+import { appToast } from "@/lib/toast";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -28,6 +28,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { KpiCard } from "@/components/common/KpiCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -315,7 +316,7 @@ export default function VideoEvidenceAuditing() {
       auditStatus: current.auditStatus === "Pending Review" ? "Under Review" : current.auditStatus,
     }));
 
-    sonnerToast.success("Video evidence selected and linked locally.");
+    appToast.success("Video evidence selected and linked locally.");
   };
 
   const markMissingVideo = (event: VideoAuditEvent) => {
@@ -341,7 +342,7 @@ export default function VideoEvidenceAuditing() {
       });
     }
 
-    sonnerToast.warning("Event marked as Video Missing.");
+    appToast.warning("Event marked as Video Missing.");
   };
 
   const saveAudit = () => {
@@ -358,7 +359,7 @@ export default function VideoEvidenceAuditing() {
       ],
     }));
 
-    sonnerToast.success("Audit decision saved locally.");
+    appToast.success("Audit decision saved locally.");
   };
 
   const hasFilters =
@@ -391,18 +392,14 @@ export default function VideoEvidenceAuditing() {
             { label: "Video Uploaded", value: counts.videoUploaded, icon: FileVideo, bg: "bg-blue-50", color: "text-blue-600" },
             { label: "Confirmed Violations", value: counts.confirmedViolations, icon: ShieldCheck, bg: "bg-rose-50", color: "text-rose-500" },
             { label: "False Alarms", value: counts.falseAlarms, icon: CheckCircle2, bg: "bg-emerald-50", color: "text-emerald-600" },
-          ].map(({ label, value, icon: Icon, bg, color }) => (
-            <Card key={label} className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(52,110,246,0.1)]">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${bg}`}>
-                  <Icon size={17} className={color} strokeWidth={2.2} />
-                </div>
-                <div>
-                  <p className="text-[22px] font-bold leading-none text-foreground">{value}</p>
-                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">{label}</p>
-                </div>
-              </CardContent>
-            </Card>
+          ].map(({ label, value, icon, bg, color }) => (
+            <KpiCard
+              key={label}
+              label={label}
+              value={value}
+              icon={icon}
+              iconClassName={`${bg} ${color}`}
+            />
           ))}
         </div>
 

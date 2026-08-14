@@ -28,6 +28,14 @@ class VehicleResource extends JsonResource
             ])->values(),
             collect()
         );
+        $maintenanceDateRanges = $this->whenLoaded(
+            'scheduledMaintenanceWindows',
+            fn () => $this->scheduledMaintenanceWindows->map(fn ($record) => [
+                'startDate' => $record->scheduled_start->toDateString(),
+                'endDate' => $record->scheduled_end->toDateString(),
+            ])->values(),
+            collect()
+        );
 
         return [
             'id' => (string) $this->id,
@@ -50,7 +58,7 @@ class VehicleResource extends JsonResource
             'cardImage' => $imageUrls->first(),
             'image' => $imageUrls->first(),
             'features' => $features,
-            'unavailableDateRanges' => $unavailableDateRanges,
+            'unavailableDateRanges' => collect($unavailableDateRanges)->concat($maintenanceDateRanges)->values(),
             'createdAt' => $this->created_at?->toDateString(),
         ];
     }

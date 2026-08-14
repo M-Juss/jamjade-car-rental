@@ -13,7 +13,11 @@ export type DocumentImagePickResult = {
   error?: DocumentImagePickError;
 };
 
-export async function pickImageFromDevice(): Promise<DocumentImagePickResult> {
+export async function pickImageFromDevice({
+  allowsEditing = false,
+}: {
+  allowsEditing?: boolean;
+} = {}): Promise<DocumentImagePickResult> {
   try {
     if (Platform.OS !== 'web') {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -24,7 +28,7 @@ export async function pickImageFromDevice(): Promise<DocumentImagePickResult> {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: false,
+      allowsEditing,
       mediaTypes: ['images'],
       quality: 0.7,
     });

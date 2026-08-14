@@ -29,6 +29,24 @@ import {
 import { updateProfile } from '@/services/api';
 import { ApiError } from '@/services/http';
 
+function getProfileSaveErrorMessage(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 0) {
+      return 'Unable to connect right now. Please try again.';
+    }
+
+    if (error.status === 401 || error.status === 419) {
+      return error.message;
+    }
+
+    if (error.status === 422) {
+      return 'Please correct the highlighted fields and try again.';
+    }
+  }
+
+  return 'Unable to save your profile. Please try again.';
+}
+
 export function BasicInfoForm() {
   const router = useRouter();
   const customer = useCustomer();
@@ -84,11 +102,7 @@ export function BasicInfoForm() {
         });
       }
 
-      toast.showToast(
-        error instanceof ApiError && error.status === 0
-          ? 'Unable to connect right now. Please try again.'
-          : 'Unable to save your profile. Check the highlighted fields.',
-      );
+      toast.showToast(getProfileSaveErrorMessage(error));
     }
   };
 
@@ -114,6 +128,7 @@ export function BasicInfoForm() {
 
         <View className="mt-7 gap-4">
           <AvatarUploader
+            error={errors.profilePicture?.message}
             imageUri={form.profilePicture}
             initials={initials}
             onChange={(imageUri) => {
