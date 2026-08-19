@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import EditVehicleForm from "@/forms/vehicle/EditVehicleForm";
+import EditVehicleForm from "@/forms/vehicle/details/EditVehicleForm";
 
 export default function EditVehiclePage() {
   const params = useParams<{ vehicleId: string }>();

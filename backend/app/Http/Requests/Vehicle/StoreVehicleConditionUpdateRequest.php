@@ -51,7 +51,7 @@ class StoreVehicleConditionUpdateRequest extends BaseFormRequest
                 return;
             }
 
-            $vehicle = $this->route('vehicle');
+            $vehicle = $this->conditionVehicle();
 
             if (! $vehicle instanceof Vehicle || $vehicle->current_condition_inspection_id === null) {
                 return;
@@ -80,5 +80,12 @@ class StoreVehicleConditionUpdateRequest extends BaseFormRequest
                 );
             }
         }];
+    }
+
+    protected function conditionVehicle(): ?Vehicle
+    {
+        $vehicle = $this->route('vehicle');
+
+        return $vehicle instanceof Vehicle ? $vehicle : null;
     }
 }

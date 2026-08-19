@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiGet, apiPost } from "@/services/http";
+import { apiGet, apiPost, resolveAssetUrl } from "@/services/http";
 import type {
   BackendVerificationRecord,
   DocumentType,
@@ -21,10 +21,7 @@ const STATUS_MAP: Record<string, VerificationStatus> = {
 };
 
 function resolveDocumentUrl(url?: string | null) {
-  if (!url) return "";
-  if (/^https?:\/\//i.test(url)) return url;
-
-  return `${API_BASE_URL}/${url.replace(/^\/+/, "")}`;
+  return resolveAssetUrl(url) ?? "";
 }
 
 function getDocumentType(record: BackendVerificationRecord): DocumentType {

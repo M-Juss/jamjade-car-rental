@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class VehicleMaintenancePlan extends Model
 {
@@ -15,7 +16,7 @@ class VehicleMaintenancePlan extends Model
 
     protected $fillable = [
         'vehicle_id', 'name', 'category', 'description', 'trigger_type', 'interval_km',
-        'interval_days', 'last_completed_at', 'last_completed_odometer', 'next_due_date',
+        'interval_days', 'baseline_odometer', 'baseline_date', 'last_completed_at', 'last_completed_odometer', 'next_due_date',
         'next_due_odometer', 'is_active', 'created_by',
     ];
 
@@ -25,6 +26,7 @@ class VehicleMaintenancePlan extends Model
             'category' => MaintenanceCategory::class,
             'trigger_type' => MaintenanceTriggerType::class,
             'last_completed_at' => 'datetime',
+            'baseline_date' => 'date',
             'next_due_date' => 'date',
             'is_active' => 'boolean',
         ];
@@ -38,6 +40,13 @@ class VehicleMaintenancePlan extends Model
     public function records(): HasMany
     {
         return $this->hasMany(VehicleMaintenanceRecord::class, 'maintenance_plan_id');
+    }
+
+    public function activeRecord(): HasOne
+    {
+        return $this->hasOne(VehicleMaintenanceRecord::class, 'maintenance_plan_id')
+            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->latestOfMany();
     }
 
     public function creator(): BelongsTo

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Web\Admin\AdminManagementController;
 use App\Http\Controllers\Web\Admin\AuthController;
 use App\Http\Controllers\Web\Admin\BookingController;
 use App\Http\Controllers\Web\Admin\CustomerController;
@@ -10,6 +9,7 @@ use App\Http\Controllers\Web\Admin\FleetTrackerController;
 use App\Http\Controllers\Web\Admin\MaintenanceController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\ReportController;
+use App\Http\Controllers\Web\Admin\StaffManagementController;
 use App\Http\Controllers\Web\Admin\VehicleController;
 use App\Http\Controllers\Web\PayPalRedirectController;
 use Illuminate\Support\Facades\Route;
@@ -68,14 +68,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/maintenance', [MaintenanceController::class, 'schedule'])->name('maintenance.store');
             Route::get('/maintenance/{maintenanceRecord}', [MaintenanceController::class, 'show'])->name('maintenance.show');
             Route::post('/maintenance/{maintenanceRecord}/start', [MaintenanceController::class, 'start'])->name('maintenance.start');
+            Route::put('/maintenance/{maintenanceRecord}/reschedule', [MaintenanceController::class, 'reschedule'])->name('maintenance.reschedule');
             Route::post('/maintenance/{maintenanceRecord}/complete', [MaintenanceController::class, 'complete'])->name('maintenance.complete');
             Route::post('/maintenance/{maintenanceRecord}/cancel', [MaintenanceController::class, 'cancel'])->name('maintenance.cancel');
+            Route::get('/maintenance/{maintenanceRecord}/completion-condition', [MaintenanceController::class, 'conditionForCompletion'])->name('maintenance.completion-condition.show');
+            Route::post('/maintenance/{maintenanceRecord}/completion-condition', [MaintenanceController::class, 'storeConditionForCompletion'])->name('maintenance.completion-condition.store');
             Route::post('/maintenance/{maintenanceRecord}/condition', [MaintenanceController::class, 'linkCondition'])->name('maintenance.condition');
             Route::get('/maintenance-plans', [MaintenanceController::class, 'plans'])->name('maintenance-plans.index');
             Route::get('/vehicles/{vehicle}/maintenance-plans', [MaintenanceController::class, 'vehiclePlans'])->name('vehicles.maintenance-plans.index');
             Route::post('/maintenance-plans', [MaintenanceController::class, 'storePlan'])->name('maintenance-plans.store');
             Route::put('/maintenance-plans/{plan}', [MaintenanceController::class, 'updatePlan'])->name('maintenance-plans.update');
-            Route::post('/maintenance-plans/{plan}/deactivate', [MaintenanceController::class, 'deactivatePlan'])->name('maintenance-plans.deactivate');
+            Route::delete('/maintenance-plans/{plan}', [MaintenanceController::class, 'deletePlan'])->name('maintenance-plans.destroy');
         });
 
         Route::middleware('permission:manage customers')->group(function () {
@@ -102,17 +105,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/document-verification/{document}/approve', [DocumentVerificationController::class, 'approve'])->name('documents.approve');
             Route::post('/document-verification/{document}/reject', [DocumentVerificationController::class, 'reject'])->name('documents.reject');
         });
-
-        Route::middleware('role:owner')->group(function () {
-            Route::get('/modules', [AdminManagementController::class, 'modules'])->name('modules.index');
-            Route::get('/management', [AdminManagementController::class, 'index'])->name('management.index');
-            Route::get('/management/roles', [AdminManagementController::class, 'roles'])->name('management.roles.index');
-            Route::post('/management/roles', [AdminManagementController::class, 'storeRole'])->name('management.roles.store');
-            Route::put('/management/roles/{role}', [AdminManagementController::class, 'updateRole'])->name('management.roles.update');
-            Route::delete('/management/roles/{role}', [AdminManagementController::class, 'destroyRole'])->name('management.roles.destroy');
-            Route::post('/management/users', [AdminManagementController::class, 'storeUser'])->name('management.users.store');
-            Route::put('/management/users/{user}', [AdminManagementController::class, 'updateUser'])->name('management.users.update');
-            Route::delete('/management/users/{user}', [AdminManagementController::class, 'destroyUser'])->name('management.users.destroy');
-        });
     });
+});
+
+Route::prefix('staff')->name('staff.')->middleware(['auth', 'active_admin', 'role:owner'])->group(function () {
+    Route::get('/modules', [StaffManagementController::class, 'modules'])->name('modules.index');
+    Route::get('/management', [StaffManagementController::class, 'index'])->name('management.index');
+    Route::get('/management/roles', [StaffManagementController::class, 'roles'])->name('management.roles.index');
+    Route::post('/management/roles', [StaffManagementController::class, 'storeRole'])->name('management.roles.store');
+    Route::put('/management/roles/{role}', [StaffManagementController::class, 'updateRole'])->name('management.roles.update');
+    Route::delete('/management/roles/{role}', [StaffManagementController::class, 'destroyRole'])->name('management.roles.destroy');
+    Route::post('/management/users', [StaffManagementController::class, 'storeUser'])->name('management.users.store');
+    Route::put('/management/users/{user}', [StaffManagementController::class, 'updateUser'])->name('management.users.update');
+    Route::delete('/management/users/{user}', [StaffManagementController::class, 'destroyUser'])->name('management.users.destroy');
 });

@@ -1,4 +1,4 @@
-import ReportsAnalytics from "@/components/shared/ReportsAnalytics"
+import ReportsAnalytics from "@/modules/management/reports/ReportsModule"
 
 export default function ReportPage() {
     return(

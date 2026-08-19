@@ -1,6 +1,6 @@
 "use client";
 
-import { InputWithLabel } from "@/components/common/InputWithLabel";
+import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { Mail, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FieldErrors, useForm } from "react-hook-form";

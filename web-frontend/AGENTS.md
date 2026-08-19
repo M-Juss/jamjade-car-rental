@@ -36,7 +36,7 @@ When several examples exist, use this order:
 1. The exact shared component already used for the same purpose.
 2. The same pattern in the same feature or screen.
 3. The same pattern in the closest current management screen.
-4. The primitive in `src/components/ui/` plus application composition in `src/components/common/` or `src/components/shared/`.
+4. The primitive in `src/components/ui/` plus application composition in `src/components/common/` or the relevant `src/modules/` domain.
 5. Semantic theme tokens and global typography in `src/app/globals.css` and `src/app/layout.tsx`.
 6. A new pattern, only when no suitable precedent exists.
 
@@ -48,14 +48,15 @@ Start discovery in these locations, then inspect the closest feature-specific im
 
 - Theme, semantic colors, radii, and global typography: `src/app/globals.css` and `src/app/layout.tsx`
 - Base UI primitives: `src/components/ui/`
-- Labeled form controls: `src/components/common/InputWithLabel.tsx`, `SelectWithLabel.tsx`, and `TextAreaWithLabel.tsx`
+- Labeled form controls: `src/components/common/forms/InputWithLabel.tsx`, `SelectWithLabel.tsx`, and `TextAreaWithLabel.tsx`
+- Management filters and searches: `src/components/common/forms/FilterSelect.tsx` and `SearchInput.tsx`
 - Table row actions: `src/components/common/TableActionMenu.tsx`
-- Dashboard KPI cards and dashboard content cards: `src/components/shared/Dashboard.tsx`
-- Analytics KPI cards, chart cards, and reporting tables: `src/components/shared/ReportsAnalytics.tsx`
-- Management page headers, filters, summary cards, tables, and states: `src/components/shared/Bookings.tsx`, `src/features/admin-management/AdminManagementPage.tsx`, and `src/components/shared/Vehicle.tsx`
+- Dashboard KPI cards and dashboard content cards: `src/modules/management/dashboard/DashboardModule.tsx`
+- Analytics KPI cards, chart cards, and reporting tables: `src/modules/management/reports/ReportsModule.tsx`
+- Management page headers, filters, summary cards, tables, and states: `src/modules/management/bookings/BookingsModule.tsx`, `src/modules/management/admin-access/AdminAccessModule.tsx`, and `src/modules/management/vehicles/VehiclesModule.tsx`
 - Canonical form-dialog shell and actions: `src/components/common/FormDialogLayout.tsx`
 - Complex form-body composition: `src/forms/admin/AdminForm.tsx` and `src/forms/vehicle/VehicleForm.tsx`
-- Navigation shell and role layouts: `src/components/shared/Sidebar.tsx`, `src/app/admin/layout.tsx`, and `src/app/owner/layout.tsx`
+- Navigation shell and role layouts: `src/modules/management/shell/`, `src/app/admin/layout.tsx`, and `src/app/owner/layout.tsx`
 
 This list is a discovery map, not permission to copy blindly. The closest equivalent in the touched feature remains the preferred precedent.
 
@@ -72,13 +73,13 @@ This list is a discovery map, not permission to copy blindly. The closest equiva
 Before creating or moving a file, identify its responsibility, search for the existing domain folder and comparable files, and place it in the narrowest established location that owns that responsibility.
 
 - `src/app/` owns App Router route entries, layouts, loading and error boundaries, metadata, and lightweight route composition. Do not put substantial feature UI, form logic, validation schemas, API calls, or business rules in route files.
-- `src/features/<domain>/` owns feature-specific screens, orchestration, components, and hooks that are too substantial for a route file but are not reusable across unrelated features.
+- `src/modules/<area>/<domain>/` owns feature-specific screens, orchestration, components, hooks, local data, and utilities that are too substantial for a route file but are not reusable across unrelated features.
 - `src/forms/<domain>/` owns every data-submitting form, including a form presented inside a dialog, sheet, card, wizard, or feature screen. The presentation container does not change the form's ownership.
 - `src/validations/<domain>/` owns Zod schemas, schema factories, shared form-validation helpers, and Zod-inferred form types.
 - `src/services/<domain>/` owns API requests, domain request and response types, response mapping, and explicit camelCase-to-snake_case payload transformation.
 - `src/components/ui/` owns shadcn primitives. Do not place feature-specific components or business behavior there.
 - `src/components/common/` owns broadly reusable composed controls and interface patterns, such as labeled fields and table actions.
-- `src/components/shared/` owns genuinely cross-feature application components and shells. A component used by only one feature is not shared merely because it might be reused later.
+- `src/components/common/` owns genuinely cross-feature composed interface patterns. A component used by only one domain belongs in that domain's `src/modules/` folder, even if it might be reused later.
 - `src/lib/` owns domain-independent utilities and application infrastructure. Do not hide feature business logic or API mappings there.
 
 The agent must not:
@@ -98,7 +99,7 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 - A KPI added to an existing KPI group must be another entry in that group's data model and must use the same map/render path as its siblings.
 - Match the existing group's `Card` and `CardContent`, grid breakpoints, gap, radius, border, shadow, padding, icon container, icon size and stroke, value typography, label typography, ordering, animation, and loading behavior.
 - Do not make one KPI visually unique unless its semantic state requires an already established status treatment or the user explicitly requests emphasis.
-- For dashboard KPI work, `src/components/shared/Dashboard.tsx` is the direct precedent. Do not introduce a separately designed KPI component beside it.
+- For dashboard KPI work, `src/modules/management/dashboard/DashboardModule.tsx` is the direct precedent. Do not introduce a separately designed KPI component beside it.
 - If KPI markup is needed in multiple features and a truly identical contract is emerging, extract one shared component and migrate the affected matching instances in the same scoped change. Do not create an abstraction that cannot preserve legitimate feature differences.
 
 ### Cards And Containers
@@ -111,6 +112,7 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 ### Forms And Input Fields
 
 - Use the existing common labeled controls when their API fits. Do not rebuild a label, icon, input, required indicator, and error message locally.
+- Use `FilterSelect` for unlabeled toolbar filters and `SearchInput` for search controls. Module and form code must not import the raw select primitive directly; ESLint enforces this boundary.
 - Use the `src/components/ui/` input, textarea, select, checkbox, and button primitives beneath application-level form controls.
 - Match field height, radius, padding, label case and tracking, placeholder style, focus ring, disabled state, error state, help text, and vertical spacing from the closest form.
 - Every data-submitting form must use React Hook Form with a Zod resolver and a schema from `src/validations/<domain>/`. Hand-written component-local validation is not an acceptable substitute.

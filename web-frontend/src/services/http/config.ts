@@ -8,36 +8,69 @@ function normalizeBackendUrl(value?: string) {
   return rawUrl.replace(/\/+$/, "");
 }
 
+const LOCAL_API_BASE_URL = normalizeBackendUrl(process.env.NEXT_PUBLIC_BACKEND_API);
+const TUNNEL_API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_TUNNEL
+  ? normalizeBackendUrl(process.env.NEXT_PUBLIC_BACKEND_API_TUNNEL)
+  : null;
+
 function isLoopbackHost(hostname: string) {
   const normalized = hostname.replace(/^\[|\]$/g, "").toLowerCase();
 
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
 }
 
-function getRuntimeApiBaseUrl(baseUrl: string) {
-  if (typeof window === "undefined") return baseUrl;
+function getRuntimeApiBaseUrl() {
+  if (typeof window === "undefined") return LOCAL_API_BASE_URL;
+
+  const browserHostname = window.location.hostname;
+
+  if (TUNNEL_API_BASE_URL && !isLoopbackHost(browserHostname)) {
+    return TUNNEL_API_BASE_URL;
+  }
 
   try {
-    const apiUrl = new URL(baseUrl);
+    const apiUrl = new URL(LOCAL_API_BASE_URL);
 
-    if (!isLoopbackHost(apiUrl.hostname) || !isLoopbackHost(window.location.hostname)) {
-      return baseUrl;
+    if (!isLoopbackHost(apiUrl.hostname) || !isLoopbackHost(browserHostname)) {
+      return LOCAL_API_BASE_URL;
     }
 
-    apiUrl.hostname = window.location.hostname;
+    apiUrl.hostname = browserHostname;
 
     return apiUrl.toString().replace(/\/+$/, "");
   } catch {
-    return baseUrl;
+    return LOCAL_API_BASE_URL;
   }
 }
 
-export const API_BASE_URL = normalizeBackendUrl(process.env.NEXT_PUBLIC_BACKEND_API);
+export function getApiBaseUrl() {
+  return getRuntimeApiBaseUrl();
+}
 
-export function buildApiUrl(path: string, baseUrl = API_BASE_URL) {
+export function buildApiUrl(path: string, baseUrl = getRuntimeApiBaseUrl()) {
   if (/^https?:\/\//i.test(path)) {
     return path;
   }
 
-  return `${getRuntimeApiBaseUrl(baseUrl)}/${path.replace(/^\/+/, "")}`;
+  return `${baseUrl}/${path.replace(/^\/+/, "")}`;
+}
+
+export function resolveAssetUrl(url?: string | null, baseUrl = getRuntimeApiBaseUrl()) {
+  if (!url) return null;
+
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url);
+
+      if (isLoopbackHost(parsed.hostname)) {
+        return `${baseUrl}${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      return url;
+    }
+
+    return url;
+  }
+
+  return `${baseUrl}/${url.replace(/^\/+/, "")}`;
 }

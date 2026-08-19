@@ -172,12 +172,13 @@ class VehicleInspectionService
         array $condition,
         string $reason,
         ?string $notes,
-        User $user
+        User $user,
+        ?callable $afterFinalized = null
     ): VehicleInspection {
         $signaturePath = $this->storePersonnelSignature($condition['signature_data'], 'condition.signature_data');
 
         try {
-            return DB::transaction(function () use ($vehicle, $condition, $reason, $notes, $user, $signaturePath) {
+            return DB::transaction(function () use ($vehicle, $condition, $reason, $notes, $user, $signaturePath, $afterFinalized) {
                 $lockedVehicle = Vehicle::query()->lockForUpdate()->findOrFail($vehicle->id);
 
                 if ($lockedVehicle->bookings()->where('status', BookingStatus::Ongoing)->exists()) {
@@ -298,6 +299,10 @@ class VehicleInspectionService
                         'reason' => $updateReason->value,
                     ])
                     ->log('Current vehicle condition changed.');
+
+                if ($afterFinalized) {
+                    $afterFinalized($inspection);
+                }
 
                 return $inspection->fresh($this->detailRelations());
             });

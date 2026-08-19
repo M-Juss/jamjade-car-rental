@@ -1,14 +1,6 @@
 import { apiGet, apiPost } from "@/services/http";
+import { managementModules, managementPath } from "@/modules/management/shell/config/module-registry";
 import type { AuthenticatedUser, AuthResponse, BackendRole, LoginPayload, UserRole } from "./types";
-
-const ADMIN_PERMISSION_ROUTES = [
-  { permission: "view dashboard", path: "/admin" },
-  { permission: "view fleet tracker", path: "/admin/fleet" },
-  { permission: "manage vehicles", path: "/admin/vehicle" },
-  { permission: "manage bookings", path: "/admin/booking" },
-  { permission: "review documents", path: "/admin/verification-queue" },
-  { permission: "view reports", path: "/admin/report" },
-];
 
 function normalizeRole(role: BackendRole): string | null {
   if (typeof role === "string") return role;
@@ -27,9 +19,11 @@ export function getDashboardPathForUser(user: AuthenticatedUser) {
   if (roles.includes("owner")) return "/owner";
 
   const permissions = new Set(user.permissions ?? []);
-  const firstAllowedRoute = ADMIN_PERMISSION_ROUTES.find((route) => permissions.has(route.permission));
+  const firstAllowedModule = managementModules.find(
+    (module) => !module.ownerOnly && module.permission && permissions.has(module.permission),
+  );
 
-  if (firstAllowedRoute) return firstAllowedRoute.path;
+  if (firstAllowedModule) return managementPath("admin", firstAllowedModule.id) ?? "/admin";
   if (roles.includes("admin") || roles.includes("staff")) return "/admin";
 
   return "/login";

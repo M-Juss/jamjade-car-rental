@@ -7,7 +7,7 @@ import type {
   VehicleBodyMarker,
   VehicleIssueType,
   VehiclePanelName,
-} from "@/components/vehicle-inspection";
+} from "@/modules/management/vehicles/inspection";
 
 export type VehicleStatus = "available" | "rented" | "maintenance" | "unavailable";
 
@@ -43,7 +43,21 @@ export type VehicleRecord = {
   hasOngoingRental?: boolean;
   canUpdateCurrentCondition?: boolean;
   conditionUpdateBlockedReason?: string | null;
-  unavailableDateRanges?: Array<{ startDate: string; endDate: string }>;
+  currentOdometer?: number | null;
+  unavailableDateRanges?: Array<{
+    startDate: string;
+    endDate?: string | null;
+    source?: "booking" | "maintenance";
+    label?: string;
+    openEnded?: boolean;
+  }>;
+};
+
+export type ShowcaseVehicle = Pick<
+  VehicleRecord,
+  "id" | "name" | "pricePerDay" | "seats" | "color" | "transmission" | "fuelType" | "image" | "images"
+> & {
+  cardImage?: string | null;
 };
 
 export type CreateVehicleRequestPayload = VehicleFormValues;

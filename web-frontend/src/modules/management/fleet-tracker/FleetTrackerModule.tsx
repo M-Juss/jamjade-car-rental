@@ -1,0 +1,261 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  CircleDot,
+  Clock3,
+  Loader2,
+  RefreshCcw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { FilterSelect } from "@/components/common/forms/FilterSelect";
+import { SearchInput } from "@/components/common/forms/SearchInput";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { filterOptions, fleetVehicles, lastSyncedLabel } from "@/modules/management/fleet-tracker/data/mock-fleet-tracker";
+import { FleetVehicleCard } from "./components/FleetVehicleCard";
+import { FleetDetailTabs } from "./components/FleetDetailTabs";
+import { FleetGoogleMap } from "./components/google-maps/FleetGoogleMap";
+
+type FilterState = {
+  status: string;
+  geofence: string;
+  alertType: string;
+  vehicleType: string;
+};
+
+const initialFilters: FilterState = {
+  status: "All",
+  geofence: "All",
+  alertType: "All",
+  vehicleType: "All",
+};
+
+export default function FleetTracker() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [selectedVehicleId, setSelectedVehicleId] = useState(fleetVehicles[0]?.id ?? "");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showGeofence, setShowGeofence] = useState(true);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  const filteredVehicles = useMemo(() => {
+    return fleetVehicles.filter((vehicle) => {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = [
+        vehicle.bookingId,
+        vehicle.customerName,
+        vehicle.carName,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+
+      return (
+        matchesSearch &&
+        (filters.status === "All" || vehicle.status === filters.status) &&
+        (filters.geofence === "All" || vehicle.geofenceState === filters.geofence) &&
+        (filters.alertType === "All" || vehicle.alertType === filters.alertType) &&
+        (filters.vehicleType === "All" || vehicle.vehicleType === filters.vehicleType)
+      );
+    });
+  }, [filters, searchQuery]);
+
+  const selectedVehicle = useMemo(() => {
+    return fleetVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? fleetVehicles[0] ?? null;
+  }, [selectedVehicleId]);
+
+  const alertCount = filteredVehicles.filter((vehicle) => vehicle.alertType !== "None").length;
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 900);
+  };
+
+  const handleVehicleSelect = (id: string) => {
+    setSelectedVehicleId(id);
+    setIsDetailsOpen(true);
+  };
+
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-background p-4 md:p-5 lg:p-6">
+      <section className="shrink-0 pb-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Fleet Tracker</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">Real-time monitoring of all active rentals</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
+              <CircleDot className="size-3" />
+              Live
+            </span>
+            <span className="inline-flex items-center gap-1"><Clock3 className="size-3" />Last synced: {lastSyncedLabel}</span>
+            <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
+              {isRefreshing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[3fr_1fr]">
+        <Card className="flex min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <CardHeader className="shrink-0 px-4 pb-2 pt-4">
+            <CardTitle className="text-sm font-bold text-foreground">Live Map</CardTitle>
+            <CardDescription>Vehicle marker colors reflect real-time status.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 pt-0">
+            <FleetGoogleMap
+              vehicles={filteredVehicles}
+              selectedId={selectedVehicle?.id ?? ""}
+              showGeofence={showGeofence}
+              onSelect={handleVehicleSelect}
+              onToggleGeofence={() => setShowGeofence((prev) => !prev)}
+              className="min-h-0 flex-1"
+            />
+            <div className="shrink-0 flex flex-wrap gap-2 text-xs text-muted-foreground">
+              {[
+                ["Active", "bg-emerald-500"],
+                ["Paused", "bg-amber-500"],
+                ["Idle", "bg-slate-500"],
+                ["Geofence Alert", "bg-rose-500"],
+                ["GPS Lost", "bg-violet-500"],
+              ].map(([label, color]) => (
+                <span key={label} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1">
+                  <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="flex min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <CardHeader className="shrink-0 space-y-2 border-b border-slate-100 px-3 py-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <CardTitle className="truncate text-sm font-bold text-foreground">Ongoing Booking</CardTitle>
+                <p className="text-[11px] text-muted-foreground">Active rentals now</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <SummaryPill label="Active" value={filteredVehicles.length} />
+                <SummaryPill label="Alerts" value={alertCount} tone="warning" />
+              </div>
+            </div>
+
+            <SearchInput
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+              placeholder="Booking, customer, vehicle"
+              className="h-8 rounded-lg border-slate-200 text-xs"
+            />
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <FilterSelect
+                prefixLabel="Status"
+                value={filters.status}
+                options={filterOptions.status.map((option) => ({ value: option, label: option }))}
+                placeholder="Status"
+                ariaLabel="Filter fleet by status"
+                height="compact"
+                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
+              />
+              <FilterSelect
+                prefixLabel="Geofence"
+                value={filters.geofence}
+                options={filterOptions.geofence.map((option) => ({ value: option, label: option }))}
+                placeholder="Zone"
+                ariaLabel="Filter fleet by geofence"
+                height="compact"
+                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, geofence: value }))}
+              />
+              <FilterSelect
+                prefixLabel="Alert"
+                value={filters.alertType}
+                options={filterOptions.alertType.map((option) => ({ value: option, label: option }))}
+                placeholder="Alert"
+                ariaLabel="Filter fleet by alert type"
+                height="compact"
+                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, alertType: value }))}
+              />
+              <FilterSelect
+                prefixLabel="Type"
+                value={filters.vehicleType}
+                options={filterOptions.vehicleType.map((option) => ({ value: option, label: option }))}
+                placeholder="Type"
+                ariaLabel="Filter fleet by vehicle type"
+                height="compact"
+                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
+                onValueChange={(value) => setFilters((prev) => ({ ...prev, vehicleType: value }))}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="min-h-0 flex-1 px-3 pb-3 pt-3">
+            {isRefreshing ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+                ))}
+              </div>
+            ) : (
+              <ScrollArea className="h-full pr-3">
+                <div className="space-y-2">
+                  {/* Extract this into reusable component */}
+                  {filteredVehicles.length ? filteredVehicles.map((vehicle) => (
+                    <FleetVehicleCard
+                      key={vehicle.id}
+                      vehicle={vehicle}
+                      isSelected={selectedVehicle?.id === vehicle.id}
+                      onSelect={handleVehicleSelect}
+                    />
+                  )) : (
+                    <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center">
+                      <p className="text-xs font-medium text-foreground">No vehicles found</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">Try a different search or filter.</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <SheetContent
+          side="bottom"
+          className="h-[70dvh] min-h-[70dvh] max-h-[70dvh] gap-0 overflow-hidden rounded-t-2xl border border-slate-200 bg-background"
+        >
+          {selectedVehicle ? (
+            <>
+              <SheetHeader className="shrink-0 border-b border-slate-200 px-6 py-4 md:px-8">
+                <SheetTitle>{selectedVehicle.carName}</SheetTitle>
+                <SheetDescription>Live details and driver behavior for this rental.</SheetDescription>
+              </SheetHeader>
+              <div className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden px-6 py-5 md:px-8">
+                <FleetDetailTabs vehicle={selectedVehicle} />
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function SummaryPill({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "warning" }) {
+  const toneClass = tone === "warning"
+    ? "border-amber-200 bg-amber-50 text-amber-700"
+    : "border-blue-200 bg-muted text-primary";
+
+  return (
+    <div className={`rounded-full border px-2 py-1 text-[10.5px] font-semibold leading-none ${toneClass}`}>
+      {value} {label}
+    </div>
+  );
+}

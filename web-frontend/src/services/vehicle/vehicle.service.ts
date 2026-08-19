@@ -1,10 +1,11 @@
-import { API_BASE_URL, apiDelete, apiGet, apiPost, apiPut } from "@/services/http";
+import { apiDelete, apiGet, apiPost, apiPut, resolveAssetUrl } from "@/services/http";
 import type {
   CreateVehicleRequestPayload,
   VehicleConditionRequestPayload,
   VehicleConditionUpdateRequestPayload,
   VehicleInspectionRecord,
   VehicleRecord,
+  ShowcaseVehicle,
   VehicleStatus,
 } from "./types";
 
@@ -65,7 +66,7 @@ function toVehicleFormData(payload: CreateVehicleRequestPayload) {
   return formData;
 }
 
-function toConditionRequest(condition: VehicleConditionRequestPayload) {
+export function toConditionRequest(condition: VehicleConditionRequestPayload) {
   return {
     odometer: Number(condition.odometer),
     fuel_level: condition.fuel_level,
@@ -84,10 +85,7 @@ function toConditionRequest(condition: VehicleConditionRequestPayload) {
 }
 
 function resolveVehicleImageUrl(url?: string | null) {
-  if (!url) return null;
-  if (/^https?:\/\//i.test(url)) return url;
-
-  return `${API_BASE_URL}/${url.replace(/^\/+/, "")}`;
+  return resolveAssetUrl(url);
 }
 
 function normalizeVehicle(record: VehicleRecord): VehicleRecord {
@@ -112,6 +110,19 @@ export async function getVehicles() {
   const response = await apiGet<VehicleRecord[]>("/admin/vehicles?per_page=100");
 
   return response.data.map(normalizeVehicle);
+}
+
+export async function getAvailableShowcaseVehicles() {
+  const response = await apiGet<ShowcaseVehicle[]>("/api/mobile/vehicles?status=available&per_page=12");
+
+  return response.data.map((vehicle) => ({
+    ...vehicle,
+    image: resolveVehicleImageUrl(vehicle.image),
+    cardImage: resolveVehicleImageUrl(vehicle.cardImage),
+    images: (vehicle.images ?? [])
+      .map(resolveVehicleImageUrl)
+      .filter((url): url is string => Boolean(url)),
+  }));
 }
 
 export async function getVehicle(vehicleId: string) {

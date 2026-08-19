@@ -1,4 +1,4 @@
-import { VehicleDetailsPage } from "@/app/owner/vehicle/[vehicleId]/page";
+import { VehicleDetailsPage } from "@/modules/management/vehicles/VehicleDetailsPage";
 
 export default function VehicleConditionPage() {
   return <VehicleDetailsPage section="condition" />;

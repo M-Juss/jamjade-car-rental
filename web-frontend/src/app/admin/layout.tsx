@@ -1,5 +1,5 @@
-import { AdminPermissionGuard } from "@/components/shared/AdminPermissionGuard";
-import Sidebar from "@/components/shared/Sidebar";
+import { ManagementShell } from "@/modules/management/shell/components/ManagementShell";
+import { ManagementSessionProvider } from "@/modules/management/shell/context/ManagementSessionProvider";
 
 export default function AdminLayout({
   children,
@@ -7,12 +7,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen overflow-x-hidden [--sidebar-w:260px]">
-      <Sidebar role="admin" />
-      <div aria-hidden className="w-[var(--sidebar-w)] shrink-0" />
-      <main className="min-w-0 flex-1 bg-blue-200">
-        <AdminPermissionGuard>{children}</AdminPermissionGuard>
-      </main>
-    </div>
+    <ManagementSessionProvider portal="admin">
+      <ManagementShell portal="admin">{children}</ManagementShell>
+    </ManagementSessionProvider>
   );
 }

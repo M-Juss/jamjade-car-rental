@@ -14,7 +14,7 @@ class RoleAndPermissionSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $modulePermissions = collect(config('admin_modules'))
+        $modulePermissions = collect(config('staff_modules'))
             ->pluck('permission')
             ->all();
 
@@ -35,7 +35,7 @@ class RoleAndPermissionSeeder extends Seeder
 
         $owner->syncPermissions($permissionModels);
         $admin->syncPermissions(
-            collect(config('admin_modules'))
+            collect(config('staff_modules'))
                 ->where('assignable', true)
                 ->pluck('permission')
                 ->all()

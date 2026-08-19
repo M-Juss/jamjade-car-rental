@@ -1,6 +1,6 @@
 import { z } from "zod/v3";
-import { VEHICLE_CHECKLIST } from "@/components/vehicle-inspection/definitions";
-import { VEHICLE_ISSUE_TYPES, VEHICLE_PANEL_ORDER } from "@/components/vehicle-inspection/types";
+import { VEHICLE_CHECKLIST } from "@/modules/management/vehicles/inspection/definitions";
+import { VEHICLE_ISSUE_TYPES, VEHICLE_PANEL_ORDER } from "@/modules/management/vehicles/inspection/types";
 
 const REQUIRED_MESSAGE = "This field is required.";
 const IMAGE_SIZE_LIMIT = 5 * 1024 * 1024;

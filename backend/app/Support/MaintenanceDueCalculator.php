@@ -18,7 +18,10 @@ class MaintenanceDueCalculator
             ? $today->startOfDay()->diffInDays($plan->next_due_date->startOfDay(), false) : null;
 
         $statuses = array_filter([
-            $mileageRemaining !== null ? $this->statusForRemaining($mileageRemaining, (int) config('maintenance.due_soon.mileage_km', 500)) : null,
+            $mileageRemaining !== null ? $this->statusForRemaining(
+                $mileageRemaining,
+                max(1, (int) ceil(((int) $plan->interval_km) * 0.25))
+            ) : null,
             $daysRemaining !== null ? $this->statusForRemaining($daysRemaining, (int) config('maintenance.due_soon.days', 7)) : null,
         ]);
 

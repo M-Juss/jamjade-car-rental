@@ -19,10 +19,20 @@ class MaintenanceRecordResource extends JsonResource
             'actualStartedAt' => $this->actual_started_at?->toISOString(), 'completedAt' => $this->completed_at?->toISOString(),
             'cancelledAt' => $this->cancelled_at?->toISOString(), 'odometerAtStart' => $this->odometer_at_start,
             'odometerAtCompletion' => $this->odometer_at_completion, 'serviceProvider' => $this->service_provider,
-            'technician' => $this->technician, 'laborCost' => (float) ($this->labor_cost ?? 0),
+            'laborCost' => (float) ($this->labor_cost ?? 0),
             'partsCost' => (float) ($this->parts_cost ?? 0), 'otherCost' => (float) ($this->other_cost ?? 0),
             'totalCost' => (float) $this->total_cost, 'workPerformed' => $this->work_performed, 'notes' => $this->notes,
+            'cancellationReason' => $this->cancellation_reason,
+            'conditionVerificationRequired' => (bool) $this->condition_verification_required,
+            'completionDetailsRecordedAt' => $this->completion_details_recorded_at?->toISOString(),
+            'createdBy' => $this->whenLoaded('creator', fn () => $this->creator ? ['id' => (string) $this->creator->id, 'name' => $this->creator->name] : null),
+            'startedBy' => $this->whenLoaded('starter', fn () => $this->starter ? ['id' => (string) $this->starter->id, 'name' => $this->starter->name] : null),
+            'completedBy' => $this->whenLoaded('completer', fn () => $this->completer ? ['id' => (string) $this->completer->id, 'name' => $this->completer->name] : null),
+            'cancelledBy' => $this->whenLoaded('canceller', fn () => $this->canceller ? ['id' => (string) $this->canceller->id, 'name' => $this->canceller->name] : null),
             'resultingConditionInspectionId' => $this->resulting_condition_inspection_id ? (string) $this->resulting_condition_inspection_id : null,
+            'resultingCondition' => $this->whenLoaded('resultingConditionInspection', fn () => $this->resultingConditionInspection
+                ? new VehicleInspectionResource($this->resultingConditionInspection)
+                : null),
             'createdAt' => $this->created_at?->toISOString(),
         ];
     }

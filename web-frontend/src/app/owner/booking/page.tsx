@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookings } from "@/components/shared/Bookings";
+import { Bookings } from "@/modules/management/bookings/BookingsModule";
 
 export default function BookingPage() {
     return(

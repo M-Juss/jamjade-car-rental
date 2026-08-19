@@ -1,3 +1,3 @@
-import { VehicleDetailsPage } from "@/app/owner/vehicle/[vehicleId]/page";
+import { VehicleDetailsPage } from "@/modules/management/vehicles/VehicleDetailsPage";
 
 export default function VehicleMaintenancePage() { return <VehicleDetailsPage section="maintenance" />; }

@@ -1,8 +1,10 @@
 import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
 import { ApiError } from "@/services/http";
 import type {
+  CancelMaintenanceFormValues,
   CompleteMaintenanceFormValues,
   MaintenancePlanFormValues,
+  RescheduleMaintenanceFormValues,
   ScheduleMaintenanceFormValues,
 } from "@/validations/maintenance/schemas";
 
@@ -27,8 +29,6 @@ export const maintenancePlanDefaults: MaintenancePlanFormValues = {
   triggerType: "mileage",
   intervalKm: "",
   intervalDays: "",
-  nextDueOdometer: "",
-  nextDueDate: "",
 };
 
 export const scheduleMaintenanceDefaults: ScheduleMaintenanceFormValues = {
@@ -39,7 +39,6 @@ export const scheduleMaintenanceDefaults: ScheduleMaintenanceFormValues = {
   scheduledStart: "",
   scheduledEnd: "",
   serviceProvider: "",
-  technician: "",
   description: "",
   notes: "",
 };
@@ -48,11 +47,20 @@ export const completeMaintenanceDefaults: CompleteMaintenanceFormValues = {
   odometerAtCompletion: "",
   workPerformed: "",
   serviceProvider: "",
-  technician: "",
   laborCost: "",
   partsCost: "",
   otherCost: "",
   notes: "",
+  conditionChanged: undefined,
+};
+
+export const rescheduleMaintenanceDefaults: RescheduleMaintenanceFormValues = {
+  scheduledStart: "",
+  scheduledEnd: "",
+};
+
+export const cancelMaintenanceDefaults: CancelMaintenanceFormValues = {
+  reason: "",
 };
 
 export function applyMaintenanceServerErrors<TValues extends FieldValues>(

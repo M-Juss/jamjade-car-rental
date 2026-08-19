@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
-use App\Services\AdminAccessService;
+use App\Services\StaffAccessService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ class AuthController extends Controller
 {
     use ApiResponseTrait;
 
-    public function __construct(private readonly AdminAccessService $access) {}
+    public function __construct(private readonly StaffAccessService $access) {}
 
     public function login(LoginRequest $request): JsonResponse
     {
