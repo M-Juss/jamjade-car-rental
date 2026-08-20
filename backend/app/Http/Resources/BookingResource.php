@@ -52,6 +52,12 @@ class BookingResource extends JsonResource
             'rentalType' => $this->rental_type->value,
             'driverOption' => $this->driver_option,
             'ownerDriverCoverage' => $this->owner_driver_coverage,
+            'assignedDriver' => $this->assignedDriver ? [
+                'id' => $this->assignedDriver->id,
+                'name' => $this->assignedDriver->name,
+                'phoneNumber' => $this->assignedDriver->phone_number,
+            ] : null,
+            'driverAssignedAt' => $this->driver_assigned_at?->toISOString(),
             'transmission' => $this->vehicle?->transmission,
             'fuelType' => $this->vehicle?->fuel_type,
             'seats' => $this->vehicle?->seats,

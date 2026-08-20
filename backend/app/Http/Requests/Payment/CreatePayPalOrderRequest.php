@@ -25,7 +25,7 @@ class CreatePayPalOrderRequest extends BaseFormRequest
             'rental_end_at' => ['required', 'date', 'after:rental_start_at'],
             'pickup_location_type' => ['required', Rule::in([$pickupLocationType])],
             'pickup_location' => ['required', 'string', 'max:255'],
-            'delivery_time' => ['nullable', 'required_if:driver_option,owners_driver', 'date_format:H:i'],
+            'delivery_time' => ['nullable', 'date_format:H:i'],
             'return_location' => ['required', 'string', 'max:255'],
             'driver_option' => ['required', 'in:self_drive,owners_driver'],
             'rental_type' => ['nullable', Rule::in([$driverOption])],

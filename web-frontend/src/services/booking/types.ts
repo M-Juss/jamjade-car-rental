@@ -22,8 +22,15 @@ export type BookingRecord = {
   adminStatus: string;
   vehicleId: string;
   vehicleName?: string | null;
+  brand?: string | null;
+  model?: string | null;
+  transmission?: string | null;
+  fuelType?: string | null;
+  seats?: number | null;
   rentalDate?: string | null;
   returnDate?: string | null;
+  rentalStartAt?: string | null;
+  rentalEndAt?: string | null;
   durationDays: number;
   pickupLocationType: "delivery" | "shop";
   pickupLocation: string;
@@ -59,5 +66,19 @@ export type BookingRecord = {
     name: string;
     email: string;
     phoneNumber?: string | null;
+    createdAt?: string | null;
   } | null;
+  assignedDriver?: {
+    id: number;
+    name: string;
+    phoneNumber?: string | null;
+  } | null;
+  driverAssignedAt?: string | null;
+};
+
+export type DriverCandidate = {
+  id: number;
+  name: string;
+  phoneNumber?: string | null;
+  activeAssignments: number;
 };

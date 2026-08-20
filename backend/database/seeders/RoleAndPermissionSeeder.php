@@ -32,6 +32,7 @@ class RoleAndPermissionSeeder extends Seeder
         $admin = Role::findOrCreate(UserRole::Admin->value, 'web');
         $staff = Role::findOrCreate(UserRole::Staff->value, 'web');
         Role::findOrCreate(UserRole::Customer->value, 'web');
+        $driver = Role::findOrCreate('driver', 'web');
 
         $owner->syncPermissions($permissionModels);
         $admin->syncPermissions(
@@ -46,6 +47,10 @@ class RoleAndPermissionSeeder extends Seeder
             'view fleet tracker',
             'review documents',
         ]));
+
+        $driver->syncPermissions([
+            Permission::findOrCreate('view dashboard', 'web'),
+        ]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

@@ -14,6 +14,7 @@ class PaymentService
     public function record(Booking $booking, User $user, array $data, ?UploadedFile $proof = null): Payment
     {
         return DB::transaction(function () use ($booking, $user, $data, $proof) {
+            $wasPaid = $booking->payment_status === PaymentStatus::Paid;
             $proofPath = $proof?->store('payment-proofs', 'public');
             $amount = (float) $data['amount'];
 
@@ -37,6 +38,18 @@ class PaymentService
                 'payment_status' => $paymentStatus,
                 'remaining_balance' => max((float) $booking->total_amount - $paidAmount, 0),
             ]);
+
+            if ($paymentStatus === PaymentStatus::Paid && ! $wasPaid) {
+                $bookingId = $booking->id;
+
+                DB::afterCommit(function () use ($bookingId) {
+                    $booking = Booking::query()->find($bookingId);
+
+                    if ($booking) {
+                        app(BookingEmailService::class)->sendBookingConfirmation($booking);
+                    }
+                });
+            }
 
             activity()
                 ->causedBy($user)

@@ -1,9 +1,10 @@
 import type { BookingFormData, PriceBreakdown, Vehicle } from '@/types/browse';
+import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
 
 export const OWNER_DRIVER_METRO_MANILA_DAILY_RATE = 700;
 export const OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE = 1000;
 export const DELIVERY_FEE = 900;
-export const DOWN_PAYMENT_RATE = 0.3;
+export const DOWN_PAYMENT_RATE = 0.5;
 
 export const formatPeso = (amount: number) => {
   return new Intl.NumberFormat('en-PH', {
@@ -64,10 +65,12 @@ export const getPriceBreakdown = (
   driverOption: BookingFormData['driverOption'],
   pickupOption: BookingFormData['pickupOption'],
   ownerDriverCoverage?: BookingFormData['ownerDriverCoverage'],
+  pickupLocation?: string,
 ): PriceBreakdown => {
   const safeDays = Math.max(0, numberOfDays);
   const subtotal = vehicle.pricePerDay * safeDays;
-  const deliveryFee = pickupOption === 'delivery' ? DELIVERY_FEE : 0;
+  const deliveryFee =
+    pickupOption === 'delivery' && pickupLocation !== JAMJADE_GARAGE ? DELIVERY_FEE : 0;
   const ownerDriverRatePerDay = driverOption === 'owners_driver' ? getOwnerDriverRatePerDay(ownerDriverCoverage) : undefined;
   const ownerDriverFee = ownerDriverRatePerDay ? ownerDriverRatePerDay * safeDays : 0;
   const totalAmount = subtotal + deliveryFee + ownerDriverFee;

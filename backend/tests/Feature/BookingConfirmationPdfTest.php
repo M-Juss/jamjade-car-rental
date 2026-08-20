@@ -74,8 +74,12 @@ it('renders the booking confirmation as exactly two A4 pages', function () {
         ->and($html)->toContain('JAMJADE CAR RENTAL')
         ->and($html)->toContain('data:image/png;base64,')
         ->and($html)->toContain('PHP 3,500.00')
-        ->and($html)->toContain('Requested Delivery Time')
-        ->and($html)->toContain('9:00 AM')
+        ->and($html)->not->toContain('Requested Delivery Time')
+        ->and($html)->toContain('Driver Option')
+        ->and($html)->toContain('Driver Name')
+        ->and($html)->toContain('To be assigned')
+        ->and($html)->toContain('Contact Number')
+        ->and($html)->not->toContain('Driver Type')
         ->and($html)->toContain('End Trip Location')
         ->and($html)->toContain('Makati, Metro Manila')
         ->and($html)->toContain('PHP 900.00')
@@ -127,4 +131,88 @@ it('derives paid status and balance from recorded payments', function () {
     expect($confirmation['paymentStatusLabel'])->toBe('Fully Paid')
         ->and($confirmation['payment']['amountPaid'])->toBe(3500.0)
         ->and($confirmation['payment']['remainingBalance'])->toBe(0);
+});
+
+it('shows the assigned driver name and contact number in the confirmation', function () {
+    $user = customerUser();
+    $vehicle = availableVehicle();
+    $driver = createDriverUser(['name' => 'Rogelio Santos', 'phone_number' => '09171234567']);
+    $booking = Booking::create([
+        'booking_code' => 'BK-PDF-DRV-001',
+        'user_id' => $user->id,
+        'vehicle_id' => $vehicle->id,
+        'rental_type' => RentalType::OwnersDriver,
+        'rental_start_at' => now()->addDays(3)->setTime(9, 0),
+        'rental_end_at' => now()->addDays(5)->setTime(9, 0),
+        'pickup_location_type' => 'delivery',
+        'pickup_location' => 'Dasmarinas, Cavite',
+        'delivery_time' => '09:00',
+        'return_location' => 'Dasmarinas, Cavite',
+        'driver_option' => 'owners_driver',
+        'owner_driver_coverage' => 'metro_manila',
+        'assigned_driver_id' => $driver->id,
+        'driver_assigned_at' => now(),
+        'status' => BookingStatus::Confirmed,
+        'payment_status' => PaymentStatus::Paid,
+        'price_per_day' => 3500,
+        'duration_days' => 2,
+        'subtotal' => 7000,
+        'delivery_fee' => 900,
+        'owner_driver_fee' => 1400,
+        'down_payment_amount' => 9300,
+        'remaining_balance' => 0,
+        'total_amount' => 9300,
+        'customer_signature' => 'signed',
+        'terms_version' => '2026-08-19',
+        'terms_accepted_at' => now(),
+    ]);
+
+    $html = view('pdf.bookings.successful-booking', [
+        'booking' => $booking,
+        'confirmation' => app(BookingConfirmationViewData::class)->make($booking),
+    ])->render();
+
+    expect($html)->toContain('Driver Name')
+        ->and($html)->toContain('Rogelio Santos')
+        ->and($html)->toContain('Contact Number')
+        ->and($html)->toContain('09171234567')
+        ->and($html)->not->toContain('To be assigned');
+});
+
+it('hides driver information fields for self-drive bookings', function () {
+    $user = customerUser();
+    $vehicle = availableVehicle();
+    $booking = Booking::create([
+        'booking_code' => 'BK-PDF-SELF-001',
+        'user_id' => $user->id,
+        'vehicle_id' => $vehicle->id,
+        'rental_type' => RentalType::SelfDrive,
+        'rental_start_at' => now()->addDays(3),
+        'rental_end_at' => now()->addDays(4),
+        'pickup_location_type' => 'shop',
+        'pickup_location' => 'Jamjade Rent A Car Services',
+        'return_location' => 'Jamjade Rent A Car Services',
+        'driver_option' => 'self_drive',
+        'status' => BookingStatus::Confirmed,
+        'payment_status' => PaymentStatus::Paid,
+        'price_per_day' => 3500,
+        'duration_days' => 1,
+        'subtotal' => 3500,
+        'total_amount' => 3500,
+        'remaining_balance' => 0,
+        'down_payment_amount' => 3500,
+        'customer_signature' => 'signed',
+        'terms_version' => '2026-08-19',
+        'terms_accepted_at' => now(),
+    ]);
+
+    $html = view('pdf.bookings.successful-booking', [
+        'booking' => $booking,
+        'confirmation' => app(BookingConfirmationViewData::class)->make($booking),
+    ])->render();
+
+    expect($html)->not->toContain('Driver Name')
+        ->and($html)->not->toContain('Contact Number')
+        ->and($html)->not->toContain('To be assigned')
+        ->and($html)->not->toContain('Driver Type');
 });

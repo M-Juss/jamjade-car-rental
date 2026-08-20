@@ -18,10 +18,7 @@
                 <span class="label">Phone Number</span>
                 <span class="value">{{ $displayValue($confirmation['customer']['phone']) }}</span>
             </td>
-            <td>
-                <span class="label">Driver Type</span>
-                <span class="value">{{ $booking->rental_type?->label() ?? $displayValue($booking->driver_option) }}</span>
-            </td>
+            <td></td>
         </tr>
         <tr>
             <td colspan="2" style="width: 100%; border-left: 0; padding-left: 0;">

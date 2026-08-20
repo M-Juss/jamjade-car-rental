@@ -4,15 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   CalendarCheck,
-  Car,
   CheckCircle2,
   Clock,
   Eye,
-  Mail,
-  Phone,
   XCircle,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,16 +20,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -45,11 +33,14 @@ import {
 import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { appToast } from "@/lib/toast";
+import { BookingDetailsDialog } from "@/forms/booking/BookingDetailsDialog";
 import {
   cancelBooking,
   getBookings,
+  getDrivers,
   type BookingRecord,
   type BookingStatus,
+  type DriverCandidate,
   type PaymentStatus,
 } from "@/services/booking";
 
@@ -78,161 +69,15 @@ function peso(value: number) {
   })}`;
 }
 
-function customerInitials(booking: BookingRecord) {
-  return (booking.customer?.name || "Customer")
-    .split(" ")
-    .map((name) => name[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function BookingDetailsSheet({
-  booking,
-  open,
-  onClose,
-}: {
-  booking: BookingRecord | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  if (!booking) return null;
-
-  const pricingRows = [
-    ["Subtotal", booking.subtotal],
-    ["Delivery fee", booking.deliveryFee],
-    ["Owner driver fee", booking.ownerDriverFee],
-    ["Outside Manila fee", booking.outsideManilaFee],
-    ["Toll fee", booking.tollFee],
-    ["Late fee", booking.lateFee],
-    ["Add-ons", booking.addOns],
-    ["Discount", -booking.discount],
-    ["Down payment", -booking.downPayment],
-  ] as const;
-
-  return (
-    <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 border-l border-border p-0 sm:max-w-[540px]">
-        <SheetHeader className="border-b border-border px-5 pb-4 pt-5">
-          <div className="flex items-center justify-between pr-8">
-            <div>
-              <SheetTitle className="text-[15px] font-bold text-foreground">Booking Details</SheetTitle>
-              <p className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">{booking.bookingCode}</p>
-            </div>
-            <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${bookingStatusStyle[booking.statusKey]}`}>
-              {booking.adminStatus}
-            </span>
-          </div>
-        </SheetHeader>
-
-        <ScrollArea className="h-[calc(100vh-76px)]">
-          <div className="space-y-4 px-5 py-4">
-            <section className="space-y-3 rounded-2xl border border-border bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Booking Overview</p>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  ["Booking type", booking.bookingType],
-                  ["Pickup type", booking.pickupLocationType === "delivery" ? "Delivery" : "Shop pickup"],
-                  ["Pickup location", booking.pickupLocation],
-                  ...(booking.deliveryTimeLabel ? [["Delivery time", booking.deliveryTimeLabel]] : []),
-                  [
-                    booking.pickupLocationType === "delivery" ? "End trip location" : "Return location",
-                    booking.returnLocation,
-                  ],
-                  ["Rental period", `${booking.durationDays} day${booking.durationDays === 1 ? "" : "s"}`],
-                  ["Pickup date", booking.rentalDate || "Not provided"],
-                  ["Return date", booking.returnDate || "Not provided"],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl bg-background px-3 py-2">
-                    <p className="text-[10px] font-medium uppercase tracking-wide text-subtle-foreground">{label}</p>
-                    <p className="mt-0.5 text-[12.5px] font-semibold text-foreground">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="space-y-3 rounded-2xl border border-border bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Customer</p>
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-muted text-[13px] font-bold text-primary">
-                    {customerInitials(booking)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-bold text-foreground">{booking.customer?.name || "Customer"}</p>
-                  <p className="truncate text-[11.5px] text-muted-foreground">{booking.customer?.email || "No email"}</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <div className="flex items-center gap-1.5 rounded-lg bg-background px-2.5 py-1.5 text-[11.5px] text-muted-foreground">
-                  <Phone size={11} className="text-subtle-foreground" />
-                  {booking.customer?.phoneNumber || "Not provided"}
-                </div>
-                <div className="flex items-center gap-1.5 rounded-lg bg-background px-2.5 py-1.5 text-[11.5px] text-muted-foreground">
-                  <Mail size={11} className="text-subtle-foreground" />
-                  {booking.customer?.email || "Not provided"}
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-3 rounded-2xl border border-border bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Vehicle</p>
-              <div className="flex items-center gap-3 rounded-xl bg-background px-3 py-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-                  <Car size={18} className="text-primary" />
-                </div>
-                <div>
-                  <p className="text-[13px] font-bold text-foreground">{booking.vehicleName || "Vehicle unavailable"}</p>
-                  <p className="text-[11.5px] text-muted-foreground">Vehicle ID {booking.vehicleId}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-2 rounded-2xl border border-border bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Pricing</p>
-              {pricingRows.map(([label, value]) => (
-                <div key={label} className="flex justify-between text-[12.5px]">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className={`font-semibold ${value < 0 ? "text-emerald-600" : "text-foreground"}`}>
-                    {value < 0 ? `-${peso(Math.abs(value))}` : peso(value)}
-                  </span>
-                </div>
-              ))}
-              <Separator className="my-1 bg-border" />
-              <div className="flex justify-between">
-                <span className="text-[13px] font-bold text-foreground">Total</span>
-                <span className="text-[14px] font-bold text-primary">{peso(booking.totalAmount)}</span>
-              </div>
-              <div className="flex items-center justify-between border-t border-border pt-2">
-                <span className="text-[11.5px] text-muted-foreground">Payment status</span>
-                <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
-                  {booking.paymentStatus}
-                </span>
-              </div>
-            </section>
-
-            <section className="space-y-2 rounded-2xl border border-border bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Admin Notes</p>
-              <p className="whitespace-pre-wrap rounded-xl bg-background px-3 py-3 text-[12.5px] leading-5 text-muted-foreground">
-                {booking.adminNotes || booking.notes || "No notes recorded."}
-              </p>
-            </section>
-          </div>
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 export function Bookings() {
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [drivers, setDrivers] = useState<DriverCandidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -249,6 +94,14 @@ export function Bookings() {
       })
       .finally(() => {
         if (!ignore) setIsLoading(false);
+      });
+
+    getDrivers()
+      .then((records) => {
+        if (!ignore) setDrivers(records);
+      })
+      .catch(() => {
+        if (!ignore) setDrivers([]);
       });
 
     return () => {
@@ -300,6 +153,15 @@ export function Bookings() {
     } finally {
       setIsCancelling(false);
     }
+  };
+
+  const handleDriverAssigned = (updatedBooking: BookingRecord) => {
+    setBookings((current) =>
+      current.map((booking) =>
+        booking.backendId === updatedBooking.backendId ? updatedBooking : booking,
+      ),
+    );
+    setSelectedBooking(updatedBooking);
   };
 
   return (
@@ -396,9 +258,6 @@ export function Bookings() {
                       <p className="mt-1 truncate text-[12.5px] font-semibold text-foreground">
                         {booking.customer?.name || "Customer"}
                       </p>
-                      <p className="truncate text-[11px] text-muted-foreground">
-                        {booking.customer?.phoneNumber || booking.customer?.email || "Not provided"}
-                      </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
                       <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${bookingStatusStyle[booking.statusKey]}`}>
@@ -414,7 +273,17 @@ export function Bookings() {
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-muted-foreground">Vehicle</span>
                       <span className="truncate font-medium text-foreground">
-                        {booking.vehicleName || "Vehicle unavailable"}
+                        {[booking.brand, booking.vehicleName, booking.model]
+                          .filter(Boolean)
+                          .join(" ") || "Vehicle unavailable"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Driver</span>
+                      <span className="truncate font-medium text-foreground">
+                        {booking.driverOption === "self_drive"
+                          ? "Self drive"
+                          : booking.assignedDriver?.name || "Not assigned"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
@@ -432,11 +301,11 @@ export function Bookings() {
                       label={`Open actions for ${booking.bookingCode}`}
                       items={[
                         {
-                          label: "View",
+                          label: "Manage",
                           icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
                           onClick: () => {
                             setSelectedBooking(booking);
-                            setSheetOpen(true);
+                            setDetailsOpen(true);
                           },
                         },
                         {
@@ -462,7 +331,7 @@ export function Bookings() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border bg-background hover:bg-background">
-                  {["Booking ID", "Customer", "Vehicle", "Pickup", "Status", "Payment", "Total", ""].map((heading) => (
+                  {["Booking ID", "Customer", "Vehicle", "Driver", "Pickup", "Status", "Payment", "Total", ""].map((heading) => (
                     <TableHead key={heading} className="whitespace-nowrap px-4 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">
                       {heading}
                     </TableHead>
@@ -472,13 +341,13 @@ export function Bookings() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center text-[12px] text-muted-foreground">
+                    <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
                       Loading bookings...
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center text-[12px] text-muted-foreground">
+                    <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
                       No bookings found.
                     </TableCell>
                   </TableRow>
@@ -486,13 +355,16 @@ export function Bookings() {
                   filtered.map((booking) => (
                     <TableRow key={booking.backendId} className="border-b border-background transition-colors hover:bg-background">
                       <TableCell className="px-4 py-3 font-mono text-[12px] font-semibold text-primary">{booking.bookingCode}</TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="text-[12.5px] font-semibold text-foreground">{booking.customer?.name || "Customer"}</div>
-                        <div className="text-[11px] text-muted-foreground">{booking.customer?.phoneNumber || booking.customer?.email || "Not provided"}</div>
+                      <TableCell className="px-4 py-3 text-[12.5px] font-semibold text-foreground">{booking.customer?.name || "Customer"}</TableCell>
+                      <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">
+                        {[booking.brand, booking.vehicleName, booking.model]
+                          .filter(Boolean)
+                          .join(" ") || "Vehicle unavailable"}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">
-                        <div>{booking.vehicleName || "Vehicle unavailable"}</div>
-                        <div className="text-[11px] text-subtle-foreground">ID {booking.vehicleId}</div>
+                        {booking.driverOption === "self_drive"
+                          ? "Self drive"
+                          : booking.assignedDriver?.name || "Not assigned"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap px-4 py-3 text-[12px] text-muted-foreground">{booking.rentalDate || "Not provided"}</TableCell>
                       <TableCell className="px-4 py-3">
@@ -511,11 +383,11 @@ export function Bookings() {
                           label={`Open actions for ${booking.bookingCode}`}
                           items={[
                             {
-                              label: "View",
+                              label: "Manage",
                               icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
                               onClick: () => {
                                 setSelectedBooking(booking);
-                                setSheetOpen(true);
+                                setDetailsOpen(true);
                               },
                             },
                             {
@@ -541,11 +413,15 @@ export function Bookings() {
         </Card>
       </div>
 
-      <BookingDetailsSheet
-        booking={selectedBooking}
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-      />
+      {selectedBooking ? (
+        <BookingDetailsDialog
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+          booking={selectedBooking}
+          drivers={drivers}
+          onAssigned={handleDriverAssigned}
+        />
+      ) : null}
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent className="max-w-[400px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">

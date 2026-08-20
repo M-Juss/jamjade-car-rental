@@ -6,6 +6,7 @@ use App\Enums\VehicleStatus;
 use App\Models\CustomerDocument;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\DriverAssignmentService;
 use App\Support\VehicleInspectionDefinition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -101,6 +102,14 @@ function documentCustomerUser(): User
         'driving_intent' => 'self_drive',
         'verification_status' => 'documents_required',
     ]);
+
+    return $user;
+}
+
+function createDriverUser(array $attributes = []): User
+{
+    $user = User::factory()->create(array_merge(['is_active' => true], $attributes));
+    $user->assignRole(DriverAssignmentService::DRIVER_ROLE);
 
     return $user;
 }

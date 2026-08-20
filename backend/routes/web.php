@@ -50,12 +50,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::middleware('permission:manage bookings')->group(function () {
             Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+            Route::get('/bookings/drivers', [BookingController::class, 'drivers'])->name('bookings.drivers');
             Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
             Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
             Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
             Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/start', [BookingController::class, 'start'])->name('bookings.start');
             Route::post('/bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
+            Route::post('/bookings/{booking}/assign-driver', [BookingController::class, 'assignDriver'])->name('bookings.assign-driver');
             Route::post('/bookings/{booking}/resend-confirmation-email', [BookingController::class, 'resendConfirmationEmail'])
                 ->middleware('role:owner|admin')
                 ->name('bookings.resend-confirmation-email');

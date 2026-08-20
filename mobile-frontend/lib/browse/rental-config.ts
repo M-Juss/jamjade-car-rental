@@ -2,6 +2,8 @@ import type { OptionalService } from '@/types/browse';
 
 export const SHOP_LOCATION = 'Jamjade Rent A Car Services';
 
+export const JAMJADE_GARAGE = 'Jamjade Garage';
+
 export const TERMS_VERSION = '2026-06-13';
 
 export const REQUIRED_DOCUMENTS = [

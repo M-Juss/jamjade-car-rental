@@ -111,6 +111,7 @@ function CheckoutScreen() {
       booking.driverOption,
       booking.pickupOption,
       booking.ownerDriverCoverage,
+      booking.pickupLocation,
     );
   }, [booking, vehicle]);
 
@@ -197,13 +198,13 @@ function CheckoutScreen() {
               value={booking.pickupOption === 'shop' ? 'Shop Pickup' : 'Delivery'}
             />
             <DetailRow label="Pickup location" value={booking.pickupLocation} />
-            {booking.pickupOption === 'delivery' && booking.deliveryTime ? (
-              <DetailRow label="Delivery time" value={formatDeliveryTime(booking.deliveryTime)} />
+            {booking.deliveryTime ? (
+              <>
+                <DetailRow label="Pickup time" value={formatDeliveryTime(booking.deliveryTime)} />
+                <DetailRow label="End trip location" value={booking.pickupLocation} />
+                <DetailRow label="End time" value={formatDeliveryTime(booking.deliveryTime)} />
+              </>
             ) : null}
-            <DetailRow
-              label={booking.driverOption === 'owners_driver' ? 'End trip location' : 'Return location'}
-              value={booking.returnLocation}
-            />
             <DetailRow
               label="Driver option"
               value={booking.driverOption === 'self_drive' ? 'Self-drive' : "Owner's Driver"}

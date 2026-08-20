@@ -27,6 +27,8 @@ export type BookingFormData = {
   vehicleId: string;
   rentalDate: string;
   returnDate: string;
+  rentalStartAt: string;
+  rentalEndAt: string;
   numberOfDays: number;
   pickupOption: 'shop' | 'delivery';
   pickupLocation: string;

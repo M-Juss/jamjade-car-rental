@@ -207,8 +207,8 @@ function PaymentScreen() {
       const cancelUrl = Linking.createURL('paypal/cancel');
       const order = activeOrder ?? await createPayPalOrder({
         vehicleId: booking.vehicleId,
-        rentalStartAt: booking.rentalDate,
-        rentalEndAt: booking.returnDate,
+        rentalStartAt: booking.rentalStartAt,
+        rentalEndAt: booking.rentalEndAt,
         pickupLocationType: booking.pickupOption,
         pickupLocation: booking.pickupLocation,
         deliveryTime: booking.deliveryTime,
@@ -311,7 +311,7 @@ function PaymentScreen() {
             {isDownPaymentAvailable ? (
               <PaymentChoiceCard
                 title="Down Payment"
-                description="Pay 30% of the full cost first."
+                description="Pay 50% of the full cost first."
                 amount={formatPeso(booking.downPaymentAmount)}
                 isSelected={paymentSelection === 'down_payment'}
                 onPress={() => {

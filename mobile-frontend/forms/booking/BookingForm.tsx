@@ -39,7 +39,7 @@ import {
 import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
 import { startBookingFlow } from '@/lib/browse/booking-flow';
-import { SHOP_LOCATION } from '@/lib/browse/rental-config';
+import { SHOP_LOCATION, JAMJADE_GARAGE } from '@/lib/browse/rental-config';
 import {
   DELIVERY_FEE,
   OWNER_DRIVER_METRO_MANILA_DAILY_RATE,
@@ -260,7 +260,6 @@ export function BookingForm() {
       pickupOption: selfDriveAvailability.canSelfDrive ? 'shop' : 'delivery',
       rentalDate: '',
       returnDate: '',
-      returnLocation: '',
       selfDriveMessage: selfDriveAvailability.message,
     },
     resolver: zodResolver(bookingFormSchema),
@@ -272,8 +271,7 @@ export function BookingForm() {
   const driverOption = watch('driverOption');
   const pickupOption: BookingFormData['pickupOption'] =
     driverOption === 'self_drive' ? 'shop' : 'delivery';
-  const returnLocation = watch('returnLocation');
-  const [isReturnLocationSameAsPickup, setIsReturnLocationSameAsPickup] = useState(false);
+  const [isGaragePickup, setIsGaragePickup] = useState(false);
   const ownerDriverCoverage = watch('ownerDriverCoverage');
   const numberOfDays = useMemo(
     () => getNumberOfDays(rentalDate, returnDate),
@@ -289,9 +287,8 @@ export function BookingForm() {
       setValue('pickupOption', 'delivery');
       setValue('pickupLocation', '');
       setValue('deliveryTime', '');
-      setValue('returnLocation', '');
-      setIsReturnLocationSameAsPickup(false);
-      clearErrors(['deliveryTime', 'driverOption', 'pickupLocation', 'returnLocation']);
+      setIsGaragePickup(false);
+      clearErrors(['deliveryTime', 'driverOption', 'pickupLocation']);
     }
   }, [
     clearErrors,
@@ -322,8 +319,9 @@ export function BookingForm() {
       driverOption,
       pickupOption,
       ownerDriverCoverage,
+      pickupLocation,
     );
-  }, [driverOption, numberOfDays, ownerDriverCoverage, pickupOption, vehicle]);
+  }, [driverOption, numberOfDays, ownerDriverCoverage, pickupLocation, pickupOption, vehicle]);
 
   if (isLoading) {
     return (
@@ -387,17 +385,7 @@ export function BookingForm() {
 
   const handlePickupLocationChange = (nextPickupLocation: string) => {
     setValue('pickupLocation', nextPickupLocation, { shouldDirty: true });
-
-    if (isReturnLocationSameAsPickup) {
-      if (nextPickupLocation.trim()) {
-        setValue('returnLocation', nextPickupLocation, { shouldDirty: true });
-      } else {
-        setIsReturnLocationSameAsPickup(false);
-        setValue('returnLocation', '', { shouldDirty: true });
-      }
-    }
-
-    clearErrors(['pickupLocation', 'returnLocation']);
+    clearErrors('pickupLocation');
   };
 
   const handleDeliveryTimeChange = (value: string) => {
@@ -405,33 +393,25 @@ export function BookingForm() {
     clearErrors('deliveryTime');
   };
 
+  const handleGaragePickupChange = () => {
+    setIsGaragePickup(true);
+    setValue('pickupLocation', JAMJADE_GARAGE, { shouldDirty: true });
+    clearErrors('pickupLocation');
+  };
+
+  const handleCustomPickupChange = () => {
+    setIsGaragePickup(false);
+    setValue('pickupLocation', '', { shouldDirty: true });
+    clearErrors('pickupLocation');
+  };
+
   const handleDriverOptionChange = (nextDriverOption: BookingFormData['driverOption']) => {
     setValue('driverOption', nextDriverOption, { shouldDirty: true });
     setValue('pickupOption', nextDriverOption === 'self_drive' ? 'shop' : 'delivery');
     setValue('pickupLocation', '');
     setValue('deliveryTime', '');
-    setValue('returnLocation', '');
-    setIsReturnLocationSameAsPickup(false);
-    clearErrors(['deliveryTime', 'driverOption', 'pickupLocation', 'returnLocation']);
-  };
-
-  const handleReturnLocationChange = (nextReturnLocation: string) => {
-    setValue('returnLocation', nextReturnLocation, { shouldDirty: true });
-    clearErrors('returnLocation');
-  };
-
-  const handleSameAsPickupChange = () => {
-    if (!pickupLocation.trim()) {
-      return;
-    }
-
-    const nextValue = !isReturnLocationSameAsPickup;
-
-    setIsReturnLocationSameAsPickup(nextValue);
-    setValue('returnLocation', nextValue ? pickupLocation : '', {
-      shouldDirty: true,
-    });
-    clearErrors('returnLocation');
+    setIsGaragePickup(false);
+    clearErrors(['deliveryTime', 'driverOption', 'pickupLocation']);
   };
 
   const onSubmit = (values: BookingValidationInput) => {
@@ -450,18 +430,21 @@ export function BookingForm() {
       return;
     }
 
+    const pickupTime = values.deliveryTime ? ` ${values.deliveryTime}` : '';
+
     const booking: BookingFormData = {
       vehicleId: vehicle.id,
       rentalDate: values.rentalDate,
       returnDate: values.returnDate,
+      rentalStartAt: `${values.rentalDate}${pickupTime}`,
+      rentalEndAt: `${values.returnDate}${pickupTime}`,
       numberOfDays: values.numberOfDays,
       pickupOption: values.pickupOption,
       pickupLocation:
         values.pickupOption === 'shop' ? SHOP_LOCATION : values.pickupLocation.trim(),
-      deliveryTime:
-        values.pickupOption === 'delivery' ? values.deliveryTime : undefined,
+      deliveryTime: values.deliveryTime,
       returnLocation:
-        values.pickupOption === 'shop' ? SHOP_LOCATION : values.returnLocation.trim(),
+        values.pickupOption === 'shop' ? SHOP_LOCATION : values.pickupLocation.trim(),
       driverOption: values.driverOption,
       ownerDriverCoverage:
         values.driverOption === 'owners_driver'
@@ -585,81 +568,73 @@ export function BookingForm() {
                       Self-drive vehicles must be collected from the shop for final verification and release.
                     </Text>
                   </View>
+                ) : isGaragePickup ? (
+                  <Text className="text-[13px] font-semibold leading-6 text-muted-foreground">
+                    Pickup at the Jamjade Garage is free — the {formatPeso(DELIVERY_FEE)} delivery fee is waived.
+                  </Text>
                 ) : (
                   <Text className="text-[13px] font-semibold leading-6 text-muted-foreground">
-                    Delivery is required for owner&apos;s driver bookings. A {formatPeso(DELIVERY_FEE)} delivery fee will be added to the booking total.
+                    Delivery is required for owner&apos;s driver bookings. A {formatPeso(DELIVERY_FEE)} delivery fee applies, or pick up at the Jamjade Garage for free.
                   </Text>
                 )}
 
                 {driverOption === 'owners_driver' ? (
                   <View className="mt-4">
-                    <LocationSearchWithLabel
-                      error={errors.pickupLocation?.message}
-                      helperText="Start typing and choose a Google Maps suggestion, or enter the address manually."
-                      label="Delivery location"
-                      value={pickupLocation}
-                      onChangeText={handlePickupLocationChange}
-                      placeholder="Where should we deliver the vehicle?"
-                    />
-                    <TimePickerWithLabel
-                      required
-                      error={errors.deliveryTime?.message}
-                      helperText="Choose the requested delivery time."
-                      label="Delivery time"
-                      placeholder="Select delivery time"
-                      value={deliveryTime}
-                      onChange={handleDeliveryTimeChange}
-                      wrapperClassName="mt-4"
-                    />
-
-                    <View className="mt-4">
-                      <LocationSearchWithLabel
-                        disabled={isReturnLocationSameAsPickup}
-                        error={errors.returnLocation?.message}
-                        helperText="Choose where the owner's driver should end the trip."
-                        label="Specific end trip location"
-                        value={returnLocation}
-                        onChangeText={handleReturnLocationChange}
-                        placeholder="Search for a specific end trip location"
+                    <View className="flex-row gap-3">
+                      <SelectableCard
+                        icon={browseIcons.Car}
+                        title="Jamjade Garage"
+                        description="Free pickup — no delivery fee."
+                        isSelected={isGaragePickup}
+                        onPress={handleGaragePickupChange}
+                      />
+                      <SelectableCard
+                        icon={browseIcons.MapPin}
+                        title="Custom location"
+                        description={`We deliver to your address for ${formatPeso(DELIVERY_FEE)}.`}
+                        isSelected={!isGaragePickup}
+                        onPress={handleCustomPickupChange}
                       />
                     </View>
 
-                    <Pressable
-                      accessibilityRole="checkbox"
-                      accessibilityState={{
-                        checked: isReturnLocationSameAsPickup,
-                        disabled: !pickupLocation.trim(),
-                      }}
-                      disabled={!pickupLocation.trim()}
-                      onPress={handleSameAsPickupChange}
-                      className={cx(
-                        'flex-row items-center gap-3 rounded-[22px] border border-border bg-surface p-4',
-                        !pickupLocation.trim() && 'opacity-50',
-                      )}>
-                      <View
-                        className={cx(
-                          'h-7 w-7 items-center justify-center rounded-lg border',
-                          isReturnLocationSameAsPickup
-                            ? 'border-primary bg-primary'
-                            : 'border-[#C8D4E8] bg-surface',
-                        )}>
-                        {isReturnLocationSameAsPickup ? (
-                          <browseIcons.Check size={17} color="#FFFFFF" strokeWidth={3} />
-                        ) : null}
-                      </View>
-                      <View className="min-w-0 flex-1">
-                        <Text className="text-[14px] font-black text-foreground">
-                          Same as pickup address
+                    {isGaragePickup ? (
+                      <View className="mt-4 rounded-[24px] border border-border bg-surface p-4">
+                        <Text className="text-[12px] font-black uppercase tracking-[0.8px] text-subtle-foreground">
+                          Delivery location
                         </Text>
-                        <Text className="mt-1 text-[12px] font-semibold text-muted-foreground">
-                          {pickupLocation.trim()
-                            ? 'End the trip at the delivery location.'
-                            : 'Enter a delivery location to enable this option.'}
+                        <Text className="mt-1 text-[15px] font-black text-foreground">
+                          {JAMJADE_GARAGE}
+                        </Text>
+                        <Text className="mt-2 text-[12px] font-semibold leading-5 text-muted-foreground">
+                          The vehicle is released from and returned to the Jamjade Garage.
                         </Text>
                       </View>
-                    </Pressable>
-                  </View>
+                    ) : (
+                      <View className="mt-4">
+                        <LocationSearchWithLabel
+                          error={errors.pickupLocation?.message}
+                          helperText="This is also your end trip location. Start typing and choose a Google Maps suggestion, or enter the address manually."
+                          label="Delivery location"
+                          value={pickupLocation}
+                          onChangeText={handlePickupLocationChange}
+                          placeholder="Where should we deliver the vehicle?"
+                        />
+                      </View>
+                    )}
+
+                    </View>
                 ) : null}
+
+                <TimePickerWithLabel
+                  required
+                  error={errors.deliveryTime?.message}
+                  helperText="The vehicle is picked up and returned at this time."
+                  label="Pickup time"
+                  placeholder="Select pickup time"
+                  value={deliveryTime}
+                  onChange={handleDeliveryTimeChange}
+                  wrapperClassName="mt-4"
+                />
               </Section>
 
               {driverOption === 'owners_driver' && (

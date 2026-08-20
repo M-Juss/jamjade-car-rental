@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Booking\AssignDriverRequest;
 use App\Http\Requests\Admin\Booking\ListBookingsRequest;
 use App\Http\Requests\Admin\BookingStatusRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
+use App\Models\User;
 use App\Services\BookingEmailService;
 use App\Services\BookingService;
+use App\Services\DriverAssignmentService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 
@@ -20,7 +23,8 @@ class BookingController extends Controller
 
     public function __construct(
         private readonly BookingService $bookingService,
-        private readonly BookingEmailService $bookingEmailService
+        private readonly BookingEmailService $bookingEmailService,
+        private readonly DriverAssignmentService $driverAssignmentService
     ) {}
 
     public function index(ListBookingsRequest $request): JsonResponse
@@ -37,7 +41,51 @@ class BookingController extends Controller
     {
         return $this->success(
             'Booking fetched successfully.',
-            new BookingResource($booking->load(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'user.customerProfile']))
+            new BookingResource($booking->load(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'user.customerProfile', 'assignedDriver']))
+        );
+    }
+
+    public function drivers(): JsonResponse
+    {
+        $drivers = $this->driverAssignmentService->driverCandidates();
+
+        $assignmentCounts = Booking::query()
+            ->whereIn('assigned_driver_id', $drivers->pluck('id'))
+            ->whereIn('status', [
+                BookingStatus::Pending->value,
+                BookingStatus::Confirmed->value,
+                BookingStatus::Ongoing->value,
+            ])
+            ->selectRaw('assigned_driver_id, count(*) as total')
+            ->groupBy('assigned_driver_id')
+            ->pluck('total', 'assigned_driver_id');
+
+        return $this->success('Drivers fetched successfully.', [
+            'drivers' => $drivers->map(fn (User $driver) => [
+                'id' => $driver->id,
+                'name' => $driver->name,
+                'phoneNumber' => $driver->phone_number,
+                'activeAssignments' => (int) ($assignmentCounts[$driver->id] ?? 0),
+            ])->values(),
+        ]);
+    }
+
+    public function assignDriver(AssignDriverRequest $request, Booking $booking): JsonResponse
+    {
+        $driver = User::query()->findOrFail($request->integer('driver_id'));
+
+        $this->driverAssignmentService->assign($booking, $driver);
+
+        return $this->success(
+            'Driver assigned successfully.',
+            new BookingResource($booking->load([
+                'vehicle.images',
+                'vehicle.features',
+                'payments',
+                'user.documents',
+                'user.customerProfile',
+                'assignedDriver',
+            ]))
         );
     }
 

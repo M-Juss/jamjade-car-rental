@@ -38,17 +38,20 @@
             </td>
         </tr>
         @if ($booking->pickup_location_type === 'delivery')
-            <tr>
-                <td>
-                    <span class="label">Requested Delivery Time</span>
-                    <span class="value">
-                        {{ $booking->delivery_time ? \Carbon\CarbonImmutable::parse($booking->delivery_time)->format('g:i A') : 'Not provided' }}
-                    </span>
-                </td>
+            <tr class="info-grid-four">
                 <td>
                     <span class="label">Driver Option</span>
                     <span class="value">{{ $booking->rental_type?->label() ?? $displayValue($booking->driver_option) }}</span>
                 </td>
+                <td>
+                    <span class="label">Driver Name</span>
+                    <span class="value">{{ $confirmation['driver']['name'] ?? 'To be assigned' }}</span>
+                </td>
+                <td>
+                    <span class="label">Contact Number</span>
+                    <span class="value">{{ $confirmation['driver']['phone'] ?? 'To be assigned' }}</span>
+                </td>
+                <td></td>
             </tr>
         @endif
     </table>

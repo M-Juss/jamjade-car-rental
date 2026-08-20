@@ -20,11 +20,13 @@ use Illuminate\Validation\ValidationException;
 
 class BookingService
 {
-    public const DOWN_PAYMENT_RATE = 0.30;
+    public const DOWN_PAYMENT_RATE = 0.5;
 
     public const DELIVERY_FEE = 900;
 
     public const SHOP_LOCATION = 'Jamjade Rent A Car Services';
+
+    public const JAMJADE_GARAGE = 'Jamjade Garage';
 
     public const OWNER_DRIVER_METRO_MANILA_DAILY_RATE = 700;
 
@@ -36,13 +38,14 @@ class BookingService
         private readonly NotificationService $notificationService,
         private readonly BookingEmailService $bookingEmailService,
         private readonly VehicleAvailabilityService $availabilityService,
-        private readonly VehicleOperationalStatusService $operationalStatusService
+        private readonly VehicleOperationalStatusService $operationalStatusService,
+        private readonly DriverAssignmentService $driverAssignmentService
     ) {}
 
     public function paginateForUser(User $user, array $filters = [], int $perPage = 10): LengthAwarePaginator
     {
         return Booking::query()
-            ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents'])
+            ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver'])
             ->where('user_id', $user->id)
             ->whereDoesntHave(
                 'paypalCheckouts',
@@ -56,7 +59,7 @@ class BookingService
     public function paginateForAdmin(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Booking::query()
-            ->with(['vehicle.images', 'user.customerProfile', 'user.documents', 'payments'])
+            ->with(['vehicle.images', 'user.customerProfile', 'user.documents', 'payments', 'assignedDriver'])
             ->whereDoesntHave(
                 'paypalCheckouts',
                 fn ($query) => $query->where('status', '!=', 'completed')
@@ -140,7 +143,7 @@ class BookingService
 
             $this->notifyStatusChange($booking, $targetStatus, $reason);
 
-            return $booking->fresh(['vehicle.images', 'vehicle.features', 'payments', 'user.documents']);
+            return $booking->fresh(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver']);
         });
     }
 
@@ -207,10 +210,10 @@ class BookingService
             $isOwnerDriver = $rentalType === RentalType::OwnersDriver;
             $pickupLocationType = $isOwnerDriver ? 'delivery' : 'shop';
             $pickupLocation = $isOwnerDriver ? $data['pickup_location'] : self::SHOP_LOCATION;
-            $deliveryTime = $isOwnerDriver ? $data['delivery_time'] : null;
+            $deliveryTime = $isOwnerDriver ? $start->format('H:i') : null;
             $returnLocation = $isOwnerDriver ? $data['return_location'] : self::SHOP_LOCATION;
             $ownerDriverCoverage = $isOwnerDriver ? $data['owner_driver_coverage'] : null;
-            $deliveryFee = $isOwnerDriver ? self::DELIVERY_FEE : 0;
+            $deliveryFee = $isOwnerDriver && $pickupLocation !== self::JAMJADE_GARAGE ? self::DELIVERY_FEE : 0;
             $ownerDriverFee = $isOwnerDriver
                 ? $this->ownerDriverRate($ownerDriverCoverage) * $durationDays
                 : 0;
@@ -271,6 +274,10 @@ class BookingService
                 'terms_accepted_at' => now(),
                 'confirmed_at' => $awaitingPayPal ? null : now(),
             ]);
+
+            if ($isOwnerDriver) {
+                $this->driverAssignmentService->autoAssign($booking);
+            }
 
             if (! $awaitingPayPal) {
                 Payment::create([
@@ -351,7 +358,7 @@ class BookingService
                 });
             }
 
-            return $booking->fresh(['vehicle.images', 'vehicle.features', 'payments', 'user.documents']);
+            return $booking->fresh(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver']);
         });
     }
 

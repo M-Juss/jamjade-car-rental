@@ -30,6 +30,8 @@ class Booking extends Model
         'return_location',
         'driver_option',
         'owner_driver_coverage',
+        'assigned_driver_id',
+        'driver_assigned_at',
         'status',
         'payment_status',
         'price_per_day',
@@ -80,6 +82,7 @@ class Booking extends Model
             'balance_due_at' => 'datetime',
             'balance_reminder_sent_at' => 'datetime',
             'confirmation_email_sent_at' => 'datetime',
+            'driver_assigned_at' => 'datetime',
             'price_per_day' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'delivery_fee' => 'decimal:2',
@@ -119,6 +122,11 @@ class Booking extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    public function assignedDriver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_driver_id');
     }
 
     public function payments(): HasMany

@@ -8,7 +8,6 @@ export type BookingValidationInput = {
   pickupOption: 'shop' | 'delivery';
   pickupLocation: string;
   deliveryTime: string;
-  returnLocation: string;
   driverOption: 'self_drive' | 'owners_driver';
   ownerDriverCoverage: 'metro_manila' | 'outside_manila';
   numberOfDays: number;
@@ -25,7 +24,6 @@ export const bookingFormSchema = z
     deliveryTime: z.string(),
     pickupLocation: z.string(),
     pickupOption: z.enum(['shop', 'delivery']),
-    returnLocation: z.string(),
     rentalDate: z.string().min(1, { message: 'Rental date is required.' }),
     returnDate: z.string().min(1, { message: 'Return date is required.' }),
     selfDriveMessage: z.string(),
@@ -121,30 +119,10 @@ export const bookingFormSchema = z
       });
     }
 
-    if (
-      form.driverOption === 'owners_driver' &&
-      !form.returnLocation.trim()
-    ) {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.deliveryTime)) {
       context.addIssue({
         code: 'custom',
-        message: 'End trip location is required.',
-        path: ['returnLocation'],
-      });
-    } else if (form.returnLocation.length > 255) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Return location must be 255 characters or fewer.',
-        path: ['returnLocation'],
-      });
-    }
-
-    if (
-      form.pickupOption === 'delivery' &&
-      !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.deliveryTime)
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Choose a valid delivery time.',
+        message: 'Choose a pickup time.',
         path: ['deliveryTime'],
       });
     }

@@ -302,7 +302,7 @@ it('creates a booking with backend pricing and down payment validation', functio
         'pickup_location' => 'Jamjade Garage - Cavite',
         'return_location' => 'Jamjade Garage - Cavite',
         'driver_option' => 'self_drive',
-        'down_payment_amount' => 1500,
+        'down_payment_amount' => 1750,
         'payment_method' => 'GCash',
         'transaction_id' => 'GCASH-TEST-1',
         'customer_signature' => 'Juan Dela Cruz',
@@ -372,21 +372,24 @@ it('rejects booking dates that overlap an approved booking for the same vehicle'
         ->assertJsonValidationErrors('rental_start_at');
 });
 
-it('requires and stores delivery details for owner driver bookings', function () {
+it('derives and stores delivery details for owner driver bookings', function () {
     $user = customerUser();
     $vehicle = availableVehicle();
     Sanctum::actingAs($user);
 
+    $start = now()->addDays(3);
+    $expectedDeliveryTime = $start->format('H:i');
+
     $payload = [
         'vehicle_id' => $vehicle->id,
-        'rental_start_at' => now()->addDays(3)->toDateTimeString(),
+        'rental_start_at' => $start->toDateTimeString(),
         'rental_end_at' => now()->addDays(4)->toDateTimeString(),
         'pickup_location_type' => 'delivery',
         'pickup_location' => 'Dasmarinas, Cavite',
         'return_location' => 'Makati, Metro Manila',
         'driver_option' => 'owners_driver',
         'owner_driver_coverage' => 'metro_manila',
-        'down_payment_amount' => 1600,
+        'down_payment_amount' => 2600,
         'payment_method' => 'GCash',
         'transaction_id' => 'GCASH-DELIVERY-1',
         'customer_signature' => 'Juan Dela Cruz',
@@ -394,17 +397,10 @@ it('requires and stores delivery details for owner driver bookings', function ()
     ];
 
     $this->postJson('/api/mobile/bookings', $payload)
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('delivery_time');
-
-    $this->postJson('/api/mobile/bookings', [
-        ...$payload,
-        'delivery_time' => '09:17',
-    ])
         ->assertCreated()
         ->assertJsonPath('data.pickupType', 'Delivery')
-        ->assertJsonPath('data.deliveryTime', '09:17')
-        ->assertJsonPath('data.deliveryTimeLabel', '9:17 AM')
+        ->assertJsonPath('data.deliveryTime', $expectedDeliveryTime)
+        ->assertJsonPath('data.deliveryTimeLabel', CarbonImmutable::parse($expectedDeliveryTime)->format('g:i A'))
         ->assertJsonPath('data.returnLocation', 'Makati, Metro Manila')
         ->assertJsonPath('data.deliveryFee', 900)
         ->assertJsonPath('data.ownerDriverFee', 700)
@@ -414,7 +410,7 @@ it('requires and stores delivery details for owner driver bookings', function ()
         'user_id' => $user->id,
         'vehicle_id' => $vehicle->id,
         'pickup_location_type' => 'delivery',
-        'delivery_time' => '09:17',
+        'delivery_time' => $expectedDeliveryTime,
         'return_location' => 'Makati, Metro Manila',
         'delivery_fee' => 900,
         'owner_driver_fee' => 700,
@@ -436,7 +432,7 @@ it('calculates outside Manila owner driver coverage only by rental day', functio
         'return_location' => 'Tagaytay, Cavite',
         'driver_option' => 'owners_driver',
         'owner_driver_coverage' => 'outside_manila',
-        'down_payment_amount' => 3000,
+        'down_payment_amount' => 5000,
         'payment_method' => 'GCash',
         'transaction_id' => 'GCASH-OUTSIDE-1',
         'customer_signature' => 'Juan Dela Cruz',
@@ -482,7 +478,7 @@ it('enforces fulfillment options from the selected driver option', function () {
         'owner_driver_coverage' => 'metro_manila',
     ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['pickup_location_type', 'delivery_time']);
+        ->assertJsonValidationErrors('pickup_location_type');
 });
 
 it('requires full payment when the rental starts less than two calendar days away', function (int $leadDays) {
@@ -557,7 +553,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
                         'status' => 'COMPLETED',
                         'amount' => [
                             'currency_code' => 'PHP',
-                            'value' => '1530.00',
+                            'value' => '2550.00',
                         ],
                     ]],
                 ],
@@ -588,7 +584,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
 
     $createResponse->assertCreated()
         ->assertJsonPath('data.orderId', 'PAYPAL-ORDER-TEST-1')
-        ->assertJsonPath('data.amount', 1530)
+        ->assertJsonPath('data.amount', 2550)
         ->assertJsonPath('data.currency', 'PHP');
 
     $checkout = PayPalCheckout::firstOrFail();
@@ -610,7 +606,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
     )->first()[0];
 
     expect($orderRequest['purchase_units'][0]['amount']['currency_code'])->toBe('PHP')
-        ->and($orderRequest['purchase_units'][0]['amount']['value'])->toBe('1530.00')
+        ->and($orderRequest['purchase_units'][0]['amount']['value'])->toBe('2550.00')
         ->and($orderRequest['payment_source']['paypal']['experience_context']['return_url'])
         ->toBe(
             'http://192.168.1.50:8000/paypal/return/'.
@@ -630,14 +626,14 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         ->assertJsonPath('data.deliveryFee', 900)
         ->assertJsonPath('data.ownerDriverFee', 700)
         ->assertJsonPath('data.returnLocation', 'Makati, Metro Manila')
-        ->assertJsonPath('data.remainingBalance', 3570)
+        ->assertJsonPath('data.remainingBalance', 2550)
         ->assertJsonPath('data.balanceDueAt', $booking->rental_start_at->copy()->subDay()->toISOString());
 
     $this->assertDatabaseHas('payments', [
         'booking_id' => $booking->id,
         'payment_method' => 'PayPal',
         'payment_status' => PaymentStatus::Partial->value,
-        'amount' => 1530,
+        'amount' => 2550,
         'transaction_id' => 'PAYPAL-CAPTURE-TEST-1',
     ]);
 

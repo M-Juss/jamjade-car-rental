@@ -957,7 +957,7 @@ export function PriceBreakdownCard({ breakdown }: { breakdown: PriceBreakdown })
       )}
       <View className="my-2 h-px bg-border" />
       <BreakdownRow label="Total amount" value={formatPeso(breakdown.totalAmount)} strong />
-      <BreakdownRow label="Down payment (30%)" value={formatPeso(breakdown.downPaymentAmount)} />
+      <BreakdownRow label="Down payment (50%)" value={formatPeso(breakdown.downPaymentAmount)} />
       <BreakdownRow label="Remaining balance" value={formatPeso(breakdown.remainingBalance)} />
     </View>
   );

@@ -271,10 +271,6 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               {booking.pickupType === 'Delivery' && booking.deliveryTime ? (
                 <InfoRow label="Delivery Time" value={booking.deliveryTime} />
               ) : null}
-              <InfoRow
-                label={booking.driverType === "Owner's Driver" ? 'End Trip Location' : 'Return Location'}
-                value={booking.returnLocation}
-              />
             </SectionCard>
 
             <SectionCard title="Driver Type and Documents" icon={ShieldCheck}>
