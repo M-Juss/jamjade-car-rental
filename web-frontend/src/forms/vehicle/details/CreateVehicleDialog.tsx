@@ -100,6 +100,7 @@ const INITIAL_FORM: VehicleFormValues = {
   brand: "",
   name: "",
   model: "",
+  plate_number: "",
   description: "",
   price_per_day: "",
   seats: "",
@@ -155,6 +156,7 @@ function getVehicleFormErrorMessage(errors: FieldErrors<VehicleFormValues>) {
     errors.brand?.message,
     errors.name?.message,
     errors.model?.message,
+    errors.plate_number?.message,
     errors.price_per_day?.message,
     errors.description?.message,
     errors.seats?.message,
@@ -175,6 +177,7 @@ const VEHICLE_FIELD_TARGETS: Partial<Record<keyof VehicleFormValues, string>> = 
   brand: "vehicle-brand",
   name: "vehicle-name",
   model: "vehicle-model",
+  plate_number: "vehicle-plate-number",
   description: "vehicle-description",
   price_per_day: "vehicle-price",
   seats: "vehicle-seats",
@@ -535,6 +538,7 @@ export function VehicleFormDialog({
     "brand",
     "name",
     "model",
+    "plate_number",
     "description",
     "price_per_day",
     "seats",
@@ -561,6 +565,9 @@ export function VehicleFormDialog({
       appToast.error("Please complete the highlighted vehicle information.");
       return;
     }
+
+    clearErrors("initial_condition");
+    setConditionValidationAttempted(false);
     setStep("condition");
   };
 
@@ -571,11 +578,11 @@ export function VehicleFormDialog({
       return;
     }
 
+    setConditionValidationAttempted(true);
     void handleSubmit(handleSave, (formErrors) => {
       const conditionTarget = firstConditionErrorTarget(formErrors.initial_condition);
 
       if (conditionTarget) {
-        setConditionValidationAttempted(true);
         requestAnimationFrame(() => focusTarget(conditionTarget));
       } else {
         const vehicleField = firstVehicleErrorTarget(formErrors);
@@ -786,6 +793,18 @@ export function VehicleFormDialog({
                       {...register("model")}
                     />
                     <AbsoluteFieldError message={errors.model?.message} />
+                  </div>
+                  <div className="relative pb-5">
+                    <InputWithLabel
+                      id="vehicle-plate-number"
+                      label="Plate Number"
+                      required
+                      placeholder="e.g. ABC 1234"
+                      disabled={isSubmitting}
+                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      {...register("plate_number")}
+                    />
+                    <AbsoluteFieldError message={errors.plate_number?.message} />
                   </div>
                   <div className="relative pb-5">
                     <InputWithLabel
@@ -1020,7 +1039,7 @@ export function VehicleFormDialog({
               ) : (
                 <VehicleConditionForm
                   value={initialCondition}
-                  errors={errors.initial_condition}
+                  errors={conditionValidationAttempted ? errors.initial_condition : undefined}
                   disabled={isSubmitting}
                   onChange={(condition) => setValue("initial_condition", condition, {
                     shouldDirty: true,

@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'admin' | 'staff' | 'customer' | string;
+export type UserRole = 'owner' | 'admin' | 'staff' | 'customer' | 'driver' | string;
 
 export type MobileCustomerProfile = {
   id?: number;
@@ -95,9 +95,10 @@ export type MobileProfileOverview = {
     }[];
   };
   bookingSummary: {
-    status: 'none' | 'pending' | 'active' | 'ongoing' | 'completed';
+    status: 'none' | 'pending' | 'active' | 'ongoing' | 'returned' | 'completed';
     successfulBookings: number;
     totalSpent: number;
+    hasOutstandingBalance: boolean;
   };
 };
 
@@ -173,9 +174,10 @@ export type PayPalOrderResponse = {
 };
 
 export type MobileBookingRecord = {
+  backendId: number;
   id: string;
   bookingCode: string;
-  status: 'Pending' | 'Approved' | 'Active' | 'Ongoing' | 'Completed' | 'Rejected' | 'Cancelled';
+  status: 'Pending' | 'Confirmed' | 'Active' | 'Ongoing' | 'Returned' | 'Completed' | 'Rejected' | 'Cancelled';
   vehicleId: string;
   vehicleName: string;
   brand: string;
@@ -215,6 +217,27 @@ export type MobileBookingRecord = {
   paidAt: string;
   createdAt: string;
   adminNotes?: string | null;
+  calibrationStatus: 'locked' | 'available' | 'passed' | 'failed';
+  calibratedAt?: string | null;
+  rentalProgress: {
+    outgoingFinalized: boolean;
+    calibrationStatus: string;
+    tripEnded: boolean;
+    latestTripId?: number | null;
+    latestTripStatus?: string | null;
+    incomingFinalized: boolean;
+  };
+  additionalCharges?: {
+    id: string;
+    type: string;
+    typeLabel: string;
+    description: string;
+    amount: number;
+    responsibility: 'customer' | 'driver';
+    paymentStatus: string;
+    paidAt?: string | null;
+  }[];
+  customer?: { name?: string; email?: string; phoneNumber?: string | null } | null;
   documents: {
     name: string;
     status: 'Submitted' | 'Pending' | 'Missing' | 'Verified';

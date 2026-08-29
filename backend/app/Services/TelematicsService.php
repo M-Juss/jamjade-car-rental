@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
+use App\Enums\RentalType;
 use App\Enums\TelematicsEventType;
 use App\Models\Booking;
 use App\Models\GeofenceLog;
@@ -19,11 +20,17 @@ class TelematicsService
     public function startTrip(User $user, array $data): TelematicsTrip
     {
         return DB::transaction(function () use ($user, $data) {
-            $booking = Booking::with('vehicle')
+            $booking = Booking::with(['vehicle', 'assignedDriver'])
                 ->where('id', $data['booking_id'])
-                ->where('user_id', $user->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $operatorId = $booking->rental_type === RentalType::SelfDrive
+                ? $booking->user_id
+                : $booking->assigned_driver_id;
+            if ($operatorId !== $user->id) {
+                abort(403, 'Only the authorized renter or assigned Driver may start this trip.');
+            }
 
             if ($booking->status !== BookingStatus::Ongoing) {
                 throw ValidationException::withMessages([
@@ -32,12 +39,14 @@ class TelematicsService
             }
 
             $existingTrip = $booking->telematicsTrips()
-                ->whereIn('status', ['started', 'paused'])
+                ->whereIn('status', ['started', 'paused', 'ended'])
                 ->first();
 
             if ($existingTrip) {
                 throw ValidationException::withMessages([
-                    'booking_id' => ['This booking already has an active telematics trip.'],
+                    'booking_id' => [$existingTrip->status === 'ended'
+                        ? 'This booking trip has already ended and is awaiting Jamjade return processing.'
+                        : 'This booking already has an active telematics trip.'],
                 ]);
             }
 
@@ -69,7 +78,7 @@ class TelematicsService
                 ->causedBy($user)
                 ->performedOn($trip)
                 ->event('telematics_trip_started')
-                ->log('Customer started telematics trip monitoring.');
+                ->log('Authorized mobile operator started telematics trip monitoring.');
 
             return $trip->fresh(['booking.vehicle.images', 'vehicle.images', 'events']);
         });
@@ -129,6 +138,9 @@ class TelematicsService
             'end_latitude' => $data['latitude'] ?? $trip->current_latitude,
             'end_longitude' => $data['longitude'] ?? $trip->current_longitude,
         ]);
+
+        activity()->causedBy($user)->performedOn($trip)->event('telematics_trip_ended')
+            ->withProperties(['booking_id' => $trip->booking_id])->log('Authorized mobile operator ended the telematics trip.');
 
         return $trip->fresh(['booking.vehicle.images', 'vehicle.images', 'events', 'geofenceLogs']);
     }

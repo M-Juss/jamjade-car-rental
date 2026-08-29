@@ -49,7 +49,7 @@ import {
   getPriceBreakdown,
 } from '@/lib/browse/pricing';
 import {
-  getBookingAgeAvailability,
+  getBookingAvailability,
   getSelfDriveBookingAvailability,
   useCustomer,
 } from '@/lib/customer/customer-store';
@@ -236,8 +236,8 @@ export function BookingForm() {
   const resolvedVehicleId = firstParam(vehicleId);
   const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
   const customer = useCustomer();
-  const bookingAgeAvailability = useMemo(
-    () => getBookingAgeAvailability(customer),
+  const bookingAvailability = useMemo(
+    () => getBookingAvailability(customer),
     [customer],
   );
   const selfDriveAvailability = useMemo(() => getSelfDriveBookingAvailability(customer), [customer]);
@@ -331,19 +331,20 @@ export function BookingForm() {
     );
   }
 
-  if (!bookingAgeAvailability.canBook) {
+  if (!bookingAvailability.canBook) {
+    const isBalanceBlocked = bookingAvailability.reason === 'balance';
+
     return (
       <ErrorState
-        actionLabel={
-          bookingAgeAvailability.reason === 'profile'
-            ? 'Complete Profile'
-            : 'Back to Browse'
-        }
-        subtitle={bookingAgeAvailability.message}
+        actionLabel={isBalanceBlocked ? 'View My Bookings' : bookingAvailability.reason === 'profile' ? 'Complete Profile' : 'Back to Browse'}
+        subtitle={bookingAvailability.message}
+        title={isBalanceBlocked ? 'Booking locked' : undefined}
         onAction={() => router.replace(
-          bookingAgeAvailability.reason === 'profile'
-            ? '/onboarding/basic-info'
-            : '/onboarding/age-restriction',
+          isBalanceBlocked
+            ? '/(tabs)/bookings' as Href
+            : bookingAvailability.reason === 'profile'
+              ? '/onboarding/basic-info'
+              : '/onboarding/age-restriction',
         )}
       />
     );
@@ -423,7 +424,7 @@ export function BookingForm() {
       )
     ) {
       setError('returnDate', {
-        message: 'These dates overlap an approved booking for this vehicle.',
+        message: 'These dates overlap a confirmed booking for this vehicle.',
         type: 'validate',
       });
       toast.showToast('Selected dates are not available.');
@@ -501,7 +502,7 @@ export function BookingForm() {
                   <DateWithLabel
                     disabledDateRanges={vehicle.unavailableDateRanges}
                     error={errors.returnDate?.message}
-                    helperText={rentalDate ? 'Approved booking dates are unavailable.' : undefined}
+                    helperText={rentalDate ? 'Confirmed booking dates are unavailable.' : undefined}
                     label="Return date"
                     maximumDate={maximumReturnDate}
                     minimumDate={minimumReturnDate}

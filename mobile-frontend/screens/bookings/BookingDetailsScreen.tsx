@@ -98,23 +98,56 @@ function DetailsActions({
   booking: Booking;
   onAction: (action: BookingAction, booking: Booking) => void;
 }) {
-  const actions = getBookingActions(booking.status, { includeDetails: false });
+  const actions = getBookingActions(booking.status, { includeDetails: false }).filter(
+    (action) => action.key !== 'pay_balance' || booking.remainingBalance > 0,
+  );
+  const primaryActionKeys: BookingAction['key'][] = [
+    'payment_info',
+    'pay_balance',
+    'open_telematics',
+    'book_again',
+    'book_another_vehicle',
+  ];
+  const primaryActions = actions.filter((action) => primaryActionKeys.includes(action.key));
+  const supportingActions = actions.filter((action) => !primaryActionKeys.includes(action.key));
 
   if (actions.length === 0) {
     return null;
   }
 
   return (
-    <View className="gap-3">
-      {actions.map((action) => (
-        <ActionButton
-          key={action.key}
-          icon={action.icon}
-          label={action.label}
-          variant={action.variant}
-          onPress={() => onAction(action, booking)}
-        />
-      ))}
+    <View className="gap-4">
+      {primaryActions.length > 0 ? (
+        <View className="gap-3">
+          {primaryActions.map((action) => (
+            <ActionButton
+              key={action.key}
+              className="w-full"
+              icon={action.icon}
+              label={action.label}
+              variant={action.variant}
+              onPress={() => onAction(action, booking)}
+            />
+          ))}
+        </View>
+      ) : null}
+      {supportingActions.length > 0 ? (
+        <View className={cx('gap-3', primaryActions.length > 0 && 'border-t border-border pt-4')}>
+          {primaryActions.length > 0 ? (
+            <Text className="text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">More actions</Text>
+          ) : null}
+          {supportingActions.map((action) => (
+            <ActionButton
+              key={action.key}
+              className="w-full"
+              icon={action.icon}
+              label={action.label}
+              variant={action.variant}
+              onPress={() => onAction(action, booking)}
+            />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -173,7 +206,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
     }
 
     if (action.key === 'open_telematics' && isTelematicsEnabled(selectedBooking.status)) {
-      router.push('/telematics' as Href);
+      router.push(`/telematics?bookingId=${encodeURIComponent(selectedBooking.id)}` as Href);
       return;
     }
 
@@ -225,6 +258,47 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
           </View>
 
           <View className="mt-6 gap-5">
+            <SectionCard title="Rental Progress" icon={Navigation}>
+              {[
+                ['Booking confirmed', booking.status !== 'Pending'],
+                ['Outgoing inspection', booking.rentalProgress.outgoingFinalized],
+                ['Device calibration', booking.calibrationStatus === 'passed'],
+                ['Active rental', ['Active', 'Ongoing', 'Returned', 'Completed'].includes(booking.status)],
+                ['Return inspection', booking.rentalProgress.incomingFinalized],
+                ['Completed', booking.status === 'Completed'],
+              ].map(([label, completed]) => (
+                <View key={String(label)} className="flex-row items-center gap-3 border-b border-[#EEF2FF] py-3">
+                  <View className={cx('h-7 w-7 items-center justify-center rounded-full', completed ? 'bg-success-surface' : 'bg-[#F1F5F9]')}>
+                    <Text className={cx('text-[12px] font-black', completed ? 'text-success' : 'text-subtle-foreground')}>
+                      {completed ? '✓' : '○'}
+                    </Text>
+                  </View>
+                  <Text className="min-w-0 flex-1 text-[13px] font-bold text-foreground">{label}</Text>
+                </View>
+              ))}
+
+              {booking.driverType === 'Self-Drive' && booking.calibrationStatus === 'available' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push(`/telematics?bookingId=${encodeURIComponent(booking.id)}` as Href)}
+                  className="mt-4 min-h-[52px] items-center justify-center rounded-full bg-primary px-5">
+                  <Text className="text-[14px] font-black text-surface">Start Calibration</Text>
+                </Pressable>
+              ) : null}
+
+              {booking.calibrationStatus === 'passed' && booking.status === 'Confirmed' ? (
+                <Text className="mt-4 rounded-[18px] border border-success-border bg-success-surface p-3 text-[12px] font-bold leading-5 text-success">
+                  Calibration complete. Waiting for Jamjade to start the rental.
+                </Text>
+              ) : null}
+
+              {booking.rentalProgress.tripEnded && booking.status === 'Ongoing' ? (
+                <Text className="mt-4 rounded-[18px] border border-warning-border bg-warning-surface p-3 text-[12px] font-bold leading-5 text-warning">
+                  Trip ended. The booking remains active until Jamjade completes the Incoming Inspection and return process.
+                </Text>
+              ) : null}
+            </SectionCard>
+
             <SectionCard title="Booking Overview" icon={ClipboardList}>
               <InfoRow label="Booking ID" value={booking.id} />
               <InfoRow label="Current Status" value={<BookingStatusBadge status={booking.status} compact />} />
@@ -318,6 +392,23 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                 />
               ) : null}
             </SectionCard>
+
+            {booking.additionalCharges.length > 0 ? (
+              <SectionCard title="Additional Charges" icon={ReceiptText}>
+                {booking.additionalCharges.map((charge) => (
+                  <View key={charge.id} className="border-b border-[#EEF2FF] py-3">
+                    <View className="flex-row items-start justify-between gap-3">
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-[13px] font-black text-foreground">{charge.typeLabel}</Text>
+                        <Text className="mt-1 text-[12px] font-semibold leading-5 text-muted-foreground">{charge.description}</Text>
+                      </View>
+                      <Text className="text-[14px] font-black text-foreground">{formatPeso(charge.amount)}</Text>
+                    </View>
+                    <Text className="mt-2 text-[10px] font-black uppercase text-subtle-foreground">{charge.paymentStatus}</Text>
+                  </View>
+                ))}
+              </SectionCard>
+            ) : null}
 
             <SectionCard title="Status Timeline" icon={Navigation}>
               <BookingTimeline items={booking.timeline} />

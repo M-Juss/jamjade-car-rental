@@ -7,7 +7,7 @@ export type DashboardSummary = {
   totalBookings: number;
   completedBookings: number;
   activeRentals: number;
-  approvedBookings: number;
+  confirmedBookings: number;
   pendingBookings: number;
   cancelledBookings: number;
   averageBookingDuration: number;
@@ -69,7 +69,7 @@ export type DashboardResponse = {
   monthlyRevenue: RevenueTrendPoint[];
   fleetStatus: FleetStatusPoint[];
   topVehicles: DashboardVehicle[];
-  approvedBookings: BookingReportRow[];
+  confirmedBookings: BookingReportRow[];
   recentActivities: DashboardActivity[];
 };
 

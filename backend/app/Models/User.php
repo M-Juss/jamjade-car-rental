@@ -58,6 +58,11 @@ class User extends Authenticatable
         return $this->hasMany(Payment::class);
     }
 
+    public function responsibleAdditionalCharges(): HasMany
+    {
+        return $this->hasMany(BookingAdditionalCharge::class, 'responsible_user_id');
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(Notification::class);

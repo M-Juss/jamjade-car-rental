@@ -868,7 +868,10 @@ export default function NotificationsScreen() {
       return;
     }
 
-    if (notification.data?.action === 'pay_balance' && notification.bookingId) {
+    if (
+      (notification.data?.action === 'pay_balance' || notification.data?.action === 'pay_outstanding') &&
+      notification.bookingId
+    ) {
       router.push(`/bookings/payment?bookingId=${encodeURIComponent(notification.bookingId)}` as Href);
       return;
     }

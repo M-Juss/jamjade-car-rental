@@ -52,6 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyUser = useCallback(async (nextUser: MobileUser) => {
+    if (nextUser.roles?.includes('driver')) {
+      setUser(nextUser);
+      setStatus('authenticated');
+      resetCustomer();
+
+      return nextUser;
+    }
+
     let authenticatedUser = nextUser;
 
     try {

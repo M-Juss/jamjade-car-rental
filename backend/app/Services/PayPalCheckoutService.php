@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\AdditionalChargeResponsibility;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
+use App\Models\BookingAdditionalCharge;
 use App\Models\Payment;
 use App\Models\PayPalCheckout;
 use App\Models\User;
@@ -72,9 +74,9 @@ class PayPalCheckoutService
                 ->orWhere('id', $bookingReference))
             ->firstOrFail();
 
-        if (! in_array($booking->status->value, ['pending', 'confirmed'], true)) {
+        if (! in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Returned], true)) {
             throw ValidationException::withMessages([
-                'booking' => ['The remaining balance can only be paid for a pending or approved booking.'],
+                'booking' => ['The outstanding balance can only be paid for a pending, confirmed, active, or returned booking.'],
             ]);
         }
 
@@ -84,7 +86,7 @@ class PayPalCheckoutService
             ]);
         }
 
-        if ($booking->balance_due_at?->isPast()) {
+        if (in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed], true) && $booking->balance_due_at?->isPast()) {
             throw ValidationException::withMessages([
                 'booking' => ['The payment deadline has passed. This booking is pending automatic cancellation.'],
             ]);
@@ -101,6 +103,11 @@ class PayPalCheckoutService
             ]);
         }
 
+        $chargeIds = $booking->additionalCharges()
+            ->where('responsibility', AdditionalChargeResponsibility::Customer->value)
+            ->whereIn('payment_status', [PaymentStatus::Unpaid->value, PaymentStatus::Failed->value])
+            ->pluck('id')->all();
+
         return $this->createCheckout(
             $user,
             $booking,
@@ -108,8 +115,35 @@ class PayPalCheckoutService
             (float) $booking->remaining_balance,
             false,
             $callbacks['app_return_url'],
-            $callbacks['app_cancel_url']
+            $callbacks['app_cancel_url'],
+            $chargeIds
         );
+    }
+
+    public function createDriverOutstandingOrder(User $user, string $bookingReference, array $callbacks): array
+    {
+        if (! $user->hasRole(DriverAssignmentService::DRIVER_ROLE)) {
+            abort(403, 'Driver access is required.');
+        }
+        $booking = Booking::query()
+            ->where(fn ($query) => $query->where('booking_code', $bookingReference)->orWhere('id', $bookingReference))
+            ->firstOrFail();
+        $charges = BookingAdditionalCharge::query()
+            ->where('booking_id', $booking->id)
+            ->where('responsible_user_id', $user->id)
+            ->where('responsibility', AdditionalChargeResponsibility::Driver->value)
+            ->whereIn('payment_status', [PaymentStatus::Unpaid->value, PaymentStatus::Failed->value])
+            ->get();
+        if ($charges->isEmpty()) {
+            throw ValidationException::withMessages(['booking' => ['This service has no unpaid Driver-responsible charges.']]);
+        }
+        if ($booking->paypalCheckouts()->where('user_id', $user->id)->where('payment_option', 'driver_outstanding')
+            ->whereNotIn('status', ['completed', 'failed'])->exists()) {
+            throw ValidationException::withMessages(['booking' => ['A PayPal checkout for this Driver balance is already open.']]);
+        }
+
+        return $this->createCheckout($user, $booking, 'driver_outstanding', (float) $charges->sum('amount'), false,
+            $callbacks['app_return_url'], $callbacks['app_cancel_url'], $charges->pluck('id')->all());
     }
 
     private function createCheckout(
@@ -119,7 +153,8 @@ class PayPalCheckoutService
         float $amount,
         bool $deleteBookingOnFailure,
         string $appReturnUrl,
-        string $appCancelUrl
+        string $appCancelUrl,
+        array $additionalChargeIds = []
     ): array {
         $currency = 'PHP';
         $checkout = PayPalCheckout::create([
@@ -130,6 +165,9 @@ class PayPalCheckoutService
             'currency' => $currency,
             'status' => 'creating',
         ]);
+        if ($additionalChargeIds !== []) {
+            $checkout->additionalCharges()->sync($additionalChargeIds);
+        }
 
         try {
             $order = $this->payPalClient->createOrder([
@@ -206,7 +244,9 @@ class PayPalCheckoutService
             return $this->loadBooking($checkout->booking_id);
         }
 
-        $this->bookingService->assertCustomerAgeEligible($user);
+        if ($checkout->payment_option !== 'driver_outstanding') {
+            $this->bookingService->assertCustomerAgeEligible($user);
+        }
 
         if ($checkout->booking->status === BookingStatus::Pending) {
             $this->bookingService->assertVehicleScheduleAvailable(
@@ -262,6 +302,32 @@ class PayPalCheckoutService
             }
 
             $booking = Booking::query()->lockForUpdate()->findOrFail($lockedCheckout->booking_id);
+            $lockedCheckout->load('additionalCharges');
+
+            if ($lockedCheckout->payment_option === 'driver_outstanding') {
+                $chargeIds = $lockedCheckout->additionalCharges->pluck('id');
+                $charges = BookingAdditionalCharge::query()->whereIn('id', $chargeIds)->lockForUpdate()->get();
+                $expected = (float) $charges->where('responsible_user_id', $user->id)
+                    ->whereIn('payment_status', [PaymentStatus::Unpaid, PaymentStatus::Failed])->sum('amount');
+                if ($this->formatAmount($expected) !== $this->formatAmount((float) $lockedCheckout->amount)) {
+                    throw ValidationException::withMessages(['paypal' => ['The Driver outstanding balance changed before capture.']]);
+                }
+                foreach ($charges as $charge) {
+                    $charge->forceFill(['payment_status' => PaymentStatus::Paid, 'paid_at' => now()])->save();
+                }
+                $lockedCheckout->update([
+                    'paypal_capture_id' => $captureId, 'status' => 'completed',
+                    'paypal_response' => $captureResponse, 'captured_at' => now(),
+                ]);
+                $this->notificationService->createForUser($user, 'payment', 'Driver balance paid',
+                    "Your Driver-responsible balance for booking {$booking->booking_code} was paid.", [
+                        'booking_id' => $booking->id, 'priority' => 'success', 'action' => 'view_service', 'action_label' => 'View Service',
+                    ]);
+                activity()->causedBy($user)->performedOn($booking)->event('driver_additional_charge_payment_captured')
+                    ->withProperties(['paypal_capture_id' => $captureId, 'amount' => (float) $lockedCheckout->amount])->log('Driver additional-charge balance paid.');
+
+                return $this->loadBooking($booking->id);
+            }
             $wasPending = $booking->status === BookingStatus::Pending;
 
             if ($wasPending) {
@@ -311,6 +377,12 @@ class PayPalCheckoutService
                 'captured_at' => now(),
             ]);
 
+            if ($lockedCheckout->additionalCharges->isNotEmpty()) {
+                BookingAdditionalCharge::query()->whereIn('id', $lockedCheckout->additionalCharges->pluck('id'))
+                    ->where('responsible_user_id', $user->id)
+                    ->update(['payment_status' => PaymentStatus::Paid->value, 'paid_at' => now()]);
+            }
+
             activity()
                 ->causedBy($user)
                 ->performedOn($booking)
@@ -328,7 +400,7 @@ class PayPalCheckoutService
                     'old_status' => BookingStatus::Pending,
                     'new_status' => BookingStatus::Confirmed,
                     'changed_by' => $user->id,
-                    'reason' => 'Booking automatically approved after successful PayPal payment.',
+                    'reason' => 'Booking automatically confirmed after successful PayPal payment.',
                 ]);
 
                 activity()
@@ -340,13 +412,13 @@ class PayPalCheckoutService
                         'new_status' => BookingStatus::Confirmed->value,
                         'reason' => 'Successful PayPal payment.',
                     ])
-                    ->log('Booking automatically approved after payment.');
+                    ->log('Booking automatically confirmed after payment.');
 
                 $this->notificationService->createForBooking(
                     $booking,
                     'booking',
-                    'Booking approved',
-                    "Booking {$booking->booking_code} was automatically approved after payment.",
+                    'Booking confirmed',
+                    "Booking {$booking->booking_code} was automatically confirmed after payment.",
                     [
                         'priority' => 'success',
                         'action_label' => 'View Booking',
@@ -424,7 +496,7 @@ class PayPalCheckoutService
 
         DB::transaction(function () use ($checkout) {
             $booking = $checkout->booking;
-            $isInitialCheckout = $checkout->payment_option !== 'remaining_balance';
+            $isInitialCheckout = in_array($checkout->payment_option, ['down_payment', 'full_payment'], true);
 
             $checkout->delete();
 

@@ -56,7 +56,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
             Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/start', [BookingController::class, 'start'])->name('bookings.start');
+            Route::post('/bookings/{booking}/returned', [BookingController::class, 'returned'])->name('bookings.returned');
             Route::post('/bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
+            Route::get('/bookings/{booking}/readiness', [BookingController::class, 'readiness'])->name('bookings.readiness');
+            Route::post('/bookings/{booking}/outgoing-inspection', [BookingController::class, 'outgoing'])->name('bookings.outgoing-inspection');
+            Route::post('/bookings/{booking}/incoming-inspection', [BookingController::class, 'incoming'])->name('bookings.incoming-inspection');
+            Route::post('/bookings/{booking}/additional-charges', [BookingController::class, 'charges'])->name('bookings.additional-charges');
+            Route::post('/bookings/{booking}/finalize-return-charges', [BookingController::class, 'finalizeCharges'])->name('bookings.finalize-return-charges');
             Route::post('/bookings/{booking}/assign-driver', [BookingController::class, 'assignDriver'])->name('bookings.assign-driver');
             Route::post('/bookings/{booking}/resend-confirmation-email', [BookingController::class, 'resendConfirmationEmail'])
                 ->middleware('role:owner|admin')

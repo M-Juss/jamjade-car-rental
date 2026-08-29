@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class PayPalCheckout extends Model
 {
@@ -40,5 +41,15 @@ class PayPalCheckout extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function additionalCharges(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            BookingAdditionalCharge::class,
+            'additional_charge_paypal_checkout',
+            'paypal_checkout_id',
+            'booking_additional_charge_id'
+        );
     }
 }

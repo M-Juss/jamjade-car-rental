@@ -43,6 +43,15 @@ return [
         'currency' => 'PHP',
         'return_url' => env('PAYPAL_RETURN_URL'),
         'cancel_url' => env('PAYPAL_CANCEL_URL'),
+        'app_callback_origins' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env(
+                'PAYPAL_APP_CALLBACK_ORIGINS',
+                in_array(env('APP_ENV'), ['local', 'testing'], true)
+                    ? 'http://localhost:8081,http://127.0.0.1:8081'
+                    : ''
+            ))
+        ))),
     ],
 
 ];

@@ -22,9 +22,17 @@ class NotificationService
 
     public function createForBooking(Booking $booking, string $category, string $title, string $message, array $data = []): Notification
     {
-        return Notification::create([
-            'user_id' => $booking->user_id,
+        return $this->createForUser($booking->user, $category, $title, $message, [
             'booking_id' => $booking->id,
+            ...$data,
+        ]);
+    }
+
+    public function createForUser(User $user, string $category, string $title, string $message, array $data = []): Notification
+    {
+        return Notification::create([
+            'user_id' => $user->id,
+            'booking_id' => $data['booking_id'] ?? null,
             'type' => 'booking',
             'category' => $category,
             'priority' => $data['priority'] ?? 'normal',

@@ -49,6 +49,7 @@ const bookingStatusStyle: Record<BookingStatus, string> = {
   confirmed: "bg-muted text-primary border-blue-200",
   rejected: "bg-rose-50 text-rose-600 border-rose-200",
   ongoing: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  returned: "bg-cyan-50 text-cyan-700 border-cyan-200",
   completed: "bg-background text-muted-foreground border-border",
   cancelled: "bg-rose-50 text-rose-600 border-rose-200",
 };
@@ -213,8 +214,9 @@ export function Bookings() {
                 options={[
                   { value: "all", label: "All Status" },
                   { value: "pending", label: "Pending" },
-                  { value: "confirmed", label: "Approved" },
+                  { value: "confirmed", label: "Confirmed" },
                   { value: "ongoing", label: "Ongoing" },
+                  { value: "returned", label: "Returned" },
                   { value: "completed", label: "Completed" },
                   { value: "cancelled", label: "Cancelled" },
                   { value: "rejected", label: "Rejected" },
@@ -315,7 +317,7 @@ export function Bookings() {
                             setSelectedBooking(booking);
                             setCancelOpen(true);
                           },
-                          disabled: ["cancelled", "completed", "rejected"].includes(booking.statusKey),
+                          disabled: !["pending", "confirmed"].includes(booking.statusKey),
                           separatorBefore: true,
                           variant: "danger",
                         },
@@ -397,7 +399,7 @@ export function Bookings() {
                                 setSelectedBooking(booking);
                                 setCancelOpen(true);
                               },
-                              disabled: ["cancelled", "completed", "rejected"].includes(booking.statusKey),
+                              disabled: !["pending", "confirmed"].includes(booking.statusKey),
                               separatorBefore: true,
                               variant: "danger",
                             },
@@ -420,6 +422,7 @@ export function Bookings() {
           booking={selectedBooking}
           drivers={drivers}
           onAssigned={handleDriverAssigned}
+          onUpdated={handleDriverAssigned}
         />
       ) : null}
 

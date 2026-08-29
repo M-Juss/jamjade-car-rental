@@ -720,6 +720,7 @@ export function TripControlButton({
 }
 
 export function TripControlPanel({
+  onEnd,
   onPause,
   onResume,
   tripStatus,
@@ -727,6 +728,7 @@ export function TripControlPanel({
   tripStatus: TripStatus;
   onPause: () => void;
   onResume: () => void;
+  onEnd: () => void;
 }) {
   const isPaused = tripStatus === 'paused';
 
@@ -737,8 +739,11 @@ export function TripControlPanel({
         label={isPaused ? 'Resume Trip' : 'Pause Trip'}
         onPress={isPaused ? onResume : onPause}
       />
+      <View className="mt-3">
+        <TripControlButton icon={CheckCircle2} label="End Trip" onPress={onEnd} />
+      </View>
       <Text className="mt-3 text-center text-[11px] font-bold leading-4 text-subtle-foreground">
-        Only Jamjade admin can complete the rental after vehicle return.
+        End Trip stops this driving session only. Jamjade must still receive and inspect the vehicle.
       </Text>
     </Card>
   );

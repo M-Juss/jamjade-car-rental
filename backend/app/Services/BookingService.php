@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AdditionalChargeResponsibility;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\RentalType;
@@ -39,7 +40,8 @@ class BookingService
         private readonly BookingEmailService $bookingEmailService,
         private readonly VehicleAvailabilityService $availabilityService,
         private readonly VehicleOperationalStatusService $operationalStatusService,
-        private readonly DriverAssignmentService $driverAssignmentService
+        private readonly RentalReadinessService $readinessService,
+        private readonly AdditionalChargeService $additionalChargeService
     ) {}
 
     public function paginateForUser(User $user, array $filters = [], int $perPage = 10): LengthAwarePaginator
@@ -99,6 +101,14 @@ class BookingService
                 ]);
             }
 
+            if ($targetStatus === BookingStatus::Ongoing) {
+                $this->readinessService->assertStartAllowed($booking);
+            } elseif ($targetStatus === BookingStatus::Returned) {
+                $this->readinessService->assertReturnAllowed($booking);
+            } elseif ($targetStatus === BookingStatus::Completed) {
+                $this->readinessService->assertCompleteAllowed($booking);
+            }
+
             $changes = [
                 'status' => $targetStatus,
                 'admin_notes' => $extra['admin_notes'] ?? $booking->admin_notes,
@@ -108,7 +118,11 @@ class BookingService
                 BookingStatus::Confirmed => $changes['confirmed_at'] = now(),
                 BookingStatus::Rejected => $changes['rejected_at'] = now(),
                 BookingStatus::Ongoing => $changes['started_at'] = now(),
-                BookingStatus::Completed => $this->applyCompletionCharges($booking, $changes, $extra),
+                BookingStatus::Returned => $changes['returned_at'] = now(),
+                BookingStatus::Completed => [
+                    $changes['completed_at'] = now(),
+                    $changes['completed_by'] = $actor->id,
+                ],
                 BookingStatus::Cancelled => $changes['cancelled_at'] = now(),
                 default => null,
             };
@@ -119,7 +133,7 @@ class BookingService
                 $booking->vehicle->update(['status' => VehicleStatus::Rented]);
             }
 
-            if (in_array($targetStatus, [BookingStatus::Completed, BookingStatus::Cancelled, BookingStatus::Rejected], true)) {
+            if (in_array($targetStatus, [BookingStatus::Returned, BookingStatus::Cancelled, BookingStatus::Rejected], true)) {
                 $this->operationalStatusService->afterBookingEnded($booking->vehicle);
             }
 
@@ -189,6 +203,11 @@ class BookingService
         bool $awaitingPayPal
     ): Booking {
         return DB::transaction(function () use ($user, $data, $paymentProof, $awaitingPayPal) {
+            if ($this->additionalChargeService->hasOutstanding($user, AdditionalChargeResponsibility::Customer)) {
+                throw ValidationException::withMessages([
+                    'booking' => ['Settle your outstanding Jamjade balance before creating a new booking.'],
+                ]);
+            }
             $vehicle = Vehicle::query()->lockForUpdate()->findOrFail($data['vehicle_id']);
 
             if ($vehicle->status !== VehicleStatus::Available) {
@@ -275,10 +294,6 @@ class BookingService
                 'confirmed_at' => $awaitingPayPal ? null : now(),
             ]);
 
-            if ($isOwnerDriver) {
-                $this->driverAssignmentService->autoAssign($booking);
-            }
-
             if (! $awaitingPayPal) {
                 Payment::create([
                     'booking_id' => $booking->id,
@@ -298,7 +313,7 @@ class BookingService
                 'changed_by' => $user->id,
                 'reason' => $awaitingPayPal
                     ? 'Booking created while awaiting PayPal payment.'
-                    : 'Booking automatically approved after successful payment.',
+                    : 'Booking automatically confirmed after successful payment.',
             ]);
 
             activity()
@@ -317,8 +332,8 @@ class BookingService
                 $this->notificationService->createForBooking(
                     $booking,
                     'booking',
-                    'Booking approved',
-                    "Booking {$booking->booking_code} was automatically approved after payment.",
+                    'Booking confirmed',
+                    "Booking {$booking->booking_code} was automatically confirmed after payment.",
                     [
                         'priority' => 'success',
                         'action_label' => 'View Booking',
@@ -390,24 +405,6 @@ class BookingService
             : self::OWNER_DRIVER_METRO_MANILA_DAILY_RATE;
     }
 
-    private function applyCompletionCharges(Booking $booking, array &$changes, array $extra): void
-    {
-        $lateHours = (float) ($extra['late_hours'] ?? max(0, now()->diffInRealHours($booking->rental_end_at, false) * -1));
-        $lateFee = $lateHours * self::LATE_RETURN_HOURLY_RATE;
-        $tollFee = (float) ($extra['toll_fee'] ?? $booking->toll_fee);
-        $penaltyTotal = (float) $booking->penalty_total + $lateFee;
-        $totalAmount = (float) $booking->total_amount + $lateFee + max($tollFee - (float) $booking->toll_fee, 0);
-        $paidAmount = $booking->payments()->sum('amount');
-
-        $changes['completed_at'] = now();
-        $changes['late_fee'] = $lateFee;
-        $changes['toll_fee'] = $tollFee;
-        $changes['penalty_total'] = $penaltyTotal;
-        $changes['total_amount'] = $totalAmount;
-        $changes['remaining_balance'] = max($totalAmount - $paidAmount, 0);
-        $changes['payment_status'] = $changes['remaining_balance'] <= 0 ? PaymentStatus::Paid : PaymentStatus::Partial;
-    }
-
     private function generateBookingCode(): string
     {
         do {
@@ -421,8 +418,8 @@ class BookingService
     {
         $notification = match ($status) {
             BookingStatus::Confirmed => [
-                'title' => 'Booking approved',
-                'message' => "Booking {$booking->booking_code} was approved.",
+                'title' => 'Booking confirmed',
+                'message' => "Booking {$booking->booking_code} was confirmed.",
                 'priority' => 'success',
             ],
             BookingStatus::Rejected => [
@@ -438,6 +435,11 @@ class BookingService
             BookingStatus::Completed => [
                 'title' => 'Rental completed',
                 'message' => "Booking {$booking->booking_code} was completed.",
+                'priority' => 'success',
+            ],
+            BookingStatus::Returned => [
+                'title' => 'Vehicle returned',
+                'message' => "Booking {$booking->booking_code} has finished return processing. Any customer balance remains payable.",
                 'priority' => 'success',
             ],
             BookingStatus::Cancelled => [

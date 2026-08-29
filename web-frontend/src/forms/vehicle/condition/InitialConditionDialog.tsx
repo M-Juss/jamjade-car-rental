@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useForm, useWatch, type Path } from "react-hook-form";
 import { ClipboardCheck } from "lucide-react";
 import {
@@ -38,6 +39,7 @@ export function InitialConditionDialog({
   personnelName,
   onSaved,
 }: InitialConditionDialogProps) {
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const {
     control,
     formState: { errors, isSubmitting },
@@ -52,15 +54,21 @@ export function InitialConditionDialog({
   const condition = useWatch({ control }) as VehicleConditionFormValues;
 
   const close = (nextOpen: boolean) => {
-    if (!nextOpen) reset(createVehicleConditionDefaults());
+    if (!nextOpen) {
+      reset(createVehicleConditionDefaults());
+      setValidationAttempted(false);
+    }
     onOpenChange(nextOpen);
   };
 
   const save = async (values: VehicleConditionFormValues) => {
+    setValidationAttempted(true);
+
     try {
       await setInitialVehicleCondition(vehicleId, values);
       appToast.success("Initial vehicle condition configured successfully.");
       reset(createVehicleConditionDefaults());
+      setValidationAttempted(false);
       onOpenChange(false);
       await onSaved();
     } catch (error) {
@@ -84,6 +92,11 @@ export function InitialConditionDialog({
     }
   };
 
+  const submit = handleSubmit(save, () => {
+    setValidationAttempted(true);
+    appToast.error("Complete every required condition field.");
+  });
+
   return (
     <Dialog open={open} onOpenChange={close}>
       <FormDialogContent width="wide" className="h-[92dvh] max-h-[900px]">
@@ -93,21 +106,21 @@ export function InitialConditionDialog({
           onClose={() => close(false)}
           closeLabel="Close initial condition form"
         />
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(save, () => appToast.error("Complete every required condition field."))}>
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
           <ScrollArea className="min-h-0 flex-1">
             <div className="p-4 sm:p-6">
               <VehicleConditionForm
                 value={condition}
-                errors={errors}
+                errors={validationAttempted ? errors : undefined}
                 personnelName={personnelName}
                 disabled={isSubmitting}
                 onChange={(nextCondition) => {
-                  setValue("odometer", nextCondition.odometer, { shouldDirty: true });
-                  setValue("fuel_level", nextCondition.fuel_level, { shouldDirty: true });
-                  setValue("comments", nextCondition.comments, { shouldDirty: true });
-                  setValue("checklist", nextCondition.checklist, { shouldDirty: true });
-                  setValue("markers", nextCondition.markers, { shouldDirty: true });
-                  setValue("signature_data", nextCondition.signature_data, { shouldDirty: true });
+                  setValue("odometer", nextCondition.odometer, { shouldDirty: true, shouldValidate: validationAttempted });
+                  setValue("fuel_level", nextCondition.fuel_level, { shouldDirty: true, shouldValidate: validationAttempted });
+                  setValue("comments", nextCondition.comments, { shouldDirty: true, shouldValidate: validationAttempted });
+                  setValue("checklist", nextCondition.checklist, { shouldDirty: true, shouldValidate: validationAttempted });
+                  setValue("markers", nextCondition.markers, { shouldDirty: true, shouldValidate: validationAttempted });
+                  setValue("signature_data", nextCondition.signature_data, { shouldDirty: true, shouldValidate: validationAttempted });
                 }}
               />
             </div>

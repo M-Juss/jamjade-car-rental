@@ -447,7 +447,7 @@ export default function VerificationQueue() {
                 {[
                   "Verification ID",
                   "Customer Name",
-                  "Email / Contact",
+                  "Contact",
                   "Document Type",
                   "Submitted Date",
                   "Status",
@@ -507,12 +507,9 @@ export default function VerificationQueue() {
                       </span>
                     </TableCell>
                     <TableCell className="whitespace-normal break-words px-2 py-2 align-top">
-                      <div className="space-y-0.5 text-[11px] leading-snug">
-                        <p className="break-all text-muted-foreground">
-                          {record.email}
-                        </p>
-                        <p className="text-muted-foreground">{record.contactNumber}</p>
-                      </div>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        {record.contactNumber}
+                      </span>
                     </TableCell>
                     <TableCell className="whitespace-normal break-words px-2 py-2 align-top text-[11px] font-semibold leading-snug text-foreground">
                       {record.documentType}

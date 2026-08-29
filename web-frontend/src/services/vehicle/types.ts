@@ -16,6 +16,7 @@ export type VehicleRecord = {
   name: string;
   brand: string;
   model?: string | null;
+  plateNumber?: string | null;
   pricePerDay: number;
   price: number;
   seats: number;

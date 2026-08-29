@@ -1,16 +1,11 @@
-import type { ComponentProps } from 'react';
-
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import type { FloatingTabConfig } from './navigation-tabs';
 
 export type CustomerTabRouteName = 'index' | 'bookings' | 'telematics' | 'notifications' | 'profile';
-export type CustomerTabIcon = ComponentProps<typeof MaterialCommunityIcons>['name'];
+export type CustomerTabIcon = FloatingTabConfig['icon'];
 
-export type CustomerTabConfig = {
+export type CustomerTabConfig = FloatingTabConfig & {
   routeName: CustomerTabRouteName;
-  label: string;
   description: string;
-  icon: CustomerTabIcon;
-  featured?: boolean;
   requiresActiveBooking?: boolean;
 };
 

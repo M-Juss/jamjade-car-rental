@@ -28,6 +28,10 @@ function PricingRow({
 }
 
 export function PricingBreakdown({ booking }: { booking: Booking }) {
+  const additionalChargesTotal = booking.additionalCharges
+    .filter((charge) => charge.responsibility === 'customer')
+    .reduce((total, charge) => total + Number(charge.amount), 0);
+
   return (
     <View>
       <View className="mb-3 flex-row items-center gap-2">
@@ -42,6 +46,9 @@ export function PricingBreakdown({ booking }: { booking: Booking }) {
       <PricingRow label="Outside Manila Fee" value={formatPeso(booking.outsideManilaFee)} />
       <PricingRow label="Optional Services" value={formatPeso(booking.optionalServices)} />
       <PricingRow label="Add-ons" value={formatPeso(booking.addOns)} />
+      {additionalChargesTotal > 0 ? (
+        <PricingRow label="Additional Charges" value={formatPeso(additionalChargesTotal)} />
+      ) : null}
       <PricingRow label="Discount" value={formatPesoDeduction(booking.discount)} />
       <PricingRow label="Down Payment" value={formatPesoDeduction(booking.downPayment)} />
       <View className="my-3 h-px bg-border" />

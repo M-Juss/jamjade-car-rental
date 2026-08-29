@@ -32,10 +32,12 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(driver)" options={{ headerShown: false }} />
           <Stack.Screen name="vehicles" options={{ headerShown: false }} />
           <Stack.Screen name="browse" options={{ headerShown: false }} />
           <Stack.Screen name="bookings" options={{ headerShown: false }} />
           <Stack.Screen name="profile" options={{ headerShown: false }} />
+          <Stack.Screen name="driver-payment" options={{ headerShown: false }} />
         </Stack>
         <StatusBar />
       </ThemeProvider>

@@ -240,7 +240,7 @@ export function DateWithLabel({
                 <Text className="text-[22px] font-black text-foreground">{label}</Text>
                 <Text className="mt-1 text-[12px] font-bold text-muted-foreground">
                   {disabledDateRanges.length > 0
-                    ? 'Past dates and approved booking dates are disabled.'
+                    ? 'Past dates and confirmed booking dates are disabled.'
                     : 'Past dates are disabled.'}
                 </Text>
               </View>

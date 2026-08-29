@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Mobile\AuthController;
 use App\Http\Controllers\Api\Mobile\BookingController;
 use App\Http\Controllers\Api\Mobile\DocumentController;
+use App\Http\Controllers\Api\Mobile\DriverBookingController;
 use App\Http\Controllers\Api\Mobile\NotificationController;
 use App\Http\Controllers\Api\Mobile\PaymentController;
 use App\Http\Controllers\Api\Mobile\PayPalController;
@@ -37,6 +38,9 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
         Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
         Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
+        Route::post('/bookings/{booking}/calibration', [BookingController::class, 'calibration'])->name('bookings.calibration');
+        Route::get('/driver/services', [DriverBookingController::class, 'index'])->name('driver.services.index');
+        Route::get('/driver/services/{booking}', [DriverBookingController::class, 'show'])->name('driver.services.show');
 
         Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
         Route::post('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
@@ -44,6 +48,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
         Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->name('paypal.orders.create');
         Route::post('/bookings/{booking}/paypal/orders', [PayPalController::class, 'createBalanceOrder'])->name('bookings.paypal.orders.create');
+        Route::post('/driver/services/{booking}/paypal/orders', [PayPalController::class, 'createDriverOutstandingOrder'])->name('driver.services.paypal.orders.create');
         Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->name('paypal.orders.capture');
         Route::post('/paypal/orders/{orderId}/abandon', [PayPalController::class, 'abandonOrder'])->name('paypal.orders.abandon');
 

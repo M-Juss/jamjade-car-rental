@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthenticatedOnly } from '@/components/auth/AuthenticatedOnly';
 import { firstParam } from '@/lib/browse/booking-params';
 import { formatPeso } from '@/lib/browse/pricing';
+import { useAuth } from '@/providers/AuthProvider';
 import { capturePayPalOrder } from '@/services/api';
 
 function PaymentResultScreen() {
@@ -31,18 +32,21 @@ function PaymentResultScreen() {
   const orderId = firstParam(params.orderId);
   const retryPath = firstParam(params.retryPath);
   const [isRetrying, setIsRetrying] = useState(false);
+  const { refreshProfile } = useAuth();
 
   useEffect(() => {
     if (!isSuccess) {
       return;
     }
 
+    void refreshProfile().catch(() => undefined);
+
     const timer = setTimeout(() => {
       router.replace('/(tabs)/bookings' as Href);
     }, 3500);
 
     return () => clearTimeout(timer);
-  }, [isSuccess, router]);
+  }, [isSuccess, refreshProfile, router]);
 
   const retry = async () => {
     if (!orderId) {

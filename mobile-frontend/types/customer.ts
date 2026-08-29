@@ -61,9 +61,10 @@ export type Customer = {
   documents: CustomerDocumentUploads;
   documentStatuses: CustomerDocumentStatuses;
   documentRejectionReasons: CustomerDocumentRejectionReasons;
-  bookingStatus: 'none' | 'pending' | 'active' | 'ongoing' | 'completed';
+  bookingStatus: 'none' | 'pending' | 'active' | 'ongoing' | 'returned' | 'completed';
   successfulBookings: number;
   totalSpent: number;
+  hasOutstandingBalance: boolean;
   joinedAt: string;
 };
 

@@ -13,7 +13,7 @@ const statusStyles = {
     color: '#C2410C',
     icon: Clock3,
   },
-  Approved: {
+  Confirmed: {
     bg: 'bg-[#EFF6FF]',
     border: 'border-[#BFDBFE]',
     text: 'text-[#1D4ED8]',
@@ -33,6 +33,13 @@ const statusStyles = {
     text: 'text-success',
     color: '#047857',
     icon: CheckCircle2,
+  },
+  Returned: {
+    bg: 'bg-warning-surface',
+    border: 'border-warning-border',
+    text: 'text-warning',
+    color: '#C2410C',
+    icon: Clock3,
   },
   Completed: {
     bg: 'bg-[#F0FDF4]',

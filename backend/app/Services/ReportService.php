@@ -61,7 +61,7 @@ class ReportService
             'monthlyRevenue' => $this->revenueTrend($payments, $periods),
             'fleetStatus' => $this->fleetStatus($vehicles),
             'topVehicles' => $this->topVehicles($vehicles),
-            'approvedBookings' => $bookings
+            'confirmedBookings' => $bookings
                 ->where('status', BookingStatus::Confirmed)
                 ->take(5)
                 ->map(fn (Booking $booking) => $this->bookingRow($booking))
@@ -211,7 +211,7 @@ class ReportService
             'totalBookings' => $bookings->count(),
             'completedBookings' => $bookings->where('status', BookingStatus::Completed)->count(),
             'activeRentals' => $bookings->where('status', BookingStatus::Ongoing)->count(),
-            'approvedBookings' => $bookings->where('status', BookingStatus::Confirmed)->count(),
+            'confirmedBookings' => $bookings->where('status', BookingStatus::Confirmed)->count(),
             'pendingBookings' => $bookings->where('status', BookingStatus::Pending)->count(),
             'cancelledBookings' => $bookings->where('status', BookingStatus::Cancelled)->count(),
             'averageBookingDuration' => round((float) ($bookings->avg('duration_days') ?? 0), 1),
@@ -592,6 +592,7 @@ class ReportService
         return match ($status) {
             BookingStatus::Completed => '#10B981',
             BookingStatus::Ongoing => '#346EF6',
+            BookingStatus::Returned => '#14B8A6',
             BookingStatus::Confirmed => '#60A5FA',
             BookingStatus::Pending => '#F59E0B',
             BookingStatus::Cancelled => '#F43F5E',

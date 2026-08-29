@@ -20,6 +20,7 @@ class VehicleFactory extends Factory
             'name' => "{$brand} {$model}",
             'brand' => $brand,
             'model' => $model,
+            'plate_number' => fake()->unique()->bothify('TST-###???'),
             'price_per_day' => fake()->numberBetween(1800, 7000),
             'seats' => fake()->randomElement([4, 5, 7]),
             'transmission' => fake()->randomElement(['Automatic', 'Manual']),

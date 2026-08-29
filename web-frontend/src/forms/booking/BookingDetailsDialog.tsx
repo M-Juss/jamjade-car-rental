@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, Car, ClipboardList, Info, Mail, Phone, UserRound } from "lucide-react";
+import { CalendarDays, Car, CheckCircle2, Circle, ClipboardList, Info, Mail, Phone, UserRound } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
@@ -16,18 +16,21 @@ import {
 } from "@/components/common/forms/FormDialogLayout";
 import { appToast } from "@/lib/toast";
 import { ApiError } from "@/services/http";
-import { assignDriver } from "@/services/booking";
+import { assignDriver, cancelBooking, completeBooking, finalizeReturnCharges, getBooking, markBookingReturned, startRental } from "@/services/booking";
 import type { BookingRecord, BookingStatus, DriverCandidate, PaymentStatus } from "@/services/booking";
 import {
   assignDriverSchema,
   type AssignDriverFormValues,
 } from "@/validations/booking/schemas";
+import { BookingInspectionDialog } from "@/forms/booking/BookingInspectionDialog";
+import { AdditionalChargesDialog } from "@/forms/booking/AdditionalChargesDialog";
 
 const bookingStatusStyle: Record<BookingStatus, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
   confirmed: "bg-muted text-primary border-blue-200",
   rejected: "bg-rose-50 text-rose-600 border-rose-200",
   ongoing: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  returned: "bg-cyan-50 text-cyan-700 border-cyan-200",
   completed: "bg-background text-muted-foreground border-border",
   cancelled: "bg-rose-50 text-rose-600 border-rose-200",
 };
@@ -92,6 +95,7 @@ type BookingDetailsDialogProps = {
   booking: BookingRecord;
   drivers: DriverCandidate[];
   onAssigned: (updated: BookingRecord) => void;
+  onUpdated: (updated: BookingRecord) => void;
 };
 
 export function BookingDetailsDialog({
@@ -100,8 +104,20 @@ export function BookingDetailsDialog({
   booking,
   drivers,
   onAssigned,
+  onUpdated,
 }: BookingDetailsDialogProps) {
   const [editingDriver, setEditingDriver] = useState(false);
+  const [details, setDetails] = useState<BookingRecord | null>(null);
+  const [inspectionType, setInspectionType] = useState<"outgoing" | "incoming" | null>(null);
+  const [chargesOpen, setChargesOpen] = useState(false);
+  const [isActing, setIsActing] = useState(false);
+  const activeBooking = details ?? booking;
+  useEffect(() => {
+    if (!open) return;
+    let ignore = false;
+    void getBooking(booking).then((record) => { if (!ignore) setDetails(record); }).catch(() => appToast.error("The latest booking readiness could not be loaded."));
+    return () => { ignore = true; };
+  }, [booking, open]);
   const {
     control,
     handleSubmit,
@@ -130,6 +146,19 @@ export function BookingDetailsDialog({
       driver_id: booking.assignedDriver ? String(booking.assignedDriver.id) : "",
     });
     onOpenChange(false);
+  };
+
+  const saveUpdated = (updated: BookingRecord) => {
+    setDetails(updated);
+    onUpdated(updated);
+  };
+
+  const runAction = async (action: () => Promise<BookingRecord>, success: string) => {
+    try { setIsActing(true); const updated = await action(); saveUpdated(await getBooking(updated)); appToast.success(success); }
+    catch (error) {
+      const serverMessage = error instanceof ApiError && error.errors ? Object.values(error.errors).flat()[0] : undefined;
+      appToast.error(serverMessage ?? "The booking action could not be completed.");
+    } finally { setIsActing(false); }
   };
 
   const handleReassign = () => {
@@ -163,19 +192,24 @@ export function BookingDetailsDialog({
     }
   };
 
+  const additionalChargesTotal = (activeBooking.additionalCharges ?? [])
+    .filter((charge) => charge.responsibility === "customer")
+    .reduce((total, charge) => total + charge.amount, 0);
   const pricingRows = [
-    ["Subtotal", booking.subtotal],
-    ["Delivery fee", booking.deliveryFee],
-    ["Owner driver fee", booking.ownerDriverFee],
-    ["Outside Manila fee", booking.outsideManilaFee],
-    ["Toll fee", booking.tollFee],
-    ["Late fee", booking.lateFee],
-    ["Add-ons", booking.addOns],
-    ["Discount", -booking.discount],
-    ["Down payment", -booking.downPayment],
+    ["Subtotal", activeBooking.subtotal],
+    ["Delivery fee", activeBooking.deliveryFee],
+    ["Owner driver fee", activeBooking.ownerDriverFee],
+    ["Outside Manila fee", activeBooking.outsideManilaFee],
+    ["Toll fee", activeBooking.tollFee],
+    ["Late fee", activeBooking.lateFee],
+    ["Add-ons", activeBooking.addOns],
+    ...(additionalChargesTotal > 0 ? [["Additional charges", additionalChargesTotal] as const] : []),
+    ["Discount", -activeBooking.discount],
+    ["Down payment", -activeBooking.downPayment],
   ] as const;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) close(); }}>
       <FormDialogContent>
         <FormDialogHeader
@@ -187,6 +221,36 @@ export function BookingDetailsDialog({
 
         <ScrollArea className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            <section className="space-y-4 rounded-2xl border border-border bg-surface p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><p className="font-mono text-xs font-semibold text-primary">{activeBooking.bookingCode}</p><h2 className="mt-1 text-lg font-bold text-foreground">Rental Progress</h2></div>
+                <div className="flex gap-2"><span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${bookingStatusStyle[activeBooking.statusKey]}`}>{activeBooking.adminStatus}</span><span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[activeBooking.paymentStatusKey]}`}>{activeBooking.paymentStatus}</span></div>
+              </div>
+              <div className="space-y-2">
+                {[
+                  ["Confirmed", ["confirmed", "ongoing", "returned", "completed"].includes(activeBooking.statusKey)],
+                  ["Handover", Boolean(activeBooking.readiness?.outgoingFinalized)],
+                  ["Active Rental", ["ongoing", "returned", "completed"].includes(activeBooking.statusKey)],
+                  ["Return", ["returned", "completed"].includes(activeBooking.statusKey)],
+                  ["Completed", activeBooking.statusKey === "completed"],
+                ].map(([label, done], index, steps) => (
+                  <div key={String(label)} className="relative flex items-center gap-3">
+                    {index < steps.length - 1 ? (
+                      <div
+                        aria-hidden="true"
+                        className={`absolute left-[11px] top-6 h-[calc(100%+0.5rem)] w-px ${done ? "bg-success-border" : "bg-border"}`}
+                      />
+                    ) : null}
+                    <div className={`relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full ${done ? "bg-success-surface" : "border border-border bg-background"}`}>
+                      {done ? <CheckCircle2 size={15} className="text-success" /> : <Circle size={15} className="text-subtle-foreground" />}
+                    </div>
+                    <div className={`min-w-0 flex-1 rounded-xl px-3 py-2 text-xs font-semibold ${done ? "bg-success-surface text-foreground" : "bg-background text-muted-foreground"}`}>
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
             <section className="space-y-3 rounded-2xl border border-border bg-white p-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Customer</p>
               <div className="flex items-center gap-3 rounded-xl bg-background px-3 py-3">
@@ -197,7 +261,6 @@ export function BookingDetailsDialog({
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13.5px] font-bold text-foreground">{booking.customer?.name || "Customer"}</p>
-                  <p className="truncate text-[11.5px] text-muted-foreground">Customer ID {booking.customer?.id ?? "—"}</p>
                 </div>
               </div>
               <div className="grid gap-2">
@@ -231,7 +294,6 @@ export function BookingDetailsDialog({
                   <p className="truncate text-[13.5px] font-bold text-foreground">
                     {[booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(" ") || "Vehicle unavailable"}
                   </p>
-                  <p className="text-[11.5px] text-muted-foreground">Vehicle ID {booking.vehicleId}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -268,7 +330,8 @@ export function BookingDetailsDialog({
                       placeholder="Select a driver"
                       options={drivers.map((driver) => ({
                         value: String(driver.id),
-                        label: driver.name,
+                        label: driver.hasOutstandingBalance ? `${driver.name} · Outstanding balance` : driver.name,
+                        disabled: driver.hasOutstandingBalance,
                       }))}
                       value={selectedDriverId}
                       onValueChange={(value) =>
@@ -364,6 +427,11 @@ export function BookingDetailsDialog({
                         </p>
                       </div>
                     </div>
+                    {booking.statusKey === "pending" || booking.statusKey === "confirmed" ? (
+                      <Button type="button" variant="outline" onClick={handleReassign} className="w-full">
+                        <UserRound size={14} className="mr-2" />Reassign Driver
+                      </Button>
+                    ) : null}
                   </div>
                 ) : null}
               </section>
@@ -431,53 +499,32 @@ export function BookingDetailsDialog({
               <div className="h-px bg-border" />
               <div className="flex justify-between">
                 <span className="text-[13px] font-bold text-foreground">Total</span>
-                <span className="text-[14px] font-bold text-primary">{peso(booking.totalAmount)}</span>
+                <span className="text-[14px] font-bold text-primary">{peso(activeBooking.totalAmount)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-border pt-2">
                 <span className="text-[11.5px] text-muted-foreground">Payment status</span>
-                <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
-                  {booking.paymentStatus}
+                <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[activeBooking.paymentStatusKey]}`}>
+                  {activeBooking.paymentStatus}
                 </span>
               </div>
             </section>
           </div>
         </ScrollArea>
 
-        <FormDialogFooter
-          className={booking.driverOption === "owners_driver" && booking.assignedDriver && !editingDriver ? "sm:grid-cols-3" : undefined}
-        >
-          {booking.driverOption === "owners_driver" &&
-          booking.assignedDriver &&
-          !editingDriver ? (
-            <Button
-              type="button"
-              onClick={handleReassign}
-              className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover"
-            >
-              <UserRound size={14} className="mr-2" />
-              Reassign Driver
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            disabled
-            title="Vehicle inspection is not available yet."
-            className="cursor-not-allowed border-border text-[13px] font-medium text-muted-foreground hover:bg-background"
-            variant="outline"
-          >
-            <ClipboardList size={14} className="mr-2" />
-            Start Vehicle Inspection
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={close}
-            className="border-border text-[13px] font-medium text-muted-foreground hover:bg-background"
-          >
-            Cancel
-          </Button>
+        <FormDialogFooter className="sm:flex sm:flex-nowrap sm:items-center sm:gap-2 [&>*]:min-w-0 sm:[&>*]:w-auto sm:[&>*]:flex-1">
+          {activeBooking.statusKey === "confirmed" && !activeBooking.readiness?.outgoingFinalized ? <Button type="button" disabled={isActing || !activeBooking.readiness || !activeBooking.readiness.paymentAcceptedForInspection || !activeBooking.readiness.driverAssigned || !activeBooking.readiness.driverEligible || !activeBooking.readiness.documentsApproved || !activeBooking.readiness.vehicleOperational} onClick={() => setInspectionType("outgoing")}><ClipboardList size={14} className="mr-2" />Start Outgoing Inspection</Button> : null}
+          {activeBooking.statusKey === "confirmed" && activeBooking.readiness?.outgoingFinalized && activeBooking.readiness.calibrationPassed ? <Button type="button" disabled={isActing} onClick={() => void runAction(() => startRental(activeBooking), "Rental started successfully.")}>{isActing ? "Starting..." : "Start Rental"}</Button> : null}
+          {activeBooking.statusKey === "ongoing" && !activeBooking.readiness?.incomingFinalized ? <Button type="button" disabled={isActing} onClick={() => setInspectionType("incoming")}><ClipboardList size={14} className="mr-2" />Start Incoming Inspection</Button> : null}
+          {activeBooking.statusKey === "ongoing" && activeBooking.readiness?.incomingFinalized && !activeBooking.readiness.returnChargesFinalized ? <><Button type="button" variant="outline" onClick={() => setChargesOpen(true)}>Add Charges</Button><Button type="button" disabled={isActing} onClick={() => void runAction(() => finalizeReturnCharges(activeBooking), "Return charges reviewed and finalized.")}>Finalize Charges</Button></> : null}
+          {activeBooking.statusKey === "ongoing" && activeBooking.readiness?.returnChargesFinalized ? <Button type="button" disabled={isActing} onClick={() => void runAction(() => markBookingReturned(activeBooking), "Booking marked Returned.")}>Mark Returned</Button> : null}
+          {activeBooking.statusKey === "returned" && (activeBooking.readiness?.customerBalance ?? activeBooking.remainingBalance) <= 0 && activeBooking.readiness?.customerChargesSettled ? <Button type="button" disabled={isActing} onClick={() => void runAction(() => completeBooking(activeBooking), "Booking completed successfully.")}>Complete Booking</Button> : null}
+          {["pending", "confirmed"].includes(activeBooking.statusKey) ? <Button type="button" variant="destructive" disabled={isActing} onClick={() => void runAction(() => cancelBooking(activeBooking), "Booking cancelled.")}>Cancel Booking</Button> : null}
+          <Button type="button" variant="outline" onClick={close}>Close</Button>
         </FormDialogFooter>
       </FormDialogContent>
     </Dialog>
+    {inspectionType ? <BookingInspectionDialog open type={inspectionType} booking={activeBooking} personnelName={undefined} onOpenChange={(next) => { if (!next) setInspectionType(null); }} onSaved={(updated) => { saveUpdated(updated); setInspectionType(null); }} /> : null}
+    <AdditionalChargesDialog open={chargesOpen} onOpenChange={setChargesOpen} booking={activeBooking} onSaved={saveUpdated} />
+    </>
   );
 }

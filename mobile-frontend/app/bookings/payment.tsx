@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { firstParam } from '@/lib/browse/booking-params';
 import { formatPeso } from '@/lib/browse/pricing';
+import { getPaymentErrorMessage } from '@/lib/payments/payment-error';
 import {
   abandonPayPalOrder,
   capturePayPalOrder,
@@ -101,9 +102,10 @@ export default function RemainingBalancePaymentScreen() {
         `/browse/success?status=success&source=balance&reference=${encodeURIComponent(capturedBooking.bookingCode)}&paymentStatus=${encodeURIComponent(capturedBooking.paymentStatus)}&remainingBalance=${encodeURIComponent(String(capturedBooking.remainingBalance))}` as Href,
       );
     } catch (paymentError) {
-      const message = paymentError instanceof Error
-        ? paymentError.message
-        : 'The remaining balance payment could not be completed.';
+      const message = getPaymentErrorMessage(
+        paymentError,
+        'The remaining balance payment could not be completed.',
+      );
 
       if (orderId && !approved) {
         await abandonPayPalOrder(orderId).catch(() => undefined);

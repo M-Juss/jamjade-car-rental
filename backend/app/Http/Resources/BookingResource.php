@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\BookingStatus;
 use App\Models\CustomerDocument;
+use App\Services\RentalReadinessService;
 use App\Support\PublicStorageUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -13,6 +14,9 @@ class BookingResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $isManagement = (bool) $request->user()?->can('manage bookings');
+        $isDriverView = $request->user()?->id === $this->assigned_driver_id
+            && $request->user()?->id !== $this->user_id;
         $vehicle = $this->whenLoaded('vehicle');
         $payments = $this->whenLoaded('payments', fn () => $this->payments, collect());
         $latestPayment = collect($payments)->sortByDesc('created_at')->first();
@@ -58,38 +62,92 @@ class BookingResource extends JsonResource
                 'phoneNumber' => $this->assignedDriver->phone_number,
             ] : null,
             'driverAssignedAt' => $this->driver_assigned_at?->toISOString(),
+            'calibrationStatus' => $this->calibration_status,
+            'calibratedAt' => $this->calibrated_at?->toISOString(),
+            'returnedAt' => $this->returned_at?->toISOString(),
+            'completedAt' => $this->completed_at?->toISOString(),
+            'returnChargesFinalizedAt' => $this->return_charges_finalized_at?->toISOString(),
             'transmission' => $this->vehicle?->transmission,
             'fuelType' => $this->vehicle?->fuel_type,
             'seats' => $this->vehicle?->seats,
-            'pricePerDay' => (float) $this->price_per_day,
-            'subtotal' => (float) $this->subtotal,
-            'deliveryFee' => (float) $this->delivery_fee,
-            'outsideManilaFee' => (float) $this->outside_manila_fee,
-            'ownerDriverFee' => (float) $this->owner_driver_fee,
-            'tollFee' => (float) $this->toll_fee,
-            'lateFee' => (float) $this->late_fee,
-            'optionalServices' => (float) $this->add_ons_total,
-            'addOns' => (float) $this->add_ons_total,
-            'discount' => (float) $this->discount_total,
-            'penaltyTotal' => (float) $this->penalty_total,
-            'downPayment' => (float) $this->down_payment_amount,
-            'totalAmount' => (float) $this->total_amount,
-            'remainingBalance' => max((float) $this->remaining_balance, max((float) $this->total_amount - $paidAmount, 0)),
-            'balanceDueAt' => $this->balance_due_at?->toISOString(),
+            'pricePerDay' => $isDriverView ? 0 : (float) $this->price_per_day,
+            'subtotal' => $isDriverView ? 0 : (float) $this->subtotal,
+            'deliveryFee' => $isDriverView ? 0 : (float) $this->delivery_fee,
+            'outsideManilaFee' => $isDriverView ? 0 : (float) $this->outside_manila_fee,
+            'ownerDriverFee' => $isDriverView ? 0 : (float) $this->owner_driver_fee,
+            'tollFee' => $isDriverView ? 0 : (float) $this->toll_fee,
+            'lateFee' => $isDriverView ? 0 : (float) $this->late_fee,
+            'optionalServices' => $isDriverView ? 0 : (float) $this->add_ons_total,
+            'addOns' => $isDriverView ? 0 : (float) $this->add_ons_total,
+            'discount' => $isDriverView ? 0 : (float) $this->discount_total,
+            'penaltyTotal' => $isDriverView ? 0 : (float) $this->penalty_total,
+            'downPayment' => $isDriverView ? 0 : (float) $this->down_payment_amount,
+            'totalAmount' => $isDriverView ? 0 : (float) $this->total_amount,
+            'remainingBalance' => $isDriverView ? 0 : max((float) $this->remaining_balance, max((float) $this->total_amount - $paidAmount, 0)),
+            'balanceDueAt' => $isDriverView ? null : $this->balance_due_at?->toISOString(),
             'confirmationEmailSentAt' => $this->confirmation_email_sent_at?->toISOString(),
             'confirmationEmailStatus' => $this->confirmation_email_status,
-            'paymentStatus' => $this->payment_status->label(),
-            'paymentStatusKey' => $this->payment_status->value,
-            'paymentMethod' => $latestPayment?->payment_method ?? 'N/A',
-            'transactionId' => $latestPayment?->transaction_id ?? 'N/A',
-            'paidAt' => $latestPayment?->paid_at?->format('F j, Y - g:i A') ?? 'N/A',
+            'paymentStatus' => $isDriverView ? 'Private' : $this->payment_status->label(),
+            'paymentStatusKey' => $isDriverView ? null : $this->payment_status->value,
+            'paymentMethod' => $isDriverView ? 'N/A' : ($latestPayment?->payment_method ?? 'N/A'),
+            'transactionId' => $isDriverView ? 'N/A' : ($latestPayment?->transaction_id ?? 'N/A'),
+            'paidAt' => $isDriverView ? 'N/A' : ($latestPayment?->paid_at?->format('F j, Y - g:i A') ?? 'N/A'),
             'createdAt' => $this->created_at?->format('F j, Y - g:i A'),
             'notes' => $this->notes,
-            'adminNotes' => $this->admin_notes,
-            'documents' => $this->documentSummary(),
+            'adminNotes' => $this->when($isManagement, $this->admin_notes),
+            'documents' => $isDriverView ? [] : $this->documentSummary(),
             'timeline' => $this->timeline(),
-            'payments' => PaymentResource::collection($payments),
-            'customer' => new UserResource($this->whenLoaded('user')),
+            'payments' => $isDriverView ? [] : PaymentResource::collection($payments),
+            'additionalCharges' => AdditionalChargeResource::collection(
+                $this->whenLoaded('additionalCharges', fn () => $isManagement
+                    ? $this->additionalCharges
+                    : $this->additionalCharges->where('responsible_user_id', $request->user()?->id)->values())
+            ),
+            'inspections' => $this->when($isManagement, fn () => VehicleInspectionResource::collection($this->whenLoaded('vehicleInspections'))),
+            'inspectionBaseline' => $this->when($isManagement && $this->relationLoaded('vehicle'), function () {
+                $outgoing = $this->relationLoaded('vehicleInspections')
+                    ? $this->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized')
+                    : null;
+                $baseline = $this->status === BookingStatus::Ongoing && $outgoing ? $outgoing : $this->vehicle?->currentCondition;
+
+                return $baseline ? new VehicleInspectionResource($baseline) : null;
+            }),
+            'readiness' => $this->when(
+                $isManagement && $this->relationLoaded('vehicleInspections') && $this->relationLoaded('vehicle'),
+                fn () => app(RentalReadinessService::class)->evaluate($this->resource)
+            ),
+            'rentalProgress' => [
+                'outgoingFinalized' => $this->relationLoaded('vehicleInspections')
+                    ? $this->vehicleInspections->contains(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized')
+                    : false,
+                'calibrationStatus' => $this->calibration_status,
+                'tripEnded' => $this->relationLoaded('telematicsTrips')
+                    ? $this->telematicsTrips->contains(fn ($trip) => $trip->status === 'ended')
+                    : false,
+                'latestTripId' => $this->relationLoaded('telematicsTrips')
+                    ? $this->telematicsTrips->sortByDesc('created_at')->first()?->id
+                    : null,
+                'latestTripStatus' => $this->relationLoaded('telematicsTrips')
+                    ? $this->telematicsTrips->sortByDesc('created_at')->first()?->status
+                    : null,
+                'incomingFinalized' => $this->relationLoaded('vehicleInspections')
+                    ? $this->vehicleInspections->contains(fn ($inspection) => $inspection->type->value === 'incoming' && $inspection->status->value === 'finalized')
+                    : false,
+            ],
+            'customer' => $this->whenLoaded('user', function () use ($isManagement, $request) {
+                if ($isManagement || $request->user()?->id === $this->user_id) {
+                    return new UserResource($this->user);
+                }
+
+                if ($request->user()?->id === $this->assigned_driver_id) {
+                    return [
+                        'name' => $this->user->name,
+                        'phoneNumber' => $this->user->phone_number,
+                    ];
+                }
+
+                return null;
+            }),
         ];
     }
 
@@ -121,16 +179,22 @@ class BookingResource extends JsonResource
                 'completed' => true,
             ],
             [
-                'title' => 'Booking Approved',
-                'description' => 'Your booking has been approved.',
+                'title' => 'Booking Confirmed',
+                'description' => 'Your booking has been confirmed.',
                 'timestamp' => $this->confirmed_at?->format('F j, Y - g:i A') ?? '',
-                'completed' => in_array($this->status, [BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Completed], true),
+                'completed' => in_array($this->status, [BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Returned, BookingStatus::Completed], true),
             ],
             [
                 'title' => 'Rental Active',
                 'description' => 'Your rental is currently active.',
                 'timestamp' => $this->started_at?->format('F j, Y - g:i A') ?? '',
-                'completed' => in_array($this->status, [BookingStatus::Ongoing, BookingStatus::Completed], true),
+                'completed' => in_array($this->status, [BookingStatus::Ongoing, BookingStatus::Returned, BookingStatus::Completed], true),
+            ],
+            [
+                'title' => 'Vehicle Returned',
+                'description' => 'The vehicle return and Incoming Inspection are complete.',
+                'timestamp' => $this->returned_at?->format('F j, Y - g:i A') ?? '',
+                'completed' => in_array($this->status, [BookingStatus::Returned, BookingStatus::Completed], true),
             ],
             [
                 'title' => 'Completed',

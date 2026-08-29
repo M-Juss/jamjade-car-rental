@@ -51,7 +51,7 @@ it('allows an admin to confirm a pending booking through session auth', function
     $response->assertOk()
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.statusKey', BookingStatus::Confirmed->value)
-        ->assertJsonPath('data.adminStatus', 'Approved');
+        ->assertJsonPath('data.adminStatus', 'Confirmed');
 
     $this->assertDatabaseHas('booking_status_logs', [
         'booking_id' => $booking->id,

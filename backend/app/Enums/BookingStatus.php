@@ -8,6 +8,7 @@ enum BookingStatus: string
     case Confirmed = 'confirmed';
     case Rejected = 'rejected';
     case Ongoing = 'ongoing';
+    case Returned = 'returned';
     case Completed = 'completed';
     case Cancelled = 'cancelled';
 
@@ -15,9 +16,10 @@ enum BookingStatus: string
     {
         return match ($this) {
             self::Pending => 'Pending',
-            self::Confirmed => 'Approved',
+            self::Confirmed => 'Confirmed',
             self::Rejected => 'Rejected',
             self::Ongoing => 'Active',
+            self::Returned => 'Returned',
             self::Completed => 'Completed',
             self::Cancelled => 'Cancelled',
         };
@@ -27,9 +29,10 @@ enum BookingStatus: string
     {
         return match ($this) {
             self::Pending => 'Pending',
-            self::Confirmed => 'Approved',
+            self::Confirmed => 'Confirmed',
             self::Rejected => 'Rejected',
             self::Ongoing => 'Ongoing',
+            self::Returned => 'Returned',
             self::Completed => 'Completed',
             self::Cancelled => 'Cancelled',
         };
@@ -43,7 +46,8 @@ enum BookingStatus: string
         return match ($this) {
             self::Pending => [self::Confirmed, self::Cancelled, self::Rejected],
             self::Confirmed => [self::Ongoing, self::Cancelled],
-            self::Ongoing => [self::Completed, self::Cancelled],
+            self::Ongoing => [self::Returned],
+            self::Returned => [self::Completed],
             self::Completed, self::Cancelled, self::Rejected => [],
         };
     }

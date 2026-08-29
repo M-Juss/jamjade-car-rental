@@ -19,6 +19,49 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 });
 
+it('reports unpaid customer charges as a booking lock in the mobile profile summary', function () {
+    $user = customerUser();
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/mobile/profile')
+        ->assertOk()
+        ->assertJsonPath('data.bookingSummary.hasOutstandingBalance', false);
+
+    $booking = Booking::create([
+        'booking_code' => 'BK-BALANCE-LOCK',
+        'user_id' => $user->id,
+        'vehicle_id' => availableVehicle()->id,
+        'rental_type' => RentalType::SelfDrive,
+        'rental_start_at' => now()->subDays(2),
+        'rental_end_at' => now()->subDay(),
+        'pickup_location_type' => 'shop',
+        'pickup_location' => 'Jamjade Garage',
+        'return_location' => 'Jamjade Garage',
+        'driver_option' => RentalType::SelfDrive->value,
+        'status' => BookingStatus::Returned,
+        'payment_status' => PaymentStatus::Partial,
+        'price_per_day' => 3500,
+        'duration_days' => 1,
+        'subtotal' => 3500,
+        'down_payment_amount' => 1000,
+        'remaining_balance' => 2500,
+        'total_amount' => 3500,
+    ]);
+    $booking->additionalCharges()->create([
+        'type' => 'cleaning',
+        'description' => 'Interior cleaning',
+        'amount' => 500,
+        'responsibility' => 'customer',
+        'responsible_user_id' => $user->id,
+        'payment_status' => PaymentStatus::Unpaid,
+        'created_by' => $user->id,
+    ]);
+
+    $this->getJson('/api/mobile/profile')
+        ->assertOk()
+        ->assertJsonPath('data.bookingSummary.hasOutstandingBalance', true);
+});
+
 it('accepts customers on their eighteenth birthday and rejects younger profile birthdates', function () {
     $user = User::factory()->create();
     $user->assignRole(UserRole::Customer->value);

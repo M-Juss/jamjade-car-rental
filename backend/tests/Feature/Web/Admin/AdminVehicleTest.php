@@ -28,6 +28,7 @@ function vehiclePayload(array $overrides = []): array
         'name' => 'Toyota Vios XLE',
         'brand' => 'Toyota',
         'model' => 'Vios XLE',
+        'plate_number' => 'ABC 1234',
         'price_per_day' => 2500,
         'seats' => 5,
         'transmission' => 'Automatic',
@@ -45,10 +46,12 @@ it('creates vehicles with available status by default', function () {
 
     $response->assertCreated()
         ->assertJsonPath('data.status', VehicleStatus::Available->value)
-        ->assertJsonPath('data.statusLabel', 'Available');
+        ->assertJsonPath('data.statusLabel', 'Available')
+        ->assertJsonPath('data.plateNumber', 'ABC 1234');
 
     $this->assertDatabaseHas('vehicles', [
         'name' => 'Toyota Vios XLE',
+        'plate_number' => 'ABC 1234',
         'status' => VehicleStatus::Available->value,
     ]);
 });
@@ -89,13 +92,28 @@ it('stores uploaded vehicle images as public storage paths', function () {
 it('requires the add vehicle form core fields', function () {
     $payload = vehiclePayload([
         'description' => '',
+        'plate_number' => '',
         'features' => [],
         'images' => [],
     ]);
 
     $this->actingAs(ownerUser())->postJson('/admin/vehicles', $payload)
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['description', 'features', 'images']);
+        ->assertJsonValidationErrors(['description', 'plate_number', 'features', 'images']);
+});
+
+it('requires unique vehicle plate numbers', function () {
+    $owner = ownerUser();
+
+    $this->actingAs($owner)->postJson('/admin/vehicles', vehiclePayload())
+        ->assertCreated();
+
+    $this->actingAs($owner)->postJson('/admin/vehicles', vehiclePayload([
+        'name' => 'Toyota Vios E',
+        'model' => 'Vios E',
+    ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('plate_number');
 });
 
 it('validates vehicle list filters and pagination limits', function () {

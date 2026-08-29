@@ -23,6 +23,7 @@ function toVehicleFormData(payload: CreateVehicleRequestPayload) {
   appendIfPresent(formData, "name", payload.name);
   appendIfPresent(formData, "brand", payload.brand);
   appendIfPresent(formData, "model", payload.model);
+  appendIfPresent(formData, "plate_number", payload.plate_number);
   appendIfPresent(formData, "description", payload.description);
   appendIfPresent(formData, "price_per_day", payload.price_per_day);
   appendIfPresent(formData, "seats", payload.seats);

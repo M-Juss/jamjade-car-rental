@@ -78,6 +78,10 @@ export function LoginForm() {
         email: values.email,
         password: values.password,
       });
+      if (user.roles?.includes('driver')) {
+        router.replace('/(driver)/services');
+        return;
+      }
       router.replace(needsBasicProfileSetup(user) ? '/onboarding/basic-info' : '/(tabs)');
     } catch (error) {
       toast.showToast(getLoginErrorMessage(error));

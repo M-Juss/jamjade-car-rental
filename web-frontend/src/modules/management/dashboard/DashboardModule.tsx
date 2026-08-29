@@ -46,7 +46,7 @@ const statusColor: Record<string, string> = {
   Maintenance: "border-amber-200 bg-amber-50 text-amber-700",
   Unavailable: "border-slate-200 bg-slate-50 text-slate-600",
   Pending: "border-amber-200 bg-amber-50 text-amber-700",
-  Approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  Confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
 };
 
 const ACTIVITIES_PER_PAGE = 5;
@@ -128,7 +128,7 @@ export default function Dashboard() {
     { label: "Total Customers", value: summary.totalCustomers.toLocaleString(), icon: Users, iconBg: "bg-violet-50", iconColor: "text-violet-600" },
     { label: "Completed Bookings", value: summary.completedBookings.toLocaleString(), icon: CheckCircle2, iconBg: "bg-teal-50", iconColor: "text-teal-600" },
     { label: "Active Rentals", value: summary.activeRentals.toLocaleString(), icon: KeyRound, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
-    { label: "Approved Bookings", value: summary.approvedBookings.toLocaleString(), icon: CalendarCheck, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+    { label: "Confirmed Bookings", value: summary.confirmedBookings.toLocaleString(), icon: CalendarCheck, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
   ];
 
   return (
@@ -258,21 +258,21 @@ export default function Dashboard() {
       <div>
         <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <CardHeader className="px-5 pt-5 pb-2">
-            <CardTitle className="text-[14px] font-bold text-foreground">Approved Bookings</CardTitle>
-            <CardDescription className="text-[12px] text-muted-foreground">Latest approved bookings</CardDescription>
+            <CardTitle className="text-[14px] font-bold text-foreground">Confirmed Bookings</CardTitle>
+            <CardDescription className="text-[12px] text-muted-foreground">Latest confirmed bookings</CardDescription>
           </CardHeader>
           <CardContent className="px-0 pb-2">
-            {data.approvedBookings.length === 0 ? (
-              <EmptyState message="There are no approved bookings." />
+            {data.confirmedBookings.length === 0 ? (
+              <EmptyState message="There are no confirmed bookings." />
             ) : (
               <>
                 {/* Card layout for small screens; the table takes over from md */}
                 <div className="grid gap-3 px-5 pb-3 md:hidden">
-                  {data.approvedBookings.map((booking) => (
+                  {data.confirmedBookings.map((booking) => (
                     <div key={booking.internalId} className="rounded-xl border border-border bg-background p-3.5">
                       <div className="flex items-start justify-between gap-3">
                         <p className="break-all font-mono text-[12px] font-semibold text-primary">{booking.bookingId}</p>
-                        <Badge className={`border ${statusColor.Approved}`}>Approved</Badge>
+                        <Badge className={`border ${statusColor.Confirmed}`}>Confirmed</Badge>
                       </div>
                       <p className="mt-2 text-[12.5px] font-semibold text-foreground">{booking.customer}</p>
                       <p className="mt-0.5 text-[12px] text-muted-foreground">{booking.vehicle}</p>
@@ -302,7 +302,7 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.approvedBookings.map((booking) => (
+                      {data.confirmedBookings.map((booking) => (
                         <tr key={booking.internalId} className="border-b border-background hover:bg-background">
                           <td className="px-5 py-3 font-mono text-[12px] font-semibold text-primary">{booking.bookingId}</td>
                           <td className="px-5 py-3 text-[12.5px] font-medium text-foreground">{booking.customer}</td>
@@ -310,7 +310,7 @@ export default function Dashboard() {
                           <td className="px-5 py-3 text-[12px] text-muted-foreground">{booking.rentalDate ?? "N/A"}</td>
                           <td className="px-5 py-3 text-[12px] text-muted-foreground">{booking.returnDate ?? "N/A"}</td>
                           <td className="px-5 py-3">
-                            <Badge className={`border ${statusColor.Approved}`}>Approved</Badge>
+                            <Badge className={`border ${statusColor.Confirmed}`}>Confirmed</Badge>
                           </td>
                         </tr>
                       ))}

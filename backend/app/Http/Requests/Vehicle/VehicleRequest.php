@@ -6,6 +6,7 @@ use App\Http\Requests\BaseFormRequest;
 use App\Support\VehicleConditionRules;
 use Closure;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class VehicleRequest extends BaseFormRequest
@@ -26,6 +27,12 @@ class VehicleRequest extends BaseFormRequest
             'fuel_type' => $this->input('fuel_type', $this->input('fuel')),
         ]);
 
+        if (is_string($this->input('plate_number'))) {
+            $this->merge([
+                'plate_number' => strtoupper(trim((string) preg_replace('/\s+/', ' ', $this->input('plate_number')))),
+            ]);
+        }
+
         if ($this->isMethod('post') && is_array($this->input('initial_condition'))) {
             $condition = $this->input('initial_condition');
             $condition['markers'] ??= [];
@@ -37,11 +44,17 @@ class VehicleRequest extends BaseFormRequest
     {
         $relationRequirement = $this->isMethod('post') ? 'required' : 'sometimes';
         $formFieldRequirement = $this->isMethod('post') ? 'required' : 'sometimes';
+        $plateNumberUnique = Rule::unique('vehicles', 'plate_number');
+
+        if ($vehicle = $this->route('vehicle')) {
+            $plateNumberUnique->ignore($vehicle);
+        }
 
         $rules = [
             'name' => [$formFieldRequirement, 'string', 'max:160'],
             'brand' => [$formFieldRequirement, 'string', 'max:80'],
             'model' => [$formFieldRequirement, 'string', 'max:120'],
+            'plate_number' => [$formFieldRequirement, 'string', 'max:32', $plateNumberUnique],
             'price_per_day' => [$formFieldRequirement, 'numeric', 'min:1'],
             'seats' => [$formFieldRequirement, 'integer', 'min:1', 'max:20'],
             'transmission' => [$formFieldRequirement, 'string', 'max:40'],

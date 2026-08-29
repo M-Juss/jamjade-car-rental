@@ -23,7 +23,8 @@ class VehicleService
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('brand', 'like', "%{$search}%")
-                        ->orWhere('model', 'like', "%{$search}%");
+                        ->orWhere('model', 'like', "%{$search}%")
+                        ->orWhere('plate_number', 'like', "%{$search}%");
                 });
             })
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
@@ -104,6 +105,7 @@ class VehicleService
                 'name',
                 'brand',
                 'model',
+                'plate_number',
                 'price_per_day',
                 'seats',
                 'transmission',

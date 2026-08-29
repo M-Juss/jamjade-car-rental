@@ -1,7 +1,8 @@
-import { Stack, useRouter } from 'expo-router';
+import { Redirect, Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Image, Pressable, Text, useWindowDimensions, View, type ImageStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/providers/AuthProvider';
 
 const carHero = require('@/assets/images/vios-hero.png');
 
@@ -11,6 +12,7 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export default function LandingScreen() {
   const router = useRouter();
+  const { status, user } = useAuth();
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
   const isCompact = height < 760 || width < 380;
@@ -61,6 +63,10 @@ export default function LandingScreen() {
   const secondaryTextClass = isCompact
     ? 'text-center text-[14px] font-extrabold text-foreground'
     : 'text-center text-[15px] font-extrabold text-foreground';
+
+  if (status === 'authenticated') {
+    return <Redirect href={user?.roles?.includes('driver') ? '/(driver)/services' : '/(tabs)'} />;
+  }
 
   return (
     <View className="flex-1 bg-background">

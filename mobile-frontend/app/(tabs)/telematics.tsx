@@ -28,6 +28,13 @@ import {
 } from '@/components/telematics/TelematicsCards';
 import { useCustomer } from '@/lib/customer/customer-store';
 import {
+  endTelematicsTrip,
+  getBooking,
+  recordBookingCalibration,
+  startTelematicsTrip,
+} from '@/services/api';
+import type { Booking } from '@/types/booking';
+import {
   calibrationTestSteps,
   createMockActiveBooking,
   initialCalibrationSteps,
@@ -70,6 +77,7 @@ function getForcedBookingStatus(value?: string | string[]) {
   if (
     firstValue === 'active' ||
     firstValue === 'ongoing' ||
+    firstValue === 'returned' ||
     firstValue === 'completed' ||
     firstValue === 'pending'
   ) {
@@ -102,6 +110,7 @@ export default function TelematicsScreen() {
     mockStatus?: string;
     calibration?: string;
     trip?: string;
+    bookingId?: string;
   }>();
   const customer = useCustomer();
   const insets = useSafeAreaInsets();
@@ -117,9 +126,39 @@ export default function TelematicsScreen() {
   const [calibrationAttempts, setCalibrationAttempts] = useState(0);
   const [isCheckingCalibration, setIsCheckingCalibration] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [lifecycleBooking, setLifecycleBooking] = useState<Booking | null>(null);
+  const [tripId, setTripId] = useState<number | null>(null);
+  const [lifecycleMessage, setLifecycleMessage] = useState<string | null>(null);
 
-  const isCompleted = resolvedBookingStatus === 'completed';
-  const isActiveBooking = resolvedBookingStatus === 'active' || resolvedBookingStatus === 'ongoing';
+  useEffect(() => {
+    if (!params.bookingId) {
+      return;
+    }
+
+    void getBooking(params.bookingId).then((nextBooking) => {
+      setLifecycleBooking(nextBooking);
+      setTripId(nextBooking.rentalProgress.latestTripId ?? null);
+      if (nextBooking.calibrationStatus === 'passed') {
+        setCalibrationSteps(initialCalibrationSteps.map((step) => ({ ...step, status: 'passed' })));
+      }
+      if (nextBooking.rentalProgress.latestTripStatus === 'started') {
+        setTripStatus('started');
+      } else if (nextBooking.rentalProgress.latestTripStatus === 'paused') {
+        setTripStatus('paused');
+      } else if (nextBooking.rentalProgress.latestTripStatus === 'ended') {
+        setTripStatus('ended');
+      }
+    }).catch(() => setLifecycleMessage('This booking could not be refreshed.'));
+  }, [params.bookingId]);
+
+  const actualStatus = lifecycleBooking?.status;
+  const isCompleted = actualStatus
+    ? actualStatus === 'Completed'
+    : resolvedBookingStatus === 'completed';
+  const isReturned = actualStatus ? actualStatus === 'Returned' : resolvedBookingStatus === 'returned';
+  const isActiveBooking = actualStatus
+    ? actualStatus === 'Confirmed' || actualStatus === 'Active' || actualStatus === 'Ongoing'
+    : resolvedBookingStatus === 'active' || resolvedBookingStatus === 'ongoing';
   const calibrationCompleted = calibrationSteps.every((step) => step.status === 'passed');
   const hasFailedCalibration = calibrationSteps.some((step) => step.status === 'failed');
   const activeBooking = useMemo(
@@ -181,6 +220,46 @@ export default function TelematicsScreen() {
     );
     setCalibrationAttempts((currentAttempts) => currentAttempts + 1);
     setIsCheckingCalibration(false);
+
+    if (!shouldFailThisRun && lifecycleBooking) {
+      try {
+        const updated = await recordBookingCalibration(lifecycleBooking.id);
+        setLifecycleBooking(updated);
+        setLifecycleMessage('Calibration complete. Waiting for Jamjade to start the rental.');
+      } catch {
+        setLifecycleMessage('Calibration passed locally but could not be recorded. Please try again.');
+      }
+    }
+  };
+
+  const startTrip = async () => {
+    if (!lifecycleBooking) {
+      setTripStatus('started');
+      return;
+    }
+
+    try {
+      const trip = await startTelematicsTrip(lifecycleBooking.backendId);
+      setTripId(trip.id);
+      setTripStatus('started');
+      setLifecycleMessage(null);
+    } catch {
+      setLifecycleMessage('Jamjade has not enabled this trip yet. Confirm that the rental is active.');
+    }
+  };
+
+  const endTrip = async () => {
+    if (!tripId) {
+      return;
+    }
+
+    try {
+      await endTelematicsTrip(tripId);
+      setTripStatus('ended');
+      setLifecycleMessage('Trip ended. The booking remains ongoing until Jamjade completes the return inspection.');
+    } catch {
+      setLifecycleMessage('The trip could not be ended. Please try again.');
+    }
   };
 
   const handleViewBookings = () => {
@@ -211,6 +290,7 @@ export default function TelematicsScreen() {
       <VehicleInfoCard vehicle={mockTelematicsVehicle} />
       <TripControlPanel
         tripStatus={tripStatus}
+        onEnd={() => void endTrip()}
         onPause={() => setTripStatus('paused')}
         onResume={() => setTripStatus('started')}
       />
@@ -278,12 +358,56 @@ export default function TelematicsScreen() {
       );
     }
 
+    if (isReturned) {
+      return (
+        <View className="mt-7 rounded-[28px] border border-warning-border bg-warning-surface p-5">
+          <Text className="text-[18px] font-black text-warning">Vehicle returned</Text>
+          <Text className="mt-2 text-[13px] font-bold leading-5 text-warning">
+            Driving has ended. Review your booking or Notifications for any outstanding return charges while Jamjade completes settlement.
+          </Text>
+        </View>
+      );
+    }
+
     if (!isActiveBooking) {
       return <LockedTelematicsState onViewBookings={handleViewBookings} />;
     }
 
+    if (lifecycleBooking?.calibrationStatus === 'locked') {
+      return (
+        <View className="mt-7 rounded-[28px] border border-border bg-surface p-5">
+          <Text className="text-[18px] font-black text-foreground">Calibration locked</Text>
+          <Text className="mt-2 text-[13px] font-bold leading-5 text-muted-foreground">
+            Jamjade must finalize the Outgoing Inspection and required signatures before calibration becomes available.
+          </Text>
+        </View>
+      );
+    }
+
+    if (tripStatus === 'ended') {
+      return (
+        <View className="mt-7 rounded-[28px] border border-warning-border bg-warning-surface p-5">
+          <Text className="text-[18px] font-black text-warning">Trip ended</Text>
+          <Text className="mt-2 text-[13px] font-bold leading-5 text-warning">
+            The booking and vehicle remain active until Jamjade performs the Incoming Inspection and return processing.
+          </Text>
+        </View>
+      );
+    }
+
     if (!calibrationCompleted) {
       return renderCalibration();
+    }
+
+    if (lifecycleBooking?.status === 'Confirmed') {
+      return (
+        <View className="mt-7 rounded-[28px] border border-success-border bg-success-surface p-5">
+          <Text className="text-[18px] font-black text-success">Calibration complete</Text>
+          <Text className="mt-2 text-[13px] font-bold leading-5 text-success">
+            Your device is ready. Waiting for Jamjade to start the rental.
+          </Text>
+        </View>
+      );
     }
 
     if (tripStatus === 'not_started') {
@@ -291,7 +415,7 @@ export default function TelematicsScreen() {
         <ReadyToStartCard
           booking={booking}
           vehicle={mockTelematicsVehicle}
-          onStartTrip={() => setTripStatus('started')}
+          onStartTrip={() => void startTrip()}
         />
       );
     }
@@ -311,6 +435,11 @@ export default function TelematicsScreen() {
           className={cx('w-full max-w-[460px] self-center px-5')}
           style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
           <CustomerTabHeader description="Monitor your active rental, GPS status, geofence, and trip events." />
+          {lifecycleMessage ? (
+            <Text className="mt-4 rounded-[18px] border border-border bg-surface p-3 text-[12px] font-bold leading-5 text-foreground">
+              {lifecycleMessage}
+            </Text>
+          ) : null}
           {renderContent()}
         </View>
       </ScrollView>

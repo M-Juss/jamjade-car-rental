@@ -63,7 +63,7 @@ class AuthService
             throw new AuthenticationException('This account is inactive.');
         }
 
-        if (! $user->hasRole(UserRole::Customer->value)) {
+        if (! $user->hasAnyRole([UserRole::Customer->value, DriverAssignmentService::DRIVER_ROLE])) {
             throw ValidationException::withMessages([
                 'login' => ['This account does not have mobile customer access.'],
             ]);
@@ -75,7 +75,7 @@ class AuthService
             ->causedBy($user)
             ->performedOn($user)
             ->event('mobile_login')
-            ->log('Customer logged in through the mobile API.');
+            ->log('User logged in through the mobile API.');
 
         return [
             'user' => $user->load('customerProfile', 'roles'),

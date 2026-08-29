@@ -52,6 +52,22 @@ export async function createRemainingBalancePayPalOrder(
   return response.data;
 }
 
+export async function createDriverOutstandingPayPalOrder(
+  bookingId: string,
+  appReturnUrl: string,
+  appCancelUrl: string,
+) {
+  const response = await apiPost<PayPalOrderResponse>(
+    `/mobile/driver/services/${encodeURIComponent(bookingId)}/paypal/orders`,
+    {
+      app_return_url: appReturnUrl,
+      app_cancel_url: appCancelUrl,
+    },
+  );
+
+  return response.data;
+}
+
 export async function abandonPayPalOrder(orderId: string) {
   await apiPost(`/mobile/paypal/orders/${encodeURIComponent(orderId)}/abandon`);
 }

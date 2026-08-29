@@ -12,7 +12,7 @@ import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
 import { toggleBookmarkedVehicle, useBookmarkedVehicleIds } from '@/lib/browse/bookmarks';
 import {
-  getBookingAgeAvailability,
+  getBookingAvailability,
   useCustomer,
 } from '@/lib/customer/customer-store';
 import { useAuth } from '@/providers/AuthProvider';
@@ -27,6 +27,7 @@ export default function VehicleDetailsScreen() {
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
   const { status } = useAuth();
   const customer = useCustomer();
+  const bookingAvailability = getBookingAvailability(customer);
 
   if (isLoading) {
     return (
@@ -48,11 +49,13 @@ export default function VehicleDetailsScreen() {
 
   const handleBookNow = () => {
     if (status === 'authenticated') {
-      const bookingAgeAvailability = getBookingAgeAvailability(customer);
+      if (!bookingAvailability.canBook) {
+        if (bookingAvailability.reason === 'balance') {
+          return;
+        }
 
-      if (!bookingAgeAvailability.canBook) {
         router.push(
-          bookingAgeAvailability.reason === 'profile'
+          bookingAvailability.reason === 'profile'
             ? '/onboarding/basic-info'
             : '/onboarding/age-restriction',
         );
@@ -82,6 +85,8 @@ export default function VehicleDetailsScreen() {
         onBackPress={() => router.back()}
       />
       <VehicleDetailsDrawer
+        bookNowDisabled={status === 'authenticated' && bookingAvailability.reason === 'balance'}
+        bookNowInfo={bookingAvailability.reason === 'balance' ? bookingAvailability.message : undefined}
         vehicle={vehicle}
         onBookNow={handleBookNow}
       />

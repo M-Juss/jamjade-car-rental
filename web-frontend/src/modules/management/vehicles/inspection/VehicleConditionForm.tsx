@@ -17,7 +17,7 @@ type VehicleConditionFormProps = {
   errors?: FieldErrors<VehicleConditionFormValues>;
   personnelName?: string;
   disabled?: boolean;
-  inspectionPurpose?: "initial" | "condition_update";
+  inspectionPurpose?: "initial" | "condition_update" | "outgoing" | "incoming";
 };
 
 function SectionHeading({ icon: Icon, title, description }: {
@@ -150,7 +150,7 @@ export function VehicleConditionForm({
         <p className="mb-4 rounded-xl border border-border bg-background px-3 py-2.5 text-xs leading-5 text-muted-foreground">
           By signing, I acknowledge that the mileage, fuel level, checklist responses,
           vehicle-body issue markers, and comments recorded above are complete and accurate
-          for this {inspectionPurpose === "condition_update" ? "current condition update" : "initial condition inspection"}.
+          for this {inspectionPurpose === "condition_update" ? "current condition update" : inspectionPurpose === "outgoing" ? "outgoing inspection" : inspectionPurpose === "incoming" ? "incoming inspection" : "initial condition inspection"}.
         </p>
         <SignaturePad
           value={value.signature_data}

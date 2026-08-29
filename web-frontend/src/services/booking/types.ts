@@ -3,6 +3,7 @@ export type BookingStatus =
   | "confirmed"
   | "rejected"
   | "ongoing"
+  | "returned"
   | "completed"
   | "cancelled";
 
@@ -74,11 +75,58 @@ export type BookingRecord = {
     phoneNumber?: string | null;
   } | null;
   driverAssignedAt?: string | null;
+  calibrationStatus?: "locked" | "available" | "passed" | "failed";
+  calibratedAt?: string | null;
+  returnedAt?: string | null;
+  completedAt?: string | null;
+  returnChargesFinalizedAt?: string | null;
+  readiness?: BookingReadiness;
+  rentalProgress?: {
+    outgoingFinalized: boolean;
+    calibrationStatus: string;
+    tripEnded: boolean;
+    incomingFinalized: boolean;
+  };
+  inspections?: VehicleInspectionRecord[];
+  inspectionBaseline?: VehicleInspectionRecord | null;
+  additionalCharges?: AdditionalChargeRecord[];
 };
+
+export type BookingReadiness = {
+  bookingConfirmed: boolean;
+  paymentAcceptedForInspection: boolean;
+  fullyPaid: boolean;
+  ageEligible: boolean;
+  documentsApproved: boolean;
+  driverAssigned: boolean;
+  driverEligible: boolean;
+  vehicleOperational: boolean;
+  outgoingFinalized: boolean;
+  calibrationAvailable: boolean;
+  calibrationPassed: boolean;
+  incomingFinalized: boolean;
+  returnChargesFinalized: boolean;
+  customerBalance: number;
+  customerChargesSettled: boolean;
+};
+
+export type AdditionalChargeRecord = {
+  id: string;
+  type: string;
+  typeLabel: string;
+  description: string;
+  amount: number;
+  responsibility: "customer" | "driver";
+  paymentStatus: PaymentStatus;
+  paidAt?: string | null;
+};
+
+export type VehicleInspectionRecord = import("@/services/vehicle").VehicleInspectionRecord;
 
 export type DriverCandidate = {
   id: number;
   name: string;
   phoneNumber?: string | null;
   activeAssignments: number;
+  hasOutstandingBalance: boolean;
 };

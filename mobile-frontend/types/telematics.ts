@@ -1,6 +1,6 @@
 export type TelematicsBookingStatus = 'pending' | 'active' | 'ongoing' | 'completed';
 
-export type TripStatus = 'not_started' | 'started' | 'paused';
+export type TripStatus = 'not_started' | 'started' | 'paused' | 'ended';
 
 export type CalibrationStatus = 'pending' | 'checking' | 'passed' | 'failed';
 

@@ -10,6 +10,7 @@ use App\Services\DriverAssignmentService;
 use App\Support\VehicleInspectionDefinition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /*
@@ -120,6 +121,7 @@ function availableVehicle(array $attributes = []): Vehicle
         'name' => 'Toyota Vios GR-S',
         'brand' => 'Toyota',
         'model' => 'Vios GR-S',
+        'plate_number' => 'TST-'.Str::upper(Str::random(6)),
         'price_per_day' => 3500,
         'seats' => 5,
         'transmission' => 'Automatic',

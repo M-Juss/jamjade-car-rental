@@ -4,5 +4,6 @@ export * from './document.service';
 export * from './notification.service';
 export * from './profile.service';
 export * from './payment.service';
+export * from './telematics.service';
 export * from './vehicle.service';
 export * from './types';

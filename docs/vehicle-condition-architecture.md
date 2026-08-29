@@ -9,24 +9,24 @@ The implemented current-condition lifecycle is:
 ```text
 Vehicle created
   -> Initial inspection finalized
-  -> Current condition
+  -> Current condition`
   -> Standalone condition update (copied from current)
   -> Condition update finalized and assigned as current
   -> Previous current snapshot remains immutable history
-  -> Booking outgoing inspection (future; copied from current)
-  -> Rental (future)
-  -> Booking incoming inspection (future; copied from outgoing)
-  -> Incoming finalized and assigned as current (future)
+  -> Booking outgoing inspection (copied from current)
+  -> Rental
+  -> Booking incoming inspection (copied from outgoing)
+  -> Incoming finalized and assigned as current
   -> Next booking outgoing inspection
 ```
 
-This implementation delivers Initial, Current, and Standalone Condition Update. It deliberately does not implement outgoing/incoming workflows, renter signatures, comparison rules, or damage charges.
+The same snapshot architecture now supports booking Outgoing and Incoming inspections. Additional charges remain separate responsibility-aware financial records; inspection differences never determine fault or price automatically.
 
 ## Database relationships
 
 - `vehicles.current_condition_inspection_id` is nullable for legacy vehicles and references the currently accepted finalized snapshot.
 - `vehicle_inspections` belongs to a vehicle and optionally a booking. `type` supports `initial`, `condition_update`, `outgoing`, and `incoming`; `status` supports `draft` and `finalized`.
-- `vehicle_inspections.based_on_inspection_id` provides the copy lineage needed by future outgoing/incoming snapshots.
+- `vehicle_inspections.based_on_inspection_id` preserves Current → Outgoing → Incoming lineage.
 - Standalone condition updates store a controlled `condition_update_reason` and optional `condition_update_notes`. Their `booking_id` is always null and `based_on_inspection_id` identifies the prior accepted current snapshot.
 - `vehicle_inspection_items` stores checklist records by category/key instead of adding one column per item. `item_label` preserves the wording used by that historical snapshot.
 - `vehicle_inspection_markers` stores one body issue per record with a global sequence number.
@@ -52,7 +52,7 @@ Legacy vehicles retain a null current-condition pointer after migration. Authori
 
 ## Standalone current-condition update
 
-Authorized personnel can use **Update Current Condition** from Vehicle Details after an initial/current snapshot exists. The workflow is separate from vehicle-master editing and from future booking outgoing/incoming inspections:
+Authorized personnel can use **Update Current Condition** from Vehicle Details after an initial/current snapshot exists. The workflow is separate from vehicle-master editing and booking Outgoing/Incoming inspections:
 
 1. Lock the vehicle and confirm that it has no `ongoing` booking.
 2. Load the finalized snapshot referenced by `vehicles.current_condition_inspection_id`.
@@ -113,11 +113,12 @@ The existing `POST /admin/vehicles` contract now requires `initial_condition`. I
 - Standalone updates are forbidden while the vehicle has an ongoing rental.
 - Signature paths and bytes remain private and are never included in API resources or activity properties.
 
-## Future implementation rules
+## Booking inspection rules
 
-- An outgoing inspection should copy the current finalized inspection and reference it through `based_on_inspection_id`.
-- An incoming inspection should copy the booking outgoing snapshot and reference it through `based_on_inspection_id`.
-- Only a finalized incoming snapshot may become the next current condition.
-- Booking/renter signatures belong to booking inspection snapshots, never to `vehicles`.
-- Comparison and damage-charge logic must compare immutable snapshots without mutating either side.
-- Booking start/completion enforcement, renter signing, charges, and mobile renter screens require separate implementation and tests.
+- Outgoing copies the vehicle's finalized Current Condition and references it through `based_on_inspection_id`; finalizing Outgoing does not move the Current pointer.
+- Incoming copies the booking's finalized Outgoing snapshot. Finalizing Incoming atomically moves the vehicle's Current pointer to the new immutable Incoming snapshot.
+- Self Drive requires authenticated Jamjade personnel plus the renter signature captured on the personnel device.
+- Owner's Driver requires authenticated authorized Jamjade personnel plus the assigned Driver; the Customer does not sign these inspections.
+- Booking signatures belong to booking inspection snapshots, never to `vehicles`.
+- Inspection evidence never automatically assigns financial responsibility. Authorized personnel create separate customer- or Driver-responsible charges after Incoming finalization.
+- The complete lifecycle and readiness gates are documented in `docs/booking-rental-lifecycle.md`.

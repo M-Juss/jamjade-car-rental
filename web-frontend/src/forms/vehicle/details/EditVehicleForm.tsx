@@ -80,6 +80,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
       fuel_type: "",
       model: "",
       name: "",
+      plate_number: "",
       price_per_day: "",
       seats: "",
       transmission: "",
@@ -103,6 +104,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
             name: vehicle.name,
             brand: vehicle.brand,
             model: vehicle.model ?? "",
+            plate_number: vehicle.plateNumber ?? "",
             description: vehicle.description ?? "",
             price_per_day: String(vehicle.pricePerDay),
             seats: String(vehicle.seats),
@@ -281,6 +283,15 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   label="Model"
                   error={errors.model?.message}
                   {...register("model")}
+                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                />
+
+                <InputWithLabel
+                  id="edit-vehicle-plate-number"
+                  label="Plate Number"
+                  error={errors.plate_number?.message}
+                  placeholder="e.g. ABC 1234"
+                  {...register("plate_number")}
                   labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                 />
 

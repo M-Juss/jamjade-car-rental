@@ -383,13 +383,32 @@ export function VehicleSpecsGrid({ vehicle }: { vehicle: Vehicle }) {
   );
 }
 
-export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle; onBookNow: () => void }) {
+export function VehicleDetailsDrawer({
+  bookNowDisabled = false,
+  bookNowInfo,
+  onBookNow,
+  vehicle,
+}: {
+  vehicle: Vehicle;
+  onBookNow: () => void;
+  bookNowDisabled?: boolean;
+  bookNowInfo?: string;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDrawerLifted, setIsDrawerLifted] = useState(false);
-  const { height } = useWindowDimensions();
+  const [isBookNowInfoVisible, setIsBookNowInfoVisible] = useState(false);
+  const [bookNowTooltipPosition, setBookNowTooltipPosition] = useState({
+    arrowLeft: 24,
+    placement: 'above' as 'above' | 'below',
+    left: 16,
+    top: 16,
+    width: 260,
+  });
+  const { height, width } = useWindowDimensions();
   const drawerLift = useRef(new Animated.Value(0)).current;
   const isDrawerLiftedRef = useRef(false);
   const dragStartLiftRef = useRef(0);
+  const bookNowInfoAnchorRef = useRef<View>(null);
   const description = vehicle.description || 'No vehicle description has been added yet.';
   const isDescriptionLong = description.length > 128;
   const displayDescription = isExpanded || !isDescriptionLong
@@ -411,6 +430,31 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
       duration: 260,
       useNativeDriver: false,
     }).start();
+  };
+
+  const showBookNowInfo = () => {
+    bookNowInfoAnchorRef.current?.measureInWindow((x, y, anchorWidth, anchorHeight) => {
+      const tooltipWidth = Math.min(280, width - 32);
+      const estimatedHeight = 116;
+      const anchorCenter = x + anchorWidth / 2;
+      const left = Math.min(
+        Math.max(16, anchorCenter - tooltipWidth + 34),
+        width - tooltipWidth - 16,
+      );
+      const shouldPlaceAbove = y + anchorHeight + estimatedHeight + 24 > height;
+      const top = shouldPlaceAbove
+        ? Math.max(16, y - estimatedHeight - 12)
+        : y + anchorHeight + 12;
+
+      setBookNowTooltipPosition({
+        arrowLeft: Math.min(Math.max(18, anchorCenter - left - 7), tooltipWidth - 32),
+        placement: shouldPlaceAbove ? 'above' : 'below',
+        left,
+        top,
+        width: tooltipWidth,
+      });
+      setIsBookNowInfoVisible(true);
+    });
   };
 
   const drawerPanResponder = PanResponder.create({
@@ -448,18 +492,19 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
   });
 
   return (
-    <Animated.View
-      {...drawerPanResponder.panHandlers}
-      style={{
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 32,
-        borderTopRightRadius: 32,
-        flex: 1,
-        marginBottom: -drawerLiftDistance,
-        marginTop: -40,
-        overflow: 'hidden',
-        transform: [{ translateY: drawerTranslateY }],
-      }}>
+    <>
+      <Animated.View
+        {...drawerPanResponder.panHandlers}
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderTopLeftRadius: 32,
+          borderTopRightRadius: 32,
+          flex: 1,
+          marginBottom: -drawerLiftDistance,
+          marginTop: -40,
+          overflow: 'hidden',
+          transform: [{ translateY: drawerTranslateY }],
+        }}>
       <Pressable
         accessibilityLabel={isDrawerLifted ? 'Move vehicle details down' : 'Move vehicle details up'}
         accessibilityRole="button"
@@ -523,7 +568,7 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
         </View>
       </View>
 
-      <View className="absolute bottom-0 left-0 right-0 border-t border-[#EAF0FB] bg-surface/95 px-5 pb-6 pt-4">
+        <View className="absolute bottom-0 left-0 right-0 border-t border-[#EAF0FB] bg-surface/95 px-5 pb-6 pt-4">
         <View className="flex-row items-center gap-4">
           <View className="flex-1">
             <Text className="text-[12px] font-bold text-subtle-foreground">Starts at</Text>
@@ -532,15 +577,76 @@ export function VehicleDetailsDrawer({ onBookNow, vehicle }: { vehicle: Vehicle;
               <Text className="text-[12px] font-extrabold text-subtle-foreground"> / day</Text>
             </Text>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onBookNow}
-            className="min-h-[58px] flex-[1.1] items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/30">
-            <Text className="text-[16px] font-black text-surface">Book Now</Text>
-          </Pressable>
+          <View className="relative flex-[1.1]">
+            <Pressable
+              accessibilityLabel={bookNowDisabled ? 'Book Now unavailable until your balance is settled' : 'Book Now'}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: bookNowDisabled }}
+              disabled={bookNowDisabled}
+              onPress={onBookNow}
+              className={cx(
+                'min-h-[58px] items-center justify-center rounded-full shadow-lg',
+                bookNowDisabled ? 'bg-[#D7DDE8] shadow-none' : 'bg-primary shadow-primary/30',
+              )}>
+              <Text className="text-[16px] font-black text-surface">Book Now</Text>
+            </Pressable>
+            {bookNowDisabled && bookNowInfo ? (
+              <View
+                ref={bookNowInfoAnchorRef}
+                collapsable={false}
+                className="absolute right-2 top-2">
+                <Pressable
+                  accessibilityLabel="Why Book Now is unavailable"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={showBookNowInfo}
+                  className="h-7 w-7 items-center justify-center rounded-full bg-surface">
+                  <Info size={14} color="#346EF6" strokeWidth={2.7} />
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </Animated.View>
+        </View>
+      </Animated.View>
+      {bookNowDisabled && bookNowInfo ? (
+        <Modal
+          animationType="fade"
+          transparent
+          visible={isBookNowInfoVisible}
+          onRequestClose={() => setIsBookNowInfoVisible(false)}>
+          <Pressable className="flex-1 items-center justify-center bg-[#0B1220]/20 px-6" onPress={() => setIsBookNowInfoVisible(false)}>
+            <Pressable
+              accessibilityRole="alert"
+              onPress={(event) => event.stopPropagation()}
+              style={{
+                backgroundColor: '#17315F',
+                borderColor: '#346EF6',
+                borderWidth: 1,
+                left: bookNowTooltipPosition.left,
+                position: 'absolute',
+                top: bookNowTooltipPosition.top,
+                width: bookNowTooltipPosition.width,
+              }}
+              className="rounded-[18px] px-5 py-4 shadow-xl shadow-black/30">
+              <View
+                style={{
+                  backgroundColor: '#17315F',
+                  left: bookNowTooltipPosition.arrowLeft,
+                  position: 'absolute',
+                  [bookNowTooltipPosition.placement === 'below' ? 'top' : 'bottom']: -7,
+                  transform: [{ rotate: '45deg' }],
+                }}
+                className="h-4 w-4"
+              />
+              <Text className="text-[14px] font-semibold leading-6 text-surface">
+                {bookNowInfo}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : null}
+    </>
   );
 }
 

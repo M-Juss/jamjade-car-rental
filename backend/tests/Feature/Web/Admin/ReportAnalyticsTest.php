@@ -67,14 +67,14 @@ it('returns live dashboard and report analytics', function () {
         ->assertJsonMissing(['label' => 'Refund Loss']);
 });
 
-it('shows confirmed bookings as approved bookings on the dashboard', function () {
+it('shows confirmed bookings on the dashboard', function () {
     $owner = User::factory()->create();
     $owner->assignRole(UserRole::Owner->value);
     $customer = customerUser();
     $vehicle = availableVehicle();
 
     Booking::create([
-        'booking_code' => 'BK-APPROVED-1',
+        'booking_code' => 'BK-CONFIRMED-1',
         'user_id' => $customer->id,
         'vehicle_id' => $vehicle->id,
         'rental_type' => RentalType::SelfDrive,
@@ -95,9 +95,9 @@ it('shows confirmed bookings as approved bookings on the dashboard', function ()
 
     $this->actingAs($owner)->getJson('/admin/dashboard')
         ->assertOk()
-        ->assertJsonPath('data.summary.approvedBookings', 1)
-        ->assertJsonPath('data.approvedBookings.0.bookingId', 'BK-APPROVED-1')
-        ->assertJsonPath('data.approvedBookings.0.statusKey', BookingStatus::Confirmed->value);
+        ->assertJsonPath('data.summary.confirmedBookings', 1)
+        ->assertJsonPath('data.confirmedBookings.0.bookingId', 'BK-CONFIRMED-1')
+        ->assertJsonPath('data.confirmedBookings.0.statusKey', BookingStatus::Confirmed->value);
 });
 
 it('downloads PDF and CSV reports', function () {

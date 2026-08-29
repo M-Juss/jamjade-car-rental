@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Enums\AdditionalChargeResponsibility;
 use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Profile\CompleteProfileRequest;
@@ -11,6 +12,7 @@ use App\Http\Resources\CustomerProfileResource;
 use App\Http\Resources\DocumentResource;
 use App\Http\Resources\UserResource;
 use App\Models\CustomerDocument;
+use App\Services\AdditionalChargeService;
 use App\Services\ProfileService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +22,10 @@ class ProfileController extends Controller
 {
     use ApiResponseTrait;
 
-    public function __construct(private readonly ProfileService $profileService) {}
+    public function __construct(
+        private readonly ProfileService $profileService,
+        private readonly AdditionalChargeService $additionalChargeService,
+    ) {}
 
     public function show(Request $request): JsonResponse
     {
@@ -36,14 +41,20 @@ class ProfileController extends Controller
                 BookingStatus::Pending->value,
                 BookingStatus::Confirmed->value,
                 BookingStatus::Ongoing->value,
+                BookingStatus::Returned->value,
             ])
             ->latest()
             ->first();
         $bookingStatus = match ($currentBooking?->status) {
             BookingStatus::Ongoing => 'ongoing',
+            BookingStatus::Returned => 'returned',
             BookingStatus::Pending, BookingStatus::Confirmed => 'pending',
             default => 'none',
         };
+        $hasOutstandingBalance = $this->additionalChargeService->hasOutstanding(
+            $user,
+            AdditionalChargeResponsibility::Customer,
+        );
 
         return $this->success('Profile fetched successfully.', [
             'user' => new UserResource($user),
@@ -63,6 +74,7 @@ class ProfileController extends Controller
                 'status' => $bookingStatus,
                 'successfulBookings' => $successfulBookings,
                 'totalSpent' => $totalSpent,
+                'hasOutstandingBalance' => $hasOutstandingBalance,
             ],
         ]);
     }

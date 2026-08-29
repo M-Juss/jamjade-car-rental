@@ -14,6 +14,7 @@ class AdminVehicleResource extends VehicleResource
 
         return [
             ...parent::toArray($request),
+            'plateNumber' => $this->plate_number,
             'hasCurrentCondition' => $this->current_condition_inspection_id !== null,
             'currentCondition' => $this->whenLoaded(
                 'currentCondition',

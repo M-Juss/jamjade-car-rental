@@ -54,6 +54,14 @@ it('bridges PayPal browser callbacks back to the mobile app', function () {
         );
 });
 
+it('accepts only configured web PayPal callback origins', function () {
+    config(['services.paypal.app_callback_origins' => ['http://localhost:8081']]);
+
+    expect(PayPalAppUrl::isAllowed('http://localhost:8081/paypal/return'))->toBeTrue()
+        ->and(PayPalAppUrl::isAllowed('https://localhost:8081/paypal/return'))->toBeFalse()
+        ->and(PayPalAppUrl::isAllowed('http://untrusted.example/paypal/return'))->toBeFalse();
+});
+
 it('registers a mobile customer and returns a bearer token', function () {
     $response = $this->postJson('/api/mobile/register', [
         'email' => 'new.customer@example.com',
@@ -204,7 +212,7 @@ it('lets guests list only available mobile vehicles', function () {
 
     $vehicle = $response->json('data.0');
 
-    expect(Schema::hasColumn('vehicles', 'plate_number'))->toBeFalse();
+    expect(Schema::hasColumn('vehicles', 'plate_number'))->toBeTrue();
 
     expect(array_key_exists('year', $vehicle))->toBeFalse()
         ->and(array_key_exists('plateNumber', $vehicle))->toBeFalse()
@@ -253,7 +261,7 @@ it('validates mobile collection filters and pagination limits', function () {
         ->assertJsonValidationErrors(['category', 'per_page']);
 });
 
-it('returns approved booking date ranges for the specific vehicle', function () {
+it('returns confirmed booking date ranges for the specific vehicle', function () {
     $user = customerUser();
     $vehicle = availableVehicle();
     $start = now()->addDays(5)->startOfDay();
@@ -311,7 +319,7 @@ it('creates a booking with backend pricing and down payment validation', functio
 
     $response->assertCreated()
         ->assertJsonPath('success', true)
-        ->assertJsonPath('data.status', 'Approved')
+        ->assertJsonPath('data.status', 'Confirmed')
         ->assertJsonPath('data.paymentStatus', 'Partially Paid');
 
     expect($response->json('data.bookingCode'))->toMatch('/^BK-\d{5}$/');
@@ -323,7 +331,7 @@ it('creates a booking with backend pricing and down payment validation', functio
     ]);
 });
 
-it('rejects booking dates that overlap an approved booking for the same vehicle', function () {
+it('rejects booking dates that overlap a confirmed booking for the same vehicle', function () {
     $user = customerUser();
     $otherCustomer = customerUser(['email' => 'existing.booking@example.com']);
     $vehicle = availableVehicle();
@@ -331,7 +339,7 @@ it('rejects booking dates that overlap an approved booking for the same vehicle'
     $end = now()->addDays(7)->startOfDay();
 
     Booking::create([
-        'booking_code' => 'BK-EXISTING-APPROVED',
+        'booking_code' => 'BK-EXISTING-CONFIRMED',
         'user_id' => $otherCustomer->id,
         'vehicle_id' => $vehicle->id,
         'rental_type' => RentalType::SelfDrive,
@@ -621,7 +629,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
     $this->postJson('/api/mobile/paypal/orders/PAYPAL-ORDER-TEST-1/capture')
         ->assertOk()
         ->assertJsonPath('data.bookingCode', $booking->booking_code)
-        ->assertJsonPath('data.status', 'Approved')
+        ->assertJsonPath('data.status', 'Confirmed')
         ->assertJsonPath('data.paymentStatusKey', PaymentStatus::Partial->value)
         ->assertJsonPath('data.deliveryFee', 900)
         ->assertJsonPath('data.ownerDriverFee', 700)
@@ -761,7 +769,7 @@ it('pays an existing booking remaining balance with a new PayPal order', functio
 
     $this->postJson('/api/mobile/paypal/orders/PAYPAL-BALANCE-ORDER-1/capture')
         ->assertOk()
-        ->assertJsonPath('data.status', 'Approved')
+        ->assertJsonPath('data.status', 'Confirmed')
         ->assertJsonPath('data.paymentStatus', 'Paid')
         ->assertJsonPath('data.remainingBalance', 0)
         ->assertJsonPath('data.balanceDueAt', null);

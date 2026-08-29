@@ -70,7 +70,7 @@ it('renders the booking confirmation as exactly two A4 pages', function () {
     expect($output)->toStartWith('%PDF-')
         ->and(strlen($output))->toBeGreaterThan(10_000)
         ->and($pdf->getDomPDF()->getCanvas()->get_page_count())->toBe(2)
-        ->and($html)->toContain('Approved')
+        ->and($html)->toContain('Confirmed')
         ->and($html)->toContain('JAMJADE CAR RENTAL')
         ->and($html)->toContain('data:image/png;base64,')
         ->and($html)->toContain('PHP 3,500.00')

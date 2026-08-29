@@ -51,6 +51,15 @@ class PayPalController extends Controller
         return $this->created('Remaining balance PayPal order created successfully.', $checkout);
     }
 
+    public function createDriverOutstandingOrder(CreatePayPalBalanceOrderRequest $request, string $booking): JsonResponse
+    {
+        $checkout = $this->payPalCheckoutService->createDriverOutstandingOrder(
+            $request->user(), $booking, $request->validated()
+        );
+
+        return $this->created('Driver outstanding-balance PayPal order created successfully.', $checkout);
+    }
+
     public function abandonOrder(Request $request, string $orderId): JsonResponse
     {
         $this->payPalCheckoutService->abandonOrder($request->user(), $orderId);

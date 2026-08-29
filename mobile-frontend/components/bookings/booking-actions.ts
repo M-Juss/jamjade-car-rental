@@ -49,7 +49,7 @@ const actionsByStatus = {
       variant: 'danger',
     },
   ],
-  Approved: [
+  Confirmed: [
     detailAction,
     {
       key: 'payment_info',
@@ -86,6 +86,15 @@ const actionsByStatus = {
       label: 'Contact Admin',
       icon: MessageCircle,
       variant: 'secondary',
+    },
+  ],
+  Returned: [
+    detailAction,
+    {
+      key: 'pay_balance',
+      label: 'Review & Pay Balance',
+      icon: CreditCard,
+      variant: 'soft',
     },
   ],
   Completed: [

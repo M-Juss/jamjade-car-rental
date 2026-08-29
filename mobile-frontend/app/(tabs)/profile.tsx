@@ -17,6 +17,7 @@ import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
+import { LogoutConfirmationDialog } from '@/components/auth/LogoutConfirmationDialog';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import {
   DocumentRequirementRow,
@@ -56,6 +57,7 @@ export default function ProfileScreen() {
   const customer = useCustomer();
   const { refreshProfile, signOut } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLogoutDialogVisible, setIsLogoutDialogVisible] = useState(false);
   const [isPersonalEditorOpen, setIsPersonalEditorOpen] = useState(false);
   const [isEmergencyEditorOpen, setIsEmergencyEditorOpen] = useState(false);
   const fullName = getCustomerFullName(customer) || 'New Customer';
@@ -192,24 +194,11 @@ export default function ProfileScreen() {
           <Pressable
             accessibilityRole="button"
             disabled={isLoggingOut}
-            onPress={async () => {
-              if (isLoggingOut) {
-                return;
-              }
-
-              setIsLoggingOut(true);
-
-              try {
-                await signOut();
-                router.replace('/login' as Href);
-              } finally {
-                setIsLoggingOut(false);
-              }
-            }}
+            onPress={() => setIsLogoutDialogVisible(true)}
             className="mt-8 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full border border-destructive-border bg-destructive-surface px-5">
             <LogOut size={17} color="#DC2626" strokeWidth={2.45} />
             <Text className="text-[13px] font-black text-destructive">
-              {isLoggingOut ? 'Logging out...' : 'Logout'}
+              Logout
             </Text>
           </Pressable>
         </View>
@@ -224,6 +213,27 @@ export default function ProfileScreen() {
         contact={customer.emergencyContact}
         onClose={() => setIsEmergencyEditorOpen(false)}
         visible={isEmergencyEditorOpen}
+      />
+      <LogoutConfirmationDialog
+        accountLabel="customer"
+        isLoading={isLoggingOut}
+        onCancel={() => setIsLogoutDialogVisible(false)}
+        onConfirm={async () => {
+          if (isLoggingOut) {
+            return;
+          }
+
+          setIsLoggingOut(true);
+
+          try {
+            await signOut();
+            setIsLogoutDialogVisible(false);
+            router.replace('/login' as Href);
+          } finally {
+            setIsLoggingOut(false);
+          }
+        }}
+        visible={isLogoutDialogVisible}
       />
     </View>
   );

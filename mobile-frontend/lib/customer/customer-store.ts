@@ -74,6 +74,7 @@ export const emptyCustomer: Customer = {
   bookingStatus: 'none',
   successfulBookings: 0,
   totalSpent: 0,
+  hasOutstandingBalance: false,
   joinedAt: '',
 };
 
@@ -322,6 +323,7 @@ export function hydrateCustomerFromProfile(overview: MobileProfileOverview) {
       bookingStatus: overview.bookingSummary.status,
       successfulBookings: overview.bookingSummary.successfulBookings,
       totalSpent: overview.bookingSummary.totalSpent,
+      hasOutstandingBalance: overview.bookingSummary.hasOutstandingBalance,
       documentVerificationStatus: getOverallDocumentStatus(
         documentStatuses,
         documents.passportRequiredByAdmin,
@@ -612,6 +614,18 @@ export function getBookingAgeAvailability(currentCustomer: Customer) {
     message: '',
     reason: null,
   };
+}
+
+export function getBookingAvailability(currentCustomer: Customer) {
+  if (currentCustomer.hasOutstandingBalance) {
+    return {
+      canBook: false,
+      message: 'Please settle your outstanding balance before creating a new booking.',
+      reason: 'balance' as const,
+    };
+  }
+
+  return getBookingAgeAvailability(currentCustomer);
 }
 
 export function getCustomerStatusLabel(currentCustomer: Customer) {

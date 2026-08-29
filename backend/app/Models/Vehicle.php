@@ -19,6 +19,7 @@ class Vehicle extends Model
         'current_condition_inspection_id',
         'brand',
         'model',
+        'plate_number',
         'price_per_day',
         'seats',
         'transmission',

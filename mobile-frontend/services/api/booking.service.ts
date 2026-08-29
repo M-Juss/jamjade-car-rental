@@ -61,6 +61,7 @@ function mapFuelType(value: string): Booking['fuelType'] {
 export function mapBooking(record: MobileBookingRecord): Booking {
   return {
     id: record.bookingCode || record.id,
+    backendId: Number(record.backendId),
     vehicleName: record.vehicleName,
     brand: record.brand,
     model: record.model,
@@ -96,6 +97,11 @@ export function mapBooking(record: MobileBookingRecord): Booking {
     paidAt: record.paidAt || 'N/A',
     createdAt: record.createdAt,
     adminNotes: record.adminNotes ?? '',
+    calibrationStatus: record.calibrationStatus,
+    calibratedAt: record.calibratedAt,
+    rentalProgress: record.rentalProgress,
+    additionalCharges: record.additionalCharges ?? [],
+    customer: record.customer,
     documents: record.documents ?? [],
     timeline: record.timeline ?? [],
   };
@@ -131,6 +137,28 @@ export async function cancelBooking(bookingId: string, reason = 'Cancelled by cu
   const response = await apiPost<MobileBookingRecord>(
     `/mobile/bookings/${encodeURIComponent(bookingId)}/cancel`,
     { reason },
+  );
+
+  return mapBooking(response.data);
+}
+
+export async function recordBookingCalibration(bookingId: string) {
+  const response = await apiPost<MobileBookingRecord>(
+    `/mobile/bookings/${encodeURIComponent(bookingId)}/calibration`,
+  );
+
+  return mapBooking(response.data);
+}
+
+export async function getDriverServices() {
+  const response = await apiGet<MobileBookingRecord[]>('/mobile/driver/services?per_page=100');
+
+  return response.data.map(mapBooking);
+}
+
+export async function getDriverService(bookingId: string) {
+  const response = await apiGet<MobileBookingRecord>(
+    `/mobile/driver/services/${encodeURIComponent(bookingId)}`,
   );
 
   return mapBooking(response.data);

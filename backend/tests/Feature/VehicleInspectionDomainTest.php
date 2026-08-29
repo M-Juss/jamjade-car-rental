@@ -13,6 +13,7 @@ function domainVehicle(): Vehicle
         'name' => 'Domain Test Vehicle',
         'brand' => 'Toyota',
         'model' => 'Vios',
+        'plate_number' => 'DOM-1234',
         'price_per_day' => 2500,
         'seats' => 5,
         'transmission' => 'Automatic',

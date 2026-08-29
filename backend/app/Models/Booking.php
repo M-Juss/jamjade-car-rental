@@ -34,6 +34,9 @@ class Booking extends Model
         'driver_assigned_at',
         'status',
         'payment_status',
+        'calibration_status',
+        'calibrated_by',
+        'calibrated_at',
         'price_per_day',
         'duration_days',
         'subtotal',
@@ -62,6 +65,10 @@ class Booking extends Model
         'rejected_at',
         'started_at',
         'completed_at',
+        'completed_by',
+        'return_charges_finalized_at',
+        'return_charges_finalized_by',
+        'returned_at',
         'cancelled_at',
     ];
 
@@ -77,6 +84,9 @@ class Booking extends Model
             'rejected_at' => 'datetime',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'calibrated_at' => 'datetime',
+            'return_charges_finalized_at' => 'datetime',
+            'returned_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'balance_due_at' => 'datetime',
@@ -152,6 +162,21 @@ class Booking extends Model
     public function vehicleInspections(): HasMany
     {
         return $this->hasMany(VehicleInspection::class);
+    }
+
+    public function additionalCharges(): HasMany
+    {
+        return $this->hasMany(BookingAdditionalCharge::class);
+    }
+
+    public function calibratedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'calibrated_by');
+    }
+
+    public function completedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
     }
 
     public function telematicsEvents(): HasManyThrough

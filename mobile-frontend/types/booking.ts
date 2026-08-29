@@ -1,8 +1,9 @@
 export type BookingStatus =
   | 'Pending'
-  | 'Approved'
+  | 'Confirmed'
   | 'Active'
   | 'Ongoing'
+  | 'Returned'
   | 'Completed'
   | 'Rejected'
   | 'Cancelled';
@@ -29,6 +30,7 @@ export type BookingTimelineItem = {
 
 export type Booking = {
   id: string;
+  backendId: number;
   vehicleName: string;
   brand: string;
   model: string;
@@ -64,6 +66,27 @@ export type Booking = {
   paidAt: string;
   createdAt: string;
   adminNotes: string;
+  calibrationStatus: 'locked' | 'available' | 'passed' | 'failed';
+  calibratedAt?: string | null;
+  rentalProgress: {
+    outgoingFinalized: boolean;
+    calibrationStatus: string;
+    tripEnded: boolean;
+    latestTripId?: number | null;
+    latestTripStatus?: string | null;
+    incomingFinalized: boolean;
+  };
+  additionalCharges: {
+    id: string;
+    type: string;
+    typeLabel: string;
+    description: string;
+    amount: number;
+    responsibility: 'customer' | 'driver';
+    paymentStatus: string;
+    paidAt?: string | null;
+  }[];
+  customer?: { name?: string; email?: string; phoneNumber?: string | null } | null;
   documents: BookingDocument[];
   timeline: BookingTimelineItem[];
 };
@@ -71,8 +94,9 @@ export type Booking = {
 export const BOOKING_STATUS_FILTERS: BookingStatusFilter[] = [
   'All',
   'Pending',
-  'Approved',
+  'Confirmed',
   'Active',
+  'Returned',
   'Completed',
   'Rejected',
   'Cancelled',

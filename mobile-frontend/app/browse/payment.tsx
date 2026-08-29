@@ -24,13 +24,13 @@ import {
 } from '@/lib/browse/payment-options';
 import { formatPeso } from '@/lib/browse/pricing';
 import { TERMS_VERSION } from '@/lib/browse/rental-config';
+import { getPaymentErrorMessage } from '@/lib/payments/payment-error';
 import {
   abandonPayPalOrder,
   capturePayPalOrder,
   createPayPalOrder,
   type PayPalOrderResponse,
 } from '@/services/api';
-import { ApiError } from '@/services/http';
 
 type PaymentSelection = 'down_payment' | 'full_payment';
 
@@ -38,22 +38,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 0) {
-      return 'PayPal checkout could not connect. Please try again.';
-    }
-
-    const validationMessage = error.errors
-      ? Object.values(error.errors).flat()[0]
-      : undefined;
-
-    return validationMessage || error.message;
-  }
-
-  return 'PayPal checkout failed. Please try again.';
 }
 
 function PaymentChoiceCard({
@@ -263,7 +247,7 @@ function PaymentScreen() {
       approved = true;
       await captureCheckout(order);
     } catch (checkoutError) {
-      const message = getErrorMessage(checkoutError);
+      const message = getPaymentErrorMessage(checkoutError, 'PayPal checkout failed. Please try again.');
 
       if (activeOrder && !approved) {
         await abandonPayPalOrder(activeOrder.orderId).catch(() => undefined);

@@ -36,6 +36,7 @@ const vehicleDetailsSchema = z.object({
   name: requiredText.max(160, "Maximum 160 characters only."),
   brand: requiredText.max(80, "Maximum 80 characters only."),
   model: requiredText.max(120, "Maximum 120 characters only."),
+  plate_number: requiredText.max(32, "Maximum 32 characters only."),
   description: requiredText.max(3000, "Maximum 3000 characters only."),
   price_per_day: positiveNumberText,
   seats: positiveIntegerText.refine(

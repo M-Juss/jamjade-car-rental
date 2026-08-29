@@ -29,6 +29,7 @@ function completeVehiclePayload(array $conditionOverrides = []): array
         'name' => 'Toyota Vios XLE',
         'brand' => 'Toyota',
         'model' => 'Vios XLE',
+        'plate_number' => 'INS-1234',
         'price_per_day' => 2500,
         'seats' => 5,
         'transmission' => 'Automatic',
