@@ -18,7 +18,7 @@ export type Vehicle = {
   color: string;
   features: string[];
   description: string;
-  isMostBooked?: boolean;
+  isFeatured?: boolean;
   unavailableDateRanges: VehicleUnavailableDateRange[];
   createdAt: string;
 };

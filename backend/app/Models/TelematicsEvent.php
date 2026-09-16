@@ -13,9 +13,6 @@ class TelematicsEvent extends Model
 
     protected $fillable = [
         'trip_id',
-        'booking_id',
-        'user_id',
-        'vehicle_id',
         'event_type',
         'severity',
         'latitude',
@@ -27,6 +24,9 @@ class TelematicsEvent extends Model
         'gyroscope_x',
         'gyroscope_y',
         'gyroscope_z',
+        'geofence_status',
+        'distance_from_allowed_area',
+        'current_area',
         'description',
         'occurred_at',
     ];
@@ -44,6 +44,7 @@ class TelematicsEvent extends Model
             'gyroscope_x' => 'decimal:6',
             'gyroscope_y' => 'decimal:6',
             'gyroscope_z' => 'decimal:6',
+            'distance_from_allowed_area' => 'decimal:2',
             'occurred_at' => 'datetime',
         ];
     }
@@ -51,20 +52,5 @@ class TelematicsEvent extends Model
     public function trip(): BelongsTo
     {
         return $this->belongsTo(TelematicsTrip::class, 'trip_id');
-    }
-
-    public function booking(): BelongsTo
-    {
-        return $this->belongsTo(Booking::class);
-    }
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function vehicle(): BelongsTo
-    {
-        return $this->belongsTo(Vehicle::class);
     }
 }

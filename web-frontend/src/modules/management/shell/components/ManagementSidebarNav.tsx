@@ -64,7 +64,7 @@ export function ManagementSidebarNav({ portal }: ManagementSidebarNavProps) {
     <>
       {/* Navigation */}
       <nav
-        aria-label={`${portal === "owner" ? "Owner" : "Admin"} navigation`}
+        aria-label={`${portal === "admin" ? "Admin" : "Staff"} navigation`}
         className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-2"
       >
         {navSections.map((section) => (

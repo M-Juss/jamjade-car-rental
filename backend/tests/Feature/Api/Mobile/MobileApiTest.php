@@ -418,7 +418,6 @@ it('derives and stores delivery details for owner driver bookings', function () 
         'user_id' => $user->id,
         'vehicle_id' => $vehicle->id,
         'pickup_location_type' => 'delivery',
-        'delivery_time' => $expectedDeliveryTime,
         'return_location' => 'Makati, Metro Manila',
         'delivery_fee' => 900,
         'owner_driver_fee' => 700,
@@ -639,17 +638,13 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
 
     $this->assertDatabaseHas('payments', [
         'booking_id' => $booking->id,
-        'payment_method' => 'PayPal',
-        'payment_status' => PaymentStatus::Partial->value,
-        'amount' => 2550,
-        'transaction_id' => 'PAYPAL-CAPTURE-TEST-1',
-    ]);
-
-    $this->assertDatabaseHas('paypal_checkouts', [
-        'paypal_order_id' => 'PAYPAL-ORDER-TEST-1',
-        'paypal_capture_id' => 'PAYPAL-CAPTURE-TEST-1',
-        'currency' => 'PHP',
+        'provider' => 'paypal',
+        'purpose' => 'down_payment',
         'status' => 'completed',
+        'amount' => 2550,
+        'provider_order_id' => 'PAYPAL-ORDER-TEST-1',
+        'provider_transaction_id' => 'PAYPAL-CAPTURE-TEST-1',
+        'currency' => 'PHP',
     ]);
 
     $this->assertDatabaseHas('bookings', [
@@ -668,10 +663,10 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         'action_label' => 'Pay Remaining Balance',
     ]);
 
-    $this->assertDatabaseHas('bookings', [
-        'id' => $booking->id,
-        'confirmation_email_status' => 'queued',
-        'confirmation_email_sent_at' => null,
+    $this->assertDatabaseHas('booking_confirmation_emails', [
+        'booking_id' => $booking->id,
+        'status' => 'queued',
+        'sent_at' => null,
     ]);
 
     Mail::assertSent(
@@ -776,7 +771,7 @@ it('pays an existing booking remaining balance with a new PayPal order', functio
 
     $this->assertDatabaseHas('payments', [
         'booking_id' => $booking->id,
-        'transaction_id' => 'PAYPAL-BALANCE-CAPTURE-1',
+        'provider_transaction_id' => 'PAYPAL-BALANCE-CAPTURE-1',
         'amount' => 2450,
     ]);
 });
@@ -1010,8 +1005,7 @@ it('stores telematics events only for active customer trips', function () {
     ]);
     $trip = TelematicsTrip::create([
         'booking_id' => $booking->id,
-        'user_id' => $user->id,
-        'vehicle_id' => $vehicle->id,
+        'operator_user_id' => $user->id,
         'status' => 'started',
         'started_at' => now()->subMinutes(30),
     ]);

@@ -14,6 +14,7 @@ use App\Http\Resources\AdditionalChargeResource;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\VehicleInspectionResource;
 use App\Models\Booking;
+use App\Models\BookingAssignment;
 use App\Models\User;
 use App\Services\AdditionalChargeService;
 use App\Services\BookingEmailService;
@@ -59,16 +60,16 @@ class BookingController extends Controller
     {
         $drivers = $this->driverAssignmentService->driverCandidates();
 
-        $assignmentCounts = Booking::query()
-            ->whereIn('assigned_driver_id', $drivers->pluck('id'))
-            ->whereIn('status', [
+        $assignmentCounts = BookingAssignment::query()
+            ->whereIn('driver_id', $drivers->pluck('id'))
+            ->whereHas('booking', fn ($query) => $query->whereIn('status', [
                 BookingStatus::Pending->value,
                 BookingStatus::Confirmed->value,
                 BookingStatus::Ongoing->value,
-            ])
-            ->selectRaw('assigned_driver_id, count(*) as total')
-            ->groupBy('assigned_driver_id')
-            ->pluck('total', 'assigned_driver_id');
+            ]))
+            ->selectRaw('driver_id, count(*) as total')
+            ->groupBy('driver_id')
+            ->pluck('total', 'driver_id');
 
         return $this->success('Drivers fetched successfully.', [
             'drivers' => $drivers->map(fn (User $driver) => [
@@ -96,6 +97,10 @@ class BookingController extends Controller
                 'user.documents',
                 'user.customerProfile',
                 'assignedDriver',
+                'assignment',
+                'terms',
+                'confirmationEmail',
+                'events',
             ]))
         );
     }
@@ -210,7 +215,7 @@ class BookingController extends Controller
             'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'user.customerProfile',
             'vehicle.currentCondition.items', 'vehicle.currentCondition.markers', 'vehicle.currentCondition.signatures.user:id,name',
             'vehicle.currentCondition.creator:id,name', 'vehicle.currentCondition.basedOnInspection',
-            'assignedDriver', 'additionalCharges.responsibleUser',
+            'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'additionalCharges.responsibleUser',
             'vehicleInspections.items', 'vehicleInspections.markers', 'vehicleInspections.signatures.user:id,name',
             'vehicleInspections.creator:id,name', 'vehicleInspections.basedOnInspection',
             'telematicsTrips',

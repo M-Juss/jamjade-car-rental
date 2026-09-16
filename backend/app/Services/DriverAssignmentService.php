@@ -36,7 +36,7 @@ class DriverAssignmentService
     public function isAvailableFor(User $driver, Booking $booking): bool
     {
         $hasOverlap = Booking::query()
-            ->where('assigned_driver_id', $driver->id)
+            ->whereHas('assignment', fn ($query) => $query->where('driver_id', $driver->id))
             ->whereKeyNot($booking->id)
             ->where('rental_type', RentalType::OwnersDriver->value)
             ->whereIn('status', [
@@ -130,10 +130,12 @@ class DriverAssignmentService
     private function persistAssignment(Booking $booking, User $driver, ?User $actor = null): void
     {
         $previousDriver = $booking->assignedDriver;
-        $booking->forceFill([
-            'assigned_driver_id' => $driver->id,
-            'driver_assigned_at' => now(),
-        ])->save();
+        $booking->assignment()->updateOrCreate([], [
+            'driver_id' => $driver->id,
+            'assigned_at' => now(),
+        ]);
+        $booking->unsetRelation('assignment');
+        $booking->unsetRelation('assignedDriver');
 
         if ($previousDriver && $previousDriver->id !== $driver->id) {
             $this->notifications->createForUser($previousDriver, 'booking', 'Service assignment changed',

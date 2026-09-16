@@ -62,7 +62,7 @@ class VehicleRequest extends BaseFormRequest
             'color' => [$formFieldRequirement, 'string', 'max:80'],
             'status' => [$formFieldRequirement, 'in:available,rented,maintenance,unavailable'],
             'description' => [$formFieldRequirement, 'string', 'max:3000'],
-            'is_most_booked' => ['nullable', 'boolean'],
+            'is_featured' => ['nullable', 'boolean'],
             'features' => [$relationRequirement, 'array', 'min:1'],
             'features.*' => ['string', 'max:120'],
             'images' => [$relationRequirement, 'array', 'min:1', 'max:5'],

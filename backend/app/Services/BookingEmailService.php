@@ -29,24 +29,25 @@ class BookingEmailService
     {
         $booking = DB::transaction(function () use ($booking, $force) {
             $lockedBooking = Booking::query()
-                ->with(['user.customerProfile', 'vehicle', 'payments'])
+                ->with(['user.customerProfile', 'vehicle', 'payments', 'confirmationEmail'])
                 ->lockForUpdate()
                 ->findOrFail($booking->getKey());
+            $email = $lockedBooking->confirmationEmail()->firstOrNew([]);
 
             if (
                 ! $force
                 && (
-                    $lockedBooking->confirmation_email_sent_at !== null
-                    || $lockedBooking->confirmation_email_status === self::STATUS_QUEUED
+                    $email->sent_at !== null
+                    || $email->status === self::STATUS_QUEUED
                 )
             ) {
                 return null;
             }
 
             if (! $lockedBooking->user?->email) {
-                $lockedBooking->forceFill([
-                    'confirmation_email_status' => self::STATUS_FAILED,
-                    'confirmation_email_error' => 'The renter does not have an email address.',
+                $email->fill([
+                    'status' => self::STATUS_FAILED,
+                    'error' => 'The renter does not have an email address.',
                 ])->save();
 
                 Log::warning('Booking confirmation email was not queued because the renter has no email address.', [
@@ -57,10 +58,10 @@ class BookingEmailService
                 return null;
             }
 
-            $lockedBooking->forceFill([
-                'confirmation_email_sent_at' => null,
-                'confirmation_email_status' => self::STATUS_QUEUED,
-                'confirmation_email_error' => null,
+            $email->fill([
+                'sent_at' => null,
+                'status' => self::STATUS_QUEUED,
+                'error' => null,
             ])->save();
 
             return $lockedBooking;
@@ -103,17 +104,17 @@ class BookingEmailService
 
     public function markSent(Booking $booking, ?string $messageId = null): void
     {
-        $booking = Booking::query()->with('user')->find($booking->getKey());
+        $booking = Booking::query()->with(['user', 'confirmationEmail'])->find($booking->getKey());
 
         if (! $booking) {
             return;
         }
 
-        $booking->forceFill([
-            'confirmation_email_sent_at' => now(),
-            'confirmation_email_status' => self::STATUS_SENT,
-            'confirmation_email_error' => null,
-        ])->save();
+        $booking->confirmationEmail()->updateOrCreate([], [
+            'sent_at' => now(),
+            'status' => self::STATUS_SENT,
+            'error' => null,
+        ]);
 
         $this->notificationService->createForBooking(
             $booking,
@@ -138,7 +139,7 @@ class BookingEmailService
 
     public function markFailed(Booking $booking, Throwable|string $error): void
     {
-        $booking = Booking::query()->with('user')->find($booking->getKey());
+        $booking = Booking::query()->with(['user', 'confirmationEmail'])->find($booking->getKey());
 
         if (! $booking) {
             return;
@@ -148,10 +149,10 @@ class BookingEmailService
             $error instanceof Throwable ? $error->getMessage() : $error
         );
 
-        $booking->forceFill([
-            'confirmation_email_status' => self::STATUS_FAILED,
-            'confirmation_email_error' => $message,
-        ])->save();
+        $booking->confirmationEmail()->updateOrCreate([], [
+            'status' => self::STATUS_FAILED,
+            'error' => $message,
+        ]);
 
         Log::error('Booking confirmation email failed.', [
             'booking_id' => $booking->id,

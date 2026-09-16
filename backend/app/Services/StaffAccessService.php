@@ -18,9 +18,9 @@ class StaffAccessService
                 'description' => $module['description'],
                 'permission' => $module['permission'],
                 'adminPath' => $module['admin_path'],
-                'ownerPath' => $module['owner_path'],
+                'staffPath' => $module['staff_path'],
                 'assignable' => (bool) ($module['assignable'] ?? true),
-                'ownerOnly' => (bool) ($module['owner_only'] ?? false),
+                'adminOnly' => (bool) ($module['admin_only'] ?? false),
             ])
             ->when($assignableOnly, fn (Collection $modules) => $modules->where('assignable', true))
             ->values();

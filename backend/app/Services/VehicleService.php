@@ -113,7 +113,7 @@ class VehicleService
                 'color',
                 'status',
                 'description',
-                'is_most_booked',
+                'is_featured',
             ])
             ->filter(fn ($value) => $value !== null)
             ->all();

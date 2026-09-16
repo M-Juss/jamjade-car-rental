@@ -48,7 +48,7 @@ class BookingInspectionService
 
         try {
             return DB::transaction(function () use ($booking, $type, $condition, $actor, $personnelPath, $operatorPath) {
-                $booking = Booking::query()->with(['user', 'assignedDriver'])->lockForUpdate()->findOrFail($booking->id);
+                $booking = Booking::query()->with(['user', 'assignedDriver', 'assignment'])->lockForUpdate()->findOrFail($booking->id);
                 $vehicle = Vehicle::query()->lockForUpdate()->findOrFail($booking->vehicle_id);
 
                 if ($booking->vehicleInspections()->where('type', $type)->exists()) {
@@ -127,7 +127,13 @@ class BookingInspectionService
                 $inspection->forceFill(['status' => VehicleInspectionStatus::Finalized, 'finalized_at' => now()])->save();
 
                 if ($type === VehicleInspectionType::Outgoing) {
-                    $booking->forceFill(['calibration_status' => 'available', 'calibrated_by' => null, 'calibrated_at' => null])->save();
+                    $booking->assignment()->updateOrCreate([], [
+                        'calibration_status' => 'available',
+                        'calibrated_by' => null,
+                        'calibrated_at' => null,
+                    ]);
+                    $booking->unsetRelation('assignment');
+                    $booking->unsetRelation('assignedDriver');
                 } else {
                     $vehicle->forceFill(['current_condition_inspection_id' => $inspection->id])->save();
                 }

@@ -166,9 +166,9 @@ it('records a failure when a booking has no renter email address', function () {
 
     expect(app(BookingEmailService::class)->sendBookingConfirmation($booking))->toBeFalse();
 
-    $this->assertDatabaseHas('bookings', [
-        'id' => $booking->id,
-        'confirmation_email_status' => BookingEmailService::STATUS_FAILED,
+    $this->assertDatabaseHas('booking_confirmation_emails', [
+        'booking_id' => $booking->id,
+        'status' => BookingEmailService::STATUS_FAILED,
     ]);
 });
 

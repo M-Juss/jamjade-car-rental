@@ -142,7 +142,7 @@ function availableVehicle(array $attributes = []): Vehicle
 function vehicleManagerUser(): User
 {
     $user = User::factory()->create();
-    $user->assignRole(UserRole::Owner->value);
+    $user->assignRole(UserRole::Admin->value);
 
     return $user;
 }

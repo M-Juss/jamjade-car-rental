@@ -10,7 +10,7 @@ class StoreStaffRoleRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('owner') ?? false;
+        return $this->user()?->hasRole('admin') ?? false;
     }
 
     public function rules(): array

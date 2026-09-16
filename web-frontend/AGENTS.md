@@ -56,7 +56,7 @@ Start discovery in these locations, then inspect the closest feature-specific im
 - Management page headers, filters, summary cards, tables, and states: `src/modules/management/bookings/BookingsModule.tsx`, `src/modules/management/admin-access/AdminAccessModule.tsx`, and `src/modules/management/vehicles/VehiclesModule.tsx`
 - Canonical form-dialog shell and actions: `src/components/common/FormDialogLayout.tsx`
 - Complex form-body composition: `src/forms/admin/AdminForm.tsx` and `src/forms/vehicle/VehicleForm.tsx`
-- Navigation shell and role layouts: `src/modules/management/shell/`, `src/app/admin/layout.tsx`, and `src/app/owner/layout.tsx`
+- Navigation shell and role layouts: `src/modules/management/shell/`, `src/app/admin/layout.tsx`, and `src/app/staff/layout.tsx`
 
 This list is a discovery map, not permission to copy blindly. The closest equivalent in the touched feature remains the preferred precedent.
 

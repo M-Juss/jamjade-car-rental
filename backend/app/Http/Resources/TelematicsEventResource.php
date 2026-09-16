@@ -12,7 +12,7 @@ class TelematicsEventResource extends JsonResource
         return [
             'id' => $this->id,
             'tripId' => $this->trip_id,
-            'bookingId' => $this->booking?->booking_code,
+            'bookingId' => $this->trip?->booking?->booking_code,
             'eventType' => $this->event_type->value,
             'type' => $this->event_type->label(),
             'severity' => str($this->severity)->title()->toString(),

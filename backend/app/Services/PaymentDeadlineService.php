@@ -73,14 +73,14 @@ class PaymentDeadlineService
 
                     $booking->forceFill([
                         'status' => BookingStatus::Cancelled,
-                        'cancelled_at' => $now,
                         'admin_notes' => $reason,
                     ])->save();
 
-                    $booking->statusLogs()->create([
+                    $booking->events()->create([
+                        'event_type' => 'status_changed',
                         'old_status' => $oldStatus,
                         'new_status' => BookingStatus::Cancelled,
-                        'changed_by' => null,
+                        'actor_user_id' => null,
                         'reason' => $reason,
                     ]);
 

@@ -221,11 +221,11 @@ it('separates customer and Driver charges and allows completion while Driver deb
         ->toThrow(ValidationException::class);
 
     $customerCharge = collect($charges)->first(fn ($charge) => $charge->responsibility === AdditionalChargeResponsibility::Customer);
-    $customerCharge->forceFill(['payment_status' => PaymentStatus::Paid, 'paid_at' => now()])->save();
-    Payment::create([
+    $payment = Payment::create([
         'booking_id' => $booking->id, 'user_id' => $booking->user_id, 'payment_method' => 'PayPal',
         'payment_status' => PaymentStatus::Paid, 'amount' => 500, 'transaction_id' => 'RETURN-500', 'paid_at' => now(),
     ]);
+    $payment->additionalCharges()->attach($customerCharge->id, ['amount' => 500]);
     app(AdditionalChargeService::class)->recomputeCustomerBalance($booking->fresh());
     $completed = app(BookingService::class)->transition($booking->fresh(), BookingStatus::Completed, $actor);
 
@@ -268,7 +268,7 @@ it('rejects additional charge amounts with unsafe decimal precision', function (
     $this->assertDatabaseCount('booking_additional_charges', 0);
 });
 
-it('captures Driver charges idempotently without changing the customer balance', function () {
+it('captures only the outstanding portion of a Driver charge without changing the customer balance', function () {
     config([
         'services.paypal.base_url' => 'https://api-m.sandbox.paypal.com',
         'services.paypal.client_id' => 'sandbox-client-id',
@@ -283,7 +283,7 @@ it('captures Driver charges idempotently without changing the customer balance',
         'https://api-m.sandbox.paypal.com/v2/checkout/orders/DRIVER-ORDER-1/capture' => Http::response([
             'status' => 'COMPLETED', 'purchase_units' => [['payments' => ['captures' => [[
                 'id' => 'DRIVER-CAPTURE-1', 'status' => 'COMPLETED',
-                'amount' => ['currency_code' => 'PHP', 'value' => '2000.00'],
+                'amount' => ['currency_code' => 'PHP', 'value' => '1500.00'],
             ]]]]],
         ]),
     ]);
@@ -296,16 +296,22 @@ it('captures Driver charges idempotently without changing the customer balance',
     $charge = app(AdditionalChargeService::class)->create($booking, [[
         'type' => 'traffic_violation', 'description' => 'Traffic citation', 'amount' => 2000, 'responsibility' => 'driver',
     ]], $actor)[0];
+    $partialPayment = Payment::create([
+        'booking_id' => $booking->id, 'user_id' => $booking->assigned_driver_id, 'payment_method' => 'Manual',
+        'payment_status' => PaymentStatus::Paid, 'amount' => 500, 'transaction_id' => 'DRIVER-PARTIAL-500', 'paid_at' => now(),
+    ]);
+    $partialPayment->additionalCharges()->attach($charge->id, ['amount' => 500]);
     Sanctum::actingAs($booking->assignedDriver);
 
     $this->postJson("/api/mobile/driver/services/{$booking->booking_code}/paypal/orders", [
         'app_return_url' => 'mobilefrontend://paypal/driver-return',
         'app_cancel_url' => 'mobilefrontend://paypal/driver-cancel',
-    ])->assertCreated()->assertJsonPath('data.amount', 2000);
+    ])->assertCreated()->assertJsonPath('data.amount', 1500);
     $this->postJson('/api/mobile/paypal/orders/DRIVER-ORDER-1/capture')->assertOk();
     $this->postJson('/api/mobile/paypal/orders/DRIVER-ORDER-1/capture')->assertOk();
 
     expect($charge->fresh()->payment_status)->toBe(PaymentStatus::Paid)
+        ->and((float) $charge->payments()->where('payments.provider_transaction_id', 'DRIVER-CAPTURE-1')->firstOrFail()->pivot->amount)->toBe(1500.0)
         ->and($booking->fresh()->remaining_balance)->toBe('0.00')
         ->and($booking->fresh()->payment_status)->toBe(PaymentStatus::Paid);
 });
@@ -356,7 +362,7 @@ it('captures a customer return-charge balance idempotently while the booking is 
     expect($charge->fresh()->payment_status)->toBe(PaymentStatus::Paid)
         ->and($booking->fresh()->remaining_balance)->toBe('0.00')
         ->and($booking->fresh()->payment_status)->toBe(PaymentStatus::Paid)
-        ->and($booking->payments()->where('transaction_id', 'CUSTOMER-RETURN-CAPTURE-1')->count())->toBe(1);
+        ->and($booking->payments()->where('provider_transaction_id', 'CUSTOMER-RETURN-CAPTURE-1')->count())->toBe(1);
 });
 
 it('does not complete when a customer charge remains unpaid even if a generic payment made the numeric balance zero', function () {

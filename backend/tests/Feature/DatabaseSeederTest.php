@@ -23,7 +23,7 @@ it('seeds only the Jamjade owner account without demo vehicle data', function ()
         ->and($owner)->not->toBeNull()
         ->and($owner?->phone_number)->toBe('09170000002')
         ->and(Hash::check('Jamjade@123', (string) $owner?->password))->toBeTrue()
-        ->and($owner?->hasRole(UserRole::Owner->value))->toBeTrue()
+        ->and($owner?->hasRole(UserRole::Admin->value))->toBeTrue()
         ->and(Vehicle::count())->toBe(0)
         ->and(Booking::count())->toBe(0);
 });
@@ -38,7 +38,7 @@ it('lets the seeded Jamjade owner log in to the web admin', function () {
         ->assertOk()
         ->assertJsonPath('message', 'Admin login successful.')
         ->assertJsonPath('data.user.email', 'jamjade.carrentalofficial@gmail.com')
-        ->assertJsonPath('data.user.roles.0', UserRole::Owner->value);
+        ->assertJsonPath('data.user.roles.0', UserRole::Admin->value);
 });
 
 it('lets an already authenticated web admin submit login again without redirecting to html', function () {

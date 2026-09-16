@@ -26,10 +26,8 @@ class Vehicle extends Model
         'fuel_type',
         'color',
         'status',
-        'is_most_booked',
+        'is_featured',
         'description',
-        'last_service_at',
-        'next_service_at',
     ];
 
     protected function casts(): array
@@ -37,9 +35,7 @@ class Vehicle extends Model
         return [
             'status' => VehicleStatus::class,
             'price_per_day' => 'decimal:2',
-            'is_most_booked' => 'boolean',
-            'last_service_at' => 'datetime',
-            'next_service_at' => 'datetime',
+            'is_featured' => 'boolean',
         ];
     }
 

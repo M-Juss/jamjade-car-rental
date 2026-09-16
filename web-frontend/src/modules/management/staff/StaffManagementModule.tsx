@@ -75,7 +75,7 @@ function messageFromError(error: unknown) {
     }
 
     if (error.status === 403) {
-      return "Staff Management is available only to the owner account.";
+      return "Staff Management is available only to the admin account.";
     }
   }
 

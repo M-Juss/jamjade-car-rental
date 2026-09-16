@@ -7,7 +7,6 @@ use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Booking;
 use App\Models\BookingAdditionalCharge;
-use App\Models\Payment;
 use App\Models\PayPalCheckout;
 use App\Models\User;
 use App\Support\PayPalAppUrl;
@@ -93,7 +92,7 @@ class PayPalCheckoutService
         }
 
         $hasOpenCheckout = $booking->paypalCheckouts()
-            ->where('payment_option', 'remaining_balance')
+            ->where('purpose', 'remaining_balance')
             ->whereNotIn('status', ['completed', 'failed'])
             ->exists();
 
@@ -105,7 +104,7 @@ class PayPalCheckoutService
 
         $chargeIds = $booking->additionalCharges()
             ->where('responsibility', AdditionalChargeResponsibility::Customer->value)
-            ->whereIn('payment_status', [PaymentStatus::Unpaid->value, PaymentStatus::Failed->value])
+            ->outstanding()
             ->pluck('id')->all();
 
         return $this->createCheckout(
@@ -132,17 +131,19 @@ class PayPalCheckoutService
             ->where('booking_id', $booking->id)
             ->where('responsible_user_id', $user->id)
             ->where('responsibility', AdditionalChargeResponsibility::Driver->value)
-            ->whereIn('payment_status', [PaymentStatus::Unpaid->value, PaymentStatus::Failed->value])
+            ->outstanding()
             ->get();
         if ($charges->isEmpty()) {
             throw ValidationException::withMessages(['booking' => ['This service has no unpaid Driver-responsible charges.']]);
         }
-        if ($booking->paypalCheckouts()->where('user_id', $user->id)->where('payment_option', 'driver_outstanding')
+        if ($booking->paypalCheckouts()->where('user_id', $user->id)->where('purpose', 'driver_outstanding')
             ->whereNotIn('status', ['completed', 'failed'])->exists()) {
             throw ValidationException::withMessages(['booking' => ['A PayPal checkout for this Driver balance is already open.']]);
         }
 
-        return $this->createCheckout($user, $booking, 'driver_outstanding', (float) $charges->sum('amount'), false,
+        $charges->load('payments');
+
+        return $this->createCheckout($user, $booking, 'driver_outstanding', (float) $charges->sum('outstanding_amount'), false,
             $callbacks['app_return_url'], $callbacks['app_cancel_url'], $charges->pluck('id')->all());
     }
 
@@ -166,7 +167,16 @@ class PayPalCheckoutService
             'status' => 'creating',
         ]);
         if ($additionalChargeIds !== []) {
-            $checkout->additionalCharges()->sync($additionalChargeIds);
+            $allocations = BookingAdditionalCharge::query()
+                ->whereIn('id', $additionalChargeIds)
+                ->with('payments')
+                ->get()
+                ->mapWithKeys(fn (BookingAdditionalCharge $charge) => [
+                    $charge->id => ['amount' => $charge->outstanding_amount],
+                ])
+                ->filter(fn (array $allocation) => (float) $allocation['amount'] > 0)
+                ->all();
+            $checkout->additionalCharges()->sync($allocations);
         }
 
         try {
@@ -236,7 +246,7 @@ class PayPalCheckoutService
     {
         $checkout = PayPalCheckout::query()
             ->with('booking')
-            ->where('paypal_order_id', $orderId)
+            ->where('provider_order_id', $orderId)
             ->where('user_id', $user->id)
             ->firstOrFail();
 
@@ -307,13 +317,12 @@ class PayPalCheckoutService
             if ($lockedCheckout->payment_option === 'driver_outstanding') {
                 $chargeIds = $lockedCheckout->additionalCharges->pluck('id');
                 $charges = BookingAdditionalCharge::query()->whereIn('id', $chargeIds)->lockForUpdate()->get();
+                $charges->load('payments');
                 $expected = (float) $charges->where('responsible_user_id', $user->id)
-                    ->whereIn('payment_status', [PaymentStatus::Unpaid, PaymentStatus::Failed])->sum('amount');
+                    ->filter(fn (BookingAdditionalCharge $charge) => $charge->payment_status !== PaymentStatus::Paid)
+                    ->sum('outstanding_amount');
                 if ($this->formatAmount($expected) !== $this->formatAmount((float) $lockedCheckout->amount)) {
                     throw ValidationException::withMessages(['paypal' => ['The Driver outstanding balance changed before capture.']]);
-                }
-                foreach ($charges as $charge) {
-                    $charge->forceFill(['payment_status' => PaymentStatus::Paid, 'paid_at' => now()])->save();
                 }
                 $lockedCheckout->update([
                     'paypal_capture_id' => $captureId, 'status' => 'completed',
@@ -341,7 +350,7 @@ class PayPalCheckoutService
             }
 
             $amount = (float) $lockedCheckout->amount;
-            $paidAfterCapture = (float) $booking->payments()->sum('amount') + $amount;
+            $paidAfterCapture = (float) $booking->successfulPayments()->sum('amount') + $amount;
             $paymentStatus = $paidAfterCapture >= (float) $booking->total_amount
                 ? PaymentStatus::Paid
                 : PaymentStatus::Partial;
@@ -350,24 +359,12 @@ class PayPalCheckoutService
                 ? $booking->rental_start_at->copy()->subDay()
                 : null;
 
-            Payment::create([
-                'booking_id' => $booking->id,
-                'user_id' => $booking->user_id,
-                'payment_method' => 'PayPal',
-                'payment_status' => $paymentStatus,
-                'amount' => $amount,
-                'transaction_id' => $captureId,
-                'paid_at' => now(),
-            ]);
-
             $booking->update([
                 'status' => $wasPending ? BookingStatus::Confirmed : $booking->status,
                 'payment_status' => $paymentStatus,
-                'down_payment_amount' => $paidAfterCapture,
                 'remaining_balance' => $remainingBalance,
                 'balance_due_at' => $balanceDueAt,
                 'balance_reminder_sent_at' => null,
-                'confirmed_at' => $wasPending ? now() : $booking->confirmed_at,
             ]);
 
             $lockedCheckout->update([
@@ -376,12 +373,6 @@ class PayPalCheckoutService
                 'paypal_response' => $captureResponse,
                 'captured_at' => now(),
             ]);
-
-            if ($lockedCheckout->additionalCharges->isNotEmpty()) {
-                BookingAdditionalCharge::query()->whereIn('id', $lockedCheckout->additionalCharges->pluck('id'))
-                    ->where('responsible_user_id', $user->id)
-                    ->update(['payment_status' => PaymentStatus::Paid->value, 'paid_at' => now()]);
-            }
 
             activity()
                 ->causedBy($user)
@@ -396,10 +387,11 @@ class PayPalCheckoutService
                 ->log('PayPal payment captured for booking.');
 
             if ($wasPending) {
-                $booking->statusLogs()->create([
+                $booking->events()->create([
+                    'event_type' => 'status_changed',
                     'old_status' => BookingStatus::Pending,
                     'new_status' => BookingStatus::Confirmed,
-                    'changed_by' => $user->id,
+                    'actor_user_id' => $user->id,
                     'reason' => 'Booking automatically confirmed after successful PayPal payment.',
                 ]);
 
@@ -484,7 +476,7 @@ class PayPalCheckoutService
     {
         $checkout = PayPalCheckout::query()
             ->with('booking')
-            ->where('paypal_order_id', $orderId)
+            ->where('provider_order_id', $orderId)
             ->where('user_id', $user->id)
             ->firstOrFail();
 
@@ -500,7 +492,7 @@ class PayPalCheckoutService
 
             $checkout->delete();
 
-            if ($isInitialCheckout && $booking && ! $booking->payments()->exists()) {
+            if ($isInitialCheckout && $booking && ! $booking->successfulPayments()->exists()) {
                 $booking->forceDelete();
             }
         });
@@ -509,7 +501,10 @@ class PayPalCheckoutService
     private function loadBooking(int $bookingId): Booking
     {
         return Booking::query()
-            ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents'])
+            ->with([
+                'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
+                'assignment', 'terms', 'confirmationEmail', 'events',
+            ])
             ->findOrFail($bookingId);
     }
 

@@ -13,8 +13,7 @@ class TelematicsTrip extends Model
 
     protected $fillable = [
         'booking_id',
-        'user_id',
-        'vehicle_id',
+        'operator_user_id',
         'status',
         'started_at',
         'paused_at',
@@ -57,14 +56,9 @@ class TelematicsTrip extends Model
         return $this->belongsTo(Booking::class);
     }
 
-    public function user(): BelongsTo
+    public function operator(): BelongsTo
     {
-        return $this->belongsTo(User::class);
-    }
-
-    public function vehicle(): BelongsTo
-    {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(User::class, 'operator_user_id');
     }
 
     public function events(): HasMany
@@ -72,8 +66,8 @@ class TelematicsTrip extends Model
         return $this->hasMany(TelematicsEvent::class, 'trip_id');
     }
 
-    public function geofenceLogs(): HasMany
+    public function geofenceEvents(): HasMany
     {
-        return $this->hasMany(GeofenceLog::class, 'trip_id');
+        return $this->hasMany(TelematicsEvent::class, 'trip_id')->whereNotNull('geofence_status');
     }
 }

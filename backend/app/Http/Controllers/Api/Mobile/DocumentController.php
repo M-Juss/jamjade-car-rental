@@ -21,7 +21,7 @@ class DocumentController extends Controller
     {
         $documents = $request->user()
             ->documents()
-            ->with('reviewer')
+            ->with(['reviewer', 'files'])
             ->whereIn('document_type', CustomerDocument::ALLOWED_DOCUMENT_TYPES)
             ->latest()
             ->get();

@@ -53,12 +53,12 @@ import { optionalServices, REQUIRED_DOCUMENTS } from '@/lib/browse/rental-config
 import { formatPeso } from '@/lib/browse/pricing';
 import type { OptionalService, PriceBreakdown, Vehicle } from '@/types/browse';
 
-export type SortOption = 'lowest_price' | 'highest_price' | 'most_booked' | 'newest';
+export type SortOption = 'lowest_price' | 'highest_price' | 'featured' | 'newest';
 
 export type BrowseFilters = {
   bookmarkedOnly?: boolean;
   maxPrice?: number;
-  mostBookedOnly?: boolean;
+  featuredOnly?: boolean;
   sort?: SortOption;
   transmission?: Vehicle['transmission'];
   fuelType?: Vehicle['fuelType'];
@@ -694,13 +694,13 @@ export function FilterSheet({
   const seatOptions = Array.from(new Set(availableVehicleOptions.map((vehicle) => vehicle.seats))).sort((a, b) => a - b);
   const priceOptions = Array.from(new Set(availableVehicleOptions.map((vehicle) => vehicle.pricePerDay))).sort((a, b) => a - b);
   const sortOptions: { label: string; value: SortOption }[] = [
-    { label: 'Most booked', value: 'most_booked' },
+    { label: 'Featured', value: 'featured' },
     { label: 'Lowest price', value: 'lowest_price' },
     { label: 'Highest price', value: 'highest_price' },
     { label: 'Newest', value: 'newest' },
   ];
   const bookmarkedCount = availableVehicleOptions.filter((vehicle) => bookmarkedVehicleIds.includes(vehicle.id)).length;
-  const mostBookedCount = availableVehicleOptions.filter((vehicle) => vehicle.isMostBooked).length;
+  const featuredCount = availableVehicleOptions.filter((vehicle) => vehicle.isFeatured).length;
 
   useEffect(() => {
     if (visible) {
@@ -739,10 +739,10 @@ export function FilterSheet({
                 }
               />
               <FilterChip
-                label={`Most booked cars (${mostBookedCount})`}
-                isSelected={Boolean(draft.mostBookedOnly)}
+                label={`Featured cars (${featuredCount})`}
+                isSelected={Boolean(draft.featuredOnly)}
                 onPress={() =>
-                  setDraft((current) => ({ ...current, mostBookedOnly: !current.mostBookedOnly }))
+                  setDraft((current) => ({ ...current, featuredOnly: !current.featuredOnly }))
                 }
               />
             </FilterGroup>
@@ -752,7 +752,7 @@ export function FilterSheet({
                 <FilterChip
                   key={option.value}
                   label={option.label}
-                  isSelected={(draft.sort ?? 'most_booked') === option.value}
+                  isSelected={(draft.sort ?? 'featured') === option.value}
                   onPress={() => setDraft((current) => ({ ...current, sort: option.value }))}
                 />
               ))}
@@ -819,7 +819,7 @@ export function FilterSheet({
           <View className="mt-5 flex-row gap-3">
             <Pressable
               accessibilityRole="button"
-              onPress={() => setDraft({ features: [], sort: 'most_booked' })}
+              onPress={() => setDraft({ features: [], sort: 'featured' })}
               className="min-h-[54px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
               <Text className="text-[15px] font-black text-foreground">Reset</Text>
             </Pressable>
@@ -862,7 +862,7 @@ export function SortSheet({
   const options: { label: string; value: SortOption }[] = [
     { label: 'Lowest price', value: 'lowest_price' },
     { label: 'Highest price', value: 'highest_price' },
-    { label: 'Most booked', value: 'most_booked' },
+    { label: 'Featured', value: 'featured' },
     { label: 'Newest', value: 'newest' },
   ];
 

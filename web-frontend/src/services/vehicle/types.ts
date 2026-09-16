@@ -27,7 +27,7 @@ export type VehicleRecord = {
   status: VehicleStatus | string;
   statusLabel?: string;
   description?: string | null;
-  isMostBooked?: boolean;
+  isFeatured?: boolean;
   images: string[];
   imageRecords?: Array<{
     id: number;

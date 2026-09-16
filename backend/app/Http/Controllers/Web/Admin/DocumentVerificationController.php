@@ -25,7 +25,7 @@ class DocumentVerificationController extends Controller
         $perPage = $request->integer('per_page', 15);
 
         $documents = CustomerDocument::query()
-            ->with(['user.customerProfile', 'reviewer'])
+            ->with(['user.customerProfile', 'reviewer', 'files'])
             ->whereIn('document_type', CustomerDocument::ALLOWED_DOCUMENT_TYPES)
             ->when($status, fn ($query, string $status) => $query->where('status', $status))
             ->latest()

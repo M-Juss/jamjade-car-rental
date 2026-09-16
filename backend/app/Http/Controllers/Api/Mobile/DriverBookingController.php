@@ -18,10 +18,10 @@ class DriverBookingController extends Controller
         abort_unless($request->user()->hasRole('driver'), 403);
         $bookings = Booking::query()
             ->with([
-                'vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'vehicleInspections', 'telematicsTrips',
+                'vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'vehicleInspections', 'telematicsTrips',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser'),
             ])
-            ->where('assigned_driver_id', $request->user()->id)
+            ->whereHas('assignment', fn ($query) => $query->where('driver_id', $request->user()->id))
             ->latest()->paginate(min(max($request->integer('per_page', 20), 1), 100));
 
         return $this->paginated('Driver services fetched successfully.', $bookings, BookingResource::class);
@@ -31,9 +31,9 @@ class DriverBookingController extends Controller
     {
         abort_unless($request->user()->hasRole('driver'), 403);
         $record = Booking::query()
-            ->with(['vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'vehicleInspections', 'telematicsTrips',
+            ->with(['vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'vehicleInspections', 'telematicsTrips',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser')])
-            ->where('assigned_driver_id', $request->user()->id)
+            ->whereHas('assignment', fn ($query) => $query->where('driver_id', $request->user()->id))
             ->where(fn ($query) => $query->where('booking_code', $booking)->orWhere('id', $booking))
             ->firstOrFail();
 

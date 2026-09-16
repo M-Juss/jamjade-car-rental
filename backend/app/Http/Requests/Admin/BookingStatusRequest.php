@@ -16,8 +16,6 @@ class BookingStatusRequest extends BaseFormRequest
         return [
             'reason' => ['nullable', 'string', 'max:1000'],
             'admin_notes' => ['nullable', 'string', 'max:2000'],
-            'toll_fee' => ['nullable', 'numeric', 'min:0'],
-            'late_hours' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

@@ -9,7 +9,7 @@ class ListStaffUsersRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasRole('owner');
+        return (bool) $this->user()?->hasRole('admin');
     }
 
     public function rules(): array

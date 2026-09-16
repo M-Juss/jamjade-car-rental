@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\TelematicsEvent;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\MaintenanceDueCalculator;
 use App\Support\PublicStorageUrl;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -17,15 +18,10 @@ use Illuminate\Support\Collection;
 
 class ReportService
 {
-    private const RECEIVED_PAYMENT_STATUSES = [
-        PaymentStatus::Paid->value,
-        PaymentStatus::Partial->value,
-    ];
-
     public function dashboardSummary(): array
     {
         $bookings = Booking::all();
-        $payments = Payment::whereIn('payment_status', self::RECEIVED_PAYMENT_STATUSES)->get();
+        $payments = Payment::where('status', 'completed')->get();
 
         return $this->summary(
             $bookings,
@@ -41,14 +37,16 @@ class ReportService
             ->latest()
             ->get();
         $payments = Payment::with(['booking.vehicle', 'user'])
-            ->whereIn('payment_status', self::RECEIVED_PAYMENT_STATUSES)
+            ->where('status', 'completed')
             ->latest()
             ->get();
         $vehicles = Vehicle::with([
             'images',
             'bookings.payments',
+            'maintenancePlans',
+            'currentCondition',
         ])->get();
-        $periods = $this->monthPeriods(now()->subMonths(11)->startOfMonth());
+        $periods = $this->monthPeriods(now()->toImmutable()->subMonthsNoOverflow(11)->startOfMonth());
 
         return [
             'summary' => $this->summary(
@@ -79,23 +77,25 @@ class ReportService
             ->latest()
             ->get();
         $payments = Payment::with(['booking.user', 'booking.vehicle'])
-            ->whereIn('payment_status', self::RECEIVED_PAYMENT_STATUSES)
+            ->where('status', 'completed')
             ->when($from, function ($query) use ($from) {
                 $query->where(function ($query) use ($from) {
-                    $query->where('paid_at', '>=', $from)
+                    $query->where('completed_at', '>=', $from)
                         ->orWhere(function ($query) use ($from) {
-                            $query->whereNull('paid_at')
+                            $query->whereNull('completed_at')
                                 ->where('created_at', '>=', $from);
                         });
                 });
             })
             ->latest()
             ->get();
-        $events = TelematicsEvent::with(['booking', 'vehicle', 'user'])
+        $events = TelematicsEvent::with(['trip.booking', 'trip.booking.vehicle', 'trip.operator'])
             ->when($from, fn ($query) => $query->where('occurred_at', '>=', $from))
             ->latest('occurred_at')
             ->get();
         $vehicles = Vehicle::with([
+            'maintenancePlans',
+            'currentCondition',
             'bookings' => fn ($query) => $query
                 ->when($from, fn ($query) => $query->where('created_at', '>=', $from))
                 ->with(['payments', 'telematicsEvents']),
@@ -227,10 +227,10 @@ class ReportService
     private function rangeStart(string $range): ?CarbonImmutable
     {
         return match ($range) {
-            '6_months' => now()->toImmutable()->subMonths(5)->startOfMonth(),
+            '6_months' => now()->toImmutable()->subMonthsNoOverflow(5)->startOfMonth(),
             'this_year' => now()->toImmutable()->startOfYear(),
             'all_time' => null,
-            default => now()->toImmutable()->subMonths(11)->startOfMonth(),
+            default => now()->toImmutable()->subMonthsNoOverflow(11)->startOfMonth(),
         };
     }
 
@@ -248,10 +248,10 @@ class ReportService
             ->filter()
             ->map(fn ($date) => CarbonImmutable::parse($date));
         $earliest = $dates->sort()->first();
-        $oldestAllowed = now()->toImmutable()->subMonths(23)->startOfMonth();
+        $oldestAllowed = now()->toImmutable()->subMonthsNoOverflow(23)->startOfMonth();
 
         if (! $earliest) {
-            return now()->toImmutable()->subMonths(11)->startOfMonth();
+            return now()->toImmutable()->subMonthsNoOverflow(11)->startOfMonth();
         }
 
         $start = $earliest->startOfMonth();
@@ -560,9 +560,9 @@ class ReportService
     {
         return [
             'eventId' => 'EV-'.str_pad((string) $event->id, 5, '0', STR_PAD_LEFT),
-            'bookingId' => $event->booking?->booking_code ?? 'N/A',
-            'vehicle' => $event->vehicle?->name ?? 'Unknown',
-            'customer' => $event->user?->name ?? 'Unknown',
+            'bookingId' => $event->trip?->booking?->booking_code ?? 'N/A',
+            'vehicle' => $event->trip?->booking?->vehicle?->name ?? 'Unknown',
+            'customer' => $event->trip?->operator?->name ?? 'Unknown',
             'eventType' => $event->event_type->label(),
             'location' => $event->latitude !== null && $event->longitude !== null
                 ? $event->latitude.', '.$event->longitude
@@ -574,17 +574,23 @@ class ReportService
 
     private function maintenanceStatus(Vehicle $vehicle): string
     {
-        if (! $vehicle->next_service_at) {
+        $plans = $vehicle->relationLoaded('maintenancePlans')
+            ? $vehicle->maintenancePlans->where('is_active', true)
+            : $vehicle->maintenancePlans()->where('is_active', true)->get();
+
+        if ($plans->isEmpty()) {
             return 'Good';
         }
 
-        if ($vehicle->next_service_at->isPast()) {
+        $statuses = $plans->map(fn ($plan) => app(MaintenanceDueCalculator::class)
+            ->calculate($plan, $vehicle->currentCondition?->odometer)['status']->value);
+
+        if ($statuses->contains('overdue')) {
             return 'Critical';
         }
 
-        return $vehicle->next_service_at->lessThanOrEqualTo(now()->addWeek())
-            ? 'Due'
-            : 'Good';
+        return $statuses->contains(fn (string $status) => in_array($status, ['due', 'due_soon'], true))
+            ? 'Due' : 'Good';
     }
 
     private function bookingStatusColor(BookingStatus $status): string

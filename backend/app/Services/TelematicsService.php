@@ -6,7 +6,6 @@ use App\Enums\BookingStatus;
 use App\Enums\RentalType;
 use App\Enums\TelematicsEventType;
 use App\Models\Booking;
-use App\Models\GeofenceLog;
 use App\Models\TelematicsEvent;
 use App\Models\TelematicsTrip;
 use App\Models\User;
@@ -20,7 +19,7 @@ class TelematicsService
     public function startTrip(User $user, array $data): TelematicsTrip
     {
         return DB::transaction(function () use ($user, $data) {
-            $booking = Booking::with(['vehicle', 'assignedDriver'])
+            $booking = Booking::with(['vehicle', 'assignedDriver', 'assignment'])
                 ->where('id', $data['booking_id'])
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -52,8 +51,7 @@ class TelematicsService
 
             $trip = TelematicsTrip::create([
                 'booking_id' => $booking->id,
-                'user_id' => $user->id,
-                'vehicle_id' => $booking->vehicle_id,
+                'operator_user_id' => $user->id,
                 'status' => 'started',
                 'started_at' => now(),
                 'start_latitude' => $data['latitude'],
@@ -80,7 +78,7 @@ class TelematicsService
                 ->event('telematics_trip_started')
                 ->log('Authorized mobile operator started telematics trip monitoring.');
 
-            return $trip->fresh(['booking.vehicle.images', 'vehicle.images', 'events']);
+            return $trip->fresh(['booking.vehicle.images', 'events']);
         });
     }
 
@@ -100,7 +98,7 @@ class TelematicsService
             'description' => 'Trip paused by customer.',
         ], $user);
 
-        return $trip->fresh(['booking.vehicle.images', 'vehicle.images', 'events']);
+        return $trip->fresh(['booking.vehicle.images', 'events']);
     }
 
     public function resumeTrip(TelematicsTrip $trip, User $user): TelematicsTrip
@@ -119,7 +117,7 @@ class TelematicsService
             'description' => 'Trip resumed by customer.',
         ], $user);
 
-        return $trip->fresh(['booking.vehicle.images', 'vehicle.images', 'events']);
+        return $trip->fresh(['booking.vehicle.images', 'events']);
     }
 
     public function endTrip(TelematicsTrip $trip, User $user, array $data = []): TelematicsTrip
@@ -142,7 +140,7 @@ class TelematicsService
         activity()->causedBy($user)->performedOn($trip)->event('telematics_trip_ended')
             ->withProperties(['booking_id' => $trip->booking_id])->log('Authorized mobile operator ended the telematics trip.');
 
-        return $trip->fresh(['booking.vehicle.images', 'vehicle.images', 'events', 'geofenceLogs']);
+        return $trip->fresh(['booking.vehicle.images', 'events']);
     }
 
     public function storeEvent(TelematicsTrip $trip, array $data, User $user): TelematicsEvent
@@ -157,9 +155,6 @@ class TelematicsService
 
         $event = TelematicsEvent::create([
             'trip_id' => $trip->id,
-            'booking_id' => $trip->booking_id,
-            'user_id' => $trip->user_id,
-            'vehicle_id' => $trip->vehicle_id,
             'event_type' => $data['event_type'],
             'severity' => $data['severity'] ?? 'low',
             'latitude' => $data['latitude'] ?? null,
@@ -171,11 +166,14 @@ class TelematicsService
             'gyroscope_x' => $data['gyroscope_x'] ?? null,
             'gyroscope_y' => $data['gyroscope_y'] ?? null,
             'gyroscope_z' => $data['gyroscope_z'] ?? null,
+            'geofence_status' => $data['geofence_status'] ?? null,
+            'distance_from_allowed_area' => $data['distance_from_allowed_area'] ?? null,
+            'current_area' => $data['current_area'] ?? null,
             'description' => $data['description'] ?? null,
             'occurred_at' => $data['occurred_at'] ?? now(),
         ]);
 
-        return $event->fresh(['booking', 'vehicle']);
+        return $event->fresh(['trip.booking.vehicle', 'trip.operator']);
     }
 
     public function storeLocation(TelematicsTrip $trip, array $data, User $user): TelematicsTrip
@@ -205,24 +203,13 @@ class TelematicsService
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],
                 'speed' => $data['speed'] ?? null,
+                'geofence_status' => $data['geofence_status'] ?? null,
+                'distance_from_allowed_area' => $data['distance_from_allowed_area'] ?? null,
+                'current_area' => $data['current_zone'] ?? null,
                 'occurred_at' => $data['occurred_at'] ?? now(),
             ], $user);
 
             if (isset($data['geofence_status'])) {
-                GeofenceLog::create([
-                    'trip_id' => $trip->id,
-                    'booking_id' => $trip->booking_id,
-                    'user_id' => $trip->user_id,
-                    'vehicle_id' => $trip->vehicle_id,
-                    'status' => $data['geofence_status'],
-                    'latitude' => $data['latitude'],
-                    'longitude' => $data['longitude'],
-                    'distance_from_allowed_area' => $data['distance_from_allowed_area'] ?? null,
-                    'current_area' => $data['current_zone'] ?? null,
-                    'allowed_area' => $trip->allowed_zone,
-                    'occurred_at' => $data['occurred_at'] ?? now(),
-                ]);
-
                 if (in_array($data['geofence_status'], ['outside', 'gps_unavailable'], true)) {
                     $this->storeEvent($trip, [
                         'event_type' => $data['geofence_status'] === 'outside'
@@ -237,13 +224,13 @@ class TelematicsService
                 }
             }
 
-            return $trip->fresh(['booking.vehicle.images', 'vehicle.images', 'events', 'geofenceLogs']);
+            return $trip->fresh(['booking.vehicle.images', 'events']);
         });
     }
 
     private function assertTripOwner(TelematicsTrip $trip, User $user): void
     {
-        if ($trip->user_id !== $user->id) {
+        if ($trip->operator_user_id !== $user->id) {
             abort(403, 'You can only manage your own telematics trips.');
         }
     }

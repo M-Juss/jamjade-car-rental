@@ -36,7 +36,7 @@ type VehicleCatalogScreenProps = {
 
 const defaultFilters: BrowseFilters = {
   features: [],
-  sort: 'most_booked',
+  sort: 'featured',
 };
 
 function matchesSearch(vehicle: Vehicle, searchTerm: string) {
@@ -65,7 +65,7 @@ function matchesFilters(vehicle: Vehicle, filters: BrowseFilters, bookmarkedVehi
   const matchesFuelType = !filters.fuelType || vehicle.fuelType === filters.fuelType;
   const matchesSeats = !filters.seats || vehicle.seats === filters.seats;
   const matchesFeatures = filters.features.every((feature) => vehicle.features.includes(feature));
-  const matchesMostBooked = !filters.mostBookedOnly || Boolean(vehicle.isMostBooked);
+  const matchesFeatured = !filters.featuredOnly || Boolean(vehicle.isFeatured);
   const matchesBookmarked = !filters.bookmarkedOnly || bookmarkedVehicleIds.includes(vehicle.id);
 
   return (
@@ -74,7 +74,7 @@ function matchesFilters(vehicle: Vehicle, filters: BrowseFilters, bookmarkedVehi
     matchesFuelType &&
     matchesSeats &&
     matchesFeatures &&
-    matchesMostBooked &&
+    matchesFeatured &&
     matchesBookmarked
   );
 }
@@ -89,8 +89,8 @@ function sortVehicles(vehicles: Vehicle[], sort: SortOption) {
       return second.pricePerDay - first.pricePerDay;
     }
 
-    if (sort === 'most_booked') {
-      return Number(Boolean(second.isMostBooked)) - Number(Boolean(first.isMostBooked));
+    if (sort === 'featured') {
+      return Number(Boolean(second.isFeatured)) - Number(Boolean(first.isFeatured));
     }
 
     return Date.parse(second.createdAt) - Date.parse(first.createdAt);
@@ -154,17 +154,17 @@ export function VehicleCatalogScreen({ mode, onScroll }: VehicleCatalogScreenPro
       (vehicle) => matchesSearch(vehicle, searchTerm) && matchesFilters(vehicle, filters, bookmarkedVehicleIds),
     );
 
-    return sortVehicles(filteredVehicles, filters.sort ?? 'most_booked');
+    return sortVehicles(filteredVehicles, filters.sort ?? 'featured');
   }, [availableVehicles, bookmarkedVehicleIds, filters, searchTerm]);
 
   const activeFilterCount =
     Number(Boolean(filters.bookmarkedOnly)) +
     Number(Boolean(filters.maxPrice)) +
-    Number(Boolean(filters.mostBookedOnly)) +
+    Number(Boolean(filters.featuredOnly)) +
     Number(Boolean(filters.transmission)) +
     Number(Boolean(filters.fuelType)) +
     Number(Boolean(filters.seats)) +
-    Number((filters.sort ?? 'most_booked') !== 'most_booked') +
+    Number((filters.sort ?? 'featured') !== 'featured') +
     filters.features.length;
   const bottomPadding = mode === 'customer' ? 112 + insets.bottom : 32 + insets.bottom;
 

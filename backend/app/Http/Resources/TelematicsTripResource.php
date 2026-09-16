@@ -31,18 +31,24 @@ class TelematicsTripResource extends JsonResource
             'allowedZone' => $this->allowed_zone,
             'lastLocationAt' => $this->last_location_at?->toISOString(),
             'booking' => new BookingResource($this->whenLoaded('booking')),
-            'vehicle' => new VehicleResource($this->whenLoaded('vehicle')),
+            'vehicle' => $this->booking?->relationLoaded('vehicle')
+                ? new VehicleResource($this->booking->vehicle)
+                : null,
             'events' => TelematicsEventResource::collection($this->whenLoaded('events')),
-            'geofenceLogs' => $this->whenLoaded('geofenceLogs', fn () => $this->geofenceLogs->map(fn ($log) => [
-                'id' => $log->id,
-                'status' => $log->status,
-                'latitude' => $log->latitude !== null ? (float) $log->latitude : null,
-                'longitude' => $log->longitude !== null ? (float) $log->longitude : null,
-                'distanceFromAllowedArea' => $log->distance_from_allowed_area !== null ? (float) $log->distance_from_allowed_area : null,
-                'currentArea' => $log->current_area,
-                'allowedArea' => $log->allowed_area,
-                'occurredAt' => $log->occurred_at?->toISOString(),
-            ])->values()),
+            'geofenceLogs' => $this->whenLoaded('events', fn () => $this->events
+                ->whereNotNull('geofence_status')
+                ->map(fn ($event) => [
+                    'id' => $event->id,
+                    'status' => $event->geofence_status,
+                    'latitude' => $event->latitude !== null ? (float) $event->latitude : null,
+                    'longitude' => $event->longitude !== null ? (float) $event->longitude : null,
+                    'distanceFromAllowedArea' => $event->distance_from_allowed_area !== null
+                        ? (float) $event->distance_from_allowed_area
+                        : null,
+                    'currentArea' => $event->current_area,
+                    'allowedArea' => $this->allowed_zone,
+                    'occurredAt' => $event->occurred_at?->toISOString(),
+                ])->values()),
         ];
     }
 }

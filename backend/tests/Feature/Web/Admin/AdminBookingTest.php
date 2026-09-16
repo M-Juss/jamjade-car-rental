@@ -53,9 +53,11 @@ it('allows an admin to confirm a pending booking through session auth', function
         ->assertJsonPath('data.statusKey', BookingStatus::Confirmed->value)
         ->assertJsonPath('data.adminStatus', 'Confirmed');
 
-    $this->assertDatabaseHas('booking_status_logs', [
+    $this->assertDatabaseHas('booking_events', [
         'booking_id' => $booking->id,
+        'event_type' => 'status_changed',
         'new_status' => BookingStatus::Confirmed->value,
+        'actor_user_id' => $admin->id,
     ]);
 });
 
@@ -97,10 +99,10 @@ it('allows an admin to force resend a paid booking confirmation email', function
         ->assertJsonPath('message', 'Booking confirmation email resent successfully.')
         ->assertJsonPath('data.emailStatus', 'queued');
 
-    $this->assertDatabaseHas('bookings', [
-        'id' => $booking->id,
-        'confirmation_email_status' => 'queued',
-        'confirmation_email_sent_at' => null,
+    $this->assertDatabaseHas('booking_confirmation_emails', [
+        'booking_id' => $booking->id,
+        'status' => 'queued',
+        'sent_at' => null,
     ]);
 });
 

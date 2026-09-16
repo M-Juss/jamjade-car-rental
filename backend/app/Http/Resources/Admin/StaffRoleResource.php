@@ -12,7 +12,7 @@ class StaffRoleResource extends JsonResource
     public function toArray(Request $request): array
     {
         $access = app(StaffAccessService::class);
-        $protected = in_array($this->name, [UserRole::Owner->value, UserRole::Customer->value], true);
+        $protected = in_array($this->name, [UserRole::Admin->value, UserRole::Customer->value], true);
 
         return [
             'id' => $this->id,
@@ -23,7 +23,7 @@ class StaffRoleResource extends JsonResource
             'permissions' => $this->permissions->pluck('name')->values(),
             'usersCount' => $this->whenCounted('users'),
             'isProtected' => $protected,
-            'canAssign' => ! in_array($this->name, [UserRole::Owner->value, UserRole::Customer->value], true),
+            'canAssign' => ! in_array($this->name, [UserRole::Admin->value, UserRole::Customer->value], true),
             'canEdit' => ! $protected,
             'canDelete' => ! $protected && (int) ($this->users_count ?? 0) === 0,
             'createdAt' => $this->created_at?->toISOString(),

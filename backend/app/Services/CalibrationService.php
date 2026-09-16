@@ -27,16 +27,21 @@ class CalibrationService
                 throw ValidationException::withMessages(['calibration' => ['Calibration is available only after finalized Outgoing Inspection.']]);
             }
 
-            $booking->forceFill([
+            $booking->assignment()->updateOrCreate([], [
                 'calibration_status' => 'passed',
                 'calibrated_by' => $user->id,
                 'calibrated_at' => now(),
-            ])->save();
+            ]);
+            $booking->unsetRelation('assignment');
+            $booking->unsetRelation('assignedDriver');
 
             activity()->causedBy($user)->performedOn($booking)->event('booking_calibration_passed')
                 ->log('Booking mobile calibration passed.');
 
-            return $booking->fresh(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'user.customerProfile', 'assignedDriver', 'vehicleInspections']);
+            return $booking->fresh([
+                'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'user.customerProfile',
+                'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'vehicleInspections',
+            ]);
         });
     }
 }

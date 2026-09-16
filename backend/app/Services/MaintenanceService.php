@@ -304,12 +304,6 @@ class MaintenanceService
                 || $record->category === MaintenanceCategory::BodyRepair
                 || (in_array($record->category, [MaintenanceCategory::Corrective, MaintenanceCategory::Other], true)
                     && ($data['condition_changed'] ?? false));
-            $total = round(
-                (float) ($data['labor_cost'] ?? 0)
-                + (float) ($data['parts_cost'] ?? 0)
-                + (float) ($data['other_cost'] ?? 0),
-                2
-            );
             $record->update([
                 'odometer_at_completion' => $completionOdometer,
                 'work_performed' => $data['work_performed'],
@@ -317,7 +311,6 @@ class MaintenanceService
                 'labor_cost' => $data['labor_cost'] ?? null,
                 'parts_cost' => $data['parts_cost'] ?? null,
                 'other_cost' => $data['other_cost'] ?? null,
-                'total_cost' => $total,
                 'notes' => $data['notes'] ?? $record->notes,
                 'condition_verification_required' => $conditionRequired,
                 'completion_details_recorded_at' => now(),
@@ -419,10 +412,9 @@ class MaintenanceService
         if ($record->maintenance_plan_id) {
             $plan = VehicleMaintenancePlan::query()->lockForUpdate()->find($record->maintenance_plan_id);
             if ($plan) {
-                $changes = ['last_completed_at' => $completedAt];
+                $changes = [];
                 if ($plan->trigger_type->usesMileage()) {
                     $completionOdometer = (int) $record->odometer_at_completion;
-                    $changes['last_completed_odometer'] = $completionOdometer;
                     $changes['baseline_odometer'] = $completionOdometer;
                     $changes['next_due_odometer'] = $completionOdometer + (int) $plan->interval_km;
                 }

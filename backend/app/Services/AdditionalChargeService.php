@@ -20,7 +20,7 @@ class AdditionalChargeService
     public function create(Booking $booking, array $charges, User $actor): array
     {
         return DB::transaction(function () use ($booking, $charges, $actor) {
-            $booking = Booking::query()->with(['assignedDriver', 'user'])->lockForUpdate()->findOrFail($booking->id);
+            $booking = Booking::query()->with(['assignedDriver', 'assignment', 'user'])->lockForUpdate()->findOrFail($booking->id);
 
             if ($booking->status !== BookingStatus::Ongoing || $booking->return_charges_finalized_at !== null) {
                 throw ValidationException::withMessages([
@@ -58,7 +58,6 @@ class AdditionalChargeService
                     'amount' => $chargeData['amount'],
                     'responsibility' => $responsibility,
                     'responsible_user_id' => $responsible->id,
-                    'payment_status' => PaymentStatus::Unpaid,
                     'created_by' => $actor->id,
                 ]);
                 $created[] = $charge;
@@ -105,10 +104,10 @@ class AdditionalChargeService
                 throw ValidationException::withMessages(['booking' => ['Finalize Incoming Inspection before reviewing return charges.']]);
             }
 
-            $booking->forceFill([
-                'return_charges_finalized_at' => now(),
-                'return_charges_finalized_by' => $actor->id,
-            ])->save();
+            $booking->events()->create([
+                'event_type' => 'return_charges_finalized',
+                'actor_user_id' => $actor->id,
+            ]);
             activity()->causedBy($actor)->performedOn($booking)->event('booking_return_charges_finalized')->log('Booking return charges finalized.');
 
             return $booking->fresh();
@@ -117,7 +116,7 @@ class AdditionalChargeService
 
     public function recomputeCustomerBalance(Booking $booking): void
     {
-        $paid = (float) $booking->payments()->sum('amount');
+        $paid = (float) $booking->successfulPayments()->sum('amount');
         $remaining = max((float) $booking->total_amount - $paid, 0);
         $booking->forceFill([
             'remaining_balance' => $remaining,
@@ -130,7 +129,7 @@ class AdditionalChargeService
         return BookingAdditionalCharge::query()
             ->where('responsible_user_id', $user->id)
             ->when($responsibility, fn ($query, $value) => $query->where('responsibility', $value->value))
-            ->whereIn('payment_status', [PaymentStatus::Unpaid->value, PaymentStatus::Pending->value, PaymentStatus::Failed->value])
+            ->outstanding()
             ->exists();
     }
 }

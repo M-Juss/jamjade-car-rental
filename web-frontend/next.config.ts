@@ -33,8 +33,12 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/admin/:path*",
-        destination: `${backendUrl}/admin/:path*`,
+        source: "/admin/(vehicles|bookings|maintenance|maintenance-plans|customers|reports|payments|document-verification|fleet-tracker)/:path*",
+        destination: `${backendUrl}/admin/$1/:path*`,
+      },
+      {
+        source: "/admin/(login|me|logout|dashboard)",
+        destination: `${backendUrl}/admin/$1`,
       },
       {
         source: "/sanctum/:path*",

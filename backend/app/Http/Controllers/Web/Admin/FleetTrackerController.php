@@ -18,7 +18,7 @@ class FleetTrackerController extends Controller
         $status = $request->validated('status');
 
         $trips = TelematicsTrip::query()
-            ->with(['booking.user.customerProfile', 'booking.vehicle.images', 'vehicle.images', 'events', 'geofenceLogs'])
+            ->with(['booking.user.customerProfile', 'booking.vehicle.images', 'operator', 'events'])
             ->when($status, fn ($query, string $status) => $query->where('status', $status))
             ->latest('last_location_at')
             ->paginate($request->integer('per_page', 15));

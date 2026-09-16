@@ -20,11 +20,11 @@ export function ManagementAccessGuard({
   const currentModule = managementModuleForPath(pathname, portal);
   const roles = user ? getUserRoleNames(user) : [];
   const permissions = new Set(user?.permissions ?? []);
-  const isOwner = roles.includes("owner");
+  const isAdmin = roles.includes("admin");
   const isAuthorized = status === "ready" && Boolean(
-    portal === "owner"
-      ? isOwner
-      : !isOwner && currentModule?.permission && permissions.has(currentModule.permission),
+    portal === "admin"
+      ? isAdmin
+      : !isAdmin && currentModule?.permission && permissions.has(currentModule.permission),
   );
 
   useEffect(() => {
@@ -35,18 +35,18 @@ export function ManagementAccessGuard({
       return;
     }
 
-    if (portal === "owner" && !isOwner) {
+    if (portal === "admin" && !isAdmin) {
       router.replace(getDashboardPathForUser(user));
       return;
     }
 
-    if (portal === "admin" && isOwner) {
-      router.replace("/owner");
+    if (portal === "staff" && isAdmin) {
+      router.replace("/admin");
       return;
     }
 
     if (!isAuthorized) router.replace(getDashboardPathForUser(user));
-  }, [isAuthorized, isOwner, portal, router, status, user]);
+  }, [isAuthorized, isAdmin, portal, router, status, user]);
 
   if (!isAuthorized) {
     return (

@@ -17,7 +17,7 @@ class VehicleMaintenanceRecord extends Model
         'vehicle_id', 'maintenance_plan_id', 'category', 'title', 'description', 'status',
         'scheduled_start', 'scheduled_end', 'actual_started_at', 'completed_at', 'cancelled_at',
         'odometer_at_start', 'odometer_at_completion', 'service_provider', 'technician',
-        'labor_cost', 'parts_cost', 'other_cost', 'total_cost', 'work_performed', 'notes',
+        'labor_cost', 'parts_cost', 'other_cost', 'work_performed', 'notes',
         'cancellation_reason', 'condition_verification_required', 'completion_details_recorded_at',
         'created_by', 'started_by', 'completed_by', 'cancelled_by', 'resulting_condition_inspection_id',
     ];
@@ -31,8 +31,20 @@ class VehicleMaintenanceRecord extends Model
             'actual_started_at' => 'datetime', 'completed_at' => 'datetime', 'cancelled_at' => 'datetime',
             'completion_details_recorded_at' => 'datetime',
             'condition_verification_required' => 'boolean',
-            'labor_cost' => 'decimal:2', 'parts_cost' => 'decimal:2', 'other_cost' => 'decimal:2', 'total_cost' => 'decimal:2',
+            'labor_cost' => 'decimal:2', 'parts_cost' => 'decimal:2', 'other_cost' => 'decimal:2',
         ];
+    }
+
+    public function getTotalCostAttribute(): string
+    {
+        return number_format(
+            (float) ($this->labor_cost ?? 0)
+            + (float) ($this->parts_cost ?? 0)
+            + (float) ($this->other_cost ?? 0),
+            2,
+            '.',
+            ''
+        );
     }
 
     public function scopeBlockingInterval(

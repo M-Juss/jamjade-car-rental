@@ -6,7 +6,7 @@ return [
         'description' => 'View admin dashboard metrics and recent activity.',
         'permission' => 'view dashboard',
         'admin_path' => '/admin',
-        'owner_path' => '/owner',
+        'staff_path' => '/staff',
         'assignable' => true,
     ],
     'fleet_tracker' => [
@@ -14,7 +14,7 @@ return [
         'description' => 'Track active vehicles and telematics activity.',
         'permission' => 'view fleet tracker',
         'admin_path' => '/admin/fleet',
-        'owner_path' => '/owner/fleet',
+        'staff_path' => '/staff/fleet',
         'assignable' => true,
     ],
     'video_auditing' => [
@@ -22,7 +22,7 @@ return [
         'description' => 'Review and audit submitted trip video evidence.',
         'permission' => 'view video auditing',
         'admin_path' => '/admin/video-auditing',
-        'owner_path' => '/owner/video-auditing',
+        'staff_path' => '/staff/video-auditing',
         'assignable' => true,
     ],
     'vehicle_management' => [
@@ -30,7 +30,7 @@ return [
         'description' => 'Create, update, and manage vehicle records.',
         'permission' => 'manage vehicles',
         'admin_path' => '/admin/vehicle',
-        'owner_path' => '/owner/vehicle',
+        'staff_path' => '/staff/vehicle',
         'assignable' => true,
     ],
     'booking_management' => [
@@ -38,7 +38,7 @@ return [
         'description' => 'Review and update customer bookings.',
         'permission' => 'manage bookings',
         'admin_path' => '/admin/booking',
-        'owner_path' => '/owner/booking',
+        'staff_path' => '/staff/booking',
         'assignable' => true,
     ],
     'maintenance_management' => [
@@ -46,7 +46,7 @@ return [
         'description' => 'Manage vehicle maintenance plans, schedules, and service history.',
         'permission' => 'manage maintenance',
         'admin_path' => '/admin/maintenance',
-        'owner_path' => '/owner/maintenance',
+        'staff_path' => '/staff/maintenance',
         'assignable' => true,
     ],
     'verification_queue' => [
@@ -54,7 +54,7 @@ return [
         'description' => 'Review customer identity and address documents.',
         'permission' => 'review documents',
         'admin_path' => '/admin/verification-queue',
-        'owner_path' => '/owner/verification-queue',
+        'staff_path' => '/staff/verification-queue',
         'assignable' => true,
     ],
     'reports_analytics' => [
@@ -62,16 +62,16 @@ return [
         'description' => 'View reports, exports, and business analytics.',
         'permission' => 'view reports',
         'admin_path' => '/admin/report',
-        'owner_path' => '/owner/report',
+        'staff_path' => '/staff/report',
         'assignable' => true,
     ],
     'staff_management' => [
         'label' => 'Staff Management',
         'description' => 'Manage staff accounts, roles, and module access.',
         'permission' => 'manage staff management',
-        'admin_path' => null,
-        'owner_path' => '/owner/staff',
+        'admin_path' => '/admin/staff',
+        'staff_path' => null,
         'assignable' => false,
-        'owner_only' => true,
+        'admin_only' => true,
     ],
 ];

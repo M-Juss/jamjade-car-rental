@@ -12,7 +12,7 @@ class BookingConfirmationViewData
 {
     public function make(Booking $booking, ?CarbonInterface $issuedAt = null): array
     {
-        $booking->loadMissing(['user.customerProfile', 'vehicle', 'payments', 'assignedDriver']);
+        $booking->loadMissing(['user.customerProfile', 'vehicle', 'payments', 'assignedDriver', 'terms']);
 
         $payments = $booking->payments->sortByDesc(
             fn ($payment) => $payment->paid_at ?? $payment->created_at

@@ -10,21 +10,21 @@ function normalizeRole(role: BackendRole): string | null {
 export function getUserRoleNames(user: AuthenticatedUser): UserRole[] {
   return (user.roles ?? [])
     .map(normalizeRole)
-    .filter((role): role is UserRole => role === "owner" || role === "admin" || role === "staff" || role === "customer");
+    .filter((role): role is UserRole => role === "admin" || role === "staff" || role === "customer");
 }
 
 export function getDashboardPathForUser(user: AuthenticatedUser) {
   const roles = getUserRoleNames(user);
 
-  if (roles.includes("owner")) return "/owner";
+  if (roles.includes("admin")) return "/admin";
 
   const permissions = new Set(user.permissions ?? []);
   const firstAllowedModule = managementModules.find(
-    (module) => !module.ownerOnly && module.permission && permissions.has(module.permission),
+    (module) => !module.adminOnly && module.permission && permissions.has(module.permission),
   );
 
-  if (firstAllowedModule) return managementPath("admin", firstAllowedModule.id) ?? "/admin";
-  if (roles.includes("admin") || roles.includes("staff")) return "/admin";
+  if (firstAllowedModule) return managementPath("staff", firstAllowedModule.id) ?? "/staff";
+  if (roles.includes("staff")) return "/staff";
 
   return "/login";
 }

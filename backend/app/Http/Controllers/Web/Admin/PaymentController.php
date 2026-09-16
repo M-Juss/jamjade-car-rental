@@ -19,7 +19,12 @@ class PaymentController extends Controller
 
         $payments = Payment::query()
             ->with(['booking.vehicle', 'user'])
-            ->when($status, fn ($query, string $status) => $query->where('payment_status', $status))
+            ->when($status, function ($query, string $status) {
+                $query->where('status', match ($status) {
+                    'paid', 'partial' => 'completed',
+                    default => $status,
+                });
+            })
             ->latest()
             ->paginate($request->integer('per_page', 15));
 

@@ -240,5 +240,6 @@ it('blocks capture of a pre-existing unpaid PayPal booking for a minor', functio
         ->assertJsonPath('errors.booking.0', CustomerAgePolicy::MESSAGE);
 
     expect($booking->fresh()->status)->toBe(BookingStatus::Pending)
-        ->and($booking->payments()->exists())->toBeFalse();
+        ->and($booking->successfulPayments()->exists())->toBeFalse()
+        ->and($booking->paypalCheckouts()->exists())->toBeTrue();
 });

@@ -76,10 +76,10 @@ it('queues the confirmation email when an uploaded payment completes the booking
     expect($booking->fresh()->payment_status)->toBe(PaymentStatus::Paid)
         ->and($booking->fresh()->remaining_balance)->toBe('0.00');
 
-    $this->assertDatabaseHas('bookings', [
-        'id' => $booking->id,
-        'confirmation_email_status' => 'queued',
-        'confirmation_email_sent_at' => null,
+    $this->assertDatabaseHas('booking_confirmation_emails', [
+        'booking_id' => $booking->id,
+        'status' => 'queued',
+        'sent_at' => null,
     ]);
 
     Mail::assertSent(

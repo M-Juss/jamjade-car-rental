@@ -51,7 +51,7 @@ class StaffManagementController extends Controller
         $roles = $this->staffRolesQuery()
             ->with('permissions')
             ->withCount('users')
-            ->orderByRaw("CASE name WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'staff' THEN 2 ELSE 3 END")
+            ->orderByRaw("CASE name WHEN 'admin' THEN 0 WHEN 'staff' THEN 1 ELSE 2 END")
             ->orderBy('name')
             ->get();
 
@@ -227,7 +227,7 @@ class StaffManagementController extends Controller
         return Role::query()
             ->where('guard_name', 'web')
             ->whereNotIn('name', [
-                UserRole::Owner->value,
+                UserRole::Admin->value,
                 UserRole::Customer->value,
             ]);
     }
@@ -243,7 +243,7 @@ class StaffManagementController extends Controller
 
     private function ensureAssignableRole(string $role): void
     {
-        if (in_array($role, [UserRole::Owner->value, UserRole::Customer->value], true)) {
+        if (in_array($role, [UserRole::Admin->value, UserRole::Customer->value], true)) {
             throw ValidationException::withMessages([
                 'role' => ['This role cannot be assigned from staff management.'],
             ]);
@@ -252,7 +252,7 @@ class StaffManagementController extends Controller
 
     private function ensureRoleCanBeChanged(Role $role): void
     {
-        if (in_array($role->name, [UserRole::Owner->value, UserRole::Customer->value], true)) {
+        if (in_array($role->name, [UserRole::Admin->value, UserRole::Customer->value], true)) {
             throw ValidationException::withMessages([
                 'role' => ['This protected role cannot be changed.'],
             ]);
@@ -261,7 +261,7 @@ class StaffManagementController extends Controller
 
     private function ensureRoleNameIsAllowed(string $name): void
     {
-        if ($name === '' || in_array($name, [UserRole::Owner->value, UserRole::Customer->value], true)) {
+        if ($name === '' || in_array($name, [UserRole::Admin->value, UserRole::Customer->value], true)) {
             throw ValidationException::withMessages([
                 'name' => ['Choose a different role name.'],
             ]);
@@ -281,13 +281,13 @@ class StaffManagementController extends Controller
     {
         if ($request->user()?->is($user)) {
             throw ValidationException::withMessages([
-                'user' => ['You cannot modify your own owner account here.'],
+                'user' => ['You cannot modify your own admin account here.'],
             ]);
         }
 
-        if ($user->hasRole(UserRole::Owner->value)) {
+        if ($user->hasRole(UserRole::Admin->value)) {
             throw ValidationException::withMessages([
-                'user' => ['Owner accounts are protected from staff management changes.'],
+                'user' => ['Admin accounts are protected from staff management changes.'],
             ]);
         }
     }

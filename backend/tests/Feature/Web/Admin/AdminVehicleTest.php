@@ -17,7 +17,7 @@ beforeEach(function () {
 function ownerUser(): User
 {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     return $owner;
 }

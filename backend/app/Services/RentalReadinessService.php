@@ -23,7 +23,10 @@ class RentalReadinessService
 
     public function evaluate(Booking $booking): array
     {
-        $booking->loadMissing(['user.customerProfile', 'user.documents', 'assignedDriver', 'vehicle', 'vehicleInspections']);
+        $booking->loadMissing([
+            'user.customerProfile', 'user.documents', 'assignedDriver', 'assignment', 'events',
+            'vehicle', 'vehicleInspections',
+        ]);
         $outgoing = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized');
         $incoming = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'incoming' && $inspection->status->value === 'finalized');
         $selfDrive = $booking->rental_type === RentalType::SelfDrive;
@@ -51,7 +54,7 @@ class RentalReadinessService
             'customerBalance' => (float) $booking->remaining_balance,
             'customerChargesSettled' => ! $booking->additionalCharges()
                 ->where('responsibility', AdditionalChargeResponsibility::Customer->value)
-                ->whereIn('payment_status', [PaymentStatus::Unpaid->value, PaymentStatus::Pending->value, PaymentStatus::Failed->value])
+                ->outstanding()
                 ->exists(),
         ];
     }

@@ -65,7 +65,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bookings/{booking}/finalize-return-charges', [BookingController::class, 'finalizeCharges'])->name('bookings.finalize-return-charges');
             Route::post('/bookings/{booking}/assign-driver', [BookingController::class, 'assignDriver'])->name('bookings.assign-driver');
             Route::post('/bookings/{booking}/resend-confirmation-email', [BookingController::class, 'resendConfirmationEmail'])
-                ->middleware('role:owner|admin')
+                ->middleware('role:admin')
                 ->name('bookings.resend-confirmation-email');
         });
 
@@ -116,7 +116,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 });
 
-Route::prefix('staff')->name('staff.')->middleware(['auth', 'active_admin', 'role:owner'])->group(function () {
+Route::prefix('staff')->name('staff.')->middleware(['auth', 'active_admin', 'role:admin'])->group(function () {
     Route::get('/modules', [StaffManagementController::class, 'modules'])->name('modules.index');
     Route::get('/management', [StaffManagementController::class, 'index'])->name('management.index');
     Route::get('/management/roles', [StaffManagementController::class, 'roles'])->name('management.roles.index');

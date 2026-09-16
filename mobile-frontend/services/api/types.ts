@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'admin' | 'staff' | 'customer' | 'driver' | string;
+export type UserRole = 'admin' | 'staff' | 'customer' | 'driver' | string;
 
 export type MobileCustomerProfile = {
   id?: number;
@@ -137,7 +137,7 @@ export type MobileVehicleRecord = {
   color: string;
   features?: string[];
   description?: string | null;
-  isMostBooked?: boolean;
+  isFeatured?: boolean;
   unavailableDateRanges?: {
     startDate: string;
     endDate: string;
@@ -153,7 +153,6 @@ export type PayPalOrderPayload = {
   rentalEndAt: string;
   pickupLocationType: 'shop' | 'delivery';
   pickupLocation: string;
-  deliveryTime?: string;
   returnLocation: string;
   driverOption: 'self_drive' | 'owners_driver';
   ownerDriverCoverage?: 'metro_manila' | 'outside_manila';

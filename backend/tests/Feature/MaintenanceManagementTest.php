@@ -30,7 +30,7 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     Storage::fake('local');
     $this->actor = User::factory()->create();
-    $this->actor->assignRole(UserRole::Owner->value);
+    $this->actor->assignRole(UserRole::Admin->value);
     $this->vehicle = Vehicle::factory()->create(['status' => VehicleStatus::Available]);
     $inspection = VehicleInspection::factory()->create([
         'vehicle_id' => $this->vehicle->id,

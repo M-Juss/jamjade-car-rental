@@ -195,7 +195,6 @@ function PaymentScreen() {
         rentalEndAt: booking.rentalEndAt,
         pickupLocationType: booking.pickupOption,
         pickupLocation: booking.pickupLocation,
-        deliveryTime: booking.deliveryTime,
         returnLocation: booking.returnLocation,
         driverOption: booking.driverOption,
         ownerDriverCoverage: booking.ownerDriverCoverage,

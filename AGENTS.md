@@ -7,7 +7,7 @@ This file defines repository-wide instructions for JamJade Car Rental. A more sp
 The repository contains three independent codebases:
 
 - `backend/`: Laravel API and shared backend for both frontends.
-- `web-frontend/`: Next.js website for administrators and owners.
+- `web-frontend/`: Next.js website for administrators and staff.
 - `mobile-frontend/`: Expo and React Native application for customers.
 
 The applications share one repository but are not one package-manager workspace. Run commands from the application directory they belong to, and do not assume dependencies, types, or runtime code are shared between applications.

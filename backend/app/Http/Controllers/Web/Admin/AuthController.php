@@ -77,7 +77,7 @@ class AuthController extends Controller
 
     private function hasAdminAccess($user): bool
     {
-        if ($user->hasRole('owner')) {
+        if ($user->hasRole('admin')) {
             return true;
         }
 

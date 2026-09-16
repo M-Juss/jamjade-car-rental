@@ -47,7 +47,10 @@ class BookingService
     public function paginateForUser(User $user, array $filters = [], int $perPage = 10): LengthAwarePaginator
     {
         return Booking::query()
-            ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver'])
+            ->with([
+                'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
+                'assignment', 'terms', 'confirmationEmail', 'events',
+            ])
             ->where('user_id', $user->id)
             ->whereDoesntHave(
                 'paypalCheckouts',
@@ -61,7 +64,10 @@ class BookingService
     public function paginateForAdmin(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Booking::query()
-            ->with(['vehicle.images', 'user.customerProfile', 'user.documents', 'payments', 'assignedDriver'])
+            ->with([
+                'vehicle.images', 'user.customerProfile', 'user.documents', 'payments', 'assignedDriver',
+                'assignment', 'terms', 'confirmationEmail', 'events',
+            ])
             ->whereDoesntHave(
                 'paypalCheckouts',
                 fn ($query) => $query->where('status', '!=', 'completed')
@@ -114,19 +120,6 @@ class BookingService
                 'admin_notes' => $extra['admin_notes'] ?? $booking->admin_notes,
             ];
 
-            match ($targetStatus) {
-                BookingStatus::Confirmed => $changes['confirmed_at'] = now(),
-                BookingStatus::Rejected => $changes['rejected_at'] = now(),
-                BookingStatus::Ongoing => $changes['started_at'] = now(),
-                BookingStatus::Returned => $changes['returned_at'] = now(),
-                BookingStatus::Completed => [
-                    $changes['completed_at'] = now(),
-                    $changes['completed_by'] = $actor->id,
-                ],
-                BookingStatus::Cancelled => $changes['cancelled_at'] = now(),
-                default => null,
-            };
-
             $booking->fill($changes)->save();
 
             if ($targetStatus === BookingStatus::Ongoing) {
@@ -137,10 +130,11 @@ class BookingService
                 $this->operationalStatusService->afterBookingEnded($booking->vehicle);
             }
 
-            $booking->statusLogs()->create([
+            $booking->events()->create([
+                'event_type' => 'status_changed',
                 'old_status' => $oldStatus,
                 'new_status' => $targetStatus,
-                'changed_by' => $actor->id,
+                'actor_user_id' => $actor->id,
                 'reason' => $reason,
             ]);
 
@@ -157,7 +151,10 @@ class BookingService
 
             $this->notifyStatusChange($booking, $targetStatus, $reason);
 
-            return $booking->fresh(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver']);
+            return $booking->fresh([
+                'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
+                'assignment', 'terms', 'confirmationEmail', 'events',
+            ]);
         });
     }
 
@@ -229,18 +226,16 @@ class BookingService
             $isOwnerDriver = $rentalType === RentalType::OwnersDriver;
             $pickupLocationType = $isOwnerDriver ? 'delivery' : 'shop';
             $pickupLocation = $isOwnerDriver ? $data['pickup_location'] : self::SHOP_LOCATION;
-            $deliveryTime = $isOwnerDriver ? $start->format('H:i') : null;
             $returnLocation = $isOwnerDriver ? $data['return_location'] : self::SHOP_LOCATION;
             $ownerDriverCoverage = $isOwnerDriver ? $data['owner_driver_coverage'] : null;
             $deliveryFee = $isOwnerDriver && $pickupLocation !== self::JAMJADE_GARAGE ? self::DELIVERY_FEE : 0;
             $ownerDriverFee = $isOwnerDriver
                 ? $this->ownerDriverRate($ownerDriverCoverage) * $durationDays
                 : 0;
-            $outsideManilaFee = 0;
             $addOnsTotal = (float) ($data['add_ons_total'] ?? 0);
             $discountTotal = (float) ($data['discount_total'] ?? 0);
             $totalAmount = max(
-                $subtotal + $deliveryFee + $ownerDriverFee + $outsideManilaFee + $addOnsTotal - $discountTotal,
+                $subtotal + $deliveryFee + $ownerDriverFee + $addOnsTotal - $discountTotal,
                 0
             );
             $requiredDownPayment = ceil($totalAmount * self::DOWN_PAYMENT_RATE);
@@ -269,9 +264,7 @@ class BookingService
                 'rental_end_at' => $end,
                 'pickup_location_type' => $pickupLocationType,
                 'pickup_location' => $pickupLocation,
-                'delivery_time' => $deliveryTime,
                 'return_location' => $returnLocation,
-                'driver_option' => $data['driver_option'],
                 'owner_driver_coverage' => $ownerDriverCoverage,
                 'status' => $bookingStatus,
                 'payment_status' => $paymentStatus,
@@ -279,38 +272,41 @@ class BookingService
                 'duration_days' => $durationDays,
                 'subtotal' => $subtotal,
                 'delivery_fee' => $deliveryFee,
-                'outside_manila_fee' => $outsideManilaFee,
                 'owner_driver_fee' => $ownerDriverFee,
                 'add_ons_total' => $addOnsTotal,
                 'discount_total' => $discountTotal,
-                'down_payment_amount' => $downPayment,
                 'remaining_balance' => max($totalAmount - $downPayment, 0),
                 'balance_due_at' => $paymentStatus === PaymentStatus::Partial ? $start->subDay() : null,
                 'total_amount' => $totalAmount,
                 'notes' => $data['notes'] ?? null,
+            ]);
+
+            $booking->terms()->create([
                 'customer_signature' => $data['customer_signature'],
                 'terms_version' => $data['terms_version'],
-                'terms_accepted_at' => now(),
-                'confirmed_at' => $awaitingPayPal ? null : now(),
+                'accepted_at' => now(),
             ]);
 
             if (! $awaitingPayPal) {
                 Payment::create([
                     'booking_id' => $booking->id,
                     'user_id' => $user->id,
-                    'payment_method' => $data['payment_method'],
-                    'payment_status' => $paymentStatus,
+                    'provider' => str($data['payment_method'])->lower()->replace(' ', '_')->toString(),
+                    'purpose' => $downPayment >= $totalAmount ? 'full_payment' : 'down_payment',
+                    'status' => 'completed',
                     'amount' => $downPayment,
-                    'transaction_id' => $data['transaction_id'] ?? null,
-                    'paid_at' => now(),
-                    'proof_of_payment' => $proofPath,
+                    'currency' => 'PHP',
+                    'provider_transaction_id' => $data['transaction_id'] ?? null,
+                    'completed_at' => now(),
+                    'proof_path' => $proofPath,
                 ]);
             }
 
-            $booking->statusLogs()->create([
+            $booking->events()->create([
+                'event_type' => 'status_changed',
                 'old_status' => null,
                 'new_status' => $bookingStatus,
-                'changed_by' => $user->id,
+                'actor_user_id' => $user->id,
                 'reason' => $awaitingPayPal
                     ? 'Booking created while awaiting PayPal payment.'
                     : 'Booking automatically confirmed after successful payment.',
@@ -373,7 +369,10 @@ class BookingService
                 });
             }
 
-            return $booking->fresh(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver']);
+            return $booking->fresh([
+                'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
+                'assignment', 'terms', 'confirmationEmail', 'events',
+            ]);
         });
     }
 

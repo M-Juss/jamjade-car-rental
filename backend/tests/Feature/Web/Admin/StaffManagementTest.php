@@ -15,7 +15,7 @@ beforeEach(function () {
 
 it('lets the owner create module-scoped roles and staff accounts', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     $roleResponse = $this->actingAs($owner)->postJson('/staff/management/roles', [
         'name' => 'Fleet Clerk',
@@ -56,7 +56,7 @@ it('lets the owner create module-scoped roles and staff accounts', function () {
 
 it('only grants video auditing when the role selects that module', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     $response = $this->actingAs($owner)->postJson('/staff/management/roles', [
         'name' => 'Video Auditor',
@@ -68,11 +68,11 @@ it('only grants video auditing when the role selects that module', function () {
         ->assertJsonPath('data.role.permissions.0', 'view video auditing');
 });
 
-it('blocks non-owner users from staff management', function () {
-    $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+it('blocks non-admin users from staff management', function () {
+    $staff = User::factory()->create();
+    $staff->assignRole(UserRole::Staff->value);
 
-    $this->actingAs($admin)->getJson('/staff/management')
+    $this->actingAs($staff)->getJson('/staff/management')
         ->assertForbidden();
 });
 
@@ -81,13 +81,13 @@ it('lets an owner log in with an existing password and open staff management', f
         'email' => 'owner.access@jamjade.test',
         'password' => 'existing-password',
     ]);
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     $this->postJson('/admin/login', [
         'email' => ' OWNER.ACCESS@JAMJADE.TEST ',
         'password' => 'existing-password',
     ])->assertOk()
-        ->assertJsonPath('data.user.roles.0', UserRole::Owner->value);
+        ->assertJsonPath('data.user.roles.0', UserRole::Admin->value);
 
     $this->getJson('/staff/management')
         ->assertOk()
@@ -105,7 +105,7 @@ it('validates and normalizes admin login credentials through the request contrac
 
 it('validates staff management list filters', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     $this->actingAs($owner)
         ->getJson('/staff/management?status=unknown')
@@ -115,8 +115,8 @@ it('validates staff management list filters', function () {
 
 it('prevents protected roles from being edited', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
-    $ownerRole = Role::where('name', UserRole::Owner->value)->firstOrFail();
+    $owner->assignRole(UserRole::Admin->value);
+    $ownerRole = Role::where('name', UserRole::Admin->value)->firstOrFail();
 
     $this->actingAs($owner)->putJson("/staff/management/roles/{$ownerRole->id}", [
         'name' => 'Super Owner',
@@ -125,54 +125,54 @@ it('prevents protected roles from being edited', function () {
         ->assertJsonValidationErrors('role');
 });
 
-it('hides owner details and lets the owner update and delete staff accounts', function () {
-    $owner = User::factory()->create([
-        'email' => 'owner@jamjade.test',
-    ]);
-    $owner->assignRole(UserRole::Owner->value);
-
+it('hides admin details and lets the admin update and delete staff accounts', function () {
     $admin = User::factory()->create([
-        'name' => 'Original Admin',
-        'email' => 'original.admin@jamjade.test',
+        'email' => 'admin@jamjade.test',
     ]);
     $admin->assignRole(UserRole::Admin->value);
 
-    $this->actingAs($owner)->getJson('/staff/management')
+    $staff = User::factory()->create([
+        'name' => 'Original Staff',
+        'email' => 'original.staff@jamjade.test',
+    ]);
+    $staff->assignRole(UserRole::Staff->value);
+
+    $this->actingAs($admin)->getJson('/staff/management')
         ->assertOk()
         ->assertJsonPath('data.summary.total', 1)
-        ->assertJsonPath('data.users.0.email', 'original.admin@jamjade.test')
-        ->assertJsonMissing(['email' => 'owner@jamjade.test'])
-        ->assertJsonMissing(['name' => UserRole::Owner->value]);
+        ->assertJsonPath('data.users.0.email', 'original.staff@jamjade.test')
+        ->assertJsonMissing(['email' => 'admin@jamjade.test'])
+        ->assertJsonMissing(['name' => UserRole::Admin->value]);
 
-    $this->actingAs($owner)->putJson("/staff/management/users/{$admin->id}", [
+    $this->actingAs($admin)->putJson("/staff/management/users/{$staff->id}", [
         'first_name' => 'Updated',
-        'last_name' => 'Admin',
-        'email' => 'updated.admin@jamjade.test',
+        'last_name' => 'Staff',
+        'email' => 'updated.staff@jamjade.test',
         'phone_number' => '09170000123',
         'role' => UserRole::Staff->value,
         'is_active' => false,
         'password' => 'New-password-123',
         'password_confirmation' => 'New-password-123',
     ])->assertOk()
-        ->assertJsonPath('data.user.name', 'Updated Admin')
-        ->assertJsonPath('data.user.email', 'updated.admin@jamjade.test')
+        ->assertJsonPath('data.user.name', 'Updated Staff')
+        ->assertJsonPath('data.user.email', 'updated.staff@jamjade.test')
         ->assertJsonPath('data.user.role.name', UserRole::Staff->value)
         ->assertJsonPath('data.user.isActive', false);
 
-    $admin->refresh();
+    $staff->refresh();
 
-    expect($admin->hasRole(UserRole::Staff->value))->toBeTrue()
-        ->and(Hash::check('New-password-123', $admin->password))->toBeTrue();
+    expect($staff->hasRole(UserRole::Staff->value))->toBeTrue()
+        ->and(Hash::check('New-password-123', $staff->password))->toBeTrue();
 
-    $this->actingAs($owner)->deleteJson("/staff/management/users/{$admin->id}")
+    $this->actingAs($admin)->deleteJson("/staff/management/users/{$staff->id}")
         ->assertOk();
 
-    $this->assertDatabaseMissing('users', ['id' => $admin->id]);
+    $this->assertDatabaseMissing('users', ['id' => $staff->id]);
 });
 
 it('validates staff names, email, phone number, and password policy', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     $this->actingAs($owner)->postJson('/staff/management/users', [
         'first_name' => 'Ada123',

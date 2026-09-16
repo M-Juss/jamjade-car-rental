@@ -48,7 +48,7 @@ export default function ManagementMobileHeader({ portal }: ManagementMobileHeade
           className="w-[260px] gap-0 border-r border-border p-0"
         >
           <SheetTitle className="sr-only">
-            {portal === "owner" ? "Owner" : "Admin"} navigation
+            {portal === "admin" ? "Admin" : "Staff"} navigation
           </SheetTitle>
 
           <div className="flex items-center gap-3 px-6 pb-6 pt-8">

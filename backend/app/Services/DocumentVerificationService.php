@@ -37,7 +37,6 @@ class DocumentVerificationService
             'front_file_path' => $this->storeFile($files['front_file'] ?? null, $user),
             'back_file_path' => $this->storeFile($files['back_file'] ?? null, $user),
         ];
-        $primaryPath = $storedPaths['file_path'] ?? $storedPaths['front_file_path'];
         $oldPaths = $existingDocument
             ? collect([
                 $existingDocument->file_path,
@@ -53,7 +52,6 @@ class DocumentVerificationService
                 $documentType,
                 $existingDocument,
                 $storedPaths,
-                $primaryPath
             ) {
                 $document = $existingDocument ?? new CustomerDocument([
                     'user_id' => $user->id,
@@ -67,7 +65,7 @@ class DocumentVerificationService
                 $document->fill([
                     'document_number' => $data['document_number'] ?? null,
                     'expires_at' => $data['expires_at'] ?? null,
-                    'file_path' => $primaryPath,
+                    'file_path' => $storedPaths['file_path'],
                     'front_file_path' => $storedPaths['front_file_path'],
                     'back_file_path' => $storedPaths['back_file_path'],
                     'status' => DocumentStatus::Pending,
@@ -97,7 +95,7 @@ class DocumentVerificationService
                     ->withProperties(['document_type' => $documentType])
                     ->log('Customer uploaded a verification document.');
 
-                return $document->fresh(['user.customerProfile', 'reviewer']);
+                return $document->fresh(['user.customerProfile', 'reviewer', 'files']);
             });
         } catch (\Throwable $exception) {
             Storage::disk('public')->delete(array_values(array_filter($storedPaths)));
@@ -176,7 +174,7 @@ class DocumentVerificationService
                 ->withProperties(['status' => $status->value])
                 ->log('Customer document reviewed by admin.');
 
-            return $document->fresh(['user.customerProfile', 'reviewer']);
+            return $document->fresh(['user.customerProfile', 'reviewer', 'files']);
         });
     }
 

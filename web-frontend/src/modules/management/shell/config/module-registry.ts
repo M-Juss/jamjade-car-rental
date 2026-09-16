@@ -11,7 +11,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-export type ManagementPortal = "owner" | "admin";
+export type ManagementPortal = "admin" | "staff";
 
 export type ManagementModuleId =
   | "dashboard"
@@ -37,7 +37,7 @@ export type ManagementModule = {
   section: ManagementSection;
   icon: LucideIcon;
   permission?: string;
-  ownerOnly?: boolean;
+  adminOnly?: boolean;
   path: string;
 };
 
@@ -111,7 +111,7 @@ export const managementModules: readonly ManagementModule[] = [
     label: "Staff",
     section: "Administration",
     icon: ShieldCheck,
-    ownerOnly: true,
+    adminOnly: true,
     path: "staff",
   },
 ] as const;
@@ -127,7 +127,7 @@ export const managementSections: readonly ManagementSection[] = [
 export function managementPath(portal: ManagementPortal, moduleId: ManagementModuleId) {
   const managementItem = managementModules.find((item) => item.id === moduleId);
 
-  if (!managementItem || (portal === "admin" && managementItem.ownerOnly)) return null;
+  if (!managementItem || (portal === "staff" && managementItem.adminOnly)) return null;
 
   return managementItem.path ? `/${portal}/${managementItem.path}` : `/${portal}`;
 }
@@ -144,8 +144,8 @@ export function managementModuleForPath(pathname: string, portal: ManagementPort
 
 export function managementModulesForPortal(portal: ManagementPortal, permissions: ReadonlySet<string> | null) {
   return managementModules.filter((module) => {
-    if (portal === "owner") return true;
-    if (module.ownerOnly || !module.permission) return false;
+    if (portal === "admin") return true;
+    if (module.adminOnly || !module.permission) return false;
 
     return permissions?.has(module.permission) ?? false;
   });

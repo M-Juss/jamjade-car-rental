@@ -117,8 +117,8 @@ The existing `POST /admin/vehicles` contract now requires `initial_condition`. I
 
 - Outgoing copies the vehicle's finalized Current Condition and references it through `based_on_inspection_id`; finalizing Outgoing does not move the Current pointer.
 - Incoming copies the booking's finalized Outgoing snapshot. Finalizing Incoming atomically moves the vehicle's Current pointer to the new immutable Incoming snapshot.
-- Self Drive requires authenticated Jamjade personnel plus the renter signature captured on the personnel device.
-- Owner's Driver requires authenticated authorized Jamjade personnel plus the assigned Driver; the Customer does not sign these inspections.
+- Self Drive requires authenticated Jamjade personnel plus the customer signature captured on the personnel device.
+- Admin's Driver requires authenticated authorized Jamjade personnel plus the assigned Driver; the Customer does not sign these inspections.
 - Booking signatures belong to booking inspection snapshots, never to `vehicles`.
 - Inspection evidence never automatically assigns financial responsibility. Authorized personnel create separate customer- or Driver-responsible charges after Incoming finalization.
 - The complete lifecycle and readiness gates are documented in `docs/booking-rental-lifecycle.md`.

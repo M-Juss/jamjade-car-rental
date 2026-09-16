@@ -52,7 +52,7 @@ class VehicleResource extends JsonResource
             'status' => $this->status->value,
             'statusLabel' => $this->status->label(),
             'description' => $this->description,
-            'isMostBooked' => (bool) $this->is_most_booked,
+            'isFeatured' => (bool) $this->is_featured,
             'images' => $imageUrls,
             'imageRecords' => $images,
             'cardImage' => $imageUrls->first(),

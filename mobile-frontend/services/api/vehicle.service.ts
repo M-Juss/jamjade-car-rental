@@ -55,7 +55,7 @@ function mapVehicle(record: MobileVehicleRecord): Vehicle {
     color: record.color,
     features: record.features ?? [],
     description: record.description ?? '',
-    isMostBooked: Boolean(record.isMostBooked),
+    isFeatured: Boolean(record.isFeatured),
     unavailableDateRanges: record.unavailableDateRanges ?? [],
     createdAt: record.createdAt ?? '1970-01-01',
   };

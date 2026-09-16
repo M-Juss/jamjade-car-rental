@@ -1,5 +1,7 @@
-import ReportsAnalytics from "@/modules/management/reports/ReportsModule";
+import ReportsAnalytics from "@/modules/management/reports/ReportsModule"
 
-export default function AdminReportPage() {
-  return <ReportsAnalytics />;
+export default function ReportPage() {
+    return(
+        <ReportsAnalytics/>
+    )
 }

@@ -55,7 +55,6 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => now(),
             'is_active' => true,
         ])->save();
-        $owner->syncRoles([UserRole::Owner->value]);
-
+        $owner->syncRoles([UserRole::Admin->value]);
     }
 }

@@ -14,6 +14,10 @@ class BookingResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Booking details are normalized into focused child tables. Load them once
+        // so the existing API response remains stable without N+1 accessor queries.
+        $this->resource->loadMissing(['assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events']);
+
         $isManagement = (bool) $request->user()?->can('manage bookings');
         $isDriverView = $request->user()?->id === $this->assigned_driver_id
             && $request->user()?->id !== $this->user_id;

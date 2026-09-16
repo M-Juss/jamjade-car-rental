@@ -18,7 +18,7 @@ beforeEach(function () {
 
 it('returns live dashboard and report analytics', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
     $customer = customerUser();
     $vehicle = availableVehicle();
     $booking = Booking::create([
@@ -69,7 +69,7 @@ it('returns live dashboard and report analytics', function () {
 
 it('shows confirmed bookings on the dashboard', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
     $customer = customerUser();
     $vehicle = availableVehicle();
 
@@ -102,7 +102,7 @@ it('shows confirmed bookings on the dashboard', function () {
 
 it('downloads PDF and CSV reports', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     $this->actingAs($owner)->get('/admin/reports/pdf?range=12_months')
         ->assertOk()
@@ -115,7 +115,7 @@ it('downloads PDF and CSV reports', function () {
 
 it('rejects unsupported report ranges', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Owner->value);
+    $owner->assignRole(UserRole::Admin->value);
 
     $this->actingAs($owner)
         ->getJson('/admin/reports?range=custom')
