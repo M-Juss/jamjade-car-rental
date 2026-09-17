@@ -31,41 +31,46 @@ class ReportService
         );
     }
 
-    public function dashboardData(): array
+    public function dashboardData(string $start, string $end, bool $canManageBookings): array
     {
-        $bookings = Booking::with(['user', 'vehicle'])
-            ->latest()
+        $rangeStart = CarbonImmutable::parse($start)->startOfDay();
+        $rangeEnd = CarbonImmutable::parse($end)->endOfDay();
+        $monthStart = now()->toImmutable()->startOfMonth();
+        $monthEnd = now()->toImmutable()->endOfMonth();
+        $bookings = Booking::query()
+            ->with([
+                'user:id,name,email,phone_number',
+                'vehicle:id,name,plate_number',
+                'assignedDriver',
+            ])
+            ->blockingVehicleDates()
+            ->overlappingSchedule($rangeStart, $rangeEnd)
+            ->orderBy('rental_start_at')
             ->get();
-        $payments = Payment::with(['booking.vehicle', 'user'])
+        $monthRevenue = Payment::query()
             ->where('status', 'completed')
-            ->latest()
-            ->get();
-        $vehicles = Vehicle::with([
-            'images',
-            'bookings.payments',
-            'maintenancePlans',
-            'currentCondition',
-        ])->get();
-        $periods = $this->monthPeriods(now()->toImmutable()->subMonthsNoOverflow(11)->startOfMonth());
+            ->where(function ($query) use ($monthStart, $monthEnd) {
+                $query->whereBetween('completed_at', [$monthStart, $monthEnd])
+                    ->orWhere(function ($query) use ($monthStart, $monthEnd) {
+                        $query->whereNull('completed_at')
+                            ->whereBetween('created_at', [$monthStart, $monthEnd]);
+                    });
+            })
+            ->sum('amount');
 
         return [
-            'summary' => $this->summary(
-                $bookings,
-                $payments,
-                $vehicles->count(),
-                User::role('customer')->count()
-            ),
-            'monthlyBookings' => $this->bookingPerformance($bookings, $periods),
-            'monthlyRevenue' => $this->revenueTrend($payments, $periods),
-            'fleetStatus' => $this->fleetStatus($vehicles),
-            'topVehicles' => $this->topVehicles($vehicles),
-            'confirmedBookings' => $bookings
-                ->where('status', BookingStatus::Confirmed)
-                ->take(5)
-                ->map(fn (Booking $booking) => $this->bookingRow($booking))
+            'summary' => [
+                'monthRevenue' => (float) $monthRevenue,
+                'confirmedBookings' => Booking::where('status', BookingStatus::Confirmed->value)->count(),
+                'activeRentals' => Booking::where('status', BookingStatus::Ongoing->value)->count(),
+                'todaysPickups' => Booking::where('status', BookingStatus::Confirmed->value)
+                    ->whereBetween('rental_start_at', [now()->startOfDay(), now()->endOfDay()])
+                    ->count(),
+            ],
+            'events' => $bookings
+                ->map(fn (Booking $booking) => $this->calendarEvent($booking, $canManageBookings))
                 ->values()
                 ->all(),
-            'recentActivities' => $this->recentActivities($bookings, $payments),
         ];
     }
 
@@ -406,6 +411,32 @@ class ReportService
             'totalCost' => (float) $booking->total_amount,
             'status' => $booking->status->adminLabel(),
             'statusKey' => $booking->status->value,
+        ];
+    }
+
+    private function calendarEvent(Booking $booking, bool $canManageBookings): array
+    {
+        return [
+            'id' => $booking->id,
+            'bookingCode' => $booking->booking_code,
+            'customerName' => $booking->user?->name ?? 'Unknown',
+            'customerEmail' => $booking->user?->email,
+            'customerPhone' => $booking->user?->phone_number,
+            'vehicleName' => $booking->vehicle?->name ?? 'Unknown',
+            'vehiclePlate' => $booking->vehicle?->plate_number,
+            'start' => $booking->rental_start_at?->toISOString(),
+            'end' => $booking->rental_end_at?->toISOString(),
+            'status' => $booking->status->value,
+            'statusLabel' => $booking->status->adminLabel(),
+            'rentalType' => $booking->rental_type->label(),
+            'pickupLocation' => $booking->pickup_location,
+            'returnLocation' => $booking->return_location,
+            'totalAmount' => (float) $booking->total_amount,
+            'paymentStatus' => $booking->payment_status->label(),
+            'durationDays' => $booking->duration_days,
+            'driverName' => $booking->assignedDriver?->name,
+            'notes' => $booking->notes,
+            'adminNotes' => $canManageBookings ? $booking->admin_notes : null,
         ];
     }
 

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "react-big-calendar/lib/css/react-big-calendar.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -244,4 +245,100 @@
   border: 0 !important;
   background: transparent !important;
   color: var(--muted-foreground) !important;
+}
+
+.dashboard-calendar .rbc-calendar {
+  height: 680px;
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.dashboard-calendar .rbc-month-view,
+.dashboard-calendar .rbc-time-view {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.dashboard-calendar .rbc-header {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 4px;
+  color: var(--muted-foreground);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-calendar .rbc-month-row + .rbc-month-row,
+.dashboard-calendar .rbc-day-bg + .rbc-day-bg,
+.dashboard-calendar .rbc-time-content > * + * > * {
+  border-color: var(--border);
+}
+
+.dashboard-calendar .rbc-day-bg,
+.dashboard-calendar .rbc-time-header-content,
+.dashboard-calendar .rbc-timeslot-group {
+  border-color: var(--border);
+}
+
+.dashboard-calendar .rbc-date-cell {
+  padding: 6px 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.dashboard-calendar .rbc-off-range {
+  color: var(--subtle-foreground);
+}
+
+.dashboard-calendar .rbc-off-range-bg {
+  background: color-mix(in srgb, var(--background) 65%, var(--surface));
+}
+
+.dashboard-calendar .rbc-today {
+  background: var(--muted);
+}
+
+.dashboard-calendar .rbc-event.dashboard-calendar-event {
+  min-height: 22px;
+  border: 0;
+  border-radius: 7px;
+  padding: 3px 5px;
+  box-shadow: none;
+  font-size: 10.5px;
+}
+
+.dashboard-calendar .rbc-event.dashboard-calendar-event--confirmed {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.dashboard-calendar .rbc-event.dashboard-calendar-event--ongoing {
+  background: var(--success);
+  color: var(--success-foreground);
+}
+
+.dashboard-calendar .rbc-event.dashboard-calendar-event:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.dashboard-calendar .rbc-show-more {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.dashboard-calendar .rbc-time-header-gutter,
+.dashboard-calendar .rbc-label {
+  color: var(--subtle-foreground);
+  font-size: 10.5px;
+}
+
+@media (max-width: 767px) {
+  .dashboard-calendar .rbc-calendar {
+    height: 600px;
+  }
 }

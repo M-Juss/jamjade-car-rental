@@ -48,6 +48,7 @@ import {
   Animated,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { optionalServices, REQUIRED_DOCUMENTS } from '@/lib/browse/rental-config';
 import { formatPeso } from '@/lib/browse/pricing';
@@ -405,6 +406,7 @@ export function VehicleDetailsDrawer({
     width: 260,
   });
   const { height, width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const drawerLift = useRef(new Animated.Value(0)).current;
   const isDrawerLiftedRef = useRef(false);
   const dragStartLiftRef = useRef(0);
@@ -523,7 +525,9 @@ export function VehicleDetailsDrawer({
         </View>
       </Pressable>
 
-      <View className="flex-1 overflow-hidden px-5 pb-28 pt-5">
+      <View
+        className="flex-1 overflow-hidden px-5 pt-5"
+        style={{ paddingBottom: 112 + insets.bottom }}>
         <View className="flex-row items-start gap-4">
           <View className="min-w-0 flex-1">
             <Text className="text-[31px] font-black leading-[36px] text-[#0F172A]">{vehicle.name}</Text>
@@ -568,7 +572,9 @@ export function VehicleDetailsDrawer({
         </View>
       </View>
 
-        <View className="absolute bottom-0 left-0 right-0 border-t border-[#EAF0FB] bg-surface/95 px-5 pb-6 pt-4">
+        <View
+          className="absolute bottom-0 left-0 right-0 border-t border-[#EAF0FB] bg-surface/95 px-5 pt-4"
+          style={{ paddingBottom: Math.max(insets.bottom + 24, 24) }}>
         <View className="flex-row items-center gap-4">
           <View className="flex-1">
             <Text className="text-[12px] font-bold text-subtle-foreground">Starts at</Text>

@@ -64,13 +64,38 @@ export type DashboardActivity = {
 };
 
 export type DashboardResponse = {
-  summary: DashboardSummary;
-  monthlyBookings: BookingPerformancePoint[];
-  monthlyRevenue: RevenueTrendPoint[];
-  fleetStatus: FleetStatusPoint[];
-  topVehicles: DashboardVehicle[];
-  confirmedBookings: BookingReportRow[];
-  recentActivities: DashboardActivity[];
+  summary: DashboardCalendarSummary;
+  events: DashboardCalendarEvent[];
+};
+
+export type DashboardCalendarSummary = {
+  monthRevenue: number;
+  confirmedBookings: number;
+  activeRentals: number;
+  todaysPickups: number;
+};
+
+export type DashboardCalendarEvent = {
+  id: number;
+  bookingCode: string;
+  customerName: string;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+  vehicleName: string;
+  vehiclePlate?: string | null;
+  start: string;
+  end: string;
+  status: "confirmed" | "ongoing";
+  statusLabel: string;
+  rentalType: string;
+  pickupLocation?: string | null;
+  returnLocation?: string | null;
+  totalAmount: number;
+  paymentStatus: string;
+  durationDays: number;
+  driverName?: string | null;
+  notes?: string | null;
+  adminNotes?: string | null;
 };
 
 export type RevenueTransaction = {

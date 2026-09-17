@@ -1,8 +1,9 @@
 import { ApiError, GENERIC_ERROR_MESSAGE, apiGet, buildApiUrl } from "@/services/http";
 import type { DashboardResponse, ReportRange, ReportsResponse } from "./types";
 
-export async function getDashboard() {
-  const response = await apiGet<DashboardResponse>("/admin/dashboard");
+export async function getDashboard(start: string, end: string) {
+  const query = new URLSearchParams({ start, end });
+  const response = await apiGet<DashboardResponse>(`/admin/dashboard?${query.toString()}`);
 
   return response.data;
 }

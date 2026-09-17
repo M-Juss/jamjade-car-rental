@@ -16,7 +16,7 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 });
 
-it('returns live dashboard and report analytics', function () {
+it('returns dashboard calendar data and report analytics', function () {
     $owner = User::factory()->create();
     $owner->assignRole(UserRole::Admin->value);
     $customer = customerUser();
@@ -51,13 +51,14 @@ it('returns live dashboard and report analytics', function () {
         'paid_at' => now(),
     ]);
 
-    $this->actingAs($owner)->getJson('/admin/dashboard')
+    $dashboardStart = now()->startOfMonth()->toDateString();
+    $dashboardEnd = now()->endOfMonth()->toDateString();
+
+    $this->actingAs($owner)->getJson("/admin/dashboard?start={$dashboardStart}&end={$dashboardEnd}")
         ->assertOk()
-        ->assertJsonPath('data.summary.totalRevenue', 10500)
-        ->assertJsonPath('data.summary.totalBookings', 1)
-        ->assertJsonPath('data.summary.completedBookings', 1)
-        ->assertJsonPath('data.topVehicles.0.name', $vehicle->name)
-        ->assertJsonCount(12, 'data.monthlyRevenue');
+        ->assertJsonPath('data.summary.monthRevenue', 10500)
+        ->assertJsonPath('data.summary.confirmedBookings', 0)
+        ->assertJsonCount(0, 'data.events');
 
     $this->actingAs($owner)->getJson('/admin/reports?range=all_time')
         ->assertOk()
@@ -93,11 +94,24 @@ it('shows confirmed bookings on the dashboard', function () {
         'confirmed_at' => now(),
     ]);
 
-    $this->actingAs($owner)->getJson('/admin/dashboard')
+    $this->actingAs($owner)->getJson('/admin/dashboard?start='.now()->toDateString().'&end='.now()->addWeek()->toDateString())
         ->assertOk()
         ->assertJsonPath('data.summary.confirmedBookings', 1)
-        ->assertJsonPath('data.confirmedBookings.0.bookingId', 'BK-CONFIRMED-1')
-        ->assertJsonPath('data.confirmedBookings.0.statusKey', BookingStatus::Confirmed->value);
+        ->assertJsonPath('data.events.0.bookingCode', 'BK-CONFIRMED-1')
+        ->assertJsonPath('data.events.0.status', BookingStatus::Confirmed->value);
+});
+
+it('requires a valid dashboard calendar range', function () {
+    $owner = User::factory()->create();
+    $owner->assignRole(UserRole::Admin->value);
+
+    $this->actingAs($owner)->getJson('/admin/dashboard')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['start', 'end']);
+
+    $this->actingAs($owner)->getJson('/admin/dashboard?start=2026-09-10&end=2026-09-09')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('end');
 });
 
 it('downloads PDF and CSV reports', function () {

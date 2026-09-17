@@ -571,13 +571,7 @@ export function VehicleFormDialog({
     setStep("condition");
   };
 
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    if (step === "vehicle") {
-      event.preventDefault();
-      void continueToCondition();
-      return;
-    }
-
+  const submitConditionForm = () => {
     setConditionValidationAttempted(true);
     void handleSubmit(handleSave, (formErrors) => {
       const conditionTarget = firstConditionErrorTarget(formErrors.initial_condition);
@@ -592,7 +586,18 @@ export function VehicleFormDialog({
         }
       }
       appToast.error(getVehicleFormErrorMessage(formErrors));
-    })(event);
+    })();
+  };
+
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (step === "vehicle") {
+      void continueToCondition();
+      return;
+    }
+
+    submitConditionForm();
   };
 
   return (
@@ -1062,8 +1067,17 @@ export function VehicleFormDialog({
                 {step === "condition" ? "Back" : "Cancel"}
               </Button>
               <Button
-                type={step === "condition" ? "submit" : "button"}
-                onClick={step === "vehicle" ? () => void continueToCondition() : undefined}
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (step === "vehicle") {
+                    void continueToCondition();
+                    return;
+                  }
+
+                  submitConditionForm();
+                }}
                 disabled={isSubmitting || isProcessingImages}
                 className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
               >

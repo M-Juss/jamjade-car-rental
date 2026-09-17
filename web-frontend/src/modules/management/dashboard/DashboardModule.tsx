@@ -4,94 +4,173 @@ import { useEffect, useState } from "react";
 import {
   AlertCircle,
   CalendarCheck,
+  CalendarClock,
+  CalendarDays,
   Car,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   CreditCard,
-  KeyRound,
   Loader2,
+  Mail,
+  MapPin,
   PhilippinePeso,
-  Users,
+  Phone,
+  UserRound,
 } from "lucide-react";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  XAxis,
-  YAxis,
-} from "recharts";
+  addDays,
+  addMonths,
+  addWeeks,
+  endOfMonth,
+  endOfWeek,
+  format,
+  getDay,
+  parse,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
+import { enUS } from "date-fns/locale";
+import {
+  Calendar,
+  dateFnsLocalizer,
+  type Event,
+  type View,
+} from "react-big-calendar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { GENERIC_ERROR_MESSAGE } from "@/services/http";
 import { formatPhilippinePeso } from "@/lib/formatters/currency";
+import { GENERIC_ERROR_MESSAGE } from "@/services/http";
 import {
   getDashboard,
+  type DashboardCalendarEvent,
   type DashboardResponse,
 } from "@/services/report";
 
-const chartConfigBookings = { bookings: { label: "Bookings", color: "#346EF6" } };
-const chartConfigRevenue = { revenue: { label: "Revenue", color: "#346EF6" } };
-
-const statusColor: Record<string, string> = {
-  Available: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  Rented: "border-blue-200 bg-muted text-primary",
-  Maintenance: "border-amber-200 bg-amber-50 text-amber-700",
-  Unavailable: "border-slate-200 bg-slate-50 text-slate-600",
-  Pending: "border-amber-200 bg-amber-50 text-amber-700",
-  Confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+type RentalCalendarEvent = Omit<DashboardCalendarEvent, "start" | "end"> & Event & {
+  start: Date;
+  end: Date;
 };
 
-const ACTIVITIES_PER_PAGE = 5;
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: (date: Date) => startOfWeek(date, { weekStartsOn: 0 }),
+  getDay,
+  locales: { "en-US": enUS },
+});
+
+const bookingStatusStyle: Record<DashboardCalendarEvent["status"], string> = {
+  confirmed: "border-blue-200 bg-muted text-primary",
+  ongoing: "border-emerald-200 bg-emerald-50 text-emerald-700",
+};
 
 function messageFromError() {
   return GENERIC_ERROR_MESSAGE;
 }
 
-function formatActivityDate(value?: string | null) {
-  if (!value) return "Time unavailable";
+function dateRangeForView(date: Date, view: View) {
+  if (view === "day") {
+    return { start: date, end: date };
+  }
 
+  if (view === "week") {
+    return {
+      start: startOfWeek(date, { weekStartsOn: 0 }),
+      end: endOfWeek(date, { weekStartsOn: 0 }),
+    };
+  }
+
+  return {
+    start: startOfWeek(startOfMonth(date), { weekStartsOn: 0 }),
+    end: endOfWeek(endOfMonth(date), { weekStartsOn: 0 }),
+  };
+}
+
+function periodLabel(date: Date, view: View) {
+  if (view === "day") {
+    return format(date, "MMMM d, yyyy");
+  }
+
+  if (view === "week") {
+    const range = dateRangeForView(date, view);
+    return `${format(range.start, "MMM d")} - ${format(range.end, "MMM d, yyyy")}`;
+  }
+
+  return format(date, "MMMM yyyy");
+}
+
+function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
     day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
 }
 
-function EmptyState({ message }: { message: string }) {
-  return <div className="py-10 text-center text-[12px] text-muted-foreground">{message}</div>;
+function moveDate(date: Date, view: View, direction: -1 | 1) {
+  if (view === "day") return addDays(date, direction);
+  if (view === "week") return addWeeks(date, direction);
+
+  return addMonths(date, direction);
 }
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null);
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [view, setView] = useState<View>("month");
+  const [selectedEvent, setSelectedEvent] = useState<DashboardCalendarEvent | null>(null);
   const [error, setError] = useState("");
-  const [activityPage, setActivityPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  function beginLoad() {
+    setError("");
+    setIsLoading(true);
+  }
+
+  function changeDate(date: Date) {
+    beginLoad();
+    setCurrentDate(date);
+  }
+
+  function changeView(nextView: View) {
+    beginLoad();
+    setView(nextView);
+  }
+
+  function retry() {
+    beginLoad();
+    setReloadKey((key) => key + 1);
+  }
 
   useEffect(() => {
     let active = true;
+    const range = dateRangeForView(currentDate, view);
 
-    getDashboard()
+    getDashboard(format(range.start, "yyyy-MM-dd"), format(range.end, "yyyy-MM-dd"))
       .then((response) => {
         if (active) setData(response);
       })
       .catch(() => {
         if (active) setError(messageFromError());
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentDate, reloadKey, view]);
 
-  if (!data && !error) {
+  if (!data && isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
         <Loader2 className="mr-2 size-5 animate-spin" />
@@ -109,6 +188,9 @@ export default function Dashboard() {
             <div>
               <p className="font-semibold text-foreground">Dashboard could not be loaded</p>
               <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+              <Button className="mt-4" size="sm" onClick={retry}>
+                Try again
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -116,277 +198,224 @@ export default function Dashboard() {
     );
   }
 
-  const { summary } = data;
-  const activityPageCount = Math.max(1, Math.ceil(data.recentActivities.length / ACTIVITIES_PER_PAGE));
-  const paginatedActivities = data.recentActivities.slice(
-    (activityPage - 1) * ACTIVITIES_PER_PAGE,
-    activityPage * ACTIVITIES_PER_PAGE,
-  );
+  const events: RentalCalendarEvent[] = data.events.map((event) => ({
+    ...event,
+    title: `${event.bookingCode} - ${event.vehicleName}`,
+    start: new Date(event.start),
+    end: new Date(event.end),
+  }));
   const kpis = [
-    { label: "Total Revenue", value: formatPhilippinePeso(summary.totalRevenue, true), icon: PhilippinePeso, iconBg: "bg-muted", iconColor: "text-primary" },
-    { label: "Total Vehicles", value: summary.totalVehicles.toLocaleString(), icon: Car, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
-    { label: "Total Customers", value: summary.totalCustomers.toLocaleString(), icon: Users, iconBg: "bg-violet-50", iconColor: "text-violet-600" },
-    { label: "Completed Bookings", value: summary.completedBookings.toLocaleString(), icon: CheckCircle2, iconBg: "bg-teal-50", iconColor: "text-teal-600" },
-    { label: "Active Rentals", value: summary.activeRentals.toLocaleString(), icon: KeyRound, iconBg: "bg-amber-50", iconColor: "text-amber-600" },
-    { label: "Confirmed Bookings", value: summary.confirmedBookings.toLocaleString(), icon: CalendarCheck, iconBg: "bg-emerald-50", iconColor: "text-emerald-600" },
+    {
+      label: "Month Revenue",
+      value: formatPhilippinePeso(data.summary.monthRevenue, true),
+      icon: PhilippinePeso,
+      iconClassName: "bg-muted text-primary",
+    },
+    {
+      label: "Confirmed Bookings",
+      value: data.summary.confirmedBookings.toLocaleString(),
+      icon: CalendarCheck,
+      iconClassName: "bg-muted text-primary",
+    },
+    {
+      label: "Active Rentals",
+      value: data.summary.activeRentals.toLocaleString(),
+      icon: Car,
+      iconClassName: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Today's Pickups",
+      value: data.summary.todaysPickups.toLocaleString(),
+      icon: CalendarClock,
+      iconClassName: "bg-violet-50 text-violet-600",
+    },
   ];
 
   return (
     <div className="min-h-screen space-y-6 bg-background p-4 md:p-6 lg:p-8">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">Live booking, revenue, customer, and fleet activity.</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Overview of confirmed and active rentals across your fleet.
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-3">
-        {kpis.map(({ label, value, icon, iconBg, iconColor }) => (
-          <div key={label}>
-            <KpiCard
-              label={label}
-              value={value}
-              icon={icon}
-              iconClassName={`${iconBg} ${iconColor}`}
-            />
-          </div>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {kpis.map(({ label, value, icon, iconClassName }) => (
+          <KpiCard
+            key={label}
+            label={label}
+            value={value}
+            icon={icon}
+            iconClassName={iconClassName}
+          />
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="px-5 pt-5 pb-2">
-            <CardTitle className="text-[14px] font-bold text-foreground">Monthly Bookings</CardTitle>
-            <CardDescription className="text-[12px] text-muted-foreground">Bookings created during the last 12 months</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <ChartContainer config={chartConfigBookings} className="h-[220px] w-full">
-              <LineChart data={data.monthlyBookings} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" />
-                <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="bookings" stroke="#346EF6" strokeWidth={2.5} dot={{ r: 3, fill: "#346EF6", strokeWidth: 0 }} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="px-5 pt-5 pb-2">
-            <CardTitle className="text-[14px] font-bold text-foreground">Revenue Overview</CardTitle>
-            <CardDescription className="text-[12px] text-muted-foreground">Received payments during the last 12 months</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <ChartContainer config={chartConfigRevenue} className="h-[220px] w-full">
-              <BarChart data={data.monthlyRevenue} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} tickFormatter={(value) => formatPhilippinePeso(Number(value), true)} />
-                <ChartTooltip
-                  content={<ChartTooltipContent />}
-                  formatter={(value) => [formatPhilippinePeso(Number(value ?? 0)), "Revenue"]}
-                />
-                <Bar dataKey="revenue" fill="#346EF6" radius={[6, 6, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="px-5 pt-5 pb-2">
-            <CardTitle className="text-[14px] font-bold text-foreground">Fleet Status</CardTitle>
-            <CardDescription className="text-[12px] text-muted-foreground">Current vehicle availability breakdown</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 pb-5">
-            <div className="flex flex-col items-center gap-6 sm:flex-row">
-              <ChartContainer config={{}} className="h-[180px] w-[180px] shrink-0">
-                <PieChart>
-                  <Pie data={data.fleetStatus} cx="50%" cy="50%" innerRadius={52} outerRadius={78} paddingAngle={3} dataKey="value">
-                    {data.fleetStatus.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} stroke="none" />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ChartContainer>
-              <div className="flex w-full flex-1 flex-col gap-2.5">
-                {data.fleetStatus.map(({ name, value, color }) => (
-                  <div key={name} className="flex items-center justify-between rounded-xl bg-background px-4 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: color }} />
-                      <span className="text-[12.5px] font-medium text-muted-foreground">{name}</span>
-                    </div>
-                    <span className="text-[13px] font-bold text-foreground">{value}</span>
-                  </div>
-                ))}
-              </div>
+      <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <CardContent className="px-5 pb-5">
+          {error ? (
+            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface px-3 py-2.5 text-[12px] text-destructive">
+              <span>{error}</span>
+              <Button variant="ghost" size="sm" className="text-destructive" onClick={retry}>
+                Retry
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          ) : null}
 
-        <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="px-5 pt-5 pb-2">
-            <CardTitle className="text-[14px] font-bold text-foreground">Top Vehicles</CardTitle>
-            <CardDescription className="text-[12px] text-muted-foreground">Highest performing vehicles by booking count</CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {data.topVehicles.length === 0 ? (
-              <EmptyState message="No vehicle booking data is available yet." />
-            ) : (
-              <div className="space-y-1.5">
-                {data.topVehicles.map(({ id, name, bookings, revenue, status }) => (
-                  <div key={id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-background">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-                      <Car size={17} className="text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12.5px] font-semibold text-foreground">{name}</p>
-                      <p className="text-[11px] text-subtle-foreground">{bookings} bookings · {formatPhilippinePeso(revenue)}</p>
-                    </div>
-                    <Badge className={`border ${statusColor[status] ?? "border-slate-200 bg-slate-50 text-slate-600"}`}>
-                      {status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => changeDate(moveDate(currentDate, view, -1))}>
+                <ChevronLeft />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => changeDate(new Date())}>Today</Button>
+              <Button variant="outline" size="icon-sm" aria-label="Next period" onClick={() => changeDate(moveDate(currentDate, view, 1))}>
+                <ChevronRight />
+              </Button>
+              <p className="ml-2 text-[13px] font-bold text-foreground">{periodLabel(currentDate, view)}</p>
+            </div>
+            <div className="flex w-full rounded-xl border border-border bg-background p-1 sm:w-auto">
+              {(["month", "week", "day"] as View[]).map((option) => (
+                <Button
+                  key={option}
+                  variant={view === option ? "secondary" : "ghost"}
+                  size="sm"
+                  className="flex-1 capitalize sm:flex-none"
+                  onClick={() => changeView(option)}
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </div>
 
-      <div>
-        <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="px-5 pt-5 pb-2">
-            <CardTitle className="text-[14px] font-bold text-foreground">Confirmed Bookings</CardTitle>
-            <CardDescription className="text-[12px] text-muted-foreground">Latest confirmed bookings</CardDescription>
-          </CardHeader>
-          <CardContent className="px-0 pb-2">
-            {data.confirmedBookings.length === 0 ? (
-              <EmptyState message="There are no confirmed bookings." />
-            ) : (
-              <>
-                {/* Card layout for small screens; the table takes over from md */}
-                <div className="grid gap-3 px-5 pb-3 md:hidden">
-                  {data.confirmedBookings.map((booking) => (
-                    <div key={booking.internalId} className="rounded-xl border border-border bg-background p-3.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="break-all font-mono text-[12px] font-semibold text-primary">{booking.bookingId}</p>
-                        <Badge className={`border ${statusColor.Confirmed}`}>Confirmed</Badge>
-                      </div>
-                      <p className="mt-2 text-[12.5px] font-semibold text-foreground">{booking.customer}</p>
-                      <p className="mt-0.5 text-[12px] text-muted-foreground">{booking.vehicle}</p>
-                      <dl className="mt-2.5 grid grid-cols-2 gap-2 text-[11px]">
-                        <div>
-                          <dt className="text-subtle-foreground">Pickup</dt>
-                          <dd className="mt-0.5 font-medium text-foreground">{booking.rentalDate ?? "N/A"}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-subtle-foreground">Return</dt>
-                          <dd className="mt-0.5 font-medium text-foreground">{booking.returnDate ?? "N/A"}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[620px]">
-                    <thead>
-                      <tr className="border-b border-border">
-                        {["Booking ID", "Customer", "Vehicle", "Pickup", "Return", "Status"].map((heading) => (
-                          <th key={heading} className="px-5 py-3 text-left text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">
-                            {heading}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.confirmedBookings.map((booking) => (
-                        <tr key={booking.internalId} className="border-b border-background hover:bg-background">
-                          <td className="px-5 py-3 font-mono text-[12px] font-semibold text-primary">{booking.bookingId}</td>
-                          <td className="px-5 py-3 text-[12.5px] font-medium text-foreground">{booking.customer}</td>
-                          <td className="px-5 py-3 text-[12px] text-muted-foreground">{booking.vehicle}</td>
-                          <td className="px-5 py-3 text-[12px] text-muted-foreground">{booking.rentalDate ?? "N/A"}</td>
-                          <td className="px-5 py-3 text-[12px] text-muted-foreground">{booking.returnDate ?? "N/A"}</td>
-                          <td className="px-5 py-3">
-                            <Badge className={`border ${statusColor.Confirmed}`}>Confirmed</Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div>
-        <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="px-5 pt-5 pb-2">
-            <CardTitle className="text-[14px] font-bold text-foreground">Recent Activities</CardTitle>
-            <CardDescription className="text-[12px] text-muted-foreground">Latest booking and payment updates</CardDescription>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {data.recentActivities.length === 0 ? (
-              <EmptyState message="No recent activity is available." />
-            ) : (
-              <div className="space-y-1">
-                {paginatedActivities.map((activity, index) => {
-                  const Icon = activity.type === "payment" ? CreditCard : CalendarCheck;
-                  const color = activity.type === "payment" ? "text-violet-600" : "text-primary";
-                  const background = activity.type === "payment" ? "bg-violet-50" : "bg-muted";
-
-                  return (
-                    <div key={`${activity.occurredAt}-${(activityPage - 1) * ACTIVITIES_PER_PAGE + index}`} className="flex items-start gap-3.5 py-2.5">
-                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${background}`}>
-                        <Icon size={15} className={color} strokeWidth={2.2} />
-                      </div>
-                      <div className="min-w-0 flex-1 pt-1">
-                        <p className="text-[12.5px] font-medium leading-snug text-foreground">{activity.label}</p>
-                        <p className="mt-0.5 text-[11px] text-subtle-foreground">{formatActivityDate(activity.occurredAt)}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {data.recentActivities.length > ACTIVITIES_PER_PAGE ? (
-              <div className="mt-3 flex items-center justify-between border-t border-border pt-4">
-                <p className="text-[11.5px] text-subtle-foreground">
-                  Showing {(activityPage - 1) * ACTIVITIES_PER_PAGE + 1}–
-                  {Math.min(activityPage * ACTIVITIES_PER_PAGE, data.recentActivities.length)} of {data.recentActivities.length}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    aria-label="Previous activity page"
-                    onClick={() => setActivityPage((page) => Math.max(1, page - 1))}
-                    disabled={activityPage === 1}
-                    className="flex size-11 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40 md:size-8"
-                  >
-                    <ChevronLeft size={16} className="md:size-4" />
-                  </button>
-                  <span className="min-w-16 text-center text-[11.5px] font-medium text-muted-foreground">
-                    Page {activityPage} of {activityPageCount}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Next activity page"
-                    onClick={() => setActivityPage((page) => Math.min(activityPageCount, page + 1))}
-                    disabled={activityPage === activityPageCount}
-                    className="flex size-11 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40 md:size-8"
-                  >
-                    <ChevronRight size={16} className="md:size-4" />
-                  </button>
-                </div>
+          <div className="relative overflow-x-auto">
+            {isLoading ? (
+              <div className="absolute inset-x-0 top-0 z-10 flex justify-end p-2 text-primary">
+                <Loader2 className="size-4 animate-spin" aria-label="Loading rentals" />
               </div>
             ) : null}
-          </CardContent>
-        </Card>
-      </div>
+            <div className="dashboard-calendar min-w-[680px]">
+              <Calendar<RentalCalendarEvent>
+                localizer={localizer}
+                events={events}
+                date={currentDate}
+                view={view}
+                toolbar={false}
+                startAccessor="start"
+                endAccessor="end"
+                onNavigate={changeDate}
+                onView={changeView}
+                onDrillDown={(date) => {
+                  beginLoad();
+                  setCurrentDate(date);
+                  setView("day");
+                }}
+                onSelectEvent={(event) => {
+                  setSelectedEvent(data.events.find((item) => item.id === event.id) ?? null);
+                }}
+                eventPropGetter={(event) => ({
+                  className: `dashboard-calendar-event dashboard-calendar-event--${event.status}`,
+                })}
+                components={{
+                  event: ({ event }) => (
+                    <div className="leading-tight">
+                      <span className="block truncate font-semibold">{event.bookingCode}</span>
+                      <span className="block truncate opacity-85">{event.vehicleName}</span>
+                    </div>
+                  ),
+                }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Sheet open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+        <SheetContent side="right" className="w-full gap-0 border-l border-border p-0 sm:max-w-[720px]">
+          <SheetHeader className="border-b border-border px-5 pb-4 pt-5">
+            <div className="flex items-start justify-between gap-4 pr-8">
+              <div>
+                <SheetTitle className="text-[15px] font-bold text-foreground">Rental Details</SheetTitle>
+                <SheetDescription className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">
+                  {selectedEvent?.bookingCode}
+                </SheetDescription>
+              </div>
+              {selectedEvent ? (
+                <Badge className={`border ${bookingStatusStyle[selectedEvent.status]}`}>
+                  {selectedEvent.statusLabel}
+                </Badge>
+              ) : null}
+            </div>
+          </SheetHeader>
+
+          {selectedEvent ? (
+            <ScrollArea className="h-[calc(100vh-76px)]">
+              <div className="space-y-4 px-5 py-4">
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Customer Information</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-primary"><UserRound size={18} /></div>
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold text-foreground">{selectedEvent.customerName}</p>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+                        {selectedEvent.customerEmail ? <span className="flex items-center gap-1.5"><Mail size={11} />{selectedEvent.customerEmail}</span> : null}
+                        {selectedEvent.customerPhone ? <span className="flex items-center gap-1.5"><Phone size={11} />{selectedEvent.customerPhone}</span> : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Rental Information</p>
+                  <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div><dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground"><Car size={12} />Vehicle</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{selectedEvent.vehicleName}</dd></div>
+                    <div><dt className="text-[11px] text-subtle-foreground">Plate Number</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{selectedEvent.vehiclePlate || "Not recorded"}</dd></div>
+                    <div><dt className="text-[11px] text-subtle-foreground">Rental Type</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{selectedEvent.rentalType}</dd></div>
+                    <div><dt className="text-[11px] text-subtle-foreground">Assigned Driver</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{selectedEvent.driverName || "Self-drive"}</dd></div>
+                  </dl>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Schedule and Locations</p>
+                  <dl className="space-y-3">
+                    <div><dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground"><CalendarDays size={12} />Pickup</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{formatDateTime(selectedEvent.start)}</dd></div>
+                    <div><dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground"><Clock3 size={12} />Return</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{formatDateTime(selectedEvent.end)}</dd></div>
+                    <div><dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground"><MapPin size={12} />Pickup Location</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{selectedEvent.pickupLocation || "Not recorded"}</dd></div>
+                    <div><dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground"><MapPin size={12} />Return Location</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{selectedEvent.returnLocation || "Not recorded"}</dd></div>
+                  </dl>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-white p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Payment</p>
+                  <dl className="grid grid-cols-2 gap-3">
+                    <div><dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground"><PhilippinePeso size={12} />Total Amount</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{formatPhilippinePeso(selectedEvent.totalAmount)}</dd></div>
+                    <div><dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground"><CreditCard size={12} />Payment Status</dt><dd className="mt-1 text-[12.5px] font-semibold text-foreground">{selectedEvent.paymentStatus}</dd></div>
+                  </dl>
+                </div>
+
+                {selectedEvent.notes || selectedEvent.adminNotes ? (
+                  <div className="rounded-2xl border border-border bg-white p-4">
+                    <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Notes</p>
+                    {selectedEvent.notes ? (
+                      <div>
+                        <p className="text-[11px] text-subtle-foreground">Customer Notes</p>
+                        <p className="mt-1 text-[12.5px] leading-relaxed text-foreground">{selectedEvent.notes}</p>
+                      </div>
+                    ) : null}
+                    {selectedEvent.adminNotes ? (
+                      <div className={selectedEvent.notes ? "mt-3 border-t border-border pt-3" : undefined}>
+                        <p className="text-[11px] text-subtle-foreground">Internal Notes</p>
+                        <p className="mt-1 text-[12.5px] leading-relaxed text-foreground">{selectedEvent.adminNotes}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </ScrollArea>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
