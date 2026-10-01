@@ -98,7 +98,7 @@ function DetailsActions({
   booking: Booking;
   onAction: (action: BookingAction, booking: Booking) => void;
 }) {
-  const actions = getBookingActions(booking.status, { includeDetails: false }).filter(
+  const actions = getBookingActions(booking.status, { includeDetails: false, isSelfDrive: booking.driverType === 'Self-Drive' }).filter(
     (action) => action.key !== 'pay_balance' || booking.remainingBalance > 0,
   );
   const primaryActionKeys: BookingAction['key'][] = [
@@ -205,7 +205,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
       return;
     }
 
-    if (action.key === 'open_telematics' && isTelematicsEnabled(selectedBooking.status)) {
+    if (action.key === 'open_telematics' && isTelematicsEnabled(selectedBooking)) {
       router.push(`/telematics?bookingId=${encodeURIComponent(selectedBooking.id)}` as Href);
       return;
     }
@@ -262,7 +262,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               {[
                 ['Booking confirmed', booking.status !== 'Pending'],
                 ['Outgoing inspection', booking.rentalProgress.outgoingFinalized],
-                ['Device calibration', booking.calibrationStatus === 'passed'],
+                ['Telematics setup', ['ready_for_release', 'released'].includes(booking.telematicsSetupStatus ?? '')],
                 ['Active rental', ['Active', 'Ongoing', 'Returned', 'Completed'].includes(booking.status)],
                 ['Return inspection', booking.rentalProgress.incomingFinalized],
                 ['Completed', booking.status === 'Completed'],
@@ -277,18 +277,18 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                 </View>
               ))}
 
-              {booking.driverType === 'Self-Drive' && booking.calibrationStatus === 'available' ? (
+              {booking.driverType === 'Self-Drive' && ['setup_required', 'in_progress'].includes(booking.telematicsSetupStatus ?? '') ? (
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => router.push(`/telematics?bookingId=${encodeURIComponent(booking.id)}` as Href)}
                   className="mt-4 min-h-[52px] items-center justify-center rounded-full bg-primary px-5">
-                  <Text className="text-[14px] font-black text-surface">Start Calibration</Text>
+                  <Text className="text-[14px] font-black text-surface">View Telematics Setup</Text>
                 </Pressable>
               ) : null}
 
-              {booking.calibrationStatus === 'passed' && booking.status === 'Confirmed' ? (
+              {booking.telematicsSetupStatus === 'ready_for_release' && booking.status === 'Confirmed' ? (
                 <Text className="mt-4 rounded-[18px] border border-success-border bg-success-surface p-3 text-[12px] font-bold leading-5 text-success">
-                  Calibration complete. Waiting for Jamjade to start the rental.
+                  Telematics setup is ready. Waiting for Jamjade to start the rental.
                 </Text>
               ) : null}
 

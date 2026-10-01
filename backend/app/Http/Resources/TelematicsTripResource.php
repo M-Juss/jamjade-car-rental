@@ -28,27 +28,12 @@ class TelematicsTripResource extends JsonResource
             'batteryPercent' => $this->battery_percent,
             'gpsSignalPercent' => $this->gps_signal_percent,
             'currentZone' => $this->current_zone,
-            'allowedZone' => $this->allowed_zone,
             'lastLocationAt' => $this->last_location_at?->toISOString(),
             'booking' => new BookingResource($this->whenLoaded('booking')),
             'vehicle' => $this->booking?->relationLoaded('vehicle')
                 ? new VehicleResource($this->booking->vehicle)
                 : null,
             'events' => TelematicsEventResource::collection($this->whenLoaded('events')),
-            'geofenceLogs' => $this->whenLoaded('events', fn () => $this->events
-                ->whereNotNull('geofence_status')
-                ->map(fn ($event) => [
-                    'id' => $event->id,
-                    'status' => $event->geofence_status,
-                    'latitude' => $event->latitude !== null ? (float) $event->latitude : null,
-                    'longitude' => $event->longitude !== null ? (float) $event->longitude : null,
-                    'distanceFromAllowedArea' => $event->distance_from_allowed_area !== null
-                        ? (float) $event->distance_from_allowed_area
-                        : null,
-                    'currentArea' => $event->current_area,
-                    'allowedArea' => $this->allowed_zone,
-                    'occurredAt' => $event->occurred_at?->toISOString(),
-                ])->values()),
         ];
     }
 }

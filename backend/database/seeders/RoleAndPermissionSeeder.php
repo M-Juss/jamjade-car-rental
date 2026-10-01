@@ -31,19 +31,17 @@ class RoleAndPermissionSeeder extends Seeder
         $admin = Role::findOrCreate(UserRole::Admin->value, 'web');
         $staff = Role::findOrCreate(UserRole::Staff->value, 'web');
         Role::findOrCreate(UserRole::Customer->value, 'web');
-        $driver = Role::findOrCreate('driver', 'web');
+        $driver = Role::findOrCreate(UserRole::Driver->value, 'web');
 
         $admin->syncPermissions($permissionModels);
         $staff->syncPermissions(
             collect(config('staff_modules'))
-                ->where('assignable', true)
+                ->where('staff_accessible', true)
                 ->pluck('permission')
                 ->all()
         );
 
-        $driver->syncPermissions([
-            Permission::findOrCreate('view dashboard', 'web'),
-        ]);
+        $driver->syncPermissions([]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

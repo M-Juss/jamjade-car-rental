@@ -8,13 +8,16 @@ The repository contains three independent codebases:
 
 - `backend/`: Laravel API and shared backend for both frontends.
 - `web-frontend/`: Next.js website for administrators and staff.
-- `mobile-frontend/`: Expo and React Native application for customers.
+- `mobile-frontend/`: Expo and React Native application for customers and assigned Drivers.
 
 The applications share one repository but are not one package-manager workspace. Run commands from the application directory they belong to, and do not assume dependencies, types, or runtime code are shared between applications.
+
+Read `docs/project-status-and-roadmap.md` for current project decisions, phase status, and the capstone's AI classification goal. Use the domain guides below for detailed contracts and inspect code before assuming a documented feature is operational.
 
 ## Product Architecture
 
 - Laravel is the authoritative backend, data-access layer, validation boundary, and authorization boundary.
+- Read `docs/user-roles-and-access.md` before changing personnel roles, account lifecycle, or Staff/Driver authorization. Admin/Owner separation is deferred.
 - The web frontend uses Laravel's stateful session, cookie, and CSRF authentication flow.
 - The mobile frontend uses Laravel Sanctum bearer tokens stored through the existing secure storage abstraction.
 - Both frontends communicate with Laravel through the existing API service layers. Do not call backend URLs directly from presentation components when a service module should own the request.
@@ -31,7 +34,7 @@ The applications share one repository but are not one package-manager workspace.
 - Do not add backward-compatibility layers without a concrete persisted-data, released-client, or external-consumer requirement.
 - Keep business rules out of visual components. Keep network requests in services and reusable domain behavior in the appropriate feature, service, hook, or library module.
 - Remove temporary logs, commented-out code, dead imports, and generated artifacts introduced by the change before finishing.
-- Never expose credentials, tokens, private URLs, personal data, location history, or video metadata in source code, public environment variables, logs, fixtures, or screenshots.
+- Never expose credentials, tokens, private URLs, personal data, or location history in source code, public environment variables, logs, fixtures, or screenshots.
 
 ## Pre-Implementation Review
 
@@ -120,7 +123,7 @@ Laravel Form Requests are the authoritative source of truth for accepted request
 - Maintain accessible labels, hints, roles, touch targets, text scaling, contrast, and non-color status indicators.
 - Handle keyboard avoidance, loading, empty, error, offline, retry, and interrupted-flow states where relevant.
 - Request device permissions only when needed, explain why they are needed, and handle denied, restricted, and permanently denied states.
-- Expo Go is the current development entry point, not a permanent guarantee for all future native capabilities. Do not assume background sensors, geofencing, persistent tasks, or advanced video features will work in Expo Go.
+- Expo Go is the current development entry point, not a permanent guarantee for all future native capabilities. Do not assume background sensors, geofencing, or persistent tasks will work in Expo Go.
 
 ## Design System And Color
 
@@ -147,7 +150,7 @@ The recurring JamJade palette is the current baseline:
 - Use the existing web CSRF flow and mobile bearer-token flow. Do not store mobile authentication tokens in insecure general-purpose storage.
 - Never place secrets in variables prefixed with `NEXT_PUBLIC_` or `EXPO_PUBLIC_`; those values are public application configuration.
 - Update the relevant environment example and setup documentation when adding a required environment variable. Do not commit local environment files.
-- Minimize collection and exposure of personal information. Logs and analytics must not include tokens, identity documents, precise location history, or video content.
+- Minimize collection and exposure of personal information. Logs and analytics must not include tokens, identity documents or precise location history.
 - Validate uploads by type, size, ownership, and authorization on the server. Treat client-provided MIME types and filenames as untrusted.
 - Use safe user-facing error messages while preserving useful structured errors for client handling.
 
@@ -186,15 +189,28 @@ Verification must match the application and behavior changed. Start with focused
 
 ## Future Telematics Readiness
 
-Accelerometer, GPS, geofencing, gyroscope, and video features are future work. Do not implement them as part of unrelated base-project changes.
+GPS, geofencing, accelerometer/gyroscope readiness, phone mounting, and calibration remain in the self-drive telematics scope. Active-trip collection and calibration capture require their own implementation phases; do not implement them as part of unrelated cleanup.
+
+Video recording, sending/uploads, auditing, and dashcam offerings are outside project scope. Do not reintroduce them.
 
 - Isolate collection, permission handling, storage, upload, and presentation behind clear domain interfaces so UI code does not directly manage sensors.
 - Expect background execution and some native APIs to require Expo development builds, EAS configuration, native permissions, and platform-specific testing rather than Expo Go.
-- Obtain explicit, informed user consent before collecting location, motion, or video data. Provide understandable permission and recording states.
+- Obtain explicit, informed user consent before collecting location or motion data. Provide understandable permission and collection states.
 - Design for least-privilege permissions, data minimization, encryption in transit and at rest, retention limits, deletion, access control, and auditability.
 - Account for battery usage, sampling rates, accuracy, device limitations, offline buffering, retries, duplicate events, timestamps, and interrupted uploads.
-- Never start hidden or unexpected recording. Review applicable privacy, surveillance, employment, and data-protection requirements before video or driver-monitoring features are released.
+- Never start hidden or unexpected telemetry collection. Review applicable privacy and data-protection requirements before active-trip monitoring is released.
 - Keep raw high-volume telemetry out of ordinary request and UI paths. Plan ingestion, aggregation, retention, and access separately before implementation.
+
+### Established telematics data boundary
+
+- Telematics applies only to self-drive bookings. One booking has at most one post-release `telematics_trip`; pauses and resumes stay within that trip.
+- Pre-release readiness belongs to `telematics_setup_sessions` and retryable `telematics_setup_steps`, never to `booking_assignments`. The existing authorized Start Rental action remains the final release action.
+- Reusable circles belong to `geofences`. Copy their values into immutable `booking_geofences` snapshots; never read a historical rental boundary dynamically from an editable template.
+- `telematics_location_points` is high-volume route history. `telematics_trips` current-location fields are intentional latest-state cache. `telematics_events` contains significant occurrences only.
+- Do not add raw accelerometer or gyroscope sample tables, encode streams in JSON, or introduce driver-behavior/AI classifications without a separately approved design.
+- Read `docs/telematics-architecture.md` before changing telematics data, client behavior, or release logic; read `docs/telematics-handover-lifecycle.md` before changing handover endpoints or staff operations; read `docs/telematics-device-location.md` before changing native setup checks, permissions, GPS policy, or geofence evaluation.
+- Handover is staff-controlled: only `setup_required -> in_progress` may start it, and the existing authorized Start Rental action is the only `ready_for_release -> released` release path. Phase 3 mobile setup may submit only typed real readiness evidence through its native abstraction; Laravel determines the outcome. It must not simulate data, subscribe to sensors, start active location updates, upload telemetry, create trips, or implement calibration.
+- Telematics navigation is not telematics eligibility. Keep the tab server-gated through the authoritative handover eligibility read model; only an owning self-drive booking may be selected, and setup mutations additionally require verified documents, `confirmed`, the server-checked current `Asia/Manila` calendar date of `rental_start_at`, and `in_progress` handover.
 
 ## Vehicle Condition Snapshots
 

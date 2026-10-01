@@ -3,8 +3,6 @@
 @import "shadcn/tailwind.css";
 @import "react-big-calendar/lib/css/react-big-calendar.css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -110,40 +108,6 @@
   --sidebar-ring: var(--ring);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -157,33 +121,43 @@
 }
 
 [data-sonner-toaster] .cn-toast {
+  --toast-accent: var(--primary);
+  position: relative;
   width: min(390px, calc(100vw - 32px)) !important;
   min-height: 78px;
   gap: 12px !important;
-  border-width: 1px !important;
+  border: 1px solid var(--border) !important;
   border-radius: 18px !important;
-  padding: 14px 44px 14px 14px !important;
+  padding: 14px 44px 14px 30px !important;
+  background: var(--surface) !important;
   box-shadow: 0 14px 40px rgb(15 23 42 / 12%) !important;
 }
 
+[data-sonner-toaster] .cn-toast::before {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 13px;
+  width: 5px;
+  border-radius: 9999px;
+  background: var(--toast-accent);
+  content: "";
+}
+
 [data-sonner-toaster] .cn-toast[data-type="success"] {
-  border-color: var(--success-border) !important;
-  background: var(--success-surface) !important;
+  --toast-accent: var(--success);
 }
 
 [data-sonner-toaster] .cn-toast[data-type="info"] {
-  border-color: var(--border) !important;
-  background: var(--muted) !important;
+  --toast-accent: var(--primary);
 }
 
 [data-sonner-toaster] .cn-toast[data-type="warning"] {
-  border-color: var(--warning-border) !important;
-  background: var(--warning-surface) !important;
+  --toast-accent: var(--warning);
 }
 
 [data-sonner-toaster] .cn-toast[data-type="error"] {
-  border-color: var(--destructive-border) !important;
-  background: var(--destructive-surface) !important;
+  --toast-accent: var(--destructive);
 }
 
 [data-sonner-toaster] .cn-toast-title {
@@ -209,6 +183,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
+  background: var(--toast-accent);
   color: white;
 }
 
@@ -217,22 +192,6 @@
   height: 40px !important;
   flex: 0 0 40px !important;
   margin: 0 !important;
-}
-
-[data-sonner-toaster] .cn-toast-icon-success {
-  background: var(--success) !important;
-}
-
-[data-sonner-toaster] .cn-toast-icon-info {
-  background: var(--primary) !important;
-}
-
-[data-sonner-toaster] .cn-toast-icon-warning {
-  background: var(--warning) !important;
-}
-
-[data-sonner-toaster] .cn-toast-icon-error {
-  background: var(--destructive) !important;
 }
 
 [data-sonner-toaster] .cn-toast-close {
@@ -251,6 +210,16 @@
   height: 680px;
   color: var(--foreground);
   font-size: 12px;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-page {
+    height: calc(100dvh + var(--dashboard-calendar-extra-height, 0px));
+  }
+
+  .dashboard-calendar .rbc-calendar {
+    height: 100%;
+  }
 }
 
 .dashboard-calendar .rbc-month-view,
@@ -303,12 +272,12 @@
 }
 
 .dashboard-calendar .rbc-event.dashboard-calendar-event {
-  min-height: 22px;
+  min-height: 18px;
   border: 0;
   border-radius: 7px;
-  padding: 3px 5px;
+  padding: 2px 5px;
   box-shadow: none;
-  font-size: 10.5px;
+  font-size: 9.5px;
 }
 
 .dashboard-calendar .rbc-event.dashboard-calendar-event--confirmed {
@@ -327,7 +296,9 @@
 }
 
 .dashboard-calendar .rbc-show-more {
+  padding: 1px 5px;
   color: var(--primary);
+  font-size: 10px;
   font-weight: 700;
 }
 

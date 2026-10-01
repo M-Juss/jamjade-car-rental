@@ -12,6 +12,17 @@ enum BookingStatus: string
     case Completed = 'completed';
     case Cancelled = 'cancelled';
 
+    public function isTerminal(): bool
+    {
+        return in_array($this, [self::Completed, self::Cancelled, self::Rejected], true);
+    }
+
+    /** @return list<string> */
+    public static function terminalValues(): array
+    {
+        return array_map(fn (self $status) => $status->value, [self::Completed, self::Cancelled, self::Rejected]);
+    }
+
     public function mobileLabel(): string
     {
         return match ($this) {

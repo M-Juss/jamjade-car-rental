@@ -97,8 +97,7 @@ export function mapBooking(record: MobileBookingRecord): Booking {
     paidAt: record.paidAt || 'N/A',
     createdAt: record.createdAt,
     adminNotes: record.adminNotes ?? '',
-    calibrationStatus: record.calibrationStatus,
-    calibratedAt: record.calibratedAt,
+    telematicsSetupStatus: record.telematicsSetupStatus,
     rentalProgress: record.rentalProgress,
     additionalCharges: record.additionalCharges ?? [],
     customer: record.customer,
@@ -137,14 +136,6 @@ export async function cancelBooking(bookingId: string, reason = 'Cancelled by cu
   const response = await apiPost<MobileBookingRecord>(
     `/mobile/bookings/${encodeURIComponent(bookingId)}/cancel`,
     { reason },
-  );
-
-  return mapBooking(response.data);
-}
-
-export async function recordBookingCalibration(bookingId: string) {
-  const response = await apiPost<MobileBookingRecord>(
-    `/mobile/bookings/${encodeURIComponent(bookingId)}/calibration`,
   );
 
   return mapBooking(response.data);

@@ -27,6 +27,7 @@ class PayPalCheckout extends Payment
         'approval_url',
         'paypal_response',
         'captured_at',
+        'failed_at',
     ];
 
     protected function casts(): array
@@ -35,6 +36,7 @@ class PayPalCheckout extends Payment
             'amount' => 'decimal:2',
             'provider_response' => 'array',
             'completed_at' => 'datetime',
+            'failed_at' => 'datetime',
         ];
     }
 

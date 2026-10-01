@@ -46,7 +46,12 @@ const vehicleDetailsSchema = z.object({
   color: requiredText.max(80, "Maximum 80 characters only."),
   transmission: requiredText.max(40, "Maximum 40 characters only."),
   fuel_type: requiredText.max(40, "Maximum 40 characters only."),
-  features: z.array(requiredText.max(120)).min(1, "Select at least one feature."),
+  features: z.array(requiredText.max(120))
+    .min(1, "Select at least one feature.")
+    .refine(
+      (features) => features.every((feature) => feature.toLowerCase() !== "dashcam"),
+      "Dashcam is no longer offered.",
+    ),
 });
 
 const checklistValue = z.boolean();

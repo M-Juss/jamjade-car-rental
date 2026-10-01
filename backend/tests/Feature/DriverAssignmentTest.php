@@ -52,12 +52,34 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 });
 
-it('seeds a driver role with the dashboard permission', function () {
+it('seeds a mobile-only driver role without management permissions', function () {
     $role = Role::findByName(DriverAssignmentService::DRIVER_ROLE, 'web');
 
     expect($role->exists)->toBeTrue()
-        ->and($role->hasPermissionTo('view dashboard'))->toBeTrue()
+        ->and($role->permissions)->toHaveCount(0)
+        ->and($role->hasPermissionTo('view dashboard'))->toBeFalse()
         ->and($role->hasPermissionTo('manage bookings'))->toBeFalse();
+});
+
+it('rejects a stale Driver model after personnel deactivation', function () {
+    $driver = createDriverUser();
+    $booking = createOwnersDriverBooking();
+    User::whereKey($driver->id)->update(['is_active' => false]);
+
+    expect(fn () => app(DriverAssignmentService::class)->assign($booking, $driver))
+        ->toThrow(ValidationException::class);
+    expect($booking->fresh()->assigned_driver_id)->toBeNull();
+});
+
+it('rejects a stale Driver model after conversion to Staff', function () {
+    $driver = createDriverUser();
+    $booking = createOwnersDriverBooking();
+    $driver->load('roles');
+    User::findOrFail($driver->id)->syncRoles(['staff']);
+
+    expect(fn () => app(DriverAssignmentService::class)->assign($booking, $driver))
+        ->toThrow(ValidationException::class);
+    expect($booking->fresh()->assigned_driver_id)->toBeNull();
 });
 
 it('auto-assigns the first active driver to an owners-driver booking', function () {

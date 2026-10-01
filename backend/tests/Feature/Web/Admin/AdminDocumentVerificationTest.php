@@ -163,3 +163,120 @@ it('requires a non-empty rejection reason', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors('rejection_reason');
 });
+
+it('lists every customer and separates pending review from self-drive eligibility', function () {
+    $withoutDocuments = documentCustomerUser();
+    $pendingCustomer = documentCustomerUser();
+    $pendingCustomer->documents()->create([
+        'document_type' => CustomerDocument::DRIVERS_LICENSE,
+        'status' => DocumentStatus::Pending,
+        'submitted_at' => now(),
+    ]);
+    $approvedCustomer = documentCustomerUser();
+    foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $type) {
+        $approvedCustomer->documents()->create([
+            'document_type' => $type,
+            'status' => DocumentStatus::Approved,
+            'submitted_at' => now(),
+        ]);
+    }
+
+    $response = $this->actingAs(documentReviewer())
+        ->getJson('/admin/self-drive-verification/customers?per_page=2')
+        ->assertOk()
+        ->assertJsonPath('meta.summary.total', 3)
+        ->assertJsonPath('meta.summary.eligible', 1)
+        ->assertJsonPath('meta.total', 3)
+        ->assertJsonCount(2, 'data');
+
+    $this->getJson('/admin/self-drive-verification/customers?eligibility=eligible')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.id', $approvedCustomer->id)
+        ->assertJsonPath('data.0.reviewStatus', 'eligible')
+        ->assertJsonMissingPath('data.0.documents');
+
+    $this->getJson('/admin/self-drive-verification/customers?eligibility=not_eligible')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 2)
+        ->assertJsonFragment(['id' => $withoutDocuments->id, 'reviewStatus' => 'documents_required'])
+        ->assertJsonFragment(['id' => $pendingCustomer->id, 'reviewStatus' => 'pending_review']);
+});
+
+it('requires the conditional passport and exposes only the selected customer documents', function () {
+    $customer = documentCustomerUser();
+    $customer->customerProfile()->update(['passport_required' => true]);
+
+    foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $type) {
+        $customer->documents()->create(['document_type' => $type, 'status' => DocumentStatus::Approved]);
+    }
+
+    $this->actingAs(documentReviewer())
+        ->getJson("/admin/self-drive-verification/customers/{$customer->id}")
+        ->assertOk()
+        ->assertJsonPath('data.canSelfDrive', false)
+        ->assertJsonPath('data.requiredDocumentCount', 3)
+        ->assertJsonPath('data.documentCounts.missing', 1)
+        ->assertJsonCount(3, 'data.documents');
+
+    $customer->documents()->create(['document_type' => CustomerDocument::PASSPORT, 'status' => DocumentStatus::Approved]);
+
+    $this->getJson('/admin/self-drive-verification/customers?eligibility=eligible')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1);
+});
+
+it('does not treat approved documents as self-drive eligibility without the required age', function () {
+    $customer = documentCustomerUser();
+    $customer->customerProfile()->update(['birthdate' => now()->subYears(17)->toDateString()]);
+
+    foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $type) {
+        $customer->documents()->create(['document_type' => $type, 'status' => DocumentStatus::Approved]);
+    }
+
+    $this->actingAs(documentReviewer())
+        ->getJson('/admin/self-drive-verification/customers?eligibility=not_eligible&search='.$customer->email)
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.canSelfDrive', false)
+        ->assertJsonPath('data.0.reviewStatus', 'age_ineligible')
+        ->assertJsonPath('data.0.documentCounts.approved', 2);
+});
+
+it('moves a customer from pending review to eligible after the final required approval', function () {
+    $customer = documentCustomerUser();
+    $customer->documents()->create([
+        'document_type' => CustomerDocument::DRIVERS_LICENSE,
+        'status' => DocumentStatus::Approved,
+    ]);
+    $bill = $customer->documents()->create([
+        'document_type' => CustomerDocument::PROOF_OF_BILLING,
+        'status' => DocumentStatus::Pending,
+    ]);
+    $reviewer = documentReviewer();
+
+    $this->actingAs($reviewer)
+        ->getJson("/admin/self-drive-verification/customers/{$customer->id}")
+        ->assertJsonPath('data.reviewStatus', 'pending_review')
+        ->assertJsonPath('data.canSelfDrive', false);
+
+    $this->postJson("/admin/document-verification/{$bill->id}/approve")->assertOk();
+
+    $this->getJson('/admin/self-drive-verification/customers?eligibility=eligible')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.id', $customer->id)
+        ->assertJsonPath('data.0.canSelfDrive', true);
+});
+
+it('validates customer filters and restricts the new list to document reviewers', function () {
+    $this->actingAs(documentReviewer())
+        ->getJson('/admin/self-drive-verification/customers?eligibility=unknown&per_page=101')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['eligibility', 'per_page']);
+
+    $customer = documentCustomerUser();
+    $this->actingAs($customer)
+        ->getJson('/admin/self-drive-verification/customers')
+        ->assertForbidden();
+});

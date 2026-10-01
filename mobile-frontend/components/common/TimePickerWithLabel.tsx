@@ -2,10 +2,17 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getLocalDateKey, getLocalTimeKey } from '@/lib/browse/pickup-time';
 
 const HOURS = Array.from({ length: 12 }, (_, index) => index + 1);
 const MINUTES = Array.from({ length: 12 }, (_, index) => index * 5);
 const PERIODS = ['AM', 'PM'] as const;
+const TIME_VALUES = Array.from({ length: 24 * 12 }, (_, index) => {
+  const hour = Math.floor(index / 12);
+  const minute = (index % 12) * 5;
+
+  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+});
 
 type Period = (typeof PERIODS)[number];
 
@@ -56,10 +63,12 @@ export function formatTimeWithPeriod(value: string) {
 }
 
 function TimeOption({
+  disabled = false,
   isSelected,
   label,
   onPress,
 }: {
+  disabled?: boolean;
   isSelected: boolean;
   label: string;
   onPress: () => void;
@@ -67,15 +76,18 @@ function TimeOption({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: isSelected }}
+      accessibilityState={{ disabled, selected: isSelected }}
+      disabled={disabled}
       onPress={onPress}
       className={cx(
         'min-h-[44px] items-center justify-center rounded-2xl border px-3',
-        isSelected
+        disabled
+          ? 'border-border bg-muted opacity-45'
+          : isSelected
           ? 'border-primary bg-primary'
           : 'border-border bg-surface',
       )}>
-      <Text className={cx('text-[14px] font-black', isSelected ? 'text-surface' : 'text-foreground')}>
+      <Text className={cx('text-[14px] font-black', isSelected && !disabled ? 'text-surface' : 'text-foreground')}>
         {label}
       </Text>
     </Pressable>
@@ -87,6 +99,7 @@ export function TimePickerWithLabel({
   helperText,
   label,
   onChange,
+  pickupDate,
   placeholder = 'Select time',
   required = false,
   value,
@@ -95,6 +108,7 @@ export function TimePickerWithLabel({
   label: string;
   value: string;
   onChange: (value: string) => void;
+  pickupDate?: string;
   placeholder?: string;
   helperText?: string;
   error?: string;
@@ -107,19 +121,42 @@ export function TimePickerWithLabel({
   const [selectedHour, setSelectedHour] = useState(parsedTime.hour);
   const [selectedMinute, setSelectedMinute] = useState(parsedTime.minute);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(parsedTime.period);
+  const minimumTime = pickupDate === getLocalDateKey() ? getLocalTimeKey() : undefined;
+  const availableTimeValues = useMemo(
+    () => TIME_VALUES.filter((time) => !minimumTime || time > minimumTime),
+    [minimumTime],
+  );
+  const hasAvailableTimes = availableTimeValues.length > 0;
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedHour(parsedTime.hour);
-      setSelectedMinute(parsedTime.minute);
-      setSelectedPeriod(parsedTime.period);
+      const initialTime = availableTimeValues.includes(value)
+        ? value
+        : availableTimeValues[0];
+      const initialParts = parseTime(initialTime ?? '');
+
+      setSelectedHour(initialParts.hour);
+      setSelectedMinute(initialParts.minute);
+      setSelectedPeriod(initialParts.period);
     }
-  }, [isOpen, parsedTime]);
+  }, [availableTimeValues, isOpen, value]);
 
   const handleApply = () => {
-    onChange(toTimeValue(selectedHour, selectedMinute, selectedPeriod));
+    const nextValue = toTimeValue(selectedHour, selectedMinute, selectedPeriod);
+
+    if (!availableTimeValues.includes(nextValue)) {
+      return;
+    }
+
+    onChange(nextValue);
     setIsOpen(false);
   };
+
+  const isUnavailable = (hour: number, minute: number, period: Period) =>
+    !availableTimeValues.includes(toTimeValue(hour, minute, period));
+  const pickerHelperText = !hasAvailableTimes && pickupDate === getLocalDateKey()
+    ? 'No pickup times remain today. Select a future rental date.'
+    : helperText;
 
   return (
     <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4', wrapperClassName)}>
@@ -130,10 +167,13 @@ export function TimePickerWithLabel({
 
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ disabled: !hasAvailableTimes }}
+        disabled={!hasAvailableTimes}
         onPress={() => setIsOpen(true)}
         className={cx(
           'min-h-[48px] flex-row items-center rounded-full border bg-surface px-4',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-[#E5EAF2]',
+          !hasAvailableTimes && 'opacity-60',
         )}>
         <MaterialIcons name="schedule" size={20} color="#7D8798" />
         <Text
@@ -147,9 +187,9 @@ export function TimePickerWithLabel({
       </Pressable>
 
       <View className="absolute left-1 right-1 top-full mt-1.5">
-        {error || helperText ? (
+        {error || pickerHelperText ? (
           <Text className={cx('text-[11px] leading-4 text-[#667085]', error && 'font-bold text-destructive')}>
-            {error || helperText}
+            {error || pickerHelperText}
           </Text>
         ) : null}
       </View>
@@ -194,6 +234,7 @@ export function TimePickerWithLabel({
                   <View className="gap-2">
                     {HOURS.map((hour) => (
                       <TimeOption
+                        disabled={isUnavailable(hour, selectedMinute, selectedPeriod)}
                         key={hour}
                         isSelected={selectedHour === hour}
                         label={String(hour)}
@@ -212,6 +253,7 @@ export function TimePickerWithLabel({
                   <View className="gap-2">
                     {MINUTES.map((minute) => (
                       <TimeOption
+                        disabled={isUnavailable(selectedHour, minute, selectedPeriod)}
                         key={minute}
                         isSelected={selectedMinute === minute}
                         label={minute.toString().padStart(2, '0')}
@@ -227,8 +269,9 @@ export function TimePickerWithLabel({
                   Period
                 </Text>
                 <View className="gap-2">
-                  {PERIODS.map((period) => (
-                    <TimeOption
+                    {PERIODS.map((period) => (
+                      <TimeOption
+                        disabled={!HOURS.some((hour) => MINUTES.some((minute) => !isUnavailable(hour, minute, period)))}
                       key={period}
                       isSelected={selectedPeriod === period}
                       label={period}
@@ -248,8 +291,13 @@ export function TimePickerWithLabel({
 
             <Pressable
               accessibilityRole="button"
+              accessibilityState={{ disabled: isUnavailable(selectedHour, selectedMinute, selectedPeriod) }}
+              disabled={isUnavailable(selectedHour, selectedMinute, selectedPeriod)}
               onPress={handleApply}
-              className="mt-4 min-h-[56px] items-center justify-center rounded-full bg-primary">
+              className={cx(
+                'mt-4 min-h-[56px] items-center justify-center rounded-full bg-primary',
+                isUnavailable(selectedHour, selectedMinute, selectedPeriod) && 'opacity-50',
+              )}>
               <Text className="text-[15px] font-black text-surface">Apply Time</Text>
             </Pressable>
           </View>

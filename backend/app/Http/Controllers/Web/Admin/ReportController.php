@@ -45,7 +45,7 @@ class ReportController extends Controller
         return response()->streamDownload(function () use ($report) {
             $output = fopen('php://output', 'w');
 
-            fputcsv($output, ['Booking ID', 'Customer', 'Vehicle', 'Rental Date', 'Return Date', 'Total Cost', 'Status']);
+            fputcsv($output, ['Booking ID', 'Customer', 'Vehicle', 'Rental Date', 'Return Date', 'Rental Boundary', 'Total Cost', 'Status']);
 
             foreach ($report['bookings'] as $booking) {
                 fputcsv($output, [
@@ -54,6 +54,7 @@ class ReportController extends Controller
                     $booking['vehicle'],
                     $booking['rentalDate'],
                     $booking['returnDate'],
+                    $this->rentalBoundaryLabel($booking['rentalBoundary'] ?? null),
                     $booking['totalCost'],
                     $booking['status'],
                 ]);
@@ -68,5 +69,18 @@ class ReportController extends Controller
     private function range(ReportRequest $request): string
     {
         return $request->validated('range', '12_months');
+    }
+
+    private function rentalBoundaryLabel(?array $boundary): string
+    {
+        if (! $boundary) {
+            return '—';
+        }
+
+        $shape = $boundary['geometryType'] === 'circle'
+            ? 'Circle · '.number_format((float) ($boundary['radiusMeters'] ?? 0)).' m'
+            : 'Polygon · '.number_format((int) ($boundary['polygonPointCount'] ?? 0)).' points';
+
+        return $boundary['name'].' ('.$shape.')';
     }
 }

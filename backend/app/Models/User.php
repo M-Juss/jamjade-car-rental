@@ -78,6 +78,21 @@ class User extends Authenticatable
         return $this->hasMany(VehicleInspectionSignature::class);
     }
 
+    public function createdGeofences(): HasMany
+    {
+        return $this->hasMany(Geofence::class, 'created_by');
+    }
+
+    public function assignedBookingGeofences(): HasMany
+    {
+        return $this->hasMany(BookingGeofence::class, 'assigned_by');
+    }
+
+    public function telematicsSetupSteps(): HasMany
+    {
+        return $this->hasMany(TelematicsSetupStep::class, 'actor_user_id');
+    }
+
     /**
      * Get the attributes that should be cast.
      *

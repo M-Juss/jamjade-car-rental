@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   CalendarCheck,
   CheckCircle2,
   Clock,
   Eye,
+  ArrowRight,
+  UserRound,
   XCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,17 +35,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
+import { TableActionMenu, type TableActionMenuItem } from "@/components/common/tables/TableActionMenu";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { appToast } from "@/lib/toast";
 import { BookingDetailsDialog } from "@/forms/booking/BookingDetailsDialog";
+import { BookingWorkflowDialog } from "@/forms/booking/BookingWorkflowDialog";
+import { bookingActionLabels, nextBookingAction, type BookingNextAction } from "./booking-next-action";
 import {
   cancelBooking,
+  getBooking,
   getBookings,
-  getDrivers,
   type BookingRecord,
+  type BookingGroup,
   type BookingStatus,
-  type DriverCandidate,
   type PaymentStatus,
 } from "@/services/booking";
 
@@ -70,68 +77,88 @@ function peso(value: number) {
   })}`;
 }
 
-export function Bookings() {
+export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [drivers, setDrivers] = useState<DriverCandidate[]>([]);
+  const [workflowAction, setWorkflowAction] = useState<BookingNextAction | "reassign-driver" | null>(null);
+  const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let ignore = false;
+    const timer = window.setTimeout(() => {
+      const nextSearch = searchInput.trim();
+      if (nextSearch !== search) {
+        setIsLoading(true);
+        setError(null);
+        setPage(1);
+        setSearch(nextSearch);
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, searchInput]);
 
-    getBookings()
-      .then((records) => {
-        if (!ignore) setBookings(records);
+  useEffect(() => {
+    let ignore = false;
+    let pageAdjusted = false;
+
+    getBookings({ group, page, search, status: statusFilter, paymentStatus: paymentFilter })
+      .then((result) => {
+        if (!ignore) {
+          if (page > result.lastPage) {
+            pageAdjusted = true;
+            setPage(result.lastPage);
+            return;
+          }
+          setBookings(result.bookings);
+          setLastPage(result.lastPage);
+          setTotal(result.total);
+          setStatusCounts(result.statusCounts);
+        }
       })
       .catch(() => {
-        if (!ignore) setError("Unable to load bookings.");
+        if (!ignore) {
+          setBookings([]);
+          setTotal(0);
+          setStatusCounts({});
+          setError(group === "history" ? "Unable to load booking history." : "Unable to load bookings.");
+        }
       })
       .finally(() => {
-        if (!ignore) setIsLoading(false);
-      });
-
-    getDrivers()
-      .then((records) => {
-        if (!ignore) setDrivers(records);
-      })
-      .catch(() => {
-        if (!ignore) setDrivers([]);
+        if (!ignore && !pageAdjusted) setIsLoading(false);
       });
 
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [group, page, paymentFilter, reloadKey, search, statusFilter]);
 
-  const filtered = useMemo(() => bookings.filter((booking) => {
-    const haystack = [
-      booking.bookingCode,
-      booking.customer?.name,
-      booking.customer?.email,
-      booking.vehicleName,
-      booking.vehicleId,
-    ].filter(Boolean).join(" ").toLowerCase();
-
-    return (
-      haystack.includes(search.toLowerCase()) &&
-      (statusFilter === "all" || booking.statusKey === statusFilter) &&
-      (paymentFilter === "all" || booking.paymentStatusKey === paymentFilter)
-    );
-  }), [bookings, paymentFilter, search, statusFilter]);
-
-  const counts = {
-    total: bookings.length,
-    active: bookings.filter((booking) => booking.statusKey === "ongoing" || booking.statusKey === "confirmed").length,
-    pending: bookings.filter((booking) => booking.statusKey === "pending").length,
-    completed: bookings.filter((booking) => booking.statusKey === "completed").length,
-  };
+  const count = (status: BookingStatus) => statusCounts[status] ?? 0;
+  const summaryCards = group === "history"
+    ? [
+        { label: "Total", value: count("completed") + count("cancelled") + count("rejected"), icon: CalendarCheck, color: "text-primary", background: "bg-muted" },
+        { label: "Completed", value: count("completed"), icon: CheckCircle2, color: "text-success", background: "bg-success-surface" },
+        { label: "Cancelled", value: count("cancelled"), icon: XCircle, color: "text-destructive", background: "bg-destructive-surface" },
+        { label: "Rejected", value: count("rejected"), icon: XCircle, color: "text-destructive", background: "bg-destructive-surface" },
+      ]
+    : [
+        { label: "Total", value: count("pending") + count("confirmed") + count("ongoing") + count("returned"), icon: CalendarCheck, color: "text-primary", background: "bg-muted" },
+        { label: "Active", value: count("ongoing") + count("confirmed"), icon: Activity, color: "text-success", background: "bg-success-surface" },
+        { label: "Pending", value: count("pending"), icon: Clock, color: "text-warning", background: "bg-warning-surface" },
+        { label: "Returned", value: count("returned"), icon: CheckCircle2, color: "text-primary", background: "bg-muted" },
+      ];
 
   const confirmCancel = async () => {
     if (!selectedBooking) return;
@@ -140,13 +167,10 @@ export function Bookings() {
       setIsCancelling(true);
       setError(null);
       const updatedBooking = await cancelBooking(selectedBooking);
-      setBookings((current) =>
-        current.map((booking) =>
-          booking.backendId === updatedBooking.backendId ? updatedBooking : booking,
-        ),
-      );
       setSelectedBooking(updatedBooking);
       setCancelOpen(false);
+      setIsLoading(true);
+      setReloadKey((current) => current + 1);
       appToast.success("Booking cancelled successfully.");
     } catch {
       setError("Unable to cancel this booking.");
@@ -156,20 +180,71 @@ export function Bookings() {
     }
   };
 
-  const handleDriverAssigned = (updatedBooking: BookingRecord) => {
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.backendId === updatedBooking.backendId ? updatedBooking : booking,
-      ),
-    );
+  const handleDriverAssigned = useCallback((updatedBooking: BookingRecord) => {
     setSelectedBooking(updatedBooking);
+    setIsLoading(true);
+    setError(null);
+    setReloadKey((current) => current + 1);
+  }, []);
+
+  const openNext = async (booking: BookingRecord, requested?: "reassign-driver") => {
+    try {
+      setLoadingActionId(booking.backendId);
+      const latest = await getBooking(booking);
+      handleDriverAssigned(latest);
+      const action = requested ?? nextBookingAction(latest);
+      if (action) setWorkflowAction(action);
+      else appToast.error("This booking has no remaining action.");
+    } catch {
+      appToast.error("The latest booking state could not be loaded. Try again.");
+    } finally {
+      setLoadingActionId(null);
+    }
+  };
+
+  const rowActions = (booking: BookingRecord): TableActionMenuItem[] => {
+    if (group === "history") {
+      return [{
+        label: "View",
+        icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
+        onClick: () => { setSelectedBooking(booking); setDetailsOpen(true); },
+      }];
+    }
+
+    const next = nextBookingAction(booking);
+    return [
+      {
+        label: "View",
+        icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
+        onClick: () => { setSelectedBooking(booking); setDetailsOpen(true); },
+      },
+      ...(next ? [{
+        label: bookingActionLabels[next],
+        icon: <ArrowRight size={13} className="mr-2" />,
+        onClick: () => { void openNext(booking); },
+        disabled: loadingActionId === booking.backendId,
+      }] : []),
+      ...(booking.driverOption === "owners_driver" && booking.assignedDriver && ["pending", "confirmed"].includes(booking.statusKey) ? [{
+        label: "Reassign Driver",
+        icon: <UserRound size={13} className="mr-2" />,
+        onClick: () => { void openNext(booking, "reassign-driver"); },
+        disabled: loadingActionId === booking.backendId,
+      }] : []),
+      ...(["pending", "confirmed"].includes(booking.statusKey) ? [{
+        label: "Cancel",
+        icon: <XCircle size={13} className="mr-2" />,
+        onClick: () => { setSelectedBooking(booking); setCancelOpen(true); },
+        separatorBefore: true,
+        variant: "danger" as const,
+      }] : []),
+    ];
   };
 
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Booking Management</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">Track reservations and payment states from live booking records.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{group === "history" ? "Booking History" : "Booking Management"}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{group === "history" ? "Review completed, cancelled, and rejected bookings." : "Track reservations and payment states from live booking records."}</p>
       </div>
 
       {error ? (
@@ -179,12 +254,7 @@ export function Bookings() {
       ) : null}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {[
-          { label: "Total", value: counts.total, icon: CalendarCheck, color: "text-primary", background: "bg-muted" },
-          { label: "Active", value: counts.active, icon: Activity, color: "text-emerald-600", background: "bg-emerald-50" },
-          { label: "Pending", value: counts.pending, icon: Clock, color: "text-amber-600", background: "bg-amber-50" },
-          { label: "Completed", value: counts.completed, icon: CheckCircle2, color: "text-muted-foreground", background: "bg-background" },
-        ].map(({ label, value, icon, color, background }) => (
+        {summaryCards.map(({ label, value, icon, color, background }) => (
           <KpiCard
             key={label}
             label={label}
@@ -200,31 +270,33 @@ export function Bookings() {
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-2.5">
               <SearchInput
-                value={search}
-                onValueChange={setSearch}
-                placeholder="Search bookings..."
+                value={searchInput}
+                onValueChange={setSearchInput}
+                placeholder={group === "history" ? "Search history..." : "Search bookings..."}
                 wrapperClassName="min-w-[180px] flex-1"
               />
               <FilterSelect
                 value={statusFilter}
-                onValueChange={setStatusFilter}
+                onValueChange={(value) => { setIsLoading(true); setError(null); setPage(1); setStatusFilter(value); }}
                 ariaLabel="Filter bookings by status"
                 placeholder="Status"
                 className="w-[130px]"
-                options={[
+                options={group === "history" ? [
+                  { value: "all", label: "All Status" },
+                  { value: "completed", label: "Completed" },
+                  { value: "cancelled", label: "Cancelled" },
+                  { value: "rejected", label: "Rejected" },
+                ] : [
                   { value: "all", label: "All Status" },
                   { value: "pending", label: "Pending" },
                   { value: "confirmed", label: "Confirmed" },
                   { value: "ongoing", label: "Ongoing" },
                   { value: "returned", label: "Returned" },
-                  { value: "completed", label: "Completed" },
-                  { value: "cancelled", label: "Cancelled" },
-                  { value: "rejected", label: "Rejected" },
                 ]}
               />
               <FilterSelect
                 value={paymentFilter}
-                onValueChange={setPaymentFilter}
+                onValueChange={(value) => { setIsLoading(true); setError(null); setPage(1); setPaymentFilter(value); }}
                 ariaLabel="Filter bookings by payment status"
                 placeholder="Payment"
                 className="w-[145px]"
@@ -248,11 +320,13 @@ export function Bookings() {
           {/* Card layout on small screens; the table takes over from md */}
           <div className="grid gap-3 p-4 md:hidden">
             {isLoading ? (
-              <p className="py-10 text-center text-[12px] text-muted-foreground">Loading bookings...</p>
-            ) : filtered.length === 0 ? (
-              <p className="py-10 text-center text-[12px] text-muted-foreground">No bookings found.</p>
+              <p className="py-10 text-center text-[12px] text-muted-foreground">Loading {group === "history" ? "history" : "bookings"}...</p>
+            ) : error ? (
+              <p className="py-10 text-center text-[12px] text-muted-foreground">Could not load records.</p>
+            ) : bookings.length === 0 ? (
+              <p className="py-10 text-center text-[12px] text-muted-foreground">No {group === "history" ? "historical" : "current"} bookings found.</p>
             ) : (
-              filtered.map((booking) => (
+              bookings.map((booking) => (
                 <div key={booking.backendId} className="rounded-xl border border-border bg-background p-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -301,27 +375,7 @@ export function Bookings() {
                   <div className="mt-2 flex justify-end">
                     <TableActionMenu
                       label={`Open actions for ${booking.bookingCode}`}
-                      items={[
-                        {
-                          label: "Manage",
-                          icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
-                          onClick: () => {
-                            setSelectedBooking(booking);
-                            setDetailsOpen(true);
-                          },
-                        },
-                        {
-                          label: "Cancel",
-                          icon: <XCircle size={13} className="mr-2" />,
-                          onClick: () => {
-                            setSelectedBooking(booking);
-                            setCancelOpen(true);
-                          },
-                          disabled: !["pending", "confirmed"].includes(booking.statusKey),
-                          separatorBefore: true,
-                          variant: "danger",
-                        },
-                      ]}
+                      items={rowActions(booking)}
                     />
                   </div>
                 </div>
@@ -344,17 +398,23 @@ export function Bookings() {
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
-                      Loading bookings...
+                      Loading {group === "history" ? "history" : "bookings"}...
                     </TableCell>
                   </TableRow>
-                ) : filtered.length === 0 ? (
+                ) : error ? (
                   <TableRow>
                     <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
-                      No bookings found.
+                      Could not load records.
+                    </TableCell>
+                  </TableRow>
+                ) : bookings.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
+                      No {group === "history" ? "historical" : "current"} bookings found.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((booking) => (
+                  bookings.map((booking) => (
                     <TableRow key={booking.backendId} className="border-b border-background transition-colors hover:bg-background">
                       <TableCell className="px-4 py-3 font-mono text-[12px] font-semibold text-primary">{booking.bookingCode}</TableCell>
                       <TableCell className="px-4 py-3 text-[12.5px] font-semibold text-foreground">{booking.customer?.name || "Customer"}</TableCell>
@@ -383,27 +443,7 @@ export function Bookings() {
                       <TableCell className="px-4 py-3">
                         <TableActionMenu
                           label={`Open actions for ${booking.bookingCode}`}
-                          items={[
-                            {
-                              label: "Manage",
-                              icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
-                              onClick: () => {
-                                setSelectedBooking(booking);
-                                setDetailsOpen(true);
-                              },
-                            },
-                            {
-                              label: "Cancel",
-                              icon: <XCircle size={13} className="mr-2" />,
-                              onClick: () => {
-                                setSelectedBooking(booking);
-                                setCancelOpen(true);
-                              },
-                              disabled: !["pending", "confirmed"].includes(booking.statusKey),
-                              separatorBefore: true,
-                              variant: "danger",
-                            },
-                          ]}
+                          items={rowActions(booking)}
                         />
                       </TableCell>
                     </TableRow>
@@ -413,6 +453,20 @@ export function Bookings() {
             </Table>
           </div>
         </Card>
+        {!error && !isLoading ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>{total} result{total === 1 ? "" : "s"}</span>
+            <div className="flex items-center gap-2">
+              <span>Page {page} of {lastPage}</span>
+              <Button variant="outline" size="icon" aria-label="Previous page" disabled={page <= 1} onClick={() => { setIsLoading(true); setError(null); setPage((current) => current - 1); }}>
+                <ChevronLeft size={15} />
+              </Button>
+              <Button variant="outline" size="icon" aria-label="Next page" disabled={page >= lastPage} onClick={() => { setIsLoading(true); setError(null); setPage((current) => current + 1); }}>
+                <ChevronRight size={15} />
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {selectedBooking ? (
@@ -420,11 +474,15 @@ export function Bookings() {
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
           booking={selectedBooking}
-          drivers={drivers}
-          onAssigned={handleDriverAssigned}
-          onUpdated={handleDriverAssigned}
         />
       ) : null}
+
+      {selectedBooking && workflowAction ? <BookingWorkflowDialog
+        action={workflowAction}
+        booking={selectedBooking}
+        onClose={() => setWorkflowAction(null)}
+        onUpdated={handleDriverAssigned}
+      /> : null}
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent className="max-w-[400px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">

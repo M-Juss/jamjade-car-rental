@@ -1,0 +1,449 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8.5in" height="11in" viewBox="0 0 612 792">
+<rect width="612" height="792" fill="white"/>
+<g transform="translate(9 0) scale(0.9705882352941176 1)">
+<polyline points="164,80 244,80" fill="none" stroke="black" stroke-width="0.72" stroke-dasharray="2 2"/>
+<polyline points="364,80 444,80" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="364,88 372,88 372,96 404,96 404,188 364,188" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="244,88 236,88 236,96 208,96 208,284 284,284 284,300" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="264,68 264,52 12,52 12,188 44,188" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="344,68 344,56 424,56 424,236 408,236 408,416 324,416 324,432" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="164,436 196,436 196,328 236,328 236,320 244,320" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="104,432 104,412 20,412 20,320 44,320" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="304,300 304,272 188,272 188,196 164,196" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="364,312 444,312" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="244,312 164,312" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="324,300 324,288 588,288 588,532 324,532 324,548" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="164,560 244,560" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="364,320 384,320 384,328 396,328 396,652 324,652 324,664" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="244,568 220,568 220,652 284,652 284,664" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="344,300 344,280 424,280 424,428 344,428 344,432" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="364,444 444,444" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="364,452 384,452 384,460 416,460 416,568 444,568" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M208,269 L208,275" stroke="white" stroke-width="2.5"/>
+<polyline points="202,272 214,272" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M208,269 C209.65685425,269 211,270.34314575 211,272 C211,273.65685425 209.65685425,275 208,275" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M208,269 C209.65685425,269 211,270.34314575 211,272 C211,273.65685425 209.65685425,275 208,275" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M344,285 L344,291" stroke="white" stroke-width="2.5"/>
+<polyline points="338,288 350,288" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M344,285 C345.65685425,285 347,286.34314575 347,288 C347,289.65685425 345.65685425,291 344,291" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M344,285 C345.65685425,285 347,286.34314575 347,288 C347,289.65685425 345.65685425,291 344,291" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,413 L396,419" stroke="white" stroke-width="2.5"/>
+<polyline points="390,416 402,416" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,413 C397.65685425,413 399,414.34314575 399,416 C399,417.65685425 397.65685425,419 396,419" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M396,413 C397.65685425,413 399,414.34314575 399,416 C399,417.65685425 397.65685425,419 396,419" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,425 L396,431" stroke="white" stroke-width="2.5"/>
+<polyline points="390,428 402,428" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,425 C397.65685425,425 399,426.34314575 399,428 C399,429.65685425 397.65685425,431 396,431" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M396,425 C397.65685425,425 399,426.34314575 399,428 C399,429.65685425 397.65685425,431 396,431" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,441 L396,447" stroke="white" stroke-width="2.5"/>
+<polyline points="390,444 402,444" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,441 C397.65685425,441 399,442.34314575 399,444 C399,445.65685425 397.65685425,447 396,447" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M396,441 C397.65685425,441 399,442.34314575 399,444 C399,445.65685425 397.65685425,447 396,447" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,457 L396,463" stroke="white" stroke-width="2.5"/>
+<polyline points="390,460 402,460" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,457 C397.65685425,457 399,458.34314575 399,460 C399,461.65685425 397.65685425,463 396,463" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M396,457 C397.65685425,457 399,458.34314575 399,460 C399,461.65685425 397.65685425,463 396,463" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,529 L396,535" stroke="white" stroke-width="2.5"/>
+<polyline points="390,532 402,532" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M396,529 C397.65685425,529 399,530.34314575 399,532 C399,533.65685425 397.65685425,535 396,535" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M396,529 C397.65685425,529 399,530.34314575 399,532 C399,533.65685425 397.65685425,535 396,535" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M408,277 L408,283" stroke="white" stroke-width="2.5"/>
+<polyline points="402,280 414,280" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M408,277 C409.65685425,277 411,278.34314575 411,280 C411,281.65685425 409.65685425,283 408,283" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M408,277 C409.65685425,277 411,278.34314575 411,280 C411,281.65685425 409.65685425,283 408,283" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M408,285 L408,291" stroke="white" stroke-width="2.5"/>
+<polyline points="402,288 414,288" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M408,285 C409.65685425,285 411,286.34314575 411,288 C411,289.65685425 409.65685425,291 408,291" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M408,285 C409.65685425,285 411,286.34314575 411,288 C411,289.65685425 409.65685425,291 408,291" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M408,309 L408,315" stroke="white" stroke-width="2.5"/>
+<polyline points="402,312 414,312" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M408,309 C409.65685425,309 411,310.34314575 411,312 C411,313.65685425 409.65685425,315 408,315" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M408,309 C409.65685425,309 411,310.34314575 411,312 C411,313.65685425 409.65685425,315 408,315" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M416,529 L416,535" stroke="white" stroke-width="2.5"/>
+<polyline points="410,532 422,532" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M416,529 C417.65685425,529 419,530.34314575 419,532 C419,533.65685425 417.65685425,535 416,535" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M416,529 C417.65685425,529 419,530.34314575 419,532 C419,533.65685425 417.65685425,535 416,535" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M424,77 L424,83" stroke="white" stroke-width="2.5"/>
+<polyline points="418,80 430,80" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M424,77 C425.65685425,77 427,78.34314575 427,80 C427,81.65685425 425.65685425,83 424,83" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M424,77 C425.65685425,77 427,78.34314575 427,80 C427,81.65685425 425.65685425,83 424,83" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M424,285 L424,291" stroke="white" stroke-width="2.5"/>
+<polyline points="418,288 430,288" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M424,285 C425.65685425,285 427,286.34314575 427,288 C427,289.65685425 425.65685425,291 424,291" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M424,285 C425.65685425,285 427,286.34314575 427,288 C427,289.65685425 425.65685425,291 424,291" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M424,309 L424,315" stroke="white" stroke-width="2.5"/>
+<polyline points="418,312 430,312" fill="none" stroke="black" stroke-width="0.72"/>
+<path d="M424,309 C425.65685425,309 427,310.34314575 427,312 C427,313.65685425 425.65685425,315 424,315" fill="none" stroke="white" stroke-width="2.5"/>
+<path d="M424,309 C425.65685425,309 427,310.34314575 427,312 C427,313.65685425 425.65685425,315 424,315" fill="none" stroke="black" stroke-width="0.72"/>
+<polyline points="104,92 104,112" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="104,112 64,112" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="112" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="112.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="61.6066650390625,114.952 66.3933349609375,114.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="104,112 144,112" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="112" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="112.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">name</text>
+<rect x="44" y="68" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="104" y="80.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">roles</text>
+<polyline points="304,92 304,143" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="304,112 264,112" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="112" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="112.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="261.6066650390625,114.952 266.3933349609375,114.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="304,112 344,112" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="112" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="112.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">name</text>
+<polyline points="304,132 264,132" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="132" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="132.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">email</text>
+<polyline points="304,132 344,132" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="132" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="132.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">password</text>
+<ellipse cx="304" cy="152" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="304" y="152.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">is_active</text>
+<rect x="244" y="68" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="304" y="80.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">users</text>
+<polyline points="504,92 504,132" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="504,112 464,112" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="112" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="112.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="461.6066650390625,114.952 466.3933349609375,114.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="504,112 544,112" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="112" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="112.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">user_id</text>
+<polyline points="504,132 464,132" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="132" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="132.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">can_self_drive</text>
+<polyline points="504,132 544,132" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="132" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="132.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">verification_status</text>
+<rect x="444" y="68" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="504" y="80.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">customer_profiles</text>
+<polyline points="104,200 104,231" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="104,220 64,220" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="220" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="220.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="61.6066650390625,222.952 66.3933349609375,222.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="104,220 144,220" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="220" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="220.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">booking_id</text>
+<ellipse cx="104" cy="240" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="104" y="240.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">driver_id</text>
+<rect x="44" y="176" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="104" y="188.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">booking_assignments</text>
+<polyline points="304,200 304,240" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="304,220 264,220" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="220" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="220.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="261.6066650390625,222.952 266.3933349609375,222.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="304,220 344,220" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="220" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="220.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">user_id</text>
+<polyline points="304,240 264,240" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="240" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="240.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">document_type</text>
+<polyline points="304,240 344,240" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="240" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="240.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">status</text>
+<rect x="244" y="176" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="304" y="188.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">customer_documents</text>
+<polyline points="104,324 104,384" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="104,344 64,344" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="344" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="344.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="61.6066650390625,346.952 66.3933349609375,346.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="104,344 144,344" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="344" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="344.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">vehicle_id</text>
+<polyline points="104,364 64,364" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="364" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="364.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">booking_id</text>
+<polyline points="104,364 144,364" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="364" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="364.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">type</text>
+<polyline points="104,384 64,384" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="384" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="384.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">status</text>
+<polyline points="104,384 144,384" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="384" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="384.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">finalized_at</text>
+<rect x="44" y="300" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="104" y="312.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">vehicle_inspections</text>
+<polyline points="304,324 304,404" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="304,344 264,344" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="344" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="344.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="261.6066650390625,346.952 266.3933349609375,346.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="304,344 344,344" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="344" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="344.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">user_id</text>
+<polyline points="304,364 264,364" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="364" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="364.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">vehicle_id</text>
+<polyline points="304,364 344,364" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="364" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="364.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">rental_type</text>
+<polyline points="304,384 264,384" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="384" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="384.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">rental_start_at</text>
+<polyline points="304,384 344,384" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="384" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="384.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">rental_end_at</text>
+<polyline points="304,404 264,404" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="404" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="404.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">status</text>
+<polyline points="304,404 344,404" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="404" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="404.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">total_amount</text>
+<rect x="244" y="300" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="304" y="312.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">bookings</text>
+<polyline points="504,324 504,375" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="504,344 464,344" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="344" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="344.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="461.6066650390625,346.952 466.3933349609375,346.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="504,344 544,344" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="344" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="344.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">booking_id</text>
+<polyline points="504,364 464,364" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="364" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="364.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">purpose</text>
+<polyline points="504,364 544,364" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="364" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="364.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">status</text>
+<ellipse cx="504" cy="384" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="504" y="384.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">amount</text>
+<rect x="444" y="300" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="504" y="312.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">payments</text>
+<polyline points="104,456 104,496" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="104,476 64,476" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="476" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="476.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="61.6066650390625,478.952 66.3933349609375,478.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="104,476 144,476" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="476" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="476.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">plate_number</text>
+<polyline points="104,496 64,496" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="496" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="496.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">status</text>
+<polyline points="104,496 144,496" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="496" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="496.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">price_per_day</text>
+<rect x="44" y="432" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="104" y="444.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">vehicles</text>
+<polyline points="304,456 304,516" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="304,476 264,476" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="476" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="476.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="261.6066650390625,478.952 266.3933349609375,478.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="304,476 344,476" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="476" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="476.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">booking_id</text>
+<polyline points="304,496 264,496" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="496" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="496.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">operator_user_id</text>
+<polyline points="304,496 344,496" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="496" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="496.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">status</text>
+<polyline points="304,516 264,516" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="516" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="516.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">started_at</text>
+<polyline points="304,516 344,516" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="516" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="516.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">ended_at</text>
+<rect x="244" y="432" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="304" y="444.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">telematics_trips</text>
+<polyline points="504,456 504,507" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="504,476 464,476" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="476" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="476.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="461.6066650390625,478.952 466.3933349609375,478.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="504,476 544,476" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="476" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="476.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">telematics_trip_id</text>
+<polyline points="504,496 464,496" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="496" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="496.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">latitude</text>
+<polyline points="504,496 544,496" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="496" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="496.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">longitude</text>
+<ellipse cx="504" cy="516" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="504" y="516.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">captured_at</text>
+<rect x="444" y="432" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="504" y="444.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">telematics_location_points</text>
+<polyline points="104,572 104,612" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="104,592 64,592" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="592" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="592.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="61.6066650390625,594.952 66.3933349609375,594.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="104,592 144,592" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="592" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="592.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">name</text>
+<polyline points="104,612 64,612" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="64" cy="612" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="64" y="612.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">geometry_type</text>
+<polyline points="104,612 144,612" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="144" cy="612" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="144" y="612.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">is_active</text>
+<rect x="44" y="548" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="104" y="560.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">geofences</text>
+<polyline points="304,572 304,612" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="304,592 264,592" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="592" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="592.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="261.6066650390625,594.952 266.3933349609375,594.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="304,592 344,592" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="592" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="592.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">booking_id</text>
+<polyline points="304,612 264,612" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="612" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="612.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">source_geofence_id</text>
+<polyline points="304,612 344,612" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="612" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="612.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">geometry_type</text>
+<rect x="244" y="548" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="304" y="560.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">booking_geofences</text>
+<polyline points="504,572 504,623" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="504,592 464,592" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="592" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="592.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="461.6066650390625,594.952 466.3933349609375,594.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="504,592 544,592" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="592" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="592.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">trip_id</text>
+<polyline points="504,612 464,612" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="464" cy="612" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="464" y="612.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">event_type</text>
+<polyline points="504,612 544,612" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="544" cy="612" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="544" y="612.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">severity</text>
+<ellipse cx="504" cy="632" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="504" y="632.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">occurred_at</text>
+<rect x="444" y="548" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="504" y="560.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">telematics_events</text>
+<polyline points="304,688 304,728" fill="none" stroke="black" stroke-width="0.55"/>
+<polyline points="304,708 264,708" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="708" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="708.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">id</text>
+<polyline points="261.6066650390625,710.952 266.3933349609375,710.952" fill="none" stroke="black" stroke-width="0.4"/>
+<polyline points="304,708 344,708" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="708" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="708.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">booking_id</text>
+<polyline points="304,728 264,728" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="264" cy="728" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="264" y="728.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">booking_geofence_id</text>
+<polyline points="304,728 344,728" fill="none" stroke="black" stroke-width="0.55"/>
+<ellipse cx="344" cy="728" rx="37.0" ry="9.0" fill="white" stroke="black" stroke-width=".6"/>
+<text x="344" y="728.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="6.15" font-weight="normal" fill="black">status</text>
+<rect x="244" y="664" width="120" height="24" fill="white" stroke="black" stroke-width="0.8"/>
+<text x="304" y="676.0" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.3" font-weight="bold" fill="black">telematics_setup_sessions</text>
+<polygon points="189,80 204,70 219,80 204,90" fill="white" stroke="black" stroke-width=".8"/>
+<text x="204" y="80" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="168.6" y="70" width="6.8" height="9" fill="white"/>
+<text x="172" y="75" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<rect x="232.6" y="70" width="6.8" height="9" fill="white"/>
+<text x="236" y="75" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="373,80 388,70 403,80 388,90" fill="white" stroke="black" stroke-width=".8"/>
+<text x="388" y="80" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="368.6" y="70" width="6.8" height="9" fill="white"/>
+<text x="372" y="75" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="432.6" y="70" width="6.8" height="9" fill="white"/>
+<text x="436" y="75" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<polygon points="389,156 404,146 419,156 404,166" fill="white" stroke="black" stroke-width=".8"/>
+<text x="404" y="156" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="368.6" y="78" width="6.8" height="9" fill="white"/>
+<text x="372" y="83" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="368.6" y="178" width="6.8" height="9" fill="white"/>
+<text x="372" y="183" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="233,284 248,274 263,284 248,294" fill="white" stroke="black" stroke-width=".8"/>
+<text x="248" y="284" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="232.6" y="78" width="6.8" height="9" fill="white"/>
+<text x="236" y="83" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="286.6" y="288" width="6.8" height="9" fill="white"/>
+<text x="290" y="293" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="89,52 104,42 119,52 104,62" fill="white" stroke="black" stroke-width=".8"/>
+<text x="104" y="52" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="266.6" y="56" width="6.8" height="9" fill="white"/>
+<text x="270" y="61" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="32.6" y="178" width="6.8" height="9" fill="white"/>
+<text x="36" y="183" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="393,252 408,242 423,252 408,262" fill="white" stroke="black" stroke-width=".8"/>
+<text x="408" y="252" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="346.6" y="56" width="6.8" height="9" fill="white"/>
+<text x="350" y="61" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="326.6" y="420" width="6.8" height="9" fill="white"/>
+<text x="330" y="425" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="181,388 196,378 211,388 196,398" fill="white" stroke="black" stroke-width=".8"/>
+<text x="196" y="388" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="168.6" y="426" width="6.8" height="9" fill="white"/>
+<text x="172" y="431" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="232.6" y="310" width="6.8" height="9" fill="white"/>
+<text x="236" y="315" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="53,412 68,402 83,412 68,422" fill="white" stroke="black" stroke-width=".8"/>
+<text x="68" y="412" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="106.6" y="420" width="6.8" height="9" fill="white"/>
+<text x="110" y="425" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="32.6" y="310" width="6.8" height="9" fill="white"/>
+<text x="36" y="315" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="173,264 188,254 203,264 188,274" fill="white" stroke="black" stroke-width=".8"/>
+<text x="188" y="264" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="306.6" y="288" width="6.8" height="9" fill="white"/>
+<text x="310" y="293" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="168.6" y="186" width="6.8" height="9" fill="white"/>
+<text x="172" y="191" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<polygon points="375,312 390,302 405,312 390,322" fill="white" stroke="black" stroke-width=".8"/>
+<text x="390" y="312" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="368.6" y="302" width="6.8" height="9" fill="white"/>
+<text x="372" y="307" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="432.6" y="302" width="6.8" height="9" fill="white"/>
+<text x="436" y="307" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="189,312 204,302 219,312 204,322" fill="white" stroke="black" stroke-width=".8"/>
+<text x="204" y="312" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="232.6" y="302" width="6.8" height="9" fill="white"/>
+<text x="236" y="307" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="168.6" y="302" width="6.8" height="9" fill="white"/>
+<text x="172" y="307" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="425,532 440,522 455,532 440,542" fill="white" stroke="black" stroke-width=".8"/>
+<text x="440" y="532" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="326.6" y="288" width="6.8" height="9" fill="white"/>
+<text x="330" y="293" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="326.6" y="536" width="6.8" height="9" fill="white"/>
+<text x="330" y="541" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<polygon points="189,560 204,550 219,560 204,570" fill="white" stroke="black" stroke-width=".8"/>
+<text x="204" y="560" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="168.6" y="550" width="6.8" height="9" fill="white"/>
+<text x="172" y="555" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="232.6" y="550" width="6.8" height="9" fill="white"/>
+<text x="236" y="555" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="381,628 396,618 411,628 396,638" fill="white" stroke="black" stroke-width=".8"/>
+<text x="396" y="628" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="368.6" y="310" width="6.8" height="9" fill="white"/>
+<text x="372" y="315" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="326.6" y="652" width="6.8" height="9" fill="white"/>
+<text x="330" y="657" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<polygon points="205,636 220,626 235,636 220,646" fill="white" stroke="black" stroke-width=".8"/>
+<text x="220" y="636" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="232.6" y="558" width="6.8" height="9" fill="white"/>
+<text x="236" y="563" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="286.6" y="652" width="6.8" height="9" fill="white"/>
+<text x="290" y="657" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="409,388 424,378 439,388 424,398" fill="white" stroke="black" stroke-width=".8"/>
+<text x="424" y="388" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="346.6" y="288" width="6.8" height="9" fill="white"/>
+<text x="350" y="293" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="346.6" y="420" width="6.8" height="9" fill="white"/>
+<text x="350" y="425" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<polygon points="409,444 424,434 439,444 424,454" fill="white" stroke="black" stroke-width=".8"/>
+<text x="424" y="444" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="368.6" y="434" width="6.8" height="9" fill="white"/>
+<text x="372" y="439" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="432.6" y="434" width="6.8" height="9" fill="white"/>
+<text x="436" y="439" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+<polygon points="401,556 416,546 431,556 416,566" fill="white" stroke="black" stroke-width=".8"/>
+<text x="416" y="556" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="5.8" font-weight="bold" fill="black">HAS</text>
+<rect x="368.6" y="442" width="6.8" height="9" fill="white"/>
+<text x="372" y="447" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">1</text>
+<rect x="432.6" y="558" width="6.8" height="9" fill="white"/>
+<text x="436" y="563" dominant-baseline="central" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="bold" fill="black">M</text>
+</g>
+</svg>

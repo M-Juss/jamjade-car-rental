@@ -48,18 +48,19 @@ trait ApiResponseTrait
     protected function paginated(
         string $message,
         LengthAwarePaginator $paginator,
-        string|JsonResource|null $resourceClass = null
+        string|JsonResource|null $resourceClass = null,
+        array $extraMeta = []
     ): JsonResponse {
         $items = $resourceClass
             ? $resourceClass::collection($paginator->getCollection())->resolve()
             : $paginator->items();
 
-        return $this->success($message, $items, 200, [
+        return $this->success($message, $items, 200, array_merge([
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
             'per_page' => $paginator->perPage(),
             'total' => $paginator->total(),
-        ]);
+        ], $extraMeta));
     }
 
     protected function error(

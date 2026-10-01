@@ -31,6 +31,17 @@ export type EmergencyContact = {
   relationship: EmergencyRelationship;
 };
 
+export type CustomerAddress = {
+  countryCode: string;
+  regionCode: string;
+  provinceCode: string | null;
+  cityMunicipalityCode: string;
+  barangayCode: string;
+  addressLine: string;
+  postalCode: string;
+  formattedAddress: string;
+};
+
 export type CustomerDocumentUploads = {
   driverLicenseNumber: string;
   driverLicenseExpirationDate: string;
@@ -50,6 +61,7 @@ export type Customer = {
   birthdate: string;
   age: number | null;
   address: string;
+  addressDetails: CustomerAddress;
   profilePicture: string;
   emergencyContact: EmergencyContact;
   emergencyContactSkipped: boolean;
@@ -70,7 +82,9 @@ export type Customer = {
 
 export type BasicCustomerProfileInput = Pick<
   Customer,
-  'firstName' | 'lastName' | 'contactNumber' | 'birthdate' | 'address' | 'profilePicture'
->;
+  'email' | 'firstName' | 'lastName' | 'contactNumber' | 'birthdate' | 'address' | 'profilePicture'
+> & {
+  addressDetails: CustomerAddress;
+};
 
 export type DocumentVerificationInput = CustomerDocumentUploads;

@@ -45,7 +45,6 @@ const FEATURES = [
   "USB Charging",
   "Wireless Charging",
   "Leather Seats",
-  "Dashcam",
   "Cruise Control",
 ];
 

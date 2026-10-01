@@ -11,6 +11,7 @@ use App\Models\PayPalCheckout;
 use App\Models\User;
 use App\Support\PayPalAppUrl;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -274,6 +275,21 @@ class PayPalCheckoutService
                 $orderId,
                 "jamjade-capture-{$checkout->id}"
             );
+        } catch (RequestException $exception) {
+            if ($this->isOrderNotApproved($exception)) {
+                $checkout->update([
+                    'status' => 'failed',
+                    'paypal_response' => $exception->response->json(),
+                    'failed_at' => now(),
+                ]);
+
+                throw ValidationException::withMessages([
+                    'paypal' => ['PayPal payment was not approved. Please start a new checkout.'],
+                ]);
+            }
+
+            $checkout->update(['status' => 'approved']);
+            throw $exception;
         } catch (Throwable $exception) {
             $checkout->update(['status' => 'approved']);
             throw $exception;
@@ -511,6 +527,12 @@ class PayPalCheckoutService
     private function formatAmount(float $amount): string
     {
         return number_format($amount, 2, '.', '');
+    }
+
+    private function isOrderNotApproved(RequestException $exception): bool
+    {
+        return $exception->response->status() === 422
+            && data_get($exception->response->json(), 'details.0.issue') === 'ORDER_NOT_APPROVED';
     }
 
     private function returnUrl(string $appUrl): string

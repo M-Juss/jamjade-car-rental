@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ChevronRight, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import {
   FormDialogContent,
@@ -11,40 +20,84 @@ import {
   FormDialogHeader,
 } from "@/components/common/forms/FormDialogLayout";
 import { Button } from "@/components/ui/button";
-import { logout as logoutUser } from "@/services/auth";
+import { getUserRoleNames, logout as logoutUser } from "@/services/auth";
 import {
   managementModulesForPortal,
   managementPath,
-  managementSections,
+  type ManagementModule,
   type ManagementPortal,
 } from "../config/module-registry";
 import { useManagementSession } from "../context/ManagementSessionProvider";
 
 interface ManagementSidebarNavProps {
   portal: ManagementPortal;
+  collapsed?: boolean;
+  pendingReservations?: number;
+  onExpandSidebar?: () => void;
+  onNavigate?: () => void;
 }
 
-export function ManagementSidebarNav({ portal }: ManagementSidebarNavProps) {
-  const pathname = usePathname();
+const directModuleIds = new Set<ManagementModule["id"]>([
+  "dashboard",
+  "bookings",
+  "history",
+  "geofences",
+  "verification",
+  "reports",
+]);
+
+function initials(name?: string) {
+  return (name ?? "User")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
+function compactTooltip(label: string) {
+  return (
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+    >
+      {label}
+    </span>
+  );
+}
+
+function badgeLabel(count: number) {
+  return count > 99 ? "99+" : String(count);
+}
+
+function ManagementSidebarNavContent({
+  portal,
+  collapsed = false,
+  pendingReservations = 0,
+  onExpandSidebar,
+  onNavigate,
+  pathname,
+}: ManagementSidebarNavProps & { pathname: string }) {
   const router = useRouter();
+  const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user } = useManagementSession();
   const permissions = useMemo(() => new Set(user?.permissions ?? []), [user?.permissions]);
 
-  const navSections = useMemo(() => {
-    const modules = managementModulesForPortal(portal, permissions);
-
-    return managementSections
-      .map((label) => ({
-        label,
-        items: modules.flatMap((module) => {
-          const href = managementPath(portal, module.id);
-          return module.section === label && href ? [{ ...module, href }] : [];
-        }),
-      }))
-      .filter((section) => section.items.length > 0);
-  }, [permissions, portal]);
+  const visibleModules = useMemo(
+    () => managementModulesForPortal(portal, permissions).flatMap((module) => {
+      const href = managementPath(portal, module.id);
+      return href ? [{ ...module, href }] : [];
+    }),
+    [permissions, portal],
+  );
+  const mainItems = visibleModules.filter((module) => directModuleIds.has(module.id));
+  const managementItems = visibleModules.filter((module) => !directModuleIds.has(module.id));
+  const managementIsActive = managementItems.some(
+    (module) => pathname === module.href || pathname.startsWith(`${module.href}/`),
+  );
+  const [managementOpen, setManagementOpen] = useState(true);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -60,114 +113,207 @@ export function ManagementSidebarNav({ portal }: ManagementSidebarNavProps) {
     }
   };
 
+  const toggleManagement = () => {
+    if (collapsed) {
+      onExpandSidebar?.();
+      setManagementOpen(true);
+      return;
+    }
+
+    setManagementOpen((open) => !open);
+  };
+
+  const roleNames = user ? getUserRoleNames(user) : [];
+  const isFullAccessManager = roleNames.includes("admin");
+  const roleLabel = roleNames.includes("admin") ? "Administrator" : roleNames.includes("staff") ? "Staff" : user?.email;
+  const pendingLabel = pendingReservations > 0 ? `${pendingReservations} pending reservations` : "Reservations";
+
+  const renderLink = (module: (typeof visibleModules)[number], nested = false) => {
+    const Icon = module.icon;
+    const active = pathname === module.href || (module.id !== "dashboard" && pathname.startsWith(`${module.href}/`));
+    const hasPendingReservations = module.id === "bookings" && pendingReservations > 0;
+    const accessibleLabel = hasPendingReservations ? `${module.label}, ${pendingLabel}` : module.label;
+
+    return (
+      <Link
+        key={module.href}
+        href={module.href}
+        aria-current={active ? "page" : undefined}
+        aria-label={collapsed ? accessibleLabel : undefined}
+        onClick={onNavigate}
+        className={`group relative flex w-full items-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+          nested
+            ? "min-h-9 gap-2 px-3 text-[13px] font-medium"
+            : collapsed
+              ? "min-h-11 justify-center px-0"
+              : "min-h-11 gap-3 px-3 text-sm"
+        } ${
+          active
+            ? "bg-primary font-medium text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        <span className="relative flex shrink-0">
+          <Icon size={18} strokeWidth={active ? 2.25 : 2} aria-hidden="true" />
+          {hasPendingReservations && collapsed ? (
+            <span className="absolute -right-2 -top-2 flex min-w-4 items-center justify-center rounded-full border-2 border-surface bg-warning px-1 text-[9px] font-bold leading-4 text-warning-foreground">
+              {badgeLabel(pendingReservations)}
+            </span>
+          ) : null}
+        </span>
+        {!collapsed && <span className="min-w-0 flex-1 truncate">{module.label}</span>}
+        {hasPendingReservations && !collapsed ? (
+          <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-[10px] font-bold leading-5 text-warning-foreground">
+            {badgeLabel(pendingReservations)}
+          </span>
+        ) : null}
+        {collapsed ? compactTooltip(accessibleLabel) : null}
+      </Link>
+    );
+  };
+
   return (
     <>
-      {/* Navigation */}
       <nav
         aria-label={`${portal === "admin" ? "Admin" : "Staff"} navigation`}
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-2"
+        className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-2"
       >
-        {navSections.map((section) => (
-          <div key={section.label} className="flex flex-col gap-0.5">
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-subtle-foreground">
-              {section.label}
-            </p>
+        {mainItems.map((module) => renderLink(module))}
 
-            {section.items.map(({ href, id, label, icon: Icon }) => {
-              const isDashboard = id === "dashboard";
-              const isActive = pathname === href || (!isDashboard && pathname.startsWith(`${href}/`));
-
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`
-                    group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-200
-                    ${
-                      isActive
-                        ? "bg-primary text-white shadow-[0_4px_14px_rgba(52,110,246,0.32)]"
-                        : "text-muted-foreground hover:bg-background hover:text-primary"
-                    }
-                  `}
-                >
-                  {/* Active left accent bar */}
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-white/40" />
-                  )}
-
-                  <Icon
-                    size={17}
-                    strokeWidth={isActive ? 2.4 : 2}
-                    className={`flex-shrink-0 transition-colors duration-200 ${
-                      isActive
-                        ? "text-white"
-                        : "text-muted-foreground group-hover:text-primary"
-                    }`}
+        {managementItems.length > 0 ? (
+          <div className="mt-1">
+            <button
+              type="button"
+              aria-controls="management-subnavigation"
+              aria-expanded={managementOpen}
+              aria-label={collapsed ? "Management" : undefined}
+              onClick={toggleManagement}
+              className={`group relative flex min-h-11 w-full items-center rounded-lg text-sm outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring ${
+                collapsed ? "justify-center px-0 text-muted-foreground" : "gap-3 px-3 text-muted-foreground"
+              } ${managementIsActive ? "font-medium text-foreground" : ""}`}
+            >
+              <Settings size={18} aria-hidden="true" />
+              {!collapsed ? (
+                <>
+                  <span className="flex-1 text-left">Management</span>
+                  <ChevronDown
+                    size={16}
+                    aria-hidden="true"
+                    className={`transition-transform motion-reduce:transition-none ${managementOpen ? "rotate-180" : ""}`}
                   />
-                  <span className="flex-1 tracking-[-0.01em]">{label}</span>
+                </>
+              ) : compactTooltip("Management")}
+            </button>
 
-                  {isActive && (
-                    <ChevronRight
-                      size={14}
-                      className="flex-shrink-0 text-white/60"
-                    />
-                  )}
-                </Link>
-              );
-            })}
+            {!collapsed && managementOpen ? (
+              <div id="management-subnavigation" className="ml-[21px] mt-2 flex flex-col gap-0.5 border-l border-border pl-2">
+                {managementItems.map((module) => renderLink(module, true))}
+              </div>
+            ) : null}
           </div>
-        ))}
+        ) : null}
       </nav>
 
-      {/* Bottom section */}
-      <div className="px-3 pb-6 pt-4">
-        <div className="mx-3 mb-4 h-px bg-border" />
-
-        {/* Logout */}
-        <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-          <DialogTrigger asChild>
-            <button className="group flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#E05252] transition-all duration-200 hover:bg-[#FEF2F2]">
-              <LogOut
-                size={17}
-                strokeWidth={2}
-                className="flex-shrink-0 transition-transform duration-200 group-hover:-translate-x-0.5"
-              />
-              <span className="tracking-[-0.01em]">Log Out</span>
+      <div className="mt-3 border-t border-border px-3 pb-3 pt-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={collapsed ? "Open account menu" : undefined}
+              className={`group relative flex min-h-11 w-full items-center rounded-lg text-left outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring ${
+                collapsed ? "justify-center px-0" : "gap-2.5 px-2"
+              }`}
+            >
+              <Avatar className="size-8">
+                <AvatarFallback className="bg-muted text-[11px] font-semibold text-primary">{initials(user?.name)}</AvatarFallback>
+              </Avatar>
+              {!collapsed ? (
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-foreground">{user?.name ?? "Account"}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{roleLabel ?? user?.email ?? ""}</span>
+                </span>
+              ) : compactTooltip(user?.name ? `Account: ${user.name}` : "Account")}
+              {!collapsed ? <span aria-hidden="true" className="text-lg leading-none text-muted-foreground">⋯</span> : null}
             </button>
-          </DialogTrigger>
-
-          <FormDialogContent width="compact">
-            <FormDialogHeader
-              title="Confirm Logout"
-              icon={LogOut}
-              onClose={() => setLogoutOpen(false)}
-              closeLabel="Close logout confirmation"
-              iconClassName="bg-destructive-surface text-destructive"
-            />
-            <p className="px-4 py-5 text-sm leading-6 text-muted-foreground sm:px-6">
-              You&apos;re about to sign out of your JamJade account. Any unsaved
-              changes may be lost.
-            </p>
-            <FormDialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setLogoutOpen(false)}
-                className="border-border text-[13.5px] font-medium text-muted-foreground hover:bg-background"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="bg-primary text-[13.5px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.32)] hover:bg-primary-hover"
-              >
-                {isLoggingOut ? "Logging out..." : "Yes, Log Out"}
-              </Button>
-            </FormDialogFooter>
-          </FormDialogContent>
-        </Dialog>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align={collapsed ? "start" : "end"} sideOffset={8} className="w-56 rounded-lg border-border p-1 shadow-sm">
+            <DropdownMenuLabel className="px-2 py-1.5">
+              <span className="block truncate text-xs font-semibold text-foreground">{user?.name ?? "Account"}</span>
+              <span className="block truncate pt-0.5 text-[11px] font-normal text-muted-foreground">{user?.email ?? ""}</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {isFullAccessManager ? (
+              <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+                <DialogTrigger asChild>
+                  <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="min-h-9 gap-2 px-2 text-[13px]">
+                    <UserRound size={16} aria-hidden="true" />
+                    Profile
+                  </DropdownMenuItem>
+                </DialogTrigger>
+                <FormDialogContent width="compact">
+                  <FormDialogHeader
+                    title="Your Profile"
+                    icon={UserRound}
+                    onClose={() => setProfileOpen(false)}
+                    closeLabel="Close profile"
+                  />
+                  <dl className="space-y-3 px-4 py-5 text-sm sm:px-6">
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">Name</dt>
+                      <dd className="mt-0.5 font-medium text-foreground">{user?.name ?? "Not available"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">Email</dt>
+                      <dd className="mt-0.5 break-all font-medium text-foreground">{user?.email ?? "Not available"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">Role</dt>
+                      <dd className="mt-0.5 font-medium text-foreground">{roleLabel ?? "Manager"}</dd>
+                    </div>
+                  </dl>
+                  <FormDialogFooter>
+                    <Button onClick={() => setProfileOpen(false)}>Close</Button>
+                  </FormDialogFooter>
+                </FormDialogContent>
+              </Dialog>
+            ) : null}
+            <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+              <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(event) => event.preventDefault()} variant="destructive" className="min-h-9 gap-2 px-2 text-[13px]">
+                  <LogOut size={16} aria-hidden="true" />
+                  Log Out
+                </DropdownMenuItem>
+              </DialogTrigger>
+              <FormDialogContent width="compact">
+                <FormDialogHeader
+                  title="Confirm Logout"
+                  icon={LogOut}
+                  onClose={() => setLogoutOpen(false)}
+                  closeLabel="Close logout confirmation"
+                  iconClassName="bg-destructive-surface text-destructive"
+                />
+                <p className="px-4 py-5 text-sm leading-6 text-muted-foreground sm:px-6">
+                  You&apos;re about to sign out of your JamJade account. Any unsaved changes may be lost.
+                </p>
+                <FormDialogFooter>
+                  <Button variant="outline" onClick={() => setLogoutOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleLogout} disabled={isLoggingOut}>
+                    {isLoggingOut ? "Logging out..." : "Yes, Log Out"}
+                  </Button>
+                </FormDialogFooter>
+              </FormDialogContent>
+            </Dialog>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </>
   );
+}
+
+export function ManagementSidebarNav(props: ManagementSidebarNavProps) {
+  const pathname = usePathname();
+
+  return <ManagementSidebarNavContent key={pathname} {...props} pathname={pathname} />;
 }

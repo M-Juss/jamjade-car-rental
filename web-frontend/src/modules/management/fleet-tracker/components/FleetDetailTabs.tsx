@@ -1,4 +1,4 @@
-import { Battery, CarFront, Gauge, MapPinned, Phone, Signal, Video } from "lucide-react";
+import { Battery, CarFront, Gauge, MapPinned, Phone, Signal } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,31 +55,6 @@ export function FleetDetailTabs({ vehicle }: FleetDetailTabsProps) {
                 <MetricCard label="Sharp Turns" value={vehicle.behavior.sharpTurns.toString()} />
                 <MetricCard label="Idle Time" value={`${vehicle.behavior.idleMinutes} mins`} />
               </div>
-
-              <div className="space-y-3">
-                <div className="flex items-end justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Retrieved Video Footage</p>
-                    <p className="text-xs text-muted-foreground">Latest camera clips linked to this active rental.</p>
-                  </div>
-                  <span className="rounded-full border border-[#DCE6FF] bg-muted px-2.5 py-1 text-[10.5px] font-semibold text-primary">
-                    2 Clips
-                  </span>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {/* Extract this into reusable component */}
-                  <VideoClipCard
-                    title="Front Camera - Segment 01"
-                    time="11:24 AM"
-                    description="Clip duration: 00:45 - Event-linked telemetry snapshot captured."
-                  />
-                  <VideoClipCard
-                    title="Cabin Camera - Segment 02"
-                    time="11:27 AM"
-                    description="Clip duration: 01:10 - Driver-behavior verification sequence."
-                  />
-                </div>
-              </div>
             </div>
           </TabsContent>
         </div>
@@ -119,23 +94,6 @@ function MetricCard({ label, value, highlighted = false }: { label: string; valu
       <CardContent className="p-4">
         <p className="truncate text-[10px] font-medium leading-none text-muted-foreground">{label}</p>
         <p className={`mt-1 text-[13px] font-bold leading-none ${highlighted ? "text-primary" : "text-foreground"}`}>{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function VideoClipCard({ title, time, description }: { title: string; time: string; description: string }) {
-  return (
-    <Card className="rounded-xl border-slate-200 bg-slate-50/70 shadow-none">
-      <CardContent className="p-4">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <p className="inline-flex min-w-0 items-center gap-2 text-xs font-semibold text-foreground">
-          <Video className="size-3.5 shrink-0 text-primary" />
-          <span className="truncate">{title}</span>
-        </p>
-        <span className="shrink-0 text-[11px] text-muted-foreground">{time}</span>
-      </div>
-      <p className="mt-1 text-[11px] text-muted-foreground">{description}</p>
       </CardContent>
     </Card>
   );

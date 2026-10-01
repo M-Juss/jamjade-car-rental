@@ -213,17 +213,11 @@ function PaymentScreen() {
       const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, redirectUrl);
 
       if (result.type !== 'success') {
-        approved = true;
-
-        try {
-          await captureCheckout(order);
-          return;
-        } catch {
-          router.replace(
-            `/browse/success?status=failed&message=${encodeURIComponent('The PayPal window closed before the app received confirmation. If PayPal showed “Thanks for using PayPal”, confirm the payment below.')}&orderId=${encodeURIComponent(order.orderId)}&retryPath=${encodeURIComponent(`/browse/payment?flow=${flowId ?? ''}&vehicleId=${routeVehicleId ?? ''}`)}` as Href,
-          );
-          return;
-        }
+        await abandonPayPalOrder(order.orderId);
+        router.replace(
+          `/browse/success?status=failed&message=${encodeURIComponent('The PayPal checkout was closed before payment approval. No payment was made; please restart the booking.')}&retryPath=${encodeURIComponent(`/browse/payment?flow=${flowId ?? ''}&vehicleId=${routeVehicleId ?? ''}`)}` as Href,
+        );
+        return;
       }
 
       const redirect = Linking.parse(result.url);

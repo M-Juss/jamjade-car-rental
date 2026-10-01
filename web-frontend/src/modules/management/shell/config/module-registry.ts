@@ -4,10 +4,11 @@ import {
   CalendarCheck,
   Car,
   ClipboardCheck,
+  Fence,
   LayoutDashboard,
   Settings,
   ShieldCheck,
-  Video,
+  History,
   Wrench,
 } from "lucide-react";
 
@@ -16,13 +17,14 @@ export type ManagementPortal = "admin" | "staff";
 export type ManagementModuleId =
   | "dashboard"
   | "bookings"
+  | "history"
+  | "geofences"
   | "verification"
   | "vehicles"
   | "maintenance"
   | "fleetTracker"
-  | "videoAuditing"
   | "reports"
-  | "staff";
+  | "personnel";
 
 type ManagementSection =
   | "Overview"
@@ -59,8 +61,24 @@ export const managementModules: readonly ManagementModule[] = [
     path: "booking",
   },
   {
+    id: "history",
+    label: "History",
+    section: "Rental Operations",
+    icon: History,
+    permission: "manage bookings",
+    path: "history",
+  },
+  {
+    id: "geofences",
+    label: "Geofence Library",
+    section: "Rental Operations",
+    icon: Fence,
+    permission: "manage geofences",
+    path: "geofences",
+  },
+  {
     id: "verification",
-    label: "ID Verification",
+    label: "Self-Drive Verification",
     section: "Rental Operations",
     icon: ClipboardCheck,
     permission: "review documents",
@@ -91,14 +109,6 @@ export const managementModules: readonly ManagementModule[] = [
     path: "fleet",
   },
   {
-    id: "videoAuditing",
-    label: "Video Auditing",
-    section: "Fleet Operations",
-    icon: Video,
-    permission: "view video auditing",
-    path: "video-auditing",
-  },
-  {
     id: "reports",
     label: "Reports & Analytics",
     section: "Insights",
@@ -107,12 +117,12 @@ export const managementModules: readonly ManagementModule[] = [
     path: "report",
   },
   {
-    id: "staff",
-    label: "Staff",
+    id: "personnel",
+    label: "Personnel",
     section: "Administration",
     icon: ShieldCheck,
     adminOnly: true,
-    path: "staff",
+    path: "personnel",
   },
 ] as const;
 

@@ -36,9 +36,9 @@ export default function DriverNotificationsScreen() {
         onScroll={handleTabScroll}
         scrollEventThrottle={16}>
         <View className="px-5" style={{ paddingBottom: insets.bottom + 110, paddingTop: insets.top + 12 }}>
-          <CustomerTabHeader description="Assignments, service updates, and charges." />
-          {isLoading ? <ActivityIndicator className="mt-10" color="#346EF6" /> : null}
-          <View className="mt-5 gap-3">
+          <CustomerTabHeader title="Notifications" />
+          {isLoading ? <ActivityIndicator className="mt-2" color="#346EF6" /> : null}
+          <View className="mt-2 gap-3">
             {notifications.map((notification) => (
               <Pressable key={notification.id} onPress={() => void open(notification)} className={`rounded-[24px] border p-4 ${notification.isRead ? 'border-border bg-surface' : 'border-primary bg-muted'}`}>
                 <View className="flex-row items-start gap-3">

@@ -4,6 +4,8 @@ use App\Enums\AdditionalChargeResponsibility;
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\RentalType;
+use App\Enums\TelematicsSetupStatus;
+use App\Enums\TelematicsSetupStepStatus;
 use App\Enums\VehicleInspectionSignerType;
 use App\Enums\VehicleStatus;
 use App\Models\Booking;
@@ -13,9 +15,9 @@ use App\Models\VehicleMaintenanceRecord;
 use App\Services\AdditionalChargeService;
 use App\Services\BookingInspectionService;
 use App\Services\BookingService;
-use App\Services\CalibrationService;
 use App\Services\DriverAssignmentService;
 use App\Services\TelematicsService;
+use App\Services\TelematicsSetupService;
 use App\Services\VehicleInspectionService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,8 +44,8 @@ function lifecycleBooking(RentalType $type = RentalType::SelfDrive, array $attri
         'user_id' => $customer->id,
         'vehicle_id' => $vehicle->id,
         'rental_type' => $type,
-        'rental_start_at' => now()->addDays(3),
-        'rental_end_at' => now()->addDays(5),
+        'rental_start_at' => now()->subMinute(),
+        'rental_end_at' => now()->addDays(2),
         'pickup_location_type' => $type === RentalType::SelfDrive ? 'shop' : 'delivery',
         'pickup_location' => 'Jamjade Garage',
         'return_location' => 'Jamjade Garage',
@@ -85,6 +87,25 @@ function finalizeLifecycleInspection(Booking $booking, string $type, User $manag
     }
 }
 
+function completeTelematicsSetup(Booking $booking): void
+{
+    $service = app(TelematicsSetupService::class);
+    $service->assignGeofenceSnapshot($booking, null, [
+        'name' => 'Lifecycle test circle',
+        'center_latitude' => 14.299,
+        'center_longitude' => 120.958,
+        'radius_meters' => 5000,
+    ]);
+    $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
+    $service->startHandover($booking, vehicleManagerUser());
+    $session->refresh();
+
+    foreach (TelematicsSetupService::requiredSteps() as $step) {
+        $service->recordStep($session, $step, TelematicsSetupStepStatus::Passed);
+        $session->refresh();
+    }
+}
+
 it('defines returned as the only ordinary transition after ongoing', function () {
     expect(BookingStatus::Ongoing->allowedTransitions())->toBe([BookingStatus::Returned])
         ->and(BookingStatus::Returned->allowedTransitions())->toBe([BookingStatus::Completed]);
@@ -94,7 +115,7 @@ it('rejects ordinary cancellation after rental start and keeps terminal states t
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
 
     expect(fn () => app(BookingService::class)->transition($booking->fresh(), BookingStatus::Cancelled, $actor))
@@ -104,7 +125,7 @@ it('rejects ordinary cancellation after rental start and keeps terminal states t
         ->and(BookingStatus::Rejected->allowedTransitions())->toBe([]);
 });
 
-it('blocks start rental until outgoing and calibration are finalized', function () {
+it('blocks self-drive start rental until outgoing inspection and telematics setup are ready', function () {
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
 
@@ -112,8 +133,8 @@ it('blocks start rental until outgoing and calibration are finalized', function 
         ->toThrow(ValidationException::class);
 
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    expect($booking->fresh()->calibration_status)->toBe('available');
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    expect($booking->fresh()->telematicsSetupSession?->status)->toBe(TelematicsSetupStatus::SetupRequired);
+    completeTelematicsSetup($booking);
     $started = app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
 
     expect($started->status)->toBe(BookingStatus::Ongoing)
@@ -133,7 +154,7 @@ it('keeps outgoing immutable and current while incoming becomes the new current 
         ->and($outgoing->signatures()->get()->pluck('signer_type')->all())
         ->toContain(VehicleInspectionSignerType::Personnel, VehicleInspectionSignerType::Renter);
 
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1450);
     $incoming = $booking->vehicleInspections()->where('type', 'incoming')->firstOrFail();
@@ -186,7 +207,7 @@ it('ends telematics without returning the booking or releasing the vehicle', fun
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     $trip = app(TelematicsService::class)->startTrip($booking->user, [
         'booking_id' => $booking->id, 'latitude' => 14.3, 'longitude' => 120.9,
@@ -202,7 +223,6 @@ it('separates customer and Driver charges and allows completion while Driver deb
     $booking = lifecycleBooking(RentalType::OwnersDriver);
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->assignedDriver);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1450);
 
@@ -238,7 +258,7 @@ it('forces Self Drive charges to customer responsibility', function () {
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1400);
 
@@ -255,7 +275,7 @@ it('rejects additional charge amounts with unsafe decimal precision', function (
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1400);
 
@@ -290,7 +310,6 @@ it('captures only the outstanding portion of a Driver charge without changing th
     $booking = lifecycleBooking(RentalType::OwnersDriver);
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->assignedDriver);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1400);
     $charge = app(AdditionalChargeService::class)->create($booking, [[
@@ -338,7 +357,7 @@ it('captures a customer return-charge balance idempotently while the booking is 
     $booking = lifecycleBooking(attributes: ['balance_due_at' => now()->subDay()]);
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1400);
     $charge = app(AdditionalChargeService::class)->create($booking, [[
@@ -369,7 +388,7 @@ it('does not complete when a customer charge remains unpaid even if a generic pa
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1400);
     app(AdditionalChargeService::class)->create($booking, [[
@@ -392,7 +411,6 @@ it('blocks a new Driver assignment when that Driver has an unpaid responsible ch
     $source = lifecycleBooking(RentalType::OwnersDriver);
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($source, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($source, $source->assignedDriver);
     app(BookingService::class)->transition($source, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($source->fresh(), 'incoming', $actor, 1400);
     app(AdditionalChargeService::class)->create($source, [[
@@ -428,7 +446,7 @@ it('preserves an in-progress maintenance restriction when Returned releases the 
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1400);
     app(AdditionalChargeService::class)->finalizeReview($booking, $actor);
@@ -445,7 +463,7 @@ it('preserves a manual unavailable state when Returned releases the rental', fun
     $booking = lifecycleBooking();
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
-    app(CalibrationService::class)->recordPassed($booking, $booking->user);
+    completeTelematicsSetup($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
     finalizeLifecycleInspection($booking->fresh(), 'incoming', $actor, 1400);
     app(AdditionalChargeService::class)->finalizeReview($booking, $actor);

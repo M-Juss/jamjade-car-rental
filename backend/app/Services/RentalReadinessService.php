@@ -7,6 +7,7 @@ use App\Enums\BookingStatus;
 use App\Enums\DocumentStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\RentalType;
+use App\Enums\TelematicsSetupStatus;
 use App\Enums\VehicleStatus;
 use App\Models\Booking;
 use App\Models\CustomerDocument;
@@ -18,14 +19,15 @@ class RentalReadinessService
     public function __construct(
         private readonly DriverAssignmentService $drivers,
         private readonly AdditionalChargeService $charges,
-        private readonly VehicleAvailabilityService $availability
+        private readonly VehicleAvailabilityService $availability,
+        private readonly TelematicsSetupService $telematicsSetup
     ) {}
 
     public function evaluate(Booking $booking): array
     {
         $booking->loadMissing([
             'user.customerProfile', 'user.documents', 'assignedDriver', 'assignment', 'events',
-            'vehicle', 'vehicleInspections',
+            'vehicle', 'vehicleInspections', 'telematicsSetupSession.steps', 'bookingGeofence',
         ]);
         $outgoing = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized');
         $incoming = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'incoming' && $inspection->status->value === 'finalized');
@@ -47,8 +49,9 @@ class RentalReadinessService
             'driverEligible' => (bool) $driverEligible,
             'vehicleOperational' => $booking->vehicle?->status === VehicleStatus::Available,
             'outgoingFinalized' => $outgoing !== null,
-            'calibrationAvailable' => $outgoing !== null,
-            'calibrationPassed' => $booking->calibration_status === 'passed' && $booking->calibrated_at !== null,
+            'telematicsSetupRequired' => $selfDrive,
+            'telematicsSetupReady' => ! $selfDrive || ($booking->telematicsSetupSession?->status === TelematicsSetupStatus::ReadyForRelease
+                && $this->telematicsSetup->isReady($booking->telematicsSetupSession)),
             'incomingFinalized' => $incoming !== null,
             'returnChargesFinalized' => $booking->return_charges_finalized_at !== null,
             'customerBalance' => (float) $booking->remaining_balance,
@@ -71,8 +74,8 @@ class RentalReadinessService
         $state = $this->evaluate($booking);
         $this->assertChecks($state, [
             'bookingConfirmed', 'fullyPaid', 'ageEligible', 'documentsApproved', 'driverAssigned',
-            'driverEligible', 'vehicleOperational', 'outgoingFinalized', 'calibrationPassed',
-        ], 'The rental cannot start until payment, inspection, calibration, operator, and vehicle readiness are complete.');
+            'driverEligible', 'vehicleOperational', 'outgoingFinalized', 'telematicsSetupReady',
+        ], 'The rental cannot start until payment, inspection, telematics setup, operator, and vehicle readiness are complete.');
         $this->availability->assertBookingIntervalAvailable($booking->vehicle_id, $booking->rental_start_at, $booking->rental_end_at, $booking->id);
     }
 

@@ -132,12 +132,16 @@ const actionsByStatus = {
   ],
 } satisfies Record<BookingStatus, BookingAction[]>;
 
-export function getBookingActions(status: BookingStatus, options?: { includeDetails?: boolean }) {
+export function getBookingActions(status: BookingStatus, options?: { includeDetails?: boolean; isSelfDrive?: boolean }) {
   const includeDetails = options?.includeDetails ?? true;
+  const isSelfDrive = options?.isSelfDrive ?? false;
+  const actions = actionsByStatus[status].filter(
+    (action) => isSelfDrive || action.key !== 'open_telematics',
+  );
 
   if (includeDetails) {
-    return actionsByStatus[status];
+    return actions;
   }
 
-  return actionsByStatus[status].filter((action) => action.key !== 'view_details');
+  return actions.filter((action) => action.key !== 'view_details');
 }

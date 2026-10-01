@@ -63,7 +63,22 @@ class VehicleRequest extends BaseFormRequest
             'status' => [$formFieldRequirement, 'in:available,rented,maintenance,unavailable'],
             'description' => [$formFieldRequirement, 'string', 'max:3000'],
             'is_featured' => ['nullable', 'boolean'],
-            'features' => [$relationRequirement, 'array', 'min:1'],
+            'features' => [
+                $relationRequirement, 'array', 'min:1',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! is_array($value)) {
+                        return;
+                    }
+
+                    foreach ($value as $feature) {
+                        if (is_string($feature) && strtolower(trim($feature)) === 'dashcam') {
+                            $fail('Dashcam is no longer offered.');
+
+                            return;
+                        }
+                    }
+                },
+            ],
             'features.*' => ['string', 'max:120'],
             'images' => [$relationRequirement, 'array', 'min:1', 'max:5'],
             'images.*' => ['required', $this->imageRule()],

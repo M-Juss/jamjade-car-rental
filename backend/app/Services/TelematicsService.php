@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Enums\BookingStatus;
 use App\Enums\RentalType;
 use App\Enums\TelematicsEventType;
+use App\Enums\TelematicsSetupStatus;
 use App\Models\Booking;
 use App\Models\TelematicsEvent;
+use App\Models\TelematicsLocationPoint;
 use App\Models\TelematicsTrip;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -14,26 +16,26 @@ use Illuminate\Validation\ValidationException;
 
 class TelematicsService
 {
-    public function __construct(private readonly GeofenceService $geofenceService) {}
-
     public function startTrip(User $user, array $data): TelematicsTrip
     {
         return DB::transaction(function () use ($user, $data) {
-            $booking = Booking::with(['vehicle', 'assignedDriver', 'assignment'])
+            $booking = Booking::with(['vehicle', 'telematicsSetupSession'])
                 ->where('id', $data['booking_id'])
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $operatorId = $booking->rental_type === RentalType::SelfDrive
-                ? $booking->user_id
-                : $booking->assigned_driver_id;
-            if ($operatorId !== $user->id) {
-                abort(403, 'Only the authorized renter or assigned Driver may start this trip.');
+            if ($booking->rental_type !== RentalType::SelfDrive || $booking->user_id !== $user->id) {
+                abort(403, 'Only the renter of a self-drive booking may start this trip.');
             }
 
             if ($booking->status !== BookingStatus::Ongoing) {
                 throw ValidationException::withMessages([
                     'booking_id' => ['Telematics can only start once the booking rental is active.'],
+                ]);
+            }
+            if ($booking->telematicsSetupSession?->status !== TelematicsSetupStatus::Released) {
+                throw ValidationException::withMessages([
+                    'booking_id' => ['Telematics setup must be released before trip monitoring starts.'],
                 ]);
             }
 
@@ -65,11 +67,11 @@ class TelematicsService
             ]);
 
             $this->storeEvent($trip, [
-                'event_type' => TelematicsEventType::StartTrip->value,
+                'event_type' => TelematicsEventType::TripStarted->value,
                 'severity' => 'low',
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],
-                'description' => 'Trip started from mobile app.',
+                'metadata' => ['source' => 'mobile'],
             ], $user);
 
             activity()
@@ -93,9 +95,8 @@ class TelematicsService
         ]);
 
         $this->storeEvent($trip, [
-            'event_type' => TelematicsEventType::Pause->value,
+            'event_type' => TelematicsEventType::TripPaused->value,
             'severity' => 'low',
-            'description' => 'Trip paused by customer.',
         ], $user);
 
         return $trip->fresh(['booking.vehicle.images', 'events']);
@@ -112,9 +113,8 @@ class TelematicsService
         ]);
 
         $this->storeEvent($trip, [
-            'event_type' => TelematicsEventType::Resume->value,
+            'event_type' => TelematicsEventType::TripResumed->value,
             'severity' => 'low',
-            'description' => 'Trip resumed by customer.',
         ], $user);
 
         return $trip->fresh(['booking.vehicle.images', 'events']);
@@ -124,7 +124,7 @@ class TelematicsService
     {
         $this->assertTripOwner($trip, $user);
 
-        if ($trip->status === 'ended') {
+        if ($trip->status === 'ended' && $data['event_type'] !== TelematicsEventType::TripEnded->value) {
             throw ValidationException::withMessages([
                 'trip' => ['This trip is already ended.'],
             ]);
@@ -137,6 +137,13 @@ class TelematicsService
             'end_longitude' => $data['longitude'] ?? $trip->current_longitude,
         ]);
 
+        $this->storeEvent($trip, [
+            'event_type' => TelematicsEventType::TripEnded->value,
+            'severity' => 'low',
+            'latitude' => $trip->end_latitude,
+            'longitude' => $trip->end_longitude,
+        ], $user);
+
         activity()->causedBy($user)->performedOn($trip)->event('telematics_trip_ended')
             ->withProperties(['booking_id' => $trip->booking_id])->log('Authorized mobile operator ended the telematics trip.');
 
@@ -147,7 +154,7 @@ class TelematicsService
     {
         $this->assertTripOwner($trip, $user);
 
-        if ($trip->status === 'ended') {
+        if ($trip->status === 'ended' && $data['event_type'] !== TelematicsEventType::TripEnded->value) {
             throw ValidationException::withMessages([
                 'trip' => ['Cannot add telematics events to an ended trip.'],
             ]);
@@ -159,17 +166,7 @@ class TelematicsService
             'severity' => $data['severity'] ?? 'low',
             'latitude' => $data['latitude'] ?? null,
             'longitude' => $data['longitude'] ?? null,
-            'speed' => $data['speed'] ?? null,
-            'accelerometer_x' => $data['accelerometer_x'] ?? null,
-            'accelerometer_y' => $data['accelerometer_y'] ?? null,
-            'accelerometer_z' => $data['accelerometer_z'] ?? null,
-            'gyroscope_x' => $data['gyroscope_x'] ?? null,
-            'gyroscope_y' => $data['gyroscope_y'] ?? null,
-            'gyroscope_z' => $data['gyroscope_z'] ?? null,
-            'geofence_status' => $data['geofence_status'] ?? null,
-            'distance_from_allowed_area' => $data['distance_from_allowed_area'] ?? null,
-            'current_area' => $data['current_area'] ?? null,
-            'description' => $data['description'] ?? null,
+            'metadata' => $data['metadata'] ?? null,
             'occurred_at' => $data['occurred_at'] ?? now(),
         ]);
 
@@ -194,35 +191,19 @@ class TelematicsService
                 'battery_percent' => $data['battery_percent'] ?? $trip->battery_percent,
                 'gps_signal_percent' => $data['gps_signal_percent'] ?? $trip->gps_signal_percent,
                 'current_zone' => $data['current_zone'] ?? $trip->current_zone,
-                'last_location_at' => $data['occurred_at'] ?? now(),
+                'last_location_at' => $data['captured_at'],
             ]);
 
-            $this->storeEvent($trip, [
-                'event_type' => TelematicsEventType::Location->value,
-                'severity' => 'low',
+            TelematicsLocationPoint::create([
+                'telematics_trip_id' => $trip->id,
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],
+                'accuracy' => $data['accuracy'] ?? null,
                 'speed' => $data['speed'] ?? null,
-                'geofence_status' => $data['geofence_status'] ?? null,
-                'distance_from_allowed_area' => $data['distance_from_allowed_area'] ?? null,
-                'current_area' => $data['current_zone'] ?? null,
-                'occurred_at' => $data['occurred_at'] ?? now(),
-            ], $user);
-
-            if (isset($data['geofence_status'])) {
-                if (in_array($data['geofence_status'], ['outside', 'gps_unavailable'], true)) {
-                    $this->storeEvent($trip, [
-                        'event_type' => $data['geofence_status'] === 'outside'
-                            ? TelematicsEventType::GeofenceExit->value
-                            : TelematicsEventType::GpsLost->value,
-                        'severity' => $this->geofenceService->severityForStatus($data['geofence_status']),
-                        'latitude' => $data['latitude'],
-                        'longitude' => $data['longitude'],
-                        'description' => 'Geofence status: '.$data['geofence_status'],
-                        'occurred_at' => $data['occurred_at'] ?? now(),
-                    ], $user);
-                }
-            }
+                'heading' => $data['heading'] ?? null,
+                'captured_at' => $data['captured_at'],
+                'received_at' => now(),
+            ]);
 
             return $trip->fresh(['booking.vehicle.images', 'events']);
         });

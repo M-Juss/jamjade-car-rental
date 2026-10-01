@@ -1,24 +1,36 @@
 import { apiGet, apiPost } from "@/services/http";
-import type { BookingRecord, DriverCandidate } from "./types";
+import type { BookingRecord, DriverCandidate, GeofenceTemplate } from "./types";
 import type { VehicleConditionFormValues } from "@/validations/vehicle/schemas";
 import { toConditionRequest } from "@/services/vehicle/vehicle.service";
 
-export async function getBookings() {
-  const bookings: BookingRecord[] = [];
-  let page = 1;
-  let lastPage = 1;
+export type BookingGroup = "booking" | "history";
 
-  do {
-    const response = await apiGet<BookingRecord[]>(
-      `/admin/bookings?per_page=100&page=${page}`,
-    );
+export async function getBookings(filters: {
+  group: BookingGroup;
+  page: number;
+  search: string;
+  status: string;
+  paymentStatus: string;
+}) {
+  const params = new URLSearchParams({ group: filters.group, page: String(filters.page) });
+  if (filters.search) params.set("search", filters.search);
+  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.paymentStatus !== "all") params.set("payment_status", filters.paymentStatus);
 
-    bookings.push(...response.data);
-    lastPage = Number(response.meta?.last_page ?? 1);
-    page += 1;
-  } while (page <= lastPage);
+  const response = await apiGet<BookingRecord[]>(`/admin/bookings?${params.toString()}`);
+  return {
+    bookings: response.data,
+    page: Number(response.meta?.current_page ?? filters.page),
+    lastPage: Number(response.meta?.last_page ?? 1),
+    total: Number(response.meta?.total ?? response.data.length),
+    statusCounts: (response.meta?.status_counts ?? {}) as Record<string, number>,
+  };
+}
 
-  return bookings;
+export async function getPendingBookingCount() {
+  const response = await apiGet<BookingRecord[]>("/admin/bookings?status=pending&per_page=1");
+
+  return Number(response.meta?.total ?? response.data.length);
 }
 
 export async function cancelBooking(booking: BookingRecord) {
@@ -43,6 +55,32 @@ export const startRental = (booking: BookingRecord) => bookingAction(booking, "s
 export const markBookingReturned = (booking: BookingRecord) => bookingAction(booking, "returned");
 export const completeBooking = (booking: BookingRecord) => bookingAction(booking, "complete");
 export const finalizeReturnCharges = (booking: BookingRecord) => bookingAction(booking, "finalize-return-charges");
+
+export async function startTelematicsHandover(booking: BookingRecord) {
+  const response = await apiPost<BookingRecord>(
+    `/admin/bookings/${booking.backendId}/telematics-setup/start`,
+    {},
+  );
+
+  return response.data;
+}
+
+export async function getGeofenceTemplates() {
+  const response = await apiGet<{ geofences: GeofenceTemplate[] }>("/admin/bookings/geofence-templates");
+  return response.data.geofences;
+}
+
+export async function assignBookingGeofence(booking: BookingRecord, payload: {
+  source_geofence_id?: number;
+  name?: string;
+  geometry_type?: "circle" | "polygon";
+  center_latitude?: number;
+  center_longitude?: number;
+  radius_meters?: number;
+  polygon_coordinates?: Array<{ latitude: number; longitude: number }>;
+}) {
+  return (await apiPost<BookingRecord>(`/admin/bookings/${booking.backendId}/telematics-setup/geofence`, payload)).data;
+}
 
 export async function finalizeBookingInspection(
   booking: BookingRecord,

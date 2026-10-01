@@ -331,6 +331,29 @@ it('creates a booking with backend pricing and down payment validation', functio
     ]);
 });
 
+it('rejects a pickup time that has already passed today', function () {
+    $user = customerUser();
+    $vehicle = availableVehicle();
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/mobile/bookings', [
+        'vehicle_id' => $vehicle->id,
+        'rental_start_at' => now()->subMinute()->format('Y-m-d H:i'),
+        'rental_end_at' => now()->addDay()->format('Y-m-d H:i'),
+        'pickup_location_type' => 'shop',
+        'pickup_location' => 'Jamjade Garage - Cavite',
+        'return_location' => 'Jamjade Garage - Cavite',
+        'driver_option' => 'self_drive',
+        'down_payment_amount' => 1750,
+        'payment_method' => 'GCash',
+        'transaction_id' => 'GCASH-PAST-TIME',
+        'customer_signature' => 'Juan Dela Cruz',
+        'terms_version' => '2026-06-07',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('rental_start_at');
+});
+
 it('rejects booking dates that overlap a confirmed booking for the same vehicle', function () {
     $user = customerUser();
     $otherCustomer = customerUser(['email' => 'existing.booking@example.com']);
@@ -606,7 +629,10 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
 
     $this->getJson('/api/mobile/bookings')
         ->assertOk()
-        ->assertJsonCount(0, 'data');
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.bookingCode', $booking->booking_code)
+        ->assertJsonPath('data.0.statusKey', BookingStatus::Pending->value)
+        ->assertJsonPath('data.0.paymentStatusKey', PaymentStatus::Unpaid->value);
 
     $orderRequest = Http::recorded(
         fn ($request) => $request->url() === 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
@@ -762,6 +788,18 @@ it('pays an existing booking remaining balance with a new PayPal order', functio
         ->assertJsonPath('data.amount', 2450)
         ->assertJsonPath('data.currency', 'PHP');
 
+    // A dismissed or failed checkout must be removable so the customer is not
+    // permanently blocked by the one-open-checkout guard.
+    $this->postJson('/api/mobile/paypal/orders/PAYPAL-BALANCE-ORDER-1/abandon')
+        ->assertOk();
+
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/orders", [
+        'app_return_url' => 'mobilefrontend://paypal/return',
+        'app_cancel_url' => 'mobilefrontend://paypal/cancel',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('data.orderId', 'PAYPAL-BALANCE-ORDER-1');
+
     $this->postJson('/api/mobile/paypal/orders/PAYPAL-BALANCE-ORDER-1/capture')
         ->assertOk()
         ->assertJsonPath('data.status', 'Confirmed')
@@ -861,7 +899,7 @@ it('uploads all supported customer document formats for review', function () {
         ->assertJsonPath('data.documentNumber', 'N01-23-456789')
         ->assertJsonPath('data.statusKey', 'pending');
     $this->assertDatabaseCount('customer_documents', 3);
-    $this->assertDatabaseCount('notifications', 3);
+    $this->assertDatabaseCount('notifications', 0);
     $this->assertDatabaseHas('customer_profiles', [
         'user_id' => $customer->id,
         'can_self_drive' => false,
@@ -935,6 +973,46 @@ it('validates mobile profile names and 11-digit contact numbers', function () {
         ->assertOk()
         ->assertJsonPath('data.firstName', 'Maria Clara')
         ->assertJsonPath('data.lastName', 'Santos Reyes');
+});
+
+it('updates the mobile sign-in email from personal information', function () {
+    $user = customerUser(['email' => 'old.email@example.com']);
+    Sanctum::actingAs($user);
+
+    $this->putJson('/api/mobile/profile', [
+        'email' => 'New.Email@Example.com',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.email', 'new.email@example.com');
+
+    $this->assertDatabaseHas('users', [
+        'id' => $user->id,
+        'email' => 'new.email@example.com',
+    ]);
+
+    $this->postJson('/api/mobile/login', [
+        'email' => 'new.email@example.com',
+        'password' => 'password123',
+    ])->assertOk();
+
+    $this->postJson('/api/mobile/login', [
+        'email' => 'old.email@example.com',
+        'password' => 'password123',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['login']);
+});
+
+it('rejects an email that belongs to another account when updating the mobile profile', function () {
+    $user = customerUser(['email' => 'current.email@example.com']);
+    customerUser(['email' => 'taken.email@example.com']);
+    Sanctum::actingAs($user);
+
+    $this->putJson('/api/mobile/profile', [
+        'email' => 'taken.email@example.com',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['email']);
 });
 
 it('validates emergency contact names and 11-digit contact numbers', function () {
@@ -1012,15 +1090,14 @@ it('stores telematics events only for active customer trips', function () {
     Sanctum::actingAs($user);
 
     $response = $this->postJson("/api/mobile/telematics/trips/{$trip->id}/events", [
-        'event_type' => 'harsh_brake',
+        'event_type' => 'harsh_braking',
         'severity' => 'high',
         'latitude' => 14.6012,
         'longitude' => 121.0365,
-        'speed' => 61,
-        'description' => 'Hard brake event',
+        'metadata' => ['summary' => 'Hard braking event'],
     ]);
 
     $response->assertCreated()
-        ->assertJsonPath('data.eventType', 'harsh_brake')
+        ->assertJsonPath('data.eventType', 'harsh_braking')
         ->assertJsonPath('data.severity', 'High');
 });

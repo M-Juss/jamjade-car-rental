@@ -75,21 +75,61 @@ export type BookingRecord = {
     phoneNumber?: string | null;
   } | null;
   driverAssignedAt?: string | null;
-  calibrationStatus?: "locked" | "available" | "passed" | "failed";
-  calibratedAt?: string | null;
+  telematicsSetupStatus?: "locked" | "setup_required" | "in_progress" | "ready_for_release" | "released" | null;
+  telematicsHandover?: TelematicsHandover;
   returnedAt?: string | null;
   completedAt?: string | null;
   returnChargesFinalizedAt?: string | null;
   readiness?: BookingReadiness;
   rentalProgress?: {
     outgoingFinalized: boolean;
-    calibrationStatus: string;
+    telematicsSetupStatus?: string | null;
     tripEnded: boolean;
+    latestTripStatus?: "started" | "paused" | "ended" | null;
     incomingFinalized: boolean;
   };
   inspections?: VehicleInspectionRecord[];
   inspectionBaseline?: VehicleInspectionRecord | null;
   additionalCharges?: AdditionalChargeRecord[];
+};
+
+export type TelematicsHandover = {
+  bookingCode: string;
+  bookingStatus: BookingStatus;
+  eligibility?: {
+    canStartHandover: boolean;
+    documentsVerified: boolean;
+    rentalPeriodEligible: boolean;
+    outgoingInspectionComplete: boolean;
+    geofenceAssigned: boolean;
+  };
+  setup: {
+    status: "locked" | "setup_required" | "in_progress" | "ready_for_release" | "released";
+    startedAt?: string | null;
+    readyAt?: string | null;
+    releasedAt?: string | null;
+  } | null;
+  geofence: {
+    name: string;
+    geometryType: "circle" | "polygon";
+    centerLatitude: number | null;
+    centerLongitude: number | null;
+    radiusMeters: number | null;
+    polygonCoordinates: GeofenceCoordinate[] | null;
+  } | null;
+  steps: Array<{
+    type: string;
+    label: string;
+    status: "pending" | "in_progress" | "passed" | "failed";
+    attemptCount: number;
+    startedAt?: string | null;
+    completedAt?: string | null;
+    failureReason?: string | null;
+  }>;
+  canBeginSetup: boolean;
+  canContinueSetup: boolean;
+  canStartTrip: boolean;
+  tripStatus?: "started" | "paused" | "ended" | null;
 };
 
 export type BookingReadiness = {
@@ -102,8 +142,8 @@ export type BookingReadiness = {
   driverEligible: boolean;
   vehicleOperational: boolean;
   outgoingFinalized: boolean;
-  calibrationAvailable: boolean;
-  calibrationPassed: boolean;
+  telematicsSetupRequired: boolean;
+  telematicsSetupReady: boolean;
   incomingFinalized: boolean;
   returnChargesFinalized: boolean;
   customerBalance: number;
@@ -130,3 +170,18 @@ export type DriverCandidate = {
   activeAssignments: number;
   hasOutstandingBalance: boolean;
 };
+
+export type GeofenceTemplate = {
+  id: number;
+  name: string;
+  geometryType: "circle" | "polygon";
+  centerLatitude: number | null;
+  centerLongitude: number | null;
+  radiusMeters: number | null;
+  polygonCoordinates: GeofenceCoordinate[] | null;
+  isActive: boolean;
+  isDeleted?: boolean;
+  assignedBookingCount?: number;
+};
+
+export type GeofenceCoordinate = { latitude: number; longitude: number };

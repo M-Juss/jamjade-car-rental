@@ -16,27 +16,27 @@ const Toaster = ({ position = "bottom-right", ...props }: ToasterProps) => {
       gap={12}
       icons={{
         success: (
-          <span className="cn-toast-icon cn-toast-icon-success">
+          <span className="cn-toast-icon">
             <CircleCheckIcon className="size-5" />
           </span>
         ),
         info: (
-          <span className="cn-toast-icon cn-toast-icon-info">
+          <span className="cn-toast-icon">
             <InfoIcon className="size-5" />
           </span>
         ),
         warning: (
-          <span className="cn-toast-icon cn-toast-icon-warning">
+          <span className="cn-toast-icon">
             <TriangleAlertIcon className="size-5" />
           </span>
         ),
         error: (
-          <span className="cn-toast-icon cn-toast-icon-error">
+          <span className="cn-toast-icon">
             <CircleXIcon className="size-5" />
           </span>
         ),
         loading: (
-          <span className="cn-toast-icon cn-toast-icon-info">
+          <span className="cn-toast-icon">
             <Loader2Icon className="size-5 animate-spin" />
           </span>
         ),

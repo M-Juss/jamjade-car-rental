@@ -22,9 +22,9 @@ export default function DriverLogoutScreen() {
     <View className="flex-1 bg-background">
       <ScrollView contentInsetAdjustmentBehavior="never" showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: insets.bottom + 110, paddingTop: insets.top + 12 }}>
-          <CustomerTabHeader description="Manage your secure driver session." />
+          <CustomerTabHeader title="Logout" />
 
-          <View className="mt-7 rounded-[30px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
+          <View className="mt-2 rounded-[30px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-destructive-surface">
               <LogOut color={themeColors.destructive} size={27} strokeWidth={2.4} />
             </View>

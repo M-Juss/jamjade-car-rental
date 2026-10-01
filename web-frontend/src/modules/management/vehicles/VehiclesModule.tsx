@@ -320,7 +320,7 @@ export default function Vehicle() {
                             )}
                           </div>
                           <span className="text-[12.5px] font-semibold text-foreground whitespace-nowrap">
-                            {v.name}
+                            {v.plateNumber ? `${v.name} ${v.plateNumber}` : v.name}
                           </span>
                         </div>
                       </td>

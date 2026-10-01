@@ -68,7 +68,6 @@ export function ProfileHeaderCard({ profile }: { profile: CustomerProfile }) {
 }
 
 function SummaryItem({
-  helper,
   icon: Icon,
   iconClassName,
   iconColor,
@@ -78,28 +77,26 @@ function SummaryItem({
 }: {
   label: string;
   value: string;
-  helper: string;
   icon: LucideIcon;
   iconClassName: string;
   iconColor: string;
   valueNumberOfLines?: number;
 }) {
   return (
-    <View className="min-h-[124px] flex-1 rounded-[22px] border border-border bg-surface p-3.5 shadow-md shadow-foreground/5">
-      <View className={`${iconClassName} h-9 w-9 items-center justify-center rounded-full`}>
-        <Icon size={18} color={iconColor} strokeWidth={2.45} />
+    <View className="min-h-[116px] flex-1 rounded-[22px] border border-border bg-surface p-3 shadow-md shadow-foreground/5">
+      <View className="flex-row items-center gap-2">
+        <View className={`${iconClassName} h-8 w-8 items-center justify-center rounded-full`}>
+          <Icon size={16} color={iconColor} strokeWidth={2.45} />
+        </View>
+        <Text className="min-h-[32px] min-w-0 flex-1 text-[10px] font-black leading-4 text-muted-foreground" numberOfLines={2}>
+          {label}
+        </Text>
       </View>
       <Text
-        className="mt-3 min-h-[24px] text-[17px] font-black leading-5 text-foreground"
+        className="mt-3 min-h-[40px] text-[17px] font-black leading-5 text-foreground"
         numberOfLines={valueNumberOfLines}
         adjustsFontSizeToFit>
         {value}
-      </Text>
-      <Text className="mt-1 text-[10px] font-black leading-4 text-muted-foreground" numberOfLines={2}>
-        {label}
-      </Text>
-      <Text className="mt-0.5 text-[9px] font-bold leading-3 text-subtle-foreground" numberOfLines={1}>
-        {helper}
       </Text>
     </View>
   );
@@ -130,7 +127,6 @@ export function ProfileKpiGrid({
         icon={CalendarCheck2}
         label="Successful Bookings"
         value={successfulBookings.toString()}
-        helper="Completed"
         iconClassName="bg-success-surface"
         iconColor="#047857"
       />
@@ -138,7 +134,6 @@ export function ProfileKpiGrid({
         icon={WalletCards}
         label="Amount Spent"
         value={formatPeso(totalSpent)}
-        helper="Payments"
         iconClassName="bg-muted"
         iconColor={profileColors.brand}
       />
@@ -146,7 +141,6 @@ export function ProfileKpiGrid({
         icon={CalendarDays}
         label="Joined Date"
         value={joinedDate}
-        helper="Member since"
         iconClassName="bg-warning-surface"
         iconColor="#C2410C"
         valueNumberOfLines={2}

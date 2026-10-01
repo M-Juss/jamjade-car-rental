@@ -65,20 +65,11 @@ export default function RemainingBalancePaymentScreen() {
       const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, redirectUrl);
 
       if (result.type !== 'success') {
-        approved = true;
-
-        try {
-          const capturedBooking = await capturePayPalOrder(order.orderId);
-          router.replace(
-            `/browse/success?status=success&source=balance&reference=${encodeURIComponent(capturedBooking.bookingCode)}&paymentStatus=${encodeURIComponent(capturedBooking.paymentStatus)}&remainingBalance=${encodeURIComponent(String(capturedBooking.remainingBalance))}` as Href,
-          );
-          return;
-        } catch {
-          router.replace(
-            `/browse/success?status=failed&source=balance&message=${encodeURIComponent('The PayPal window closed before the app received confirmation. If PayPal showed “Thanks for using PayPal”, confirm the payment below.')}&orderId=${encodeURIComponent(order.orderId)}&retryPath=${encodeURIComponent(`/bookings/payment?bookingId=${booking.id}`)}` as Href,
-          );
-          return;
-        }
+        await abandonPayPalOrder(order.orderId);
+        router.replace(
+          `/browse/success?status=failed&source=balance&message=${encodeURIComponent('The PayPal checkout was closed before payment approval. No payment was made; please try again.')}&retryPath=${encodeURIComponent(`/bookings/payment?bookingId=${booking.id}`)}` as Href,
+        );
+        return;
       }
 
       if (result.url.includes('/cancel')) {

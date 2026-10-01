@@ -66,11 +66,10 @@ export type Booking = {
   paidAt: string;
   createdAt: string;
   adminNotes: string;
-  calibrationStatus: 'locked' | 'available' | 'passed' | 'failed';
-  calibratedAt?: string | null;
+  telematicsSetupStatus?: 'locked' | 'setup_required' | 'in_progress' | 'ready_for_release' | 'released' | null;
   rentalProgress: {
     outgoingFinalized: boolean;
-    calibrationStatus: string;
+    telematicsSetupStatus?: string | null;
     tripEnded: boolean;
     latestTripId?: number | null;
     latestTripStatus?: string | null;

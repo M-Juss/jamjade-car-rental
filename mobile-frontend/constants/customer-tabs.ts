@@ -6,7 +6,6 @@ export type CustomerTabIcon = FloatingTabConfig['icon'];
 export type CustomerTabConfig = FloatingTabConfig & {
   routeName: CustomerTabRouteName;
   description: string;
-  requiresActiveBooking?: boolean;
 };
 
 export const CUSTOMER_TABS: CustomerTabConfig[] = [
@@ -28,7 +27,6 @@ export const CUSTOMER_TABS: CustomerTabConfig[] = [
     description: 'Active trip monitoring only',
     icon: 'steering',
     featured: true,
-    requiresActiveBooking: true,
   },
   {
     routeName: 'notifications',

@@ -40,8 +40,8 @@ export function BookingCard({
   onViewDetails: (booking: Booking) => void;
   onAction: (action: BookingAction, booking: Booking) => void;
 }) {
-  const hasTelematics = isTelematicsEnabled(booking.status);
-  const actions = getBookingActions(booking.status).filter(
+  const hasTelematics = isTelematicsEnabled(booking);
+  const actions = getBookingActions(booking.status, { isSelfDrive: booking.driverType === 'Self-Drive' }).filter(
     (action) =>
       action.key !== 'payment_info' &&
       !(hasTelematics && action.key === 'open_telematics'),

@@ -10,11 +10,13 @@ use App\Http\Requests\Admin\Booking\ListBookingsRequest;
 use App\Http\Requests\Admin\Booking\StoreAdditionalChargesRequest;
 use App\Http\Requests\Admin\Booking\StoreBookingInspectionRequest;
 use App\Http\Requests\Admin\BookingStatusRequest;
+use App\Http\Requests\Telematics\AssignBookingGeofenceRequest;
 use App\Http\Resources\AdditionalChargeResource;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\VehicleInspectionResource;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
+use App\Models\Geofence;
 use App\Models\User;
 use App\Services\AdditionalChargeService;
 use App\Services\BookingEmailService;
@@ -22,6 +24,7 @@ use App\Services\BookingInspectionService;
 use App\Services\BookingService;
 use App\Services\DriverAssignmentService;
 use App\Services\RentalReadinessService;
+use App\Services\TelematicsSetupService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 
@@ -35,17 +38,20 @@ class BookingController extends Controller
         private readonly DriverAssignmentService $driverAssignmentService,
         private readonly BookingInspectionService $inspectionService,
         private readonly AdditionalChargeService $additionalChargeService,
-        private readonly RentalReadinessService $readinessService
+        private readonly RentalReadinessService $readinessService,
+        private readonly TelematicsSetupService $telematicsSetupService
     ) {}
 
     public function index(ListBookingsRequest $request): JsonResponse
     {
         $bookings = $this->bookingService->paginateForAdmin(
-            $request->safe()->only(['search', 'status', 'payment_status']),
+            $request->safe()->only(['search', 'status', 'payment_status', 'group']),
             $request->integer('per_page', 15)
         );
 
-        return $this->paginated('Bookings fetched successfully.', $bookings, BookingResource::class);
+        return $this->paginated('Bookings fetched successfully.', $bookings, BookingResource::class, [
+            'status_counts' => $this->bookingService->adminStatusCounts(),
+        ]);
     }
 
     public function show(Booking $booking): JsonResponse
@@ -125,6 +131,52 @@ class BookingController extends Controller
         return $this->statusAction($request, $booking, BookingStatus::Ongoing, 'Rental started successfully.');
     }
 
+    public function startTelematicsHandover(BookingStatusRequest $request, Booking $booking): JsonResponse
+    {
+        $this->telematicsSetupService->startHandover($booking, $request->user());
+
+        return $this->success(
+            'Telematics handover started successfully.',
+            new BookingResource($booking->fresh()->load($this->detailRelations()))
+        );
+    }
+
+    public function geofenceTemplates(): JsonResponse
+    {
+        return $this->success('Active geofence templates fetched successfully.', [
+            'geofences' => Geofence::query()->where('is_active', true)->orderBy('name')->get()
+                ->map(fn (Geofence $geofence) => [
+                    'id' => $geofence->id,
+                    'name' => $geofence->name,
+                    'geometryType' => $geofence->geometry_type,
+                    'centerLatitude' => $geofence->center_latitude === null ? null : (float) $geofence->center_latitude,
+                    'centerLongitude' => $geofence->center_longitude === null ? null : (float) $geofence->center_longitude,
+                    'radiusMeters' => $geofence->radius_meters === null ? null : (float) $geofence->radius_meters,
+                    'polygonCoordinates' => $geofence->polygon_coordinates,
+                ]),
+        ]);
+    }
+
+    public function assignTelematicsGeofence(AssignBookingGeofenceRequest $request, Booking $booking): JsonResponse
+    {
+        $source = $request->filled('source_geofence_id')
+            ? Geofence::query()->findOrFail($request->integer('source_geofence_id'))
+            : null;
+        $this->telematicsSetupService->assignGeofenceSnapshot($booking, $source, array_filter([
+            'name' => $request->validated('name'),
+            'geometry_type' => $request->validated('geometry_type'),
+            'center_latitude' => $request->validated('center_latitude'),
+            'center_longitude' => $request->validated('center_longitude'),
+            'radius_meters' => $request->validated('radius_meters'),
+            'polygon_coordinates' => $request->validated('polygon_coordinates'),
+        ], fn ($value) => $value !== null), $request->user());
+
+        return $this->success(
+            'Booking geofence assigned successfully.',
+            new BookingResource($booking->fresh()->load($this->detailRelations()))
+        );
+    }
+
     public function complete(BookingStatusRequest $request, Booking $booking): JsonResponse
     {
         return $this->statusAction($request, $booking, BookingStatus::Completed, 'Rental completed successfully.');
@@ -174,6 +226,10 @@ class BookingController extends Controller
 
     public function resendConfirmationEmail(Booking $booking): JsonResponse
     {
+        if ($booking->status->isTerminal()) {
+            return $this->error('A finalized booking is view only.', [], 422);
+        }
+
         if (! in_array($booking->payment_status, [PaymentStatus::Partial, PaymentStatus::Paid], true)) {
             return $this->error(
                 'A booking confirmation email can only be sent after a successful payment.',
@@ -218,7 +274,7 @@ class BookingController extends Controller
             'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'additionalCharges.responsibleUser',
             'vehicleInspections.items', 'vehicleInspections.markers', 'vehicleInspections.signatures.user:id,name',
             'vehicleInspections.creator:id,name', 'vehicleInspections.basedOnInspection',
-            'telematicsTrips',
+            'telematicsTrips', 'bookingGeofence', 'telematicsSetupSession.bookingGeofence', 'telematicsSetupSession.steps',
         ];
     }
 }

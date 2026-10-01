@@ -15,10 +15,41 @@ import {
 } from '@/utils/calculateAge';
 
 export const basicInfoSchema = z.object({
-  address: requiredString('Address is required.').max(
+  address: z.string().max(
     1000,
     'Address must be 1000 characters or fewer.',
   ),
+  addressDetails: z
+    .object({
+      addressLine: requiredString('House or street address is required.').max(
+        255,
+        'House or street address must be 255 characters or fewer.',
+      ),
+      barangayCode: requiredString('Barangay is required.'),
+      cityMunicipalityCode: requiredString('City or municipality is required.'),
+      countryCode: z.string().refine((value) => value === 'PH', {
+        message: 'Country is required.',
+      }),
+      formattedAddress: requiredString('Complete address is required.').max(
+        1000,
+        'Address must be 1000 characters or fewer.',
+      ),
+      postalCode: requiredString('Postal code is required.').max(
+        20,
+        'Postal code must be 20 characters or fewer.',
+      ),
+      provinceCode: z.string().nullable(),
+      regionCode: requiredString('Region is required.'),
+    })
+    .superRefine((address, context) => {
+      if (!address.provinceCode && address.regionCode !== '1300000000') {
+        context.addIssue({
+          code: 'custom',
+          message: 'Province is required.',
+          path: ['provinceCode'],
+        });
+      }
+  }),
   birthdate: z
     .string()
     .min(1, { message: 'Birthdate is required.' })
@@ -39,6 +70,9 @@ export const basicInfoSchema = z.object({
       message: BOOKING_AGE_REQUIREMENT_MESSAGE,
     }),
   contactNumber: phoneSchema,
+  email: requiredString('Email address is required.')
+    .email('Enter a valid email address.')
+    .max(255, 'Email address must be 255 characters or fewer.'),
   firstName: personNameSchema('First name').max(
     100,
     'First name must be 100 characters or fewer.',

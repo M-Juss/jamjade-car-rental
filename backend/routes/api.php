@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Mobile\AddressDirectoryController;
 use App\Http\Controllers\Api\Mobile\AuthController;
 use App\Http\Controllers\Api\Mobile\BookingController;
 use App\Http\Controllers\Api\Mobile\DocumentController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\Mobile\PaymentController;
 use App\Http\Controllers\Api\Mobile\PayPalController;
 use App\Http\Controllers\Api\Mobile\ProfileController;
 use App\Http\Controllers\Api\Mobile\TelematicsController;
+use App\Http\Controllers\Api\Mobile\TelematicsSetupController;
 use App\Http\Controllers\Api\Mobile\VehicleController;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +25,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('vehicles.show');
     });
 
-    Route::middleware(['auth:sanctum', 'throttle:mobile-api'])->group(function () {
+    Route::middleware(['auth:sanctum', 'active_user', 'throttle:mobile-api'])->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -34,20 +36,27 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/profile/emergency-contact', [ProfileController::class, 'emergencyContact'])->name('profile.emergency-contact');
         Route::post('/profile/emergency-contact/skip', [ProfileController::class, 'skipEmergencyContact'])->name('profile.emergency-contact.skip');
 
-        Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
-        Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
-        Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
-        Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
-        Route::post('/bookings/{booking}/calibration', [BookingController::class, 'calibration'])->name('bookings.calibration');
+        Route::get('/address/regions', [AddressDirectoryController::class, 'regions'])->name('address.regions');
+        Route::get('/address/provinces', [AddressDirectoryController::class, 'provinces'])->name('address.provinces');
+        Route::get('/address/cities-municipalities', [AddressDirectoryController::class, 'citiesMunicipalities'])->name('address.cities-municipalities');
+        Route::get('/address/barangays', [AddressDirectoryController::class, 'barangays'])->name('address.barangays');
+
+        Route::get('/bookings', [BookingController::class, 'index'])->middleware('role:customer')->name('bookings.index');
+        Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:customer')->name('bookings.store');
+        Route::get('/bookings/{booking}', [BookingController::class, 'show'])->middleware('role:customer')->name('bookings.show');
+        Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->middleware('role:customer')->name('bookings.cancel');
+        Route::get('/telematics/setup', [TelematicsSetupController::class, 'current'])->name('telematics.setup.current');
+        Route::get('/bookings/{booking}/telematics-setup', [TelematicsSetupController::class, 'show'])->name('bookings.telematics-setup.show');
+        Route::post('/bookings/{booking}/telematics-setup/steps/{step}/attempt', [TelematicsSetupController::class, 'attempt'])->name('bookings.telematics-setup.steps.attempt');
         Route::get('/driver/services', [DriverBookingController::class, 'index'])->name('driver.services.index');
         Route::get('/driver/services/{booking}', [DriverBookingController::class, 'show'])->name('driver.services.show');
 
-        Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
-        Route::post('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
+        Route::get('/documents', [DocumentController::class, 'index'])->middleware('role:customer')->name('documents.index');
+        Route::post('/documents/upload', [DocumentController::class, 'upload'])->middleware('role:customer')->name('documents.upload');
 
-        Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
-        Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->name('paypal.orders.create');
-        Route::post('/bookings/{booking}/paypal/orders', [PayPalController::class, 'createBalanceOrder'])->name('bookings.paypal.orders.create');
+        Route::post('/payments', [PaymentController::class, 'store'])->middleware('role:customer')->name('payments.store');
+        Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->middleware('role:customer')->name('paypal.orders.create');
+        Route::post('/bookings/{booking}/paypal/orders', [PayPalController::class, 'createBalanceOrder'])->middleware('role:customer')->name('bookings.paypal.orders.create');
         Route::post('/driver/services/{booking}/paypal/orders', [PayPalController::class, 'createDriverOutstandingOrder'])->name('driver.services.paypal.orders.create');
         Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->name('paypal.orders.capture');
         Route::post('/paypal/orders/{orderId}/abandon', [PayPalController::class, 'abandonOrder'])->name('paypal.orders.abandon');

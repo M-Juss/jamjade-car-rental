@@ -84,10 +84,9 @@ export default function ProfileScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
-          <CustomerTabHeader description="Your profile and self-drive readiness." />
+          <CustomerTabHeader title="Profile" />
 
-          <View className="mt-6 overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-foreground p-5 shadow-xl shadow-foreground/15">
-            <View className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/35" />
+          <View className="mt-2 overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-foreground p-5 shadow-xl shadow-foreground/15">
             <View className="flex-row items-start gap-4">
               <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-[28px] border-2 border-surface/45 bg-surface/15">
                 {customer.profilePicture ? (
@@ -99,13 +98,15 @@ export default function ProfileScreen() {
                 )}
               </View>
               <View className="min-w-0 flex-1">
-                <StatusBadge status={customer.selfDriveStatus} />
-                <Text className="mt-3 text-[24px] font-black leading-[28px] text-surface" numberOfLines={2}>
+                <Text className="text-[24px] font-black leading-[28px] text-surface" numberOfLines={2}>
                   {fullName}
                 </Text>
                 <Text className="mt-1 text-[13px] font-semibold leading-5 text-[#D8E5FF]" numberOfLines={1}>
                   {customer.email}
                 </Text>
+                <View className="mt-2">
+                  <StatusBadge status={customer.selfDriveStatus} />
+                </View>
               </View>
             </View>
           </View>

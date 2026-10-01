@@ -32,9 +32,9 @@ export function CustomerTabScreen({
   actions,
   icon,
   stats,
-  subtitle,
   summaryText,
   summaryTitle,
+  title,
 }: CustomerTabScreenProps) {
   const insets = useSafeAreaInsets();
   const handleTabScroll = useAutoHideCustomerTabBar();
@@ -51,7 +51,7 @@ export function CustomerTabScreen({
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}>
-        <CustomerTabHeader description={subtitle} />
+        <CustomerTabHeader title={title} />
 
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     borderColor: '#DDE8FF',
     borderRadius: 28,
     borderWidth: 1,
-    marginTop: 28,
+    marginTop: 8,
     padding: 18,
     shadowColor: '#346EF6',
     shadowOffset: { height: 12, width: 0 },

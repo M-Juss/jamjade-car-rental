@@ -77,7 +77,7 @@ class ReportService
     public function analytics(string $range = '12_months'): array
     {
         $from = $this->rangeStart($range);
-        $bookings = Booking::with(['user', 'vehicle', 'payments'])
+        $bookings = Booking::with(['user', 'vehicle', 'payments', 'bookingGeofence'])
             ->when($from, fn ($query) => $query->where('created_at', '>=', $from))
             ->latest()
             ->get();
@@ -401,6 +401,8 @@ class ReportService
 
     private function bookingRow(Booking $booking): array
     {
+        $geofence = $booking->bookingGeofence;
+
         return [
             'internalId' => $booking->id,
             'bookingId' => $booking->booking_code,
@@ -411,6 +413,12 @@ class ReportService
             'totalCost' => (float) $booking->total_amount,
             'status' => $booking->status->adminLabel(),
             'statusKey' => $booking->status->value,
+            'rentalBoundary' => $geofence ? [
+                'name' => $geofence->name_snapshot,
+                'geometryType' => $geofence->geometry_type,
+                'radiusMeters' => $geofence->radius_meters === null ? null : (float) $geofence->radius_meters,
+                'polygonPointCount' => count($geofence->polygon_coordinates ?? []),
+            ] : null,
         ];
     }
 
@@ -470,10 +478,10 @@ class ReportService
             $incidentCount = $bookings->sum(
                 fn (Booking $booking) => $booking->telematicsEvents
                     ->reject(fn (TelematicsEvent $event) => in_array($event->event_type->value, [
-                        'start_trip',
-                        'pause',
-                        'resume',
-                        'location',
+                        'trip_started',
+                        'trip_paused',
+                        'trip_resumed',
+                        'trip_ended',
                     ], true))
                     ->count()
             );

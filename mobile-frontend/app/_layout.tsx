@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import '../global.css';
+import '@/services/telematics/background-location';
 
 import { themeColors } from '@/constants/theme';
 import { AuthProvider } from '@/providers/AuthProvider';

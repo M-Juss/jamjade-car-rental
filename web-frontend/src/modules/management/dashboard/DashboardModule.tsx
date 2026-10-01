@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   AlertCircle,
   CalendarCheck,
@@ -28,6 +28,7 @@ import {
   getDay,
   parse,
   startOfMonth,
+  startOfDay,
   startOfWeek,
 } from "date-fns";
 import { enUS } from "date-fns/locale";
@@ -39,9 +40,9 @@ import {
 } from "react-big-calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { formatPhilippinePeso } from "@/lib/formatters/currency";
 import { GENERIC_ERROR_MESSAGE } from "@/services/http";
@@ -119,6 +120,23 @@ function moveDate(date: Date, view: View, direction: -1 | 1) {
   if (view === "week") return addWeeks(date, direction);
 
   return addMonths(date, direction);
+}
+
+function maximumBookingsOnOneDay(events: RentalCalendarEvent[]) {
+  const bookingsByDate = new Map<string, number>();
+
+  for (const event of events) {
+    let date = startOfDay(event.start);
+    const endDate = startOfDay(event.end);
+
+    while (date <= endDate) {
+      const key = format(date, "yyyy-MM-dd");
+      bookingsByDate.set(key, (bookingsByDate.get(key) ?? 0) + 1);
+      date = addDays(date, 1);
+    }
+  }
+
+  return Math.max(0, ...bookingsByDate.values());
 }
 
 export default function Dashboard() {
@@ -204,6 +222,7 @@ export default function Dashboard() {
     start: new Date(event.start),
     end: new Date(event.end),
   }));
+  const calendarExtraHeight = view === "month" ? Math.max(0, maximumBookingsOnOneDay(events) - 2) * 22 : 0;
   const kpis = [
     {
       label: "Month Revenue",
@@ -232,15 +251,18 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen space-y-6 bg-background p-4 md:p-6 lg:p-8">
-      <div>
+    <div
+      className="dashboard-page min-h-screen space-y-6 bg-background p-4 md:p-6 lg:flex lg:flex-col lg:gap-6 lg:space-y-0 lg:overflow-hidden lg:p-8"
+      style={{ "--dashboard-calendar-extra-height": `${calendarExtraHeight}px` } as CSSProperties}
+    >
+      <div className="shrink-0">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           Overview of confirmed and active rentals across your fleet.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
         {kpis.map(({ label, value, icon, iconClassName }) => (
           <KpiCard
             key={label}
@@ -252,8 +274,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <CardContent className="px-5 pb-5">
+      <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] lg:flex lg:min-h-0 lg:flex-1">
+        <CardContent className="px-5 pb-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
           {error ? (
             <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface px-3 py-2.5 text-[12px] text-destructive">
               <span>{error}</span>
@@ -263,7 +285,7 @@ export default function Dashboard() {
             </div>
           ) : null}
 
-          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-4 flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-1.5">
               <Button variant="outline" size="icon-sm" aria-label="Previous period" onClick={() => changeDate(moveDate(currentDate, view, -1))}>
                 <ChevronLeft />
@@ -289,19 +311,21 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="relative overflow-x-auto">
+          <div className="relative overflow-x-auto lg:min-h-0 lg:flex-1">
             {isLoading ? (
               <div className="absolute inset-x-0 top-0 z-10 flex justify-end p-2 text-primary">
                 <Loader2 className="size-4 animate-spin" aria-label="Loading rentals" />
               </div>
             ) : null}
-            <div className="dashboard-calendar min-w-[680px]">
+            <div className="dashboard-calendar min-w-[680px] lg:h-full">
               <Calendar<RentalCalendarEvent>
                 localizer={localizer}
                 events={events}
                 date={currentDate}
                 view={view}
                 toolbar={false}
+                popup
+                popupOffset={{ x: 12, y: 12 }}
                 startAccessor="start"
                 endAccessor="end"
                 onNavigate={changeDate}
@@ -319,10 +343,9 @@ export default function Dashboard() {
                 })}
                 components={{
                   event: ({ event }) => (
-                    <div className="leading-tight">
-                      <span className="block truncate font-semibold">{event.bookingCode}</span>
-                      <span className="block truncate opacity-85">{event.vehicleName}</span>
-                    </div>
+                    <span className="block truncate font-semibold">
+                      {event.bookingCode} · {event.vehicleName}
+                    </span>
                   ),
                 }}
               />
@@ -331,15 +354,15 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <Sheet open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-        <SheetContent side="right" className="w-full gap-0 border-l border-border p-0 sm:max-w-[720px]">
-          <SheetHeader className="border-b border-border px-5 pb-4 pt-5">
+      <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-surface p-0 shadow-[0_24px_64px_rgba(0,0,0,0.14)] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-[720px]">
+          <DialogHeader className="border-b border-border px-5 pb-4 pt-5">
             <div className="flex items-start justify-between gap-4 pr-8">
               <div>
-                <SheetTitle className="text-[15px] font-bold text-foreground">Rental Details</SheetTitle>
-                <SheetDescription className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">
+                <DialogTitle className="text-[15px] font-bold text-foreground">Rental Details</DialogTitle>
+                <DialogDescription className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">
                   {selectedEvent?.bookingCode}
-                </SheetDescription>
+                </DialogDescription>
               </div>
               {selectedEvent ? (
                 <Badge className={`border ${bookingStatusStyle[selectedEvent.status]}`}>
@@ -347,10 +370,10 @@ export default function Dashboard() {
                 </Badge>
               ) : null}
             </div>
-          </SheetHeader>
+          </DialogHeader>
 
           {selectedEvent ? (
-            <ScrollArea className="h-[calc(100vh-76px)]">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-4 px-5 py-4">
                 <div className="rounded-2xl border border-border bg-white p-4">
                   <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Customer Information</p>
@@ -414,8 +437,8 @@ export default function Dashboard() {
               </div>
             </ScrollArea>
           ) : null}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

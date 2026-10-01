@@ -6,10 +6,12 @@ use App\Http\Controllers\Web\Admin\CustomerController;
 use App\Http\Controllers\Web\Admin\DashboardController;
 use App\Http\Controllers\Web\Admin\DocumentVerificationController;
 use App\Http\Controllers\Web\Admin\FleetTrackerController;
+use App\Http\Controllers\Web\Admin\GeofenceController;
 use App\Http\Controllers\Web\Admin\MaintenanceController;
 use App\Http\Controllers\Web\Admin\PaymentController;
+use App\Http\Controllers\Web\Admin\PersonnelController;
 use App\Http\Controllers\Web\Admin\ReportController;
-use App\Http\Controllers\Web\Admin\StaffManagementController;
+use App\Http\Controllers\Web\Admin\SelfDriveVerificationController;
 use App\Http\Controllers\Web\Admin\VehicleController;
 use App\Http\Controllers\Web\PayPalRedirectController;
 use Illuminate\Support\Facades\Route;
@@ -48,14 +50,26 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('vehicles.destroy');
         });
 
+        Route::middleware('role_or_permission:admin|manage geofences')->group(function () {
+            Route::get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
+            Route::post('/geofences', [GeofenceController::class, 'store'])->name('geofences.store');
+            Route::put('/geofences/{geofence}', [GeofenceController::class, 'update'])->name('geofences.update');
+            Route::post('/geofences/{geofence}/activate', [GeofenceController::class, 'activate'])->name('geofences.activate');
+            Route::post('/geofences/{geofence}/deactivate', [GeofenceController::class, 'deactivate'])->name('geofences.deactivate');
+            Route::delete('/geofences/{geofence}', [GeofenceController::class, 'destroy'])->name('geofences.destroy');
+        });
+
         Route::middleware('permission:manage bookings')->group(function () {
             Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
             Route::get('/bookings/drivers', [BookingController::class, 'drivers'])->name('bookings.drivers');
+            Route::get('/bookings/geofence-templates', [BookingController::class, 'geofenceTemplates'])->name('bookings.geofence-templates');
             Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
             Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
             Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
             Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/start', [BookingController::class, 'start'])->name('bookings.start');
+            Route::post('/bookings/{booking}/telematics-setup/start', [BookingController::class, 'startTelematicsHandover'])->name('bookings.telematics-setup.start');
+            Route::post('/bookings/{booking}/telematics-setup/geofence', [BookingController::class, 'assignTelematicsGeofence'])->name('bookings.telematics-setup.geofence');
             Route::post('/bookings/{booking}/returned', [BookingController::class, 'returned'])->name('bookings.returned');
             Route::post('/bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
             Route::get('/bookings/{booking}/readiness', [BookingController::class, 'readiness'])->name('bookings.readiness');
@@ -109,6 +123,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('payments.index');
 
         Route::middleware('permission:review documents')->group(function () {
+            Route::get('/self-drive-verification/customers', [SelfDriveVerificationController::class, 'index'])->name('self-drive-verification.index');
+            Route::get('/self-drive-verification/customers/{customer}', [SelfDriveVerificationController::class, 'show'])->name('self-drive-verification.show');
             Route::get('/document-verification', [DocumentVerificationController::class, 'index'])->name('documents.index');
             Route::post('/document-verification/{document}/approve', [DocumentVerificationController::class, 'approve'])->name('documents.approve');
             Route::post('/document-verification/{document}/reject', [DocumentVerificationController::class, 'reject'])->name('documents.reject');
@@ -116,14 +132,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 });
 
-Route::prefix('staff')->name('staff.')->middleware(['auth', 'active_admin', 'role:admin'])->group(function () {
-    Route::get('/modules', [StaffManagementController::class, 'modules'])->name('modules.index');
-    Route::get('/management', [StaffManagementController::class, 'index'])->name('management.index');
-    Route::get('/management/roles', [StaffManagementController::class, 'roles'])->name('management.roles.index');
-    Route::post('/management/roles', [StaffManagementController::class, 'storeRole'])->name('management.roles.store');
-    Route::put('/management/roles/{role}', [StaffManagementController::class, 'updateRole'])->name('management.roles.update');
-    Route::delete('/management/roles/{role}', [StaffManagementController::class, 'destroyRole'])->name('management.roles.destroy');
-    Route::post('/management/users', [StaffManagementController::class, 'storeUser'])->name('management.users.store');
-    Route::put('/management/users/{user}', [StaffManagementController::class, 'updateUser'])->name('management.users.update');
-    Route::delete('/management/users/{user}', [StaffManagementController::class, 'destroyUser'])->name('management.users.destroy');
+Route::prefix('admin/personnel')->name('personnel.')->middleware(['auth', 'active_admin', 'role:admin'])->group(function () {
+    Route::get('/', [PersonnelController::class, 'index'])->name('index');
+    Route::post('/users', [PersonnelController::class, 'store'])->name('users.store');
+    Route::put('/users/{user}', [PersonnelController::class, 'update'])->name('users.update');
 });

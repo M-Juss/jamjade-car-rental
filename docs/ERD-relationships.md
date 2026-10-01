@@ -11,7 +11,6 @@ This guide translates the relationships in `ERD.md` into plain sentences. “Can
 - A user can create many bookings, and each booking belongs to one user.
 - A user can act in many booking events, while a booking event may name one acting user.
 - A user can be the assigned driver for many booking assignments, while an assignment may have one driver.
-- A user can calibrate many booking assignments, while an assignment may name one calibrating user.
 - A user can make many payments, and each payment belongs to one user.
 - A user can be responsible for many additional booking charges, and each charge has one responsible user.
 - A user can create many additional booking charges, while an additional charge may name one creating user.
@@ -70,6 +69,7 @@ This guide translates the relationships in `ERD.md` into plain sentences. “Can
 - A booking can have many payments, and each payment belongs to one booking.
 - A booking can have many additional charges, and each additional charge belongs to one booking.
 - A booking can have many vehicle inspections, while a vehicle inspection may be linked to one booking.
+- A self-drive booking may have one immutable booking-geofence snapshot and one telematics setup session.
 - A booking may have one telematics trip, and each telematics trip belongs to one booking.
 - A booking can be referenced by many notifications, while a notification may be linked to one booking.
 
@@ -82,7 +82,6 @@ This guide translates the relationships in `ERD.md` into plain sentences. “Can
 
 - A booking assignment belongs to one booking, and a booking may have one assignment.
 - A booking assignment may name one driver, and a user can be the driver in many assignments.
-- A booking assignment may name one calibrating user, and a user can calibrate many assignments.
 
 ## `booking_terms`
 
@@ -146,6 +145,14 @@ This guide translates the relationships in `ERD.md` into plain sentences. “Can
 - A vehicle maintenance record may belong to one maintenance plan, and a maintenance plan can have many records.
 - A maintenance record may name one creating, starting, completing, and cancelling user; a user can hold each of those roles for many records.
 - A maintenance record may reference one resulting-condition inspection, and an inspection can be referenced by many maintenance records.
+
+## `booking_geofences` and telematics setup
+
+- A reusable geofence template can be copied into many booking snapshots; each snapshot stores its own circle or polygon geometry and remains immutable.
+- A geofence creator may create many templates. A used template cannot be soft-deleted, and soft deletion never erases the template row.
+- A booking geofence belongs to one booking and may record one source geofence template and one assigning user.
+- A telematics setup session belongs to one booking and may reference one immutable booking geofence.
+- A setup session has many append-only setup-step attempts; each attempt may name one actor user.
 
 ## `telematics_trips`
 

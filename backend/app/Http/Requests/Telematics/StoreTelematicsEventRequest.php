@@ -20,14 +20,7 @@ class StoreTelematicsEventRequest extends BaseFormRequest
             'severity' => ['nullable', 'in:low,medium,high'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'speed' => ['nullable', 'numeric', 'min:0', 'max:300'],
-            'accelerometer_x' => ['nullable', 'numeric'],
-            'accelerometer_y' => ['nullable', 'numeric'],
-            'accelerometer_z' => ['nullable', 'numeric'],
-            'gyroscope_x' => ['nullable', 'numeric'],
-            'gyroscope_y' => ['nullable', 'numeric'],
-            'gyroscope_z' => ['nullable', 'numeric'],
-            'description' => ['nullable', 'string', 'max:1000'],
+            'metadata' => ['nullable', 'array'],
             'occurred_at' => ['nullable', 'date'],
         ];
     }

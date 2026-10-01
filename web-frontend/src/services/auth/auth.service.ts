@@ -18,6 +18,8 @@ export function getDashboardPathForUser(user: AuthenticatedUser) {
 
   if (roles.includes("admin")) return "/admin";
 
+  if (!roles.includes("staff")) return "/login";
+
   const permissions = new Set(user.permissions ?? []);
   const firstAllowedModule = managementModules.find(
     (module) => !module.adminOnly && module.permission && permissions.has(module.permission),

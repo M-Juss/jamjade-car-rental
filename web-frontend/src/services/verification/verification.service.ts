@@ -1,10 +1,13 @@
 import { apiGet, apiPost, resolveAssetUrl } from "@/services/http";
 import type {
   BackendVerificationRecord,
+  BackendSelfDriveCustomer,
   DocumentType,
   FileType,
   VerificationRecord,
   VerificationStatus,
+  SelfDriveCustomer,
+  SelfDriveCustomerPage,
 } from "./types";
 
 const DOCUMENT_TYPE_LABELS: Record<string, DocumentType> = {
@@ -69,10 +72,44 @@ function toVerificationRecord(record: BackendVerificationRecord): VerificationRe
   };
 }
 
-export async function getVerificationRecords() {
-  const response = await apiGet<BackendVerificationRecord[]>("/admin/document-verification?per_page=100");
+function toCustomer(customer: BackendSelfDriveCustomer): SelfDriveCustomer {
+  return {
+    ...customer,
+    documents: customer.documents?.map(({ type, document }) => ({
+      type,
+      document: document ? toVerificationRecord(document) : null,
+    })),
+  };
+}
 
-  return response.data.map(toVerificationRecord);
+export async function getSelfDriveCustomers(params: {
+  search?: string;
+  eligibility?: "all" | "eligible" | "not_eligible";
+  page: number;
+}): Promise<SelfDriveCustomerPage> {
+  const query = new URLSearchParams({ page: String(params.page) });
+  if (params.search) query.set("search", params.search);
+  if (params.eligibility && params.eligibility !== "all") query.set("eligibility", params.eligibility);
+  const response = await apiGet<BackendSelfDriveCustomer[]>(`/admin/self-drive-verification/customers?${query}`);
+  const meta = response.meta ?? {};
+  const summary = (meta.summary ?? {}) as Partial<SelfDriveCustomerPage["summary"]>;
+
+  return {
+    customers: response.data.map(toCustomer),
+    currentPage: Number(meta.current_page ?? params.page),
+    lastPage: Number(meta.last_page ?? 1),
+    total: Number(meta.total ?? 0),
+    summary: {
+      total: Number(summary.total ?? 0),
+      eligible: Number(summary.eligible ?? 0),
+      notEligible: Number(summary.notEligible ?? 0),
+    },
+  };
+}
+
+export async function getSelfDriveCustomer(id: number): Promise<SelfDriveCustomer> {
+  const response = await apiGet<BackendSelfDriveCustomer>(`/admin/self-drive-verification/customers/${id}`);
+  return toCustomer(response.data);
 }
 
 export async function approveVerification(record: VerificationRecord) {

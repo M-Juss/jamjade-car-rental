@@ -19,6 +19,7 @@ class ListBookingsRequest extends BaseFormRequest
         return [
             'search' => ['sometimes', 'nullable', 'string', 'max:160'],
             'status' => ['sometimes', 'string', Rule::enum(BookingStatus::class)],
+            'group' => ['sometimes', 'string', Rule::in(['booking', 'history'])],
             'payment_status' => ['sometimes', 'string', Rule::enum(PaymentStatus::class)],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];

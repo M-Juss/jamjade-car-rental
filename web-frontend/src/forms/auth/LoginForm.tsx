@@ -98,6 +98,7 @@ export function LoginForm() {
       <InputWithLabel
         id="email"
         type="email"
+        inputClassName="h-11 text-sm"
         autoCapitalize="none"
         autoComplete="email"
         maxLength={160}
@@ -111,6 +112,7 @@ export function LoginForm() {
       <InputWithLabel
         id="password"
         type="password"
+        inputClassName="h-11 text-sm"
         autoComplete="current-password"
         maxLength={255}
         icon={<Lock size={20} />}
@@ -123,7 +125,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-1 rounded-sm border bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] py-1 text-white"
+        className="mt-1 min-h-11 rounded-sm border bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] px-4 py-2 text-white"
       >
         {isSubmitting ? "Logging in..." : "Login"}
       </button>

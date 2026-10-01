@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
@@ -20,13 +19,10 @@ export default function SiteHeader() {
     <header className="fixed inset-x-0 top-0 z-50 bg-[#f5f5f5]/90 backdrop-blur">
       <div className="mx-auto flex min-h-16 w-full max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-8 lg:px-20">
         <div className="flex min-w-0 items-center gap-2">
-          <Image
-            src="/JamJadeLogo.png"
-            alt="JamJade Logo"
-            width={48}
-            height={48}
-            sizes="48px"
-            className="object-contain"
+          <span
+            role="img"
+            aria-label="JamJade Logo"
+            className="size-12 shrink-0 bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] [mask-image:url('/JamJadeLogo.png')] [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]"
           />
           <p className="truncate bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-sm font-semibold text-transparent sm:text-lg">
             JAMJADE CAR RENTAL

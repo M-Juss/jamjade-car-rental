@@ -9,7 +9,6 @@ use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\BookingService;
-use App\Services\CalibrationService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,10 +17,7 @@ class BookingController extends Controller
 {
     use ApiResponseTrait;
 
-    public function __construct(
-        private readonly BookingService $bookingService,
-        private readonly CalibrationService $calibrationService
-    ) {}
+    public function __construct(private readonly BookingService $bookingService) {}
 
     public function index(ListCustomerBookingsRequest $request): JsonResponse
     {
@@ -63,21 +59,11 @@ class BookingController extends Controller
         return $this->success('Booking cancelled successfully.', new BookingResource($booking));
     }
 
-    public function calibration(Request $request, string $booking): JsonResponse
-    {
-        $booking = Booking::query()
-            ->where(fn ($query) => $query->where('booking_code', $booking)->orWhere('id', $booking))
-            ->firstOrFail();
-        $booking = $this->calibrationService->recordPassed($booking, $request->user());
-
-        return $this->success('Calibration recorded successfully.', new BookingResource($booking));
-    }
-
     private function findOwnedBooking(Request $request, string $booking): Booking
     {
         return Booking::query()
             ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'vehicleInspections', 'telematicsTrips',
-                'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events',
+                'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser')])
             ->where('user_id', $request->user()->id)
             ->where(fn ($query) => $query->where('booking_code', $booking)->orWhere('id', $booking))

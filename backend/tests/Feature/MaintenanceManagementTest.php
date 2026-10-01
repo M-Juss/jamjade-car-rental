@@ -92,9 +92,9 @@ it('authorizes and validates maintenance plan creation', function () {
     ]))->assertUnprocessable()->assertJsonValidationErrors(['interval_days']);
 });
 
-it('allows a maintenance-only admin to load module vehicles without vehicle-management access', function () {
-    $role = Role::create(['name' => 'maintenance_coordinator', 'guard_name' => 'web']);
-    $role->givePermissionTo('manage maintenance');
+it('allows Staff with maintenance permission to load module vehicles without vehicle-management access', function () {
+    $role = Role::findByName('staff', 'web');
+    $role->syncPermissions(['manage maintenance']);
     $coordinator = User::factory()->create();
     $coordinator->assignRole($role);
 

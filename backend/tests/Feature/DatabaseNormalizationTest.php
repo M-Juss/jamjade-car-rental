@@ -18,12 +18,12 @@ it('uses the normalized payment, document, and telematics tables', function () {
         ->and(Schema::hasTable('paypal_checkouts'))->toBeFalse()
         ->and(Schema::hasTable('additional_charge_paypal_checkout'))->toBeFalse()
         ->and(Schema::hasTable('customer_document_files'))->toBeTrue()
-        ->and(Schema::hasColumns('telematics_events', [
-            'trip_id',
-            'geofence_status',
-            'distance_from_allowed_area',
-            'current_area',
-        ]))->toBeTrue()
+        ->and(Schema::hasColumns('telematics_events', ['trip_id', 'metadata']))->toBeTrue()
+        ->and(Schema::hasTable('geofences'))->toBeTrue()
+        ->and(Schema::hasTable('booking_geofences'))->toBeTrue()
+        ->and(Schema::hasTable('telematics_setup_sessions'))->toBeTrue()
+        ->and(Schema::hasTable('telematics_setup_steps'))->toBeTrue()
+        ->and(Schema::hasTable('telematics_location_points'))->toBeTrue()
         ->and(Schema::hasTable('geofence_logs'))->toBeFalse();
 });
 
@@ -74,9 +74,6 @@ it('keeps booking concerns in focused child tables', function () {
     expect(Schema::getColumnListing('bookings'))->not->toContain(
         'assigned_driver_id',
         'driver_assigned_at',
-        'calibration_status',
-        'calibrated_by',
-        'calibrated_at',
         'customer_signature',
         'terms_version',
         'terms_accepted_at',

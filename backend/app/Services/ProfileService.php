@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\CustomerAgePolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -66,6 +67,7 @@ class ProfileService
                 'last_name' => $lastName,
                 'birthdate' => $birthdate->toDateString(),
                 'address' => $address,
+                ...$this->structuredAddressData($data),
                 'profile_picture' => $picturePath ?? $profile->profile_picture,
                 'profile_completed_at' => now(),
                 'driving_intent' => $drivingIntent,
@@ -91,15 +93,26 @@ class ProfileService
     public function update(User $user, array $data, ?UploadedFile $profilePicture = null)
     {
         return DB::transaction(function () use ($user, $data, $profilePicture) {
-            if (isset($data['phone_number'])) {
-                $user->forceFill(['phone_number' => $data['phone_number']])->save();
+            $userData = Arr::only($data, ['email', 'phone_number']);
+
+            if ($userData !== []) {
+                $user->forceFill($userData)->save();
             }
 
             $profile = $user->customerProfile()->firstOrCreate(['user_id' => $user->id]);
-            $profileData = collect($data)
-                ->only(['first_name', 'last_name', 'birthdate', 'address'])
-                ->filter(fn ($value) => $value !== null)
-                ->all();
+            $profileData = Arr::only($data, [
+                'first_name',
+                'last_name',
+                'birthdate',
+                'address',
+                'country_code',
+                'region_code',
+                'province_code',
+                'city_municipality_code',
+                'barangay_code',
+                'address_line',
+                'postal_code',
+            ]);
 
             if (
                 array_key_exists('birthdate', $profileData)
@@ -126,6 +139,19 @@ class ProfileService
 
             return $profile->fresh('user');
         });
+    }
+
+    private function structuredAddressData(array $data): array
+    {
+        return Arr::only($data, [
+            'country_code',
+            'region_code',
+            'province_code',
+            'city_municipality_code',
+            'barangay_code',
+            'address_line',
+            'postal_code',
+        ]);
     }
 
     public function saveEmergencyContact(User $user, array $data): EmergencyContact

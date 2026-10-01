@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, type FieldPath } from 'react-hook-form';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AvatarUploader } from '@/components/onboarding/AvatarUploader';
-import { ProfileFormSheet } from '@/components/profile';
+import { ProfileAddressFields, ProfileFormSheet } from '@/components/profile';
 import { DatePickerInput } from '@/components/ui/DatePickerInput';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
@@ -15,6 +15,7 @@ import {
 } from '@/validation';
 import {
   createCustomerProfile,
+  emptyCustomerAddress,
   getCustomerInitials,
 } from '@/lib/customer/customer-store';
 import type {
@@ -23,6 +24,7 @@ import type {
 } from '@/types/customer';
 import { updateProfile } from '@/services/api';
 import { ApiError } from '@/services/http';
+import { useAuth } from '@/providers/AuthProvider';
 import {
   BOOKING_AGE_REQUIREMENT_MESSAGE,
   getLatestEligibleBirthdateKey,
@@ -31,8 +33,16 @@ import {
 function getFormValues(customer: Customer): BasicCustomerProfileInput {
   return {
     address: customer.address,
+    addressDetails: customer.addressDetails.regionCode
+      ? customer.addressDetails
+      : {
+          ...emptyCustomerAddress,
+          addressLine: customer.address,
+          formattedAddress: customer.address,
+        },
     birthdate: customer.birthdate,
     contactNumber: customer.contactNumber,
+    email: customer.email,
     firstName: customer.firstName,
     lastName: customer.lastName,
     profilePicture: customer.profilePicture,
@@ -48,10 +58,11 @@ export function ProfilePersonalInformationForm({
   visible: boolean;
   onClose: () => void;
 }) {
+  const { refreshProfile } = useAuth();
   const { clearToast, message, showToast, title, variant } = useFormToast();
   const {
     control,
-    formState: { isSubmitting },
+    formState: { errors, isSubmitting },
     handleSubmit,
     reset,
     setError,
@@ -80,12 +91,22 @@ export function ProfilePersonalInformationForm({
     try {
       await updateProfile(values);
       createCustomerProfile(values);
+      await refreshProfile().catch(() => undefined);
       onClose();
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
-        const fieldMap: Record<string, keyof BasicCustomerProfileInput> = {
+        const fieldMap: Record<string, FieldPath<BasicCustomerProfileInput>> = {
           address: 'address',
+          address_details: 'addressDetails.provinceCode',
+          address_line: 'addressDetails.addressLine',
+          barangay_code: 'addressDetails.barangayCode',
+          city_municipality_code: 'addressDetails.cityMunicipalityCode',
+          country_code: 'addressDetails.countryCode',
+          postal_code: 'addressDetails.postalCode',
+          province_code: 'addressDetails.provinceCode',
+          region_code: 'addressDetails.regionCode',
           birthdate: 'birthdate',
+          email: 'email',
           first_name: 'firstName',
           last_name: 'lastName',
           phone_number: 'contactNumber',
@@ -174,6 +195,28 @@ export function ProfilePersonalInformationForm({
           />
           <Controller
             control={control}
+            name="email"
+            render={({ field, fieldState }) => (
+              <FormInput
+                autoCapitalize="none"
+                autoComplete="email"
+                autoCorrect={false}
+                error={fieldState.error?.message}
+                icon="mail-outline"
+                keyboardType="email-address"
+                label="Email Address"
+                maxLength={255}
+                onBlur={field.onBlur}
+                onChangeText={field.onChange}
+                placeholder="you@example.com"
+                required
+                textContentType="emailAddress"
+                value={field.value}
+              />
+            )}
+          />
+          <Controller
+            control={control}
             name="contactNumber"
             render={({ field, fieldState }) => (
               <PhoneInput
@@ -205,18 +248,17 @@ export function ProfilePersonalInformationForm({
           />
           <Controller
             control={control}
-            name="address"
-            render={({ field, fieldState }) => (
-              <FormInput
-                autoCapitalize="sentences"
-                error={fieldState.error?.message}
-                icon="location-on"
-                label="Address"
-                multiline
-                onBlur={field.onBlur}
-                onChangeText={field.onChange}
-                placeholder="House number, street, city, province"
-                required
+            name="addressDetails"
+            render={({ field }) => (
+              <ProfileAddressFields
+                errors={errors.addressDetails}
+                onChange={(addressDetails) => {
+                  field.onChange(addressDetails);
+                  setValue('address', addressDetails.formattedAddress, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                }}
                 value={field.value}
               />
             )}

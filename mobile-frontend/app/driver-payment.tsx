@@ -56,6 +56,12 @@ export default function DriverPaymentScreen() {
       orderId = order.orderId;
       const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, returnUrl);
 
+      if (result.type !== 'success') {
+        await abandonPayPalOrder(order.orderId);
+        setMessage('The PayPal checkout was closed before payment approval. No payment was made; please try again.');
+        return;
+      }
+
       if (result.type === 'success' && result.url.includes('/driver-cancel')) {
         await abandonPayPalOrder(order.orderId);
         setMessage('The PayPal payment was cancelled.');

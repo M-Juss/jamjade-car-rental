@@ -8,6 +8,16 @@ export type MobileCustomerProfile = {
   email?: string;
   phoneNumber?: string | null;
   address?: string | null;
+  addressDetails?: {
+    countryCode: string;
+    regionCode: string;
+    provinceCode: string | null;
+    cityMunicipalityCode: string;
+    barangayCode: string;
+    addressLine: string;
+    postalCode: string | null;
+    formattedAddress: string | null;
+  } | null;
   dateOfBirth?: string | null;
   birthdate?: string | null;
   profilePicture?: string;
@@ -103,11 +113,22 @@ export type MobileProfileOverview = {
 };
 
 export type ProfileUpdatePayload = {
+  email: string;
   firstName: string;
   lastName: string;
   contactNumber: string;
   birthdate: string;
   address: string;
+  addressDetails: {
+    countryCode: string;
+    regionCode: string;
+    provinceCode: string | null;
+    cityMunicipalityCode: string;
+    barangayCode: string;
+    addressLine: string;
+    postalCode: string;
+    formattedAddress: string;
+  };
   profilePicture: string;
 };
 
@@ -216,11 +237,10 @@ export type MobileBookingRecord = {
   paidAt: string;
   createdAt: string;
   adminNotes?: string | null;
-  calibrationStatus: 'locked' | 'available' | 'passed' | 'failed';
-  calibratedAt?: string | null;
+  telematicsSetupStatus?: 'locked' | 'setup_required' | 'in_progress' | 'ready_for_release' | 'released' | null;
   rentalProgress: {
     outgoingFinalized: boolean;
-    calibrationStatus: string;
+    telematicsSetupStatus?: string | null;
     tripEnded: boolean;
     latestTripId?: number | null;
     latestTripStatus?: string | null;

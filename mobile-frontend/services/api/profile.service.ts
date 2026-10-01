@@ -40,12 +40,21 @@ function getUploadType(fileName: string) {
 }
 
 function buildProfileBody(payload: ProfileUpdatePayload) {
+  const addressDetails = payload.addressDetails;
   const body = {
+    email: payload.email,
     first_name: payload.firstName,
     last_name: payload.lastName,
     phone_number: payload.contactNumber,
     birthdate: payload.birthdate,
     address: payload.address,
+    country_code: addressDetails.countryCode,
+    region_code: addressDetails.regionCode,
+    province_code: addressDetails.provinceCode ?? '',
+    city_municipality_code: addressDetails.cityMunicipalityCode,
+    barangay_code: addressDetails.barangayCode,
+    address_line: addressDetails.addressLine,
+    postal_code: addressDetails.postalCode,
   };
 
   if (!isLocalFileUri(payload.profilePicture)) {

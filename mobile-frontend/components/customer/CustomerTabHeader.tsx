@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -6,19 +6,23 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export function CustomerTabHeader({
   className,
-  description,
+  title,
 }: {
   className?: string;
-  description: string;
+  title: string;
 }) {
   return (
     <View className={cx('min-w-0', className)}>
-      <Text className="text-[27px] font-black italic leading-[31px] text-primary" numberOfLines={1}>
-        JamJade Car Rental
-      </Text>
-      <Text className="mt-1 text-[18px] font-black leading-[23px] text-foreground" numberOfLines={2}>
-        {description}
-      </Text>
+      <View className="flex-row items-center gap-2.5">
+        <Image
+          source={require('@/assets/images/JamJadeLogo.png')}
+          className="h-12 w-12"
+          resizeMode="contain"
+        />
+        <Text className="min-w-0 flex-1 text-[20px] font-black leading-6 text-foreground" numberOfLines={1}>
+          {title}
+        </Text>
+      </View>
     </View>
   );
 }

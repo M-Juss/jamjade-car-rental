@@ -49,12 +49,6 @@ export const optionalServices: OptionalService[] = [
     price: 1800,
   },
   {
-    id: 'dashcam',
-    label: 'Dashcam access',
-    description: 'Dashcam-enabled trip recording access.',
-    price: 250,
-  },
-  {
     id: 'child_seat',
     label: 'Child seat',
     description: 'Clean child safety seat installed before pickup.',

@@ -1,0 +1,12 @@
+@media (min-width: 64rem) {
+  .arrow {
+    clip-path: polygon(
+      0 0,
+      calc(100% - 1.25rem) 0,
+      100% 50%,
+      calc(100% - 1.25rem) 100%,
+      0 100%,
+      1.25rem 50%
+    );
+  }
+}

@@ -26,6 +26,14 @@ class EnsureAdminUserIsActive
             ], 403);
         }
 
+        if ($user && ($user->hasRole('driver') || ! $user->hasAnyRole(['admin', 'staff']))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This account does not have management web access.',
+                'data' => null,
+            ], 403);
+        }
+
         return $next($request);
     }
 }

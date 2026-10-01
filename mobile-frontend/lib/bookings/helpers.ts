@@ -16,8 +16,8 @@ export const formatPesoDeduction = (amount: number) => {
   return `-${formatPeso(amount)}`;
 };
 
-export const isTelematicsEnabled = (status: BookingStatus) => {
-  return status === 'Active' || status === 'Ongoing';
+export const isTelematicsEnabled = (booking: Pick<Booking, 'driverType' | 'status'>) => {
+  return booking.driverType === 'Self-Drive' && (booking.status === 'Active' || booking.status === 'Ongoing');
 };
 
 export const matchesBookingStatus = (booking: Booking, status: BookingStatusFilter) => {
@@ -46,7 +46,7 @@ export const getBookingSummaryCounts = (sourceBookings: Booking[]) => {
   return {
     total: sourceBookings.length,
     pending: sourceBookings.filter((booking) => booking.status === 'Pending').length,
-    active: sourceBookings.filter((booking) => isTelematicsEnabled(booking.status)).length,
+    active: sourceBookings.filter(isTelematicsEnabled).length,
     completed: sourceBookings.filter((booking) => booking.status === 'Completed').length,
   };
 };

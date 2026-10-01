@@ -56,7 +56,7 @@ export type VehicleRecord = {
 
 export type ShowcaseVehicle = Pick<
   VehicleRecord,
-  "id" | "name" | "pricePerDay" | "seats" | "color" | "transmission" | "fuelType" | "image" | "images"
+  "id" | "name" | "brand" | "model" | "pricePerDay" | "seats" | "color" | "transmission" | "fuelType" | "image" | "images"
 > & {
   cardImage?: string | null;
 };
@@ -105,7 +105,7 @@ export type VehicleInspectionRecord = {
   }>;
   signatures?: Array<{
     id: string;
-    signerType: "personnel" | "renter";
+    signerType: "personnel" | "renter" | "driver";
     userId?: string | null;
     signerName: string;
     signedAt?: string | null;

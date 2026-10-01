@@ -16,7 +16,7 @@ class BookingResource extends JsonResource
     {
         // Booking details are normalized into focused child tables. Load them once
         // so the existing API response remains stable without N+1 accessor queries.
-        $this->resource->loadMissing(['assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events']);
+        $this->resource->loadMissing(['assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession']);
 
         $isManagement = (bool) $request->user()?->can('manage bookings');
         $isDriverView = $request->user()?->id === $this->assigned_driver_id
@@ -66,8 +66,11 @@ class BookingResource extends JsonResource
                 'phoneNumber' => $this->assignedDriver->phone_number,
             ] : null,
             'driverAssignedAt' => $this->driver_assigned_at?->toISOString(),
-            'calibrationStatus' => $this->calibration_status,
-            'calibratedAt' => $this->calibrated_at?->toISOString(),
+            'telematicsSetupStatus' => $this->telematicsSetupSession?->status?->value,
+            'telematicsHandover' => $this->when(
+                $isManagement && $this->rental_type->value === 'self_drive',
+                fn () => new TelematicsHandoverResource($this->resource)
+            ),
             'returnedAt' => $this->returned_at?->toISOString(),
             'completedAt' => $this->completed_at?->toISOString(),
             'returnChargesFinalizedAt' => $this->return_charges_finalized_at?->toISOString(),
@@ -123,8 +126,8 @@ class BookingResource extends JsonResource
             'rentalProgress' => [
                 'outgoingFinalized' => $this->relationLoaded('vehicleInspections')
                     ? $this->vehicleInspections->contains(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized')
-                    : false,
-                'calibrationStatus' => $this->calibration_status,
+                    : (bool) ($this->outgoing_finalized ?? false),
+                'telematicsSetupStatus' => $this->telematicsSetupSession?->status?->value,
                 'tripEnded' => $this->relationLoaded('telematicsTrips')
                     ? $this->telematicsTrips->contains(fn ($trip) => $trip->status === 'ended')
                     : false,
@@ -136,7 +139,7 @@ class BookingResource extends JsonResource
                     : null,
                 'incomingFinalized' => $this->relationLoaded('vehicleInspections')
                     ? $this->vehicleInspections->contains(fn ($inspection) => $inspection->type->value === 'incoming' && $inspection->status->value === 'finalized')
-                    : false,
+                    : (bool) ($this->incoming_finalized ?? false),
             ],
             'customer' => $this->whenLoaded('user', function () use ($isManagement, $request) {
                 if ($isManagement || $request->user()?->id === $this->user_id) {

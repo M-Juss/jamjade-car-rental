@@ -40,6 +40,7 @@ import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
 import { startBookingFlow } from '@/lib/browse/booking-flow';
 import { SHOP_LOCATION, JAMJADE_GARAGE } from '@/lib/browse/rental-config';
+import { isFuturePickupTime } from '@/lib/browse/pickup-time';
 import {
   DELIVERY_FEE,
   OWNER_DRIVER_METRO_MANILA_DAILY_RATE,
@@ -377,6 +378,11 @@ export function BookingForm() {
     ) {
       setValue('returnDate', '', { shouldDirty: true });
     }
+
+    if (deliveryTime && !isFuturePickupTime(nextRentalDate, deliveryTime)) {
+      setValue('deliveryTime', '', { shouldDirty: true });
+      clearErrors('deliveryTime');
+    }
   };
 
   const handleReturnDateChange = (nextReturnDate: string) => {
@@ -634,6 +640,7 @@ export function BookingForm() {
                   placeholder="Select pickup time"
                   value={deliveryTime}
                   onChange={handleDeliveryTimeChange}
+                  pickupDate={rentalDate}
                   wrapperClassName="mt-4"
                 />
               </Section>

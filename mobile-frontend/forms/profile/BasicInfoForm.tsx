@@ -1,12 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, type Href } from 'expo-router';
 import { ShieldCheck } from 'lucide-react-native';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, type FieldPath } from 'react-hook-form';
 import { View } from 'react-native';
 
 import { AvatarUploader } from '@/components/onboarding/AvatarUploader';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenFrame';
+import { ProfileAddressFields } from '@/components/profile/ProfileAddressFields';
 import { BottomActionButton } from '@/components/ui/BottomActionButton';
 import { DatePickerInput } from '@/components/ui/DatePickerInput';
 import { FormInput } from '@/components/ui/FormInput';
@@ -18,6 +19,7 @@ import {
 } from '@/validation';
 import {
   createCustomerProfile,
+  emptyCustomerAddress,
   getCustomerInitials,
   useCustomer,
 } from '@/lib/customer/customer-store';
@@ -61,8 +63,16 @@ export function BasicInfoForm() {
   } = useForm<BasicCustomerProfileInput>({
     defaultValues: {
       address: customer.address,
+      addressDetails: customer.addressDetails.regionCode
+        ? customer.addressDetails
+        : {
+            ...emptyCustomerAddress,
+            addressLine: customer.address,
+            formattedAddress: customer.address,
+          },
       birthdate: customer.birthdate,
       contactNumber: customer.contactNumber,
+      email: customer.email,
       firstName: customer.firstName,
       lastName: customer.lastName,
       profilePicture: customer.profilePicture,
@@ -83,8 +93,16 @@ export function BasicInfoForm() {
       router.push('/onboarding/emergency-contact' as Href);
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
-        const fieldMap: Record<string, keyof BasicCustomerProfileInput> = {
+        const fieldMap: Record<string, FieldPath<BasicCustomerProfileInput>> = {
           address: 'address',
+          address_details: 'addressDetails.provinceCode',
+          address_line: 'addressDetails.addressLine',
+          barangay_code: 'addressDetails.barangayCode',
+          city_municipality_code: 'addressDetails.cityMunicipalityCode',
+          country_code: 'addressDetails.countryCode',
+          postal_code: 'addressDetails.postalCode',
+          province_code: 'addressDetails.provinceCode',
+          region_code: 'addressDetails.regionCode',
           birthdate: 'birthdate',
           first_name: 'firstName',
           last_name: 'lastName',
@@ -209,18 +227,17 @@ export function BasicInfoForm() {
             />
             <Controller
               control={control}
-              name="address"
-              render={({ field, fieldState }) => (
-                <FormInput
-                  autoCapitalize="sentences"
-                  error={fieldState.error?.message}
-                  icon="location-on"
-                  label="Address"
-                  multiline
-                  onBlur={field.onBlur}
-                  onChangeText={field.onChange}
-                  placeholder="House number, street, city, province"
-                  required
+              name="addressDetails"
+              render={({ field }) => (
+                <ProfileAddressFields
+                  errors={errors.addressDetails}
+                  onChange={(addressDetails) => {
+                    field.onChange(addressDetails);
+                    setValue('address', addressDetails.formattedAddress, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
                   value={field.value}
                 />
               )}

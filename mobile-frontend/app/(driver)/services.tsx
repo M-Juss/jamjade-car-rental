@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { CreditCard, Gauge, MapPin, Play, Square } from 'lucide-react-native';
+import { CreditCard, MapPin } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
@@ -8,10 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import {
-  endTelematicsTrip,
   getDriverServices,
-  recordBookingCalibration,
-  startTelematicsTrip,
 } from '@/services/api';
 import type { Booking } from '@/types/booking';
 
@@ -21,8 +18,7 @@ function serviceStage(booking: Booking) {
   if (booking.status === 'Completed' || booking.status === 'Returned' || booking.status === 'Cancelled') return 'Finished';
   if (booking.rentalProgress.tripEnded) return 'Trip Ended · Awaiting Incoming Inspection';
   if (booking.status === 'Ongoing' || booking.status === 'Active') return 'Active Service';
-  if (booking.calibrationStatus === 'passed') return 'Ready · Waiting for Jamjade';
-  if (booking.rentalProgress.outgoingFinalized) return 'Calibration Available';
+  if (booking.telematicsSetupStatus === 'ready_for_release') return 'Ready · Waiting for Jamjade';
   return 'Assigned · Awaiting Outgoing Inspection';
 }
 
@@ -55,31 +51,6 @@ export default function DriverServicesScreen() {
     return booking.status === 'Confirmed' || booking.status === 'Pending';
   }), [filter, services]);
 
-  const calibrate = async (booking: Booking) => {
-    try {
-      await recordBookingCalibration(booking.id);
-      setMessage('Calibration complete. Waiting for Jamjade to start the rental.');
-      await loadServices();
-    } catch {
-      setMessage('Calibration is not available until Outgoing Inspection is finalized.');
-    }
-  };
-
-  const toggleTrip = async (booking: Booking) => {
-    try {
-      if (booking.rentalProgress.latestTripId && booking.rentalProgress.latestTripStatus !== 'ended') {
-        await endTelematicsTrip(booking.rentalProgress.latestTripId);
-        setMessage('Trip ended. Booking remains ongoing until Jamjade completes the return inspection.');
-      } else {
-        await startTelematicsTrip(booking.backendId);
-        setMessage('Driving session started.');
-      }
-      await loadServices();
-    } catch {
-      setMessage('The trip action could not be completed. Check the current service state.');
-    }
-  };
-
   return (
     <View className="flex-1 bg-background">
       <ScrollView
@@ -88,9 +59,9 @@ export default function DriverServicesScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: insets.bottom + 110, paddingTop: insets.top + 12 }}>
-          <CustomerTabHeader description="Your assigned Jamjade rentals." />
+          <CustomerTabHeader title="Services" />
 
-          <View className="mt-5 flex-row gap-2">
+          <View className="mt-2 flex-row gap-2">
             {(['Upcoming', 'Active', 'History'] as ServiceFilter[]).map((item) => (
               <Pressable key={item} onPress={() => setFilter(item)} className={`min-h-[42px] flex-1 items-center justify-center rounded-full border ${filter === item ? 'border-primary bg-primary' : 'border-border bg-surface'}`}>
                 <Text className={`text-[12px] font-black ${filter === item ? 'text-surface' : 'text-foreground'}`}>{item}</Text>
@@ -103,8 +74,6 @@ export default function DriverServicesScreen() {
 
           <View className="mt-5 gap-4">
             {visible.map((booking) => {
-              const canCalibrate = booking.calibrationStatus === 'available';
-              const isActiveTrip = booking.rentalProgress.latestTripStatus === 'started' || booking.rentalProgress.latestTripStatus === 'paused';
               const driverBalance = booking.additionalCharges.filter((charge) => charge.paymentStatus !== 'paid').reduce((sum, charge) => sum + charge.amount, 0);
 
               return (
@@ -124,17 +93,6 @@ export default function DriverServicesScreen() {
                   </View>
                   <Text className="mt-4 text-[12px] font-black text-foreground">{serviceStage(booking)}</Text>
 
-                  {canCalibrate ? (
-                    <Pressable onPress={() => void calibrate(booking)} className="mt-4 min-h-[48px] flex-row items-center justify-center gap-2 rounded-full bg-primary">
-                      <Gauge color="#FFFFFF" size={18} /><Text className="text-[13px] font-black text-surface">Run Calibration</Text>
-                    </Pressable>
-                  ) : null}
-                  {(booking.status === 'Ongoing' || booking.status === 'Active') && !booking.rentalProgress.tripEnded ? (
-                    <Pressable onPress={() => void toggleTrip(booking)} className="mt-3 min-h-[48px] flex-row items-center justify-center gap-2 rounded-full bg-success">
-                      {isActiveTrip ? <Square color="#FFFFFF" size={17} /> : <Play color="#FFFFFF" size={17} />}
-                      <Text className="text-[13px] font-black text-surface">{isActiveTrip ? 'End Trip' : 'Start Trip'}</Text>
-                    </Pressable>
-                  ) : null}
                   {driverBalance > 0 ? (
                     <Pressable onPress={() => router.push(`/driver-payment?bookingId=${encodeURIComponent(booking.id)}` as Href)} className="mt-3 min-h-[48px] flex-row items-center justify-center gap-2 rounded-full border border-primary bg-surface">
                       <CreditCard color="#346EF6" size={18} /><Text className="text-[13px] font-black text-primary">Review & Pay Driver Charges</Text>

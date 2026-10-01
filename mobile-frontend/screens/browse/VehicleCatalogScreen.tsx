@@ -188,10 +188,10 @@ export function VehicleCatalogScreen({ mode, onScroll }: VehicleCatalogScreenPro
           {mode === 'guest' ? (
             <GuestCatalogHeader />
           ) : (
-            <CustomerTabHeader description="Choose the right car for your next trip." />
+            <CustomerTabHeader title="Browse Cars" />
           )}
 
-          <View className="mt-6">
+          <View className="mt-2">
             <SearchInput
               activeFilterCount={activeFilterCount}
               value={searchTerm}

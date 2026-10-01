@@ -7,6 +7,7 @@ import type {
 } from '@/services/api';
 import type {
   BasicCustomerProfileInput,
+  CustomerAddress,
   Customer,
   CustomerDocumentId,
   CustomerDocumentRejectionReasons,
@@ -27,6 +28,17 @@ const emptyEmergencyContact: EmergencyContact = {
   name: '',
   contactNumber: '',
   relationship: '',
+};
+
+export const emptyCustomerAddress: CustomerAddress = {
+  countryCode: 'PH',
+  regionCode: '',
+  provinceCode: null,
+  cityMunicipalityCode: '',
+  barangayCode: '',
+  addressLine: '',
+  postalCode: '',
+  formattedAddress: '',
 };
 
 const emptyDocuments = {
@@ -60,6 +72,7 @@ export const emptyCustomer: Customer = {
   birthdate: '',
   age: null,
   address: '',
+  addressDetails: { ...emptyCustomerAddress },
   profilePicture: '',
   emergencyContact: emptyEmergencyContact,
   emergencyContactSkipped: false,
@@ -172,6 +185,18 @@ export function hydrateCustomerFromUser(user: MobileUser) {
     birthdate,
     age,
     address: profile?.address ?? '',
+    addressDetails: profile?.addressDetails
+      ? {
+          countryCode: profile.addressDetails.countryCode,
+          regionCode: profile.addressDetails.regionCode,
+          provinceCode: profile.addressDetails.provinceCode,
+          cityMunicipalityCode: profile.addressDetails.cityMunicipalityCode,
+          barangayCode: profile.addressDetails.barangayCode,
+          addressLine: profile.addressDetails.addressLine,
+          postalCode: profile.addressDetails.postalCode ?? '',
+          formattedAddress: profile.addressDetails.formattedAddress ?? profile.address ?? '',
+        }
+      : { ...emptyCustomerAddress },
     profilePicture: profile?.profilePicture ?? '',
     documents: {
       ...currentCustomer.documents,
@@ -336,6 +361,7 @@ export function resetCustomer() {
   customer = {
     ...emptyCustomer,
     emergencyContact: { ...emptyEmergencyContact },
+    addressDetails: { ...emptyCustomerAddress },
     documents: { ...emptyDocuments },
     documentStatuses: { ...emptyDocumentStatuses },
     documentRejectionReasons: { ...emptyDocumentRejectionReasons },

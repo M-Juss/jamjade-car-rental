@@ -41,7 +41,8 @@ class BookingService
         private readonly VehicleAvailabilityService $availabilityService,
         private readonly VehicleOperationalStatusService $operationalStatusService,
         private readonly RentalReadinessService $readinessService,
-        private readonly AdditionalChargeService $additionalChargeService
+        private readonly AdditionalChargeService $additionalChargeService,
+        private readonly TelematicsSetupService $telematicsSetup
     ) {}
 
     public function paginateForUser(User $user, array $filters = [], int $perPage = 10): LengthAwarePaginator
@@ -49,13 +50,9 @@ class BookingService
         return Booking::query()
             ->with([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
-                'assignment', 'terms', 'confirmationEmail', 'events',
+                'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
             ])
             ->where('user_id', $user->id)
-            ->whereDoesntHave(
-                'paypalCheckouts',
-                fn ($query) => $query->where('status', '!=', 'completed')
-            )
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->latest()
             ->paginate($perPage);
@@ -64,25 +61,43 @@ class BookingService
     public function paginateForAdmin(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Booking::query()
+            ->withExists([
+                'vehicleInspections as outgoing_finalized' => fn ($query) => $query->where('type', 'outgoing')->where('status', 'finalized'),
+                'vehicleInspections as incoming_finalized' => fn ($query) => $query->where('type', 'incoming')->where('status', 'finalized'),
+            ])
             ->with([
                 'vehicle.images', 'user.customerProfile', 'user.documents', 'payments', 'assignedDriver',
-                'assignment', 'terms', 'confirmationEmail', 'events',
+                'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
             ])
-            ->whereDoesntHave(
-                'paypalCheckouts',
-                fn ($query) => $query->where('status', '!=', 'completed')
-            )
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('booking_code', 'like', "%{$search}%")
                         ->orWhereHas('vehicle', fn ($query) => $query->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('user', fn ($query) => $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
+                    if (ctype_digit($search)) {
+                        $query->orWhere('vehicle_id', (int) $search);
+                    }
                 });
             })
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
             ->when($filters['payment_status'] ?? null, fn ($query, string $status) => $query->where('payment_status', $status))
+            ->when($filters['group'] ?? null, fn ($query, string $group) => $group === 'history'
+                ? $query->whereIn('status', BookingStatus::terminalValues())
+                : $query->whereNotIn('status', BookingStatus::terminalValues()))
             ->latest()
+            ->orderByDesc('id')
             ->paginate($perPage);
+    }
+
+    /** @return array<string, int> */
+    public function adminStatusCounts(): array
+    {
+        return Booking::query()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->map(fn ($total) => (int) $total)
+            ->all();
     }
 
     public function create(User $user, array $data, ?UploadedFile $paymentProof = null): Booking
@@ -124,6 +139,7 @@ class BookingService
 
             if ($targetStatus === BookingStatus::Ongoing) {
                 $booking->vehicle->update(['status' => VehicleStatus::Rented]);
+                $this->telematicsSetup->markReleased($booking);
             }
 
             if (in_array($targetStatus, [BookingStatus::Returned, BookingStatus::Cancelled, BookingStatus::Rejected], true)) {
@@ -153,7 +169,7 @@ class BookingService
 
             return $booking->fresh([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
-                'assignment', 'terms', 'confirmationEmail', 'events',
+                'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
             ]);
         });
     }

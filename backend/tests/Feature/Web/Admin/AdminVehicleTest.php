@@ -3,6 +3,7 @@
 use App\Enums\UserRole;
 use App\Enums\VehicleStatus;
 use App\Models\User;
+use App\Models\Vehicle;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -70,6 +71,29 @@ it('allows owners to create unavailable vehicles', function () {
         'name' => 'Toyota Fortuner V',
         'status' => VehicleStatus::Unavailable->value,
     ]);
+});
+
+it('rejects retired dashcam features on create and update', function (string $feature) {
+    $owner = ownerUser();
+
+    $this->actingAs($owner)->postJson('/admin/vehicles', vehiclePayload([
+        'features' => ['Air Conditioning', $feature],
+    ]))->assertUnprocessable()->assertJsonValidationErrors('features');
+
+    $vehicle = Vehicle::factory()->create();
+    $vehicle->features()->create(['feature_name' => 'Air Conditioning']);
+
+    $this->putJson("/admin/vehicles/{$vehicle->id}", [
+        'features' => ['Air Conditioning', $feature],
+    ])->assertUnprocessable()->assertJsonValidationErrors('features');
+
+    expect($vehicle->fresh()->features->pluck('feature_name')->all())->toBe(['Air Conditioning']);
+})->with(['Dashcam', 'dashcam', ' DASHCAM ']);
+
+it('continues to accept non-recording vehicle features', function () {
+    $this->actingAs(ownerUser())->postJson('/admin/vehicles', vehiclePayload([
+        'features' => ['Reverse Camera', 'GPS Navigation'],
+    ]))->assertCreated()->assertJsonPath('data.features', ['GPS Navigation', 'Reverse Camera']);
 });
 
 it('stores uploaded vehicle images as public storage paths', function () {

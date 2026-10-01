@@ -61,9 +61,6 @@ class Booking extends Model
         // These accessors persist to connected booking detail tables.
         'assigned_driver_id',
         'driver_assigned_at',
-        'calibration_status',
-        'calibrated_by',
-        'calibrated_at',
         'customer_signature',
         'terms_version',
         'terms_accepted_at',
@@ -185,6 +182,16 @@ class Booking extends Model
         return $this->hasMany(TelematicsTrip::class);
     }
 
+    public function bookingGeofence(): HasOne
+    {
+        return $this->hasOne(BookingGeofence::class);
+    }
+
+    public function telematicsSetupSession(): HasOne
+    {
+        return $this->hasOne(TelematicsSetupSession::class);
+    }
+
     public function vehicleInspections(): HasMany
     {
         return $this->hasMany(VehicleInspection::class);
@@ -269,36 +276,6 @@ class Booking extends Model
     public function setDriverAssignedAtAttribute(mixed $value): void
     {
         $this->pendingAssignment['assigned_at'] = $value;
-    }
-
-    public function getCalibrationStatusAttribute(): string
-    {
-        return (string) ($this->assignmentValue('calibration_status') ?? 'locked');
-    }
-
-    public function setCalibrationStatusAttribute(mixed $value): void
-    {
-        $this->pendingAssignment['calibration_status'] = $value;
-    }
-
-    public function getCalibratedByAttribute(): ?int
-    {
-        return ($value = $this->assignmentValue('calibrated_by')) === null ? null : (int) $value;
-    }
-
-    public function setCalibratedByAttribute(mixed $value): void
-    {
-        $this->pendingAssignment['calibrated_by'] = $value;
-    }
-
-    public function getCalibratedAtAttribute(): mixed
-    {
-        return $this->assignmentValue('calibrated_at');
-    }
-
-    public function setCalibratedAtAttribute(mixed $value): void
-    {
-        $this->pendingAssignment['calibrated_at'] = $value;
     }
 
     public function getCustomerSignatureAttribute(): ?string

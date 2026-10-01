@@ -19,7 +19,8 @@ class BookingInspectionService
     public function __construct(
         private readonly VehicleInspectionService $inspections,
         private readonly RentalReadinessService $readiness,
-        private readonly NotificationService $notifications
+        private readonly NotificationService $notifications,
+        private readonly TelematicsSetupService $telematicsSetup
     ) {}
 
     public function finalizeOutgoing(Booking $booking, array $condition, string $operatorSignature, User $actor): VehicleInspection
@@ -127,13 +128,7 @@ class BookingInspectionService
                 $inspection->forceFill(['status' => VehicleInspectionStatus::Finalized, 'finalized_at' => now()])->save();
 
                 if ($type === VehicleInspectionType::Outgoing) {
-                    $booking->assignment()->updateOrCreate([], [
-                        'calibration_status' => 'available',
-                        'calibrated_by' => null,
-                        'calibrated_at' => null,
-                    ]);
-                    $booking->unsetRelation('assignment');
-                    $booking->unsetRelation('assignedDriver');
+                    $this->telematicsSetup->enableForFinalizedOutgoing($booking);
                 } else {
                     $vehicle->forceFill(['current_condition_inspection_id' => $inspection->id])->save();
                 }
@@ -143,10 +138,10 @@ class BookingInspectionService
                     ->withProperties(['booking_id' => $booking->id, 'based_on_inspection_id' => $source->id])
                     ->log("Booking {$type->label()} inspection finalized.");
 
-                if ($type === VehicleInspectionType::Outgoing) {
-                    $this->notifications->createForUser($operator, 'trip', 'Calibration available',
-                        "Calibration is now available for booking {$booking->booking_code}.", [
-                            'booking_id' => $booking->id, 'action' => 'start_calibration', 'action_label' => 'Start Calibration',
+                if ($type === VehicleInspectionType::Outgoing && $booking->rental_type === RentalType::SelfDrive) {
+                    $this->notifications->createForUser($operator, 'trip', 'Telematics handover required',
+                        "Jamjade personnel must start telematics handover for booking {$booking->booking_code} before setup can continue.", [
+                            'booking_id' => $booking->id,
                         ]);
                 }
 

@@ -89,7 +89,7 @@ const TERMS_SECTIONS: TermsSection[] = [
         title: 'Clutch damage will be charged PHP 9,000.00.',
       },
       {
-        title: 'Before operating the vehicle, the renter must calibrate the telematics in the mobile application. Telematics must be active while the vehicle is in motion and may be paused when the renter is outside the vehicle.',
+        title: 'Before operating the vehicle, the renter must complete Jamjade’s staff-controlled telematics handover. Any future mobile monitoring requires clear consent and an authorized trip start.',
       },
     ],
   },

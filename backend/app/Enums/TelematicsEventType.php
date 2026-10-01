@@ -4,34 +4,38 @@ namespace App\Enums;
 
 enum TelematicsEventType: string
 {
-    case StartTrip = 'start_trip';
-    case Pause = 'pause';
-    case Resume = 'resume';
-    case Location = 'location';
-    case HarshBrake = 'harsh_brake';
-    case SuddenAcceleration = 'sudden_acceleration';
-    case SharpTurn = 'sharp_turn';
+    case TripStarted = 'trip_started';
+    case TripPaused = 'trip_paused';
+    case TripResumed = 'trip_resumed';
+    case TripEnded = 'trip_ended';
+    case GeofenceEnter = 'geofence_enter';
     case GeofenceExit = 'geofence_exit';
-    case GpsLost = 'gps_lost';
-    case Overspeed = 'overspeed';
-    case AccidentHumanError = 'accident_human_error';
-    case AccidentTechnicalError = 'accident_technical_error';
+    case GpsUnavailable = 'gps_unavailable';
+    case LocationPermissionRevoked = 'location_permission_revoked';
+    case DeviceOrientationChanged = 'device_orientation_changed';
+    case TelemetryInterrupted = 'telemetry_interrupted';
+    case HarshAcceleration = 'harsh_acceleration';
+    case HarshBraking = 'harsh_braking';
+    case HarshLeftTurn = 'harsh_left_turn';
+    case HarshRightTurn = 'harsh_right_turn';
 
     public function label(): string
     {
         return match ($this) {
-            self::StartTrip => 'Start trip',
-            self::Pause => 'Pause',
-            self::Resume => 'Resume',
-            self::Location => 'Location update',
-            self::HarshBrake => 'Harsh brake',
-            self::SuddenAcceleration => 'Sudden acceleration',
-            self::SharpTurn => 'Sharp turn',
+            self::TripStarted => 'Trip started',
+            self::TripPaused => 'Trip paused',
+            self::TripResumed => 'Trip resumed',
+            self::TripEnded => 'Trip ended',
+            self::GeofenceEnter => 'Geofence entered',
             self::GeofenceExit => 'Geofence exit',
-            self::GpsLost => 'GPS lost',
-            self::Overspeed => 'Overspeed',
-            self::AccidentHumanError => 'Accident - human error',
-            self::AccidentTechnicalError => 'Accident - technical error',
+            self::GpsUnavailable => 'GPS unavailable',
+            self::LocationPermissionRevoked => 'Location permission revoked',
+            self::DeviceOrientationChanged => 'Device orientation changed',
+            self::TelemetryInterrupted => 'Telemetry interrupted',
+            self::HarshAcceleration => 'Harsh acceleration',
+            self::HarshBraking => 'Harsh braking',
+            self::HarshLeftTurn => 'Harsh left turn',
+            self::HarshRightTurn => 'Harsh right turn',
         };
     }
 }

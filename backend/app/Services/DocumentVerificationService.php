@@ -76,17 +76,6 @@ class DocumentVerificationService
                 ])->save();
 
                 $this->refreshCustomerSelfDriveStatus($user);
-                $label = CustomerDocument::labelFor($documentType);
-
-                $this->notificationService->createForDocument(
-                    $document,
-                    "{$label} verification pending",
-                    "Pending review: Your {$label} was submitted to Jamjade.",
-                    [
-                        'action_label' => 'View Review Status',
-                        'full_message' => "Status: Pending review. Your {$label} was submitted successfully. Jamjade will notify you when it is approved or needs to be uploaded again.",
-                    ]
-                );
 
                 activity()
                     ->causedBy($user)

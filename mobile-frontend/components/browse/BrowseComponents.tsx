@@ -205,17 +205,11 @@ export function VehicleCard({
         <View className="flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1 pr-12">
             <Text className="text-[21px] font-black leading-[25px] text-[#10203F]" numberOfLines={2}>
-              {vehicle.name}
+              {[vehicle.name, vehicle.model].filter(Boolean).join(' ')}
             </Text>
-            <Text className="mt-1 text-[12px] font-bold text-[#6E81A6]" numberOfLines={1}>
-              {vehicle.brand} · {vehicle.model}
+            <Text className="mt-0.5 text-[12px] font-bold text-[#6E81A6]" numberOfLines={1}>
+              {vehicle.brand}
             </Text>
-            <View className="mt-2 flex-row items-baseline gap-1.5">
-              <Text className="text-[18px] font-black leading-[21px] text-foreground" numberOfLines={1}>
-                {formatPeso(vehicle.pricePerDay)}
-              </Text>
-              <Text className="text-[11px] font-black uppercase tracking-[0.45px] text-[#6E81A6]">/day</Text>
-            </View>
           </View>
         </View>
 
@@ -250,10 +244,15 @@ export function VehicleCard({
           ))}
         </View>
 
-        <View className="mt-3 flex-row items-center justify-between rounded-[18px] bg-muted px-4 py-3">
-          <Text className="text-[12px] font-black uppercase tracking-[0.45px] text-primary">Full info</Text>
+        <View className="mt-3 flex-row items-center justify-between gap-3 px-1">
+          <View className="min-w-0 flex-row items-baseline gap-1.5">
+            <Text className="text-[21px] font-black leading-6 text-foreground" numberOfLines={1}>
+              {formatPeso(vehicle.pricePerDay)}
+            </Text>
+            <Text className="text-[11px] font-bold text-muted-foreground">/ day</Text>
+          </View>
           <View className="flex-row items-center gap-1">
-            <Text className="text-[12px] font-black text-foreground">View details</Text>
+            <Text className="text-[12px] font-bold text-primary">View details</Text>
             <ChevronRight size={16} color="#346EF6" strokeWidth={2.8} />
           </View>
         </View>
@@ -530,9 +529,11 @@ export function VehicleDetailsDrawer({
         style={{ paddingBottom: 112 + insets.bottom }}>
         <View className="flex-row items-start gap-4">
           <View className="min-w-0 flex-1">
-            <Text className="text-[31px] font-black leading-[36px] text-[#0F172A]">{vehicle.name}</Text>
-            <Text className="mt-1 text-[13px] font-bold text-muted-foreground">
-              {vehicle.brand} · {vehicle.model}
+            <Text className="text-[31px] font-black leading-[36px] text-[#0F172A]">
+              {[vehicle.name, vehicle.model].filter(Boolean).join(' ')}
+            </Text>
+            <Text className="mt-0.5 text-[13px] font-bold text-muted-foreground">
+              {vehicle.brand}
             </Text>
           </View>
           <View className="items-end">
@@ -575,15 +576,7 @@ export function VehicleDetailsDrawer({
         <View
           className="absolute bottom-0 left-0 right-0 border-t border-[#EAF0FB] bg-surface/95 px-5 pt-4"
           style={{ paddingBottom: Math.max(insets.bottom + 24, 24) }}>
-        <View className="flex-row items-center gap-4">
-          <View className="flex-1">
-            <Text className="text-[12px] font-bold text-subtle-foreground">Starts at</Text>
-            <Text className="text-[20px] font-black text-foreground">
-              {formatPeso(vehicle.pricePerDay)}
-              <Text className="text-[12px] font-extrabold text-subtle-foreground"> / day</Text>
-            </Text>
-          </View>
-          <View className="relative flex-[1.1]">
+          <View className="relative">
             <Pressable
               accessibilityLabel={bookNowDisabled ? 'Book Now unavailable until your balance is settled' : 'Book Now'}
               accessibilityRole="button"
@@ -612,7 +605,6 @@ export function VehicleDetailsDrawer({
               </View>
             ) : null}
           </View>
-        </View>
         </View>
       </Animated.View>
       {bookNowDisabled && bookNowInfo ? (

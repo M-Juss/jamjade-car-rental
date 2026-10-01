@@ -44,6 +44,7 @@
                 <th>Vehicle</th>
                 <th>Rental Date</th>
                 <th>Return Date</th>
+                <th>Rental Boundary</th>
                 <th>Total</th>
                 <th>Status</th>
             </tr>
@@ -56,11 +57,23 @@
                     <td>{{ $booking['vehicle'] }}</td>
                     <td>{{ $booking['rentalDate'] }}</td>
                     <td>{{ $booking['returnDate'] }}</td>
+                    <td>
+                        @if ($booking['rentalBoundary'])
+                            {{ $booking['rentalBoundary']['name'] }} ·
+                            @if ($booking['rentalBoundary']['geometryType'] === 'circle')
+                                Circle · {{ number_format((float) $booking['rentalBoundary']['radiusMeters']) }} m
+                            @else
+                                Polygon · {{ number_format((int) $booking['rentalBoundary']['polygonPointCount']) }} points
+                            @endif
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td>PHP {{ number_format($booking['totalCost'], 2) }}</td>
                     <td>{{ $booking['status'] }}</td>
                 </tr>
             @empty
-                <tr><td colspan="7">No bookings found for this period.</td></tr>
+                <tr><td colspan="8">No bookings found for this period.</td></tr>
             @endforelse
         </tbody>
     </table>

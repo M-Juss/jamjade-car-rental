@@ -8,6 +8,7 @@ use App\Enums\RentalType;
 use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class DriverAssignmentService
@@ -20,7 +21,7 @@ class DriverAssignmentService
     ) {}
 
     /**
-     * Active staff users holding the driver role, ordered by id.
+     * Active personnel accounts holding only the Driver role, ordered by id.
      *
      * @return Collection<int, User>
      */
@@ -29,6 +30,7 @@ class DriverAssignmentService
         return User::query()
             ->where('is_active', true)
             ->role(self::DRIVER_ROLE)
+            ->has('roles', '=', 1)
             ->orderBy('id')
             ->get();
     }
@@ -93,7 +95,7 @@ class DriverAssignmentService
 
         if (! $driver->is_active || ! $driver->hasRole(self::DRIVER_ROLE)) {
             throw ValidationException::withMessages([
-                'driver_id' => ['The selected staff member is not an active driver.'],
+                'driver_id' => ['The selected account is not an active Driver.'],
             ]);
         }
 
@@ -129,31 +131,42 @@ class DriverAssignmentService
 
     private function persistAssignment(Booking $booking, User $driver, ?User $actor = null): void
     {
-        $previousDriver = $booking->assignedDriver;
-        $booking->assignment()->updateOrCreate([], [
-            'driver_id' => $driver->id,
-            'assigned_at' => now(),
-        ]);
-        $booking->unsetRelation('assignment');
-        $booking->unsetRelation('assignedDriver');
+        DB::transaction(function () use ($booking, $driver, $actor) {
+            // Serialize assignment writes with personnel deactivation and conversion.
+            $driver = User::query()->lockForUpdate()->findOrFail($driver->id);
+            $roles = $driver->roles()->lockForUpdate()->pluck('name');
+            if (! $driver->is_active || $roles->all() !== [self::DRIVER_ROLE]) {
+                throw ValidationException::withMessages([
+                    'driver_id' => ['The selected account is not an active Driver.'],
+                ]);
+            }
 
-        if ($previousDriver && $previousDriver->id !== $driver->id) {
-            $this->notifications->createForUser($previousDriver, 'booking', 'Service assignment changed',
-                "You are no longer assigned to booking {$booking->booking_code}.", [
+            $previousDriver = $booking->assignedDriver;
+            $booking->assignment()->updateOrCreate([], [
+                'driver_id' => $driver->id,
+                'assigned_at' => now(),
+            ]);
+            $booking->unsetRelation('assignment');
+            $booking->unsetRelation('assignedDriver');
+
+            if ($previousDriver && $previousDriver->id !== $driver->id) {
+                $this->notifications->createForUser($previousDriver, 'booking', 'Service assignment changed',
+                    "You are no longer assigned to booking {$booking->booking_code}.", [
+                        'booking_id' => $booking->id, 'action' => 'view_services', 'action_label' => 'View Services',
+                    ]);
+            }
+
+            $this->notifications->createForUser($driver, 'booking', 'New service assignment',
+                "You are assigned to booking {$booking->booking_code}.", [
                     'booking_id' => $booking->id, 'action' => 'view_services', 'action_label' => 'View Services',
                 ]);
-        }
 
-        $this->notifications->createForUser($driver, 'booking', 'New service assignment',
-            "You are assigned to booking {$booking->booking_code}.", [
-                'booking_id' => $booking->id, 'action' => 'view_services', 'action_label' => 'View Services',
-            ]);
-
-        $activity = activity()->performedOn($booking)->event($previousDriver ? 'booking_driver_reassigned' : 'booking_driver_assigned')
-            ->withProperties(['previous_driver_id' => $previousDriver?->id, 'driver_id' => $driver->id]);
-        if ($actor) {
-            $activity->causedBy($actor);
-        }
-        $activity->log($previousDriver ? 'Booking Driver reassigned.' : 'Booking Driver assigned.');
+            $activity = activity()->performedOn($booking)->event($previousDriver ? 'booking_driver_reassigned' : 'booking_driver_assigned')
+                ->withProperties(['previous_driver_id' => $previousDriver?->id, 'driver_id' => $driver->id]);
+            if ($actor) {
+                $activity->causedBy($actor);
+            }
+            $activity->log($previousDriver ? 'Booking Driver reassigned.' : 'Booking Driver assigned.');
+        });
     }
 }

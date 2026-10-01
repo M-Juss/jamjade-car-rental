@@ -1,35 +1,67 @@
 import Image from "next/image";
+import { PanelLeftClose } from "lucide-react";
 import type { ManagementPortal } from "../config/module-registry";
 import { ManagementSidebarNav } from "./ManagementSidebarNav";
 
 interface ManagementSidebarProps {
   portal: ManagementPortal;
+  collapsed: boolean;
+  pendingReservations: number;
+  onCollapsedChange: (collapsed: boolean) => void;
 }
 
-export default function ManagementSidebar({ portal }: ManagementSidebarProps) {
+export default function ManagementSidebar({
+  portal,
+  collapsed,
+  pendingReservations,
+  onCollapsedChange,
+}: ManagementSidebarProps) {
   return (
-    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[var(--sidebar-w)] shrink-0 flex-col overflow-hidden border-r border-border bg-white shadow-[4px_0_24px_rgba(52,110,246,0.06)] lg:flex">
-      {/* Logo / Brand */}
-      <div className="px-6 pb-6 pt-8">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/JamJadeLogo.png"
-            alt="JamJade Logo"
-            width={52}
-            height={52}
-            sizes="52px"
-            className="object-contain"
-          />
-          <p className="bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-lg font-semibold text-transparent">
-            JAMJADE
-          </p>
-        </div>
+    <aside
+      className="fixed inset-y-0 left-0 z-40 hidden shrink-0 flex-col overflow-hidden border-r border-border bg-surface lg:flex motion-reduce:transition-none"
+      style={{ width: "var(--management-sidebar-width)", transition: "width 200ms ease" }}
+    >
+      <div className="mx-3 mb-1 mt-3 flex h-11 shrink-0 items-center">
+        {collapsed ? (
+          <button
+            type="button"
+            aria-label="Expand JamJade navigation"
+            title="Expand navigation"
+            onClick={() => onCollapsedChange(false)}
+            className="group relative flex size-11 items-center justify-center rounded-lg text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Image src="/JamJadeLogo.png" alt="" width={36} height={36} sizes="36px" className="object-contain" />
+            <span role="tooltip" className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              Expand navigation
+            </span>
+          </button>
+        ) : (
+          <>
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <Image src="/JamJadeLogo.png" alt="JamJade" width={36} height={36} sizes="36px" className="object-contain" />
+              <p className="truncate text-sm font-semibold tracking-tight text-foreground">JamJade Car Rental</p>
+            </div>
+            <button
+              type="button"
+              aria-label="Collapse navigation"
+              title="Collapse navigation"
+              onClick={() => onCollapsedChange(true)}
+              className="flex size-9 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <PanelLeftClose size={18} aria-hidden="true" />
+            </button>
+          </>
+        )}
       </div>
 
-      {/* Divider */}
-      <div className="mx-6 mb-4 h-px bg-border" />
+      <div className="mx-3 my-1.5 h-px shrink-0 bg-border" />
 
-      <ManagementSidebarNav portal={portal} />
+      <ManagementSidebarNav
+        collapsed={collapsed}
+        onExpandSidebar={() => onCollapsedChange(false)}
+        pendingReservations={pendingReservations}
+        portal={portal}
+      />
     </aside>
   );
 }

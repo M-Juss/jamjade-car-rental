@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
-use App\Services\StaffAccessService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,8 +14,6 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     use ApiResponseTrait;
-
-    public function __construct(private readonly StaffAccessService $access) {}
 
     public function login(LoginRequest $request): JsonResponse
     {
@@ -77,16 +74,6 @@ class AuthController extends Controller
 
     private function hasAdminAccess($user): bool
     {
-        if ($user->hasRole('admin')) {
-            return true;
-        }
-
-        $adminPermissions = $this->access->modules(assignableOnly: true)
-            ->pluck('permission');
-
-        return $user->getAllPermissions()
-            ->pluck('name')
-            ->intersect($adminPermissions)
-            ->isNotEmpty();
+        return ! $user->hasRole('driver') && $user->hasAnyRole(['admin', 'staff']);
     }
 }

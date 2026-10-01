@@ -4,6 +4,7 @@ namespace App\Http\Requests\Payment;
 
 use App\Http\Requests\BaseFormRequest;
 use App\Support\PayPalAppUrl;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,26 @@ class CreatePayPalOrderRequest extends BaseFormRequest
 
         return [
             'vehicle_id' => ['required', 'exists:vehicles,id'],
-            'rental_start_at' => ['required', 'date', 'after_or_equal:today'],
+            'rental_start_at' => [
+                'required',
+                'date',
+                'after_or_equal:today',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! is_string($value) || ! str_contains($value, ':')) {
+                        return;
+                    }
+
+                    try {
+                        $rentalStart = CarbonImmutable::parse($value);
+                    } catch (\Throwable) {
+                        return;
+                    }
+
+                    if ($rentalStart->lessThanOrEqualTo(now())) {
+                        $fail('The pickup time must be later than the current time.');
+                    }
+                },
+            ],
             'rental_end_at' => ['required', 'date', 'after:rental_start_at'],
             'pickup_location_type' => ['required', Rule::in([$pickupLocationType])],
             'pickup_location' => ['required', 'string', 'max:255'],

@@ -175,7 +175,7 @@ export function BookingScreen() {
     }
 
     if (action.key === 'open_telematics') {
-      router.push('/telematics' as Href);
+      router.push(`/telematics?bookingId=${encodeURIComponent(booking.id)}` as Href);
       return;
     }
 
@@ -206,9 +206,9 @@ export function BookingScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
-          <CustomerTabHeader description="Track every rental from request to return." />
+          <CustomerTabHeader title="Bookings" />
 
-          <View className="mt-6 min-h-[56px] flex-row items-center rounded-full border border-border bg-surface px-4 shadow-md shadow-foreground/5">
+          <View className="mt-2 min-h-[56px] flex-row items-center rounded-full border border-border bg-surface px-4 shadow-md shadow-foreground/5">
             <Search size={20} color="#7B879C" strokeWidth={2.3} />
             <TextInput
               value={searchTerm}

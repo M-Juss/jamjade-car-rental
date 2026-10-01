@@ -16,13 +16,13 @@ class StoreLocationRequest extends BaseFormRequest
         return [
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'accuracy' => ['nullable', 'numeric', 'min:0', 'max:10000'],
             'speed' => ['nullable', 'numeric', 'min:0', 'max:300'],
+            'heading' => ['nullable', 'numeric', 'between:0,360'],
             'battery_percent' => ['nullable', 'integer', 'between:0,100'],
             'gps_signal_percent' => ['nullable', 'integer', 'between:0,100'],
             'current_zone' => ['nullable', 'string', 'max:120'],
-            'geofence_status' => ['nullable', 'in:inside,near_boundary,outside,gps_unavailable'],
-            'distance_from_allowed_area' => ['nullable', 'numeric', 'min:0'],
-            'occurred_at' => ['nullable', 'date'],
+            'captured_at' => ['required', 'date'],
         ];
     }
 }

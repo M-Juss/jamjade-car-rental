@@ -14,16 +14,12 @@ class BookingAssignment extends Model
         'booking_id',
         'driver_id',
         'assigned_at',
-        'calibration_status',
-        'calibrated_by',
-        'calibrated_at',
     ];
 
     protected function casts(): array
     {
         return [
             'assigned_at' => 'datetime',
-            'calibrated_at' => 'datetime',
         ];
     }
 
@@ -35,10 +31,5 @@ class BookingAssignment extends Model
     public function driver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'driver_id');
-    }
-
-    public function calibratedBy(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'calibrated_by');
     }
 }
