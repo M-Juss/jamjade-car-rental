@@ -2,11 +2,11 @@
 
 ## Phase 3 boundary
 
-Phase 3 is a consent-led, pre-release readiness workflow for a renter's own confirmed or ongoing Self Drive booking. It implements only:
+Phase 3 is a consent-led, pre-release readiness workflow for a renter's own Self Drive booking. The read model may describe an ongoing booking, but setup mutations are accepted only for the owning confirmed booking while its handover is `in_progress`. It implements only:
 
 - device capability checks for accelerometer, gyroscope, and location services;
 - motion, foreground-location, and background-location permission readiness;
-- one explicit foreground GPS fix for setup quality and circle or polygon geofence verification;
+- one explicit foreground GPS fix for setup quality;
 - renter confirmation that the phone is safely mounted.
 
 It does not subscribe to motion sensors, call `startLocationUpdatesAsync`, collect location in the background, persist a mobile location cache, upload telemetry, create a trip, perform calibration, or score driving. The background task is globally defined but deliberately inert; it cannot execute tracking work because no location updates are registered.
@@ -28,28 +28,30 @@ For an EAS build, use the configured `development` profile through the team's au
 
 ## Permission and readiness sequence
 
-The screen explains each purpose before the corresponding user action. It requests in this order:
+The screen explains each purpose before the renter selects **Check setup**. That single action runs the available checks in this order, showing each server-confirmed result and stopping at the first failure in standard mode:
 
 1. Check device capabilities without subscribing to sensors.
 2. Request motion access where the platform exposes it. A denial or unavailable result fails only that step and provides retry/settings recovery.
 3. Request foreground location. A denial prevents later GPS operations.
 4. Request background location only after foreground access is granted. Android may route the renter to system settings. The app checks TaskManager availability and that the globally defined inert task exists, but does not register it for updates.
 5. Obtain one fresh foreground location fix only after location services and foreground access are confirmed.
-6. Submit that fix for server-side GPS quality or booking-geofence evaluation.
-7. Let the renter explicitly confirm a secure phone mount.
+6. Submit that fix for server-side GPS quality evaluation.
+7. Ask the renter to explicitly confirm a secure phone mount. This is a manual attestation, not holder detection or sensor-based mounting verification. Choosing **Not yet** submits `confirmed: false`; dismissing the confirmation submits no mount evidence.
+
+Running **Check setup** again performs fresh checks from the beginning; already granted OS permissions do not imply a new permission grant. Leaving the tab stops further checks and submissions once any pending native operation returns. Local handover test mode may continue past real device failures as documented in the handover guide, but never invents evidence or a passed result.
 
 Every action checks network state before attempting to synchronize its evidence. Native APIs are isolated in `mobile-frontend/services/telematics`; screens do not call Expo Location, Sensors, TaskManager, or Network directly.
 
-## GPS and geofence policy
+## GPS readiness policy
 
 Laravel accepts only a fresh, plausible setup coordinate: latitude `-90..90`, longitude `-180..180`, enabled location services, capture timestamp no more than 60 seconds old, timestamp no more than 10 seconds in the future, and horizontal accuracy no worse than 50 meters. These defaults live in `backend/config/telematics.php` and must remain configuration-driven.
 
-Laravel, not the client, evaluates the immutable `booking_geofences` snapshot. Circles use the Haversine distance formula and include their boundary; polygons use a point-in-polygon check and include points on their edges. The server stores only minimal setup evidence: GPS quality/age and the geofence result. It discards the submitted latitude and longitude after evaluation. The handover response exposes no raw setup evidence or submitted setup coordinates.
+GPS quality is independent of geofence membership. Being outside a zone, or having no zones configured, never fails a setup check. Geofence setup attempts are no longer accepted and phone mount depends on the GPS check. The mobile setup sequence has six device-readiness checks.
 
-Reusable `geofences` are staff templates. Before handover, staff either select an active circle or polygon template or enter a custom circle; Laravel copies the geometry into one immutable booking snapshot. Changing or deactivating a source template later cannot alter an existing booking boundary. A used template cannot be deleted; unused templates are soft-deleted and retained for system history.
+Monitoring zones are managed exclusively through the website. Admin controls default zones and optional custom booking zones; Staff has read access. Defaults apply automatically and zone geometry/preferences are frozen at rental release. Entry/exit observations belong to the active-trip backend, not setup. See [geofence monitoring](geofence-monitoring.md).
 
 ## Server contract and recovery
 
-`POST /mobile/bookings/{booking}/telematics-setup/steps/{step}/attempt` is restricted to the owning renter's eligible Self Drive booking and an `in_progress` setup session. It accepts typed evidence for only the seven Phase 3 steps. `status` is prohibited in both the request and evidence; Laravel produces the recorded pass/fail result and appends retry history. Dependencies are enforced in order, so callers cannot skip earlier checks.
+`POST /mobile/bookings/{booking}/telematics-setup/steps/{step}/attempt` is restricted to the owning renter's eligible Self Drive booking and an `in_progress` setup session. It accepts typed evidence for only the six Phase 3 steps. `status` is prohibited in both the request and evidence; Laravel produces the recorded pass/fail result and appends retry history. Standard mode enforces dependencies in order, so callers cannot skip earlier checks; local/testing handover mode deliberately removes that prerequisite gate for flow testing.
 
-Failure is recoverable: the app shows the server reason or local permission/location failure, offers device Settings, and allows a new attempt. Business activity logs record the step and server result only—never raw coordinates or sensor payloads. The final calibration steps remain pending in this phase, therefore session status stays `in_progress` and Start Rental remains blocked.
+Failure is recoverable: the app shows the server reason or local permission/location failure, offers device Settings, and allows a new attempt. Business activity logs record the step and server result only—never raw coordinates or sensor payloads. In standard mode, the final calibration steps remain pending in this phase, therefore session status stays `in_progress` and Start Rental remains blocked. Local/testing handover mode may project release readiness from a real passing phone-mount attempt as documented in [the handover guide](telematics-handover-lifecycle.md); it still records no fabricated evidence.

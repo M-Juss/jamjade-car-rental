@@ -1,10 +1,10 @@
 # JamJade presentation ERD
 
-This is a **simplified view of the current database** for an ERD presentation. The live MySQL schema was checked on 2026-09-28: **45 tables, 455 columns, and 59 foreign keys**. This view shows **15 existing tables** (30 omitted from the drawing) and only their identifying, linking, and main business-state columns. It does not propose deleting tables or columns. The [complete physical ERD](ERD.md) and [database audit](database-audit-erd-readiness.md) remain the references for implementation.
+This is a **simplified view of the migration-defined current database** for an ERD presentation. The live MySQL schema was checked on 2026-09-28: **45 tables, 455 columns, and 59 foreign keys**; that is a historical baseline. A source review on 2026-10-14 infers **48 tables and 510 columns** if all 40 repository migrations apply in order, but no live schema query or migration run was performed for that count. This view shows **17 existing tables** (31 omitted from the drawing) and only their identifying, linking, and main business-state columns. It does not propose deleting tables or columns. The [complete physical ERD](ERD.md) and [database audit](database-audit-erd-readiness.md) remain the references for implementation.
 
 ## Core ERD
 
-The printable Letter-size version uses one connected diagram, with each table shown once. Curved line jumps mark connector crossings without a relationship junction.
+The overview uses one connected diagram, with each table shown once. Curved line jumps mark connector crossings without a relationship junction.
 
 ```mermaid
 erDiagram
@@ -78,11 +78,14 @@ erDiagram
         bigint booking_id FK
         bigint source_geofence_id FK
         string geometry_type
+        string scope
+        boolean notify_on_enter
+        boolean notify_on_exit
+        datetime frozen_at
     }
     telematics_setup_sessions {
         bigint id PK
         bigint booking_id FK
-        bigint booking_geofence_id FK
         string status
     }
     telematics_trips {
@@ -107,6 +110,27 @@ erDiagram
         string severity
         datetime occurred_at
     }
+    telematics_geofence_states {
+        bigint id PK
+        bigint telematics_trip_id FK
+        bigint booking_geofence_id FK
+        boolean inside
+        boolean uncertain
+        int candidate_count
+        datetime last_captured_at
+    }
+    delivery_quotes {
+        uuid id PK
+        bigint user_id FK
+        bigint vehicle_id FK
+        string destination_address
+        text destination_point "Encrypted temporary coordinates"
+        decimal delivery_fee
+        decimal delivery_toll_fee
+        string status
+        bigint reviewed_by FK
+        bigint booking_id FK
+    }
 
     roles }o..o{ users : "assigned roles (logical)"
     users ||--o| customer_profiles : "user_id"
@@ -119,13 +143,18 @@ erDiagram
     bookings ||--o| booking_assignments : "booking_id"
     bookings ||--o{ payments : "booking_id"
     bookings o|--o{ vehicle_inspections : "booking_id"
-    bookings ||--o| booking_geofences : "booking_id"
+    bookings ||--o{ booking_geofences : "booking_id"
     geofences o|--o{ booking_geofences : "source_geofence_id"
     bookings ||--o| telematics_setup_sessions : "booking_id"
-    booking_geofences o|--o{ telematics_setup_sessions : "booking_geofence_id"
     bookings ||--o| telematics_trips : "booking_id"
     telematics_trips ||--o{ telematics_location_points : "telematics_trip_id"
     telematics_trips ||--o{ telematics_events : "trip_id"
+    telematics_trips ||--o{ telematics_geofence_states : "telematics_trip_id"
+    booking_geofences ||--o{ telematics_geofence_states : "booking_geofence_id"
+    users ||--o{ delivery_quotes : "user_id"
+    users o|--o{ delivery_quotes : "reviewed_by"
+    vehicles ||--o{ delivery_quotes : "vehicle_id"
+    bookings o|--o| delivery_quotes : "booking_id (unique)"
 ```
 
 ## How to explain it
@@ -134,9 +163,9 @@ erDiagram
 
 1. A customer **user** can have a profile and verification documents. The customer books a **vehicle**; an optional driver assignment supports rentals with an owner's driver.
 2. The **booking** anchors the rental dates, status, amount, payments, and vehicle condition inspections. An inspection may also exist without a booking, such as an initial vehicle condition snapshot.
-3. For a self-drive rental, a reusable **geofence** can be copied into a booking-specific geofence. The setup session records pre-release readiness. After release, the booking can have one telematics trip, with many location points and significant events. These telematics records do not apply to every booking.
+3. For a self-drive rental, active default **geofences** and optional custom zones are represented as booking-scoped rows. Custom rows are editable before release; Start Rental copies active defaults and freezes every zone. Defaults may later be deactivated or soft-deleted without changing frozen snapshots. The setup session records six pre-release readiness checks without a geofence gate. After release, the booking can have one telematics trip, with many location points, significant events, and one state row per frozen zone. A delivery quote stores the customer/vehicle-bound route and toll decision until one booking consumes it.
 
-The solid connectors reflect database foreign keys and uniqueness, not guaranteed row counts. For example, `bookings` can have at most one `telematics_trips` row because `telematics_trips.booking_id` is unique; the application limits trip creation to eligible self-drive rentals. A driver assignment can exist before `driver_id` is filled. `booking_geofences` stores an independent snapshot, so its source template can be absent.
+The solid connectors reflect database foreign keys and uniqueness, not guaranteed row counts. For example, `bookings` can have at most one `telematics_trips` row because `telematics_trips.booking_id` is unique; the application limits trip creation to eligible self-drive rentals. A driver assignment can exist before `driver_id` is filled. A booking can have many `booking_geofences` rows; `(booking_id, source_geofence_id)` prevents duplicate default sources while allowing multiple custom rows with a `NULL` source. Released rows are frozen snapshots, and the setup session intentionally has no zone FK. `booking_geofences` stores an independent snapshot, so its source template can be absent.
 
 ## What the overview groups away
 
@@ -146,6 +175,7 @@ The solid connectors reflect database foreign keys and uniqueness, not guarantee
 | Booking and settlement details | `booking_terms`, `booking_events`, `booking_confirmation_emails`, `booking_additional_charges`, `payment_charge_allocations` |
 | Vehicle catalog, condition evidence, and maintenance | `vehicle_images`, `vehicle_features`, `vehicle_inspection_items`, `vehicle_inspection_markers`, `vehicle_inspection_signatures`, `vehicle_maintenance_plans`, `vehicle_maintenance_records` |
 | Retryable setup detail | `telematics_setup_steps` |
+| Delivery pricing configuration | `delivery_pricing_settings` |
 | Role assignments, permission details, and audit | `model_has_roles`, `permissions`, `model_has_permissions`, `role_has_permissions`, `activity_log` |
 | Laravel infrastructure | `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `migrations`, `password_reset_tokens`, `personal_access_tokens`, `sessions` |
 

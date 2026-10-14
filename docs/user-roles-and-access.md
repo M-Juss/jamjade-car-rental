@@ -20,9 +20,15 @@ Accounts remain in `users`, with role membership in the existing Spatie tables. 
 | Personnel | No access | No access |
 | Custom roles/module access editing | Unavailable | Unavailable |
 
-Staff's seeded web modules remain Dashboard, Booking Management, Vehicle Management, Self-Drive Verification, Fleet Tracker, Geofence Library, Maintenance Management, and Reports & Analytics. This phase does not redesign pricing, reporting, or Admin/Owner authority. The migration preserves the existing Staff permission assignments; the seeder uses the centrally defined `staff_accessible` modules in `backend/config/staff_modules.php`.
+Staff's seeded web modules remain Dashboard, Booking Management, Vehicle Management, Self-Drive Verification, Fleet Tracker, Geofence Library, Maintenance Management, and Reports & Analytics. Delivery Pricing is an Admin-only management area; Staff may review delivery toll requests through Booking Management but cannot edit pricing. The migration preserves the existing Staff permission assignments; the seeder uses the centrally defined `staff_accessible` modules in `backend/config/staff_modules.php`. This guide does not change reporting or deferred Admin/Owner authority.
 
 Driver mobile remains Services, Notifications, and Logout, with settlement through the existing Driver charge-payment flow. Driver-facing service endpoints require the Driver role and constrain records to the authenticated account's assignment. Customer booking/document/payment-creation routes require the Customer role. Driver access to shared notifications and payment capture remains governed by ownership and existing payment authorization.
+
+## Customer account information
+
+The mobile Customer Profile separates personal details from sign-in credentials. Customer-only, authenticated `PUT /api/mobile/account/email` and `PUT /api/mobile/account/password` endpoints require the current password and share a five-attempt-per-minute limit per account. Personal profile update endpoints prohibit email changes; onboarding and personal editors submit no email field.
+
+Email changes are immediate after format, uniqueness, and current-password validation. They clear any prior `email_verified_at`; verification emails/OTPs are deliberately deferred for this phase. Password changes require a different replacement with confirmation, follow the current eight-character minimum and a 72 UTF-8 byte bcrypt limit, revoke mobile tokens, and rotate the remember token. The current phone returns to sign-in. These actions do not require profile completion and do not modify roles or account activation.
 
 ## Personnel
 
@@ -32,7 +38,7 @@ The existing Admin controls the web page `/admin/personnel` and these cookie/CSR
 - `POST /admin/personnel/users`: create a Staff or Driver account.
 - `PUT /admin/personnel/users/{user}`: edit account details, credentials, role, or active status.
 
-Staff and Driver views are separate tabs sharing one account form. The backend response supplies the authoritative `category`, `personnelId`, and role. `PER-` identifiers are display values derived from the existing user ID, not a new identity table or persisted identifier.
+Personnel uses one table with an All Personnel, Staff, or Driver filter in the search card and a shared account form. All Personnel is the default view; each row shows its role. The backend response supplies the authoritative `category`, `personnelId`, and role. `PER-` identifiers are display values derived from the existing user ID, not a new identity table or persisted identifier.
 
 Names, email, optional phone, role, password, and account status are validated by `StorePersonnelRequest` / `UpdatePersonnelRequest`. The web form uses the corresponding `createPersonnelAccountSchema`. Camel-case form values are mapped to snake-case payload fields in the personnel service. Modules and permissions cannot be supplied as account fields.
 
@@ -53,6 +59,10 @@ There are no account deletion or custom-role mutation endpoints. Account removal
 `2026_09_29_000002_fix_personnel_roles` removes legacy Driver role/direct permissions, retires unused custom web roles, and renames the existing personnel-administration permission to `manage personnel`. It preserves account and rental records and existing Staff grants.
 
 Assigned custom roles or mixed Driver roles cause the migration to stop with an explicit mapping requirement. It does not silently convert their accounts. Owner is excluded from custom-role retirement because the Admin/Owner design is deferred. Retired permissions cannot be reconstructed by rollback; use a pre-migration backup if restoration is necessary.
+
+## Geofence management
+
+Admin manages default monitoring zones and custom booking zones on the website. Staff can read the library and booking zone/activity information, but Laravel denies all default-zone and custom-zone mutations to Staff, including direct calls with existing permissions. Geofence management remains separate from authorized Staff Start Handover and Start Rental. There is no separate Owner role.
 
 ## Telematics boundary and future work
 

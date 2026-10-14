@@ -50,15 +50,27 @@ Start discovery in these locations, then inspect the closest feature-specific im
 - Base UI primitives: `src/components/ui/`
 - Labeled form controls: `src/components/common/forms/InputWithLabel.tsx`, `SelectWithLabel.tsx`, and `TextAreaWithLabel.tsx`
 - Management filters and searches: `src/components/common/forms/FilterSelect.tsx` and `SearchInput.tsx`
-- Table row actions: `src/components/common/TableActionMenu.tsx`
+- Table row actions: `src/components/common/tables/TableActionMenu.tsx`
 - Dashboard KPI cards and dashboard content cards: `src/modules/management/dashboard/DashboardModule.tsx`
 - Analytics KPI cards, chart cards, and reporting tables: `src/modules/management/reports/ReportsModule.tsx`
-- Management page headers, filters, summary cards, tables, and states: `src/modules/management/bookings/BookingsModule.tsx`, `src/modules/management/admin-access/AdminAccessModule.tsx`, and `src/modules/management/vehicles/VehiclesModule.tsx`
-- Canonical form-dialog shell and actions: `src/components/common/FormDialogLayout.tsx`
-- Complex form-body composition: `src/forms/admin/AdminForm.tsx` and `src/forms/vehicle/VehicleForm.tsx`
+- Management page headers, filters, summary cards, tables, and states: `src/modules/management/bookings/BookingsModule.tsx`, `src/modules/management/personnel/PersonnelModule.tsx`, and `src/modules/management/vehicles/VehiclesModule.tsx`
+- Canonical form-dialog shell and actions: `src/components/common/forms/FormDialogLayout.tsx`
+- Complex form-body composition: `src/forms/personnel/PersonnelAccountForm.tsx`, `src/forms/vehicle/details/CreateVehicleDialog.tsx`, and `src/forms/vehicle/details/EditVehicleForm.tsx`
 - Navigation shell and role layouts: `src/modules/management/shell/`, `src/app/admin/layout.tsx`, and `src/app/staff/layout.tsx`
 
 This list is a discovery map, not permission to copy blindly. The closest equivalent in the touched feature remains the preferred precedent.
+
+## Current Feature Boundaries
+
+Keep these ownership and authorization boundaries aligned with the current routes and services:
+
+- The booking surface is composed by `src/modules/management/bookings/BookingsModule.tsx`. Data and mutations belong to `src/services/booking/`; action sequencing belongs to `booking-next-action.ts` and `booking-workflow.ts`; form bodies and workflow dialogs belong to `src/forms/booking/`; booking-specific display pieces belong beside the module under `src/modules/management/bookings/components/`. Keep route files under `src/app/admin/booking/` and `src/app/staff/booking/` as composition and access boundaries.
+- Delivery pricing is admin-only. `DeliveryPricingModule`, `src/forms/delivery/DeliveryPricingForm.tsx`, and the pricing methods in `src/services/delivery/delivery.service.ts` edit the garage point, minimum fee, included distance, and per-kilometre rate. Delivery quote and toll review is a booking operation: `DeliveryQuoteRequests` and `DeliveryQuoteReviewForm` are available to admin or staff users with `manage bookings`; review can approve with a staff-entered toll amount or reject with a note. The backend remains authoritative for quote expiry, route revalidation, and booking consistency. See `../docs/delivery-pricing.md`.
+- Geofence library mutations and booking monitoring-zone mutations are admin-only even though staff may have read or operational booking access. A booking may carry multiple default or custom monitoring circles/polygons before release. `Start Rental` freezes all booking zones and alert settings into the release snapshot; do not read editable defaults for a released rental, and do not make zone configuration or containment a setup or release gate. See `../docs/geofence-monitoring.md`.
+- Verification presents the current two requirements: `Driver's License` and UI `Proof of Address`. The API/storage key for the second is `proof_of_billing`; this is a naming boundary, not a third document. Passport is a legacy record that may remain readable but must not be offered for new uploads. Keep document labels and mapping in `src/services/verification/` synchronized with the mobile definitions and Laravel document contract.
+- Delivery route previews and geofence editors use `src/lib/google-maps.ts` as the shared `@googlemaps/js-api-loader` singleton. New map consumers must call `loadGoogleMaps` and use `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; do not add another `setOptions`/loader instance. The existing fleet map has local loader setup, so treat its convergence as scoped technical debt when that feature is changed.
+
+For role and domain decisions, inspect `../docs/user-roles-and-access.md`, `../docs/booking-rental-lifecycle.md`, `../docs/delivery-pricing.md`, `../docs/geofence-monitoring.md`, `../docs/vehicle-condition-architecture.md`, and `../docs/maintenance-architecture.md` before changing a related feature.
 
 ## Living Pattern Memory
 
@@ -121,7 +133,7 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 
 ### Dialogs And Confirmations
 
-- `src/components/common/FormDialogLayout.tsx` is the canonical composition for data-entry and action form dialogs. Use `FormDialogContent`, `FormDialogHeader`, and `FormDialogFooter` instead of rebuilding their structure and class lists.
+- `src/components/common/forms/FormDialogLayout.tsx` is the canonical composition for data-entry and action form dialogs. Use `FormDialogContent`, `FormDialogHeader`, and `FormDialogFooter` instead of rebuilding their structure and class lists.
 - A form-dialog header contains only the domain icon, concise title, and close action. Do not add a subtitle, description, instructions, metadata, or status copy beneath the title.
 - Keep the header and footer fixed within the modal and make only the body scrollable. Dialog content must stay within the viewport at supported responsive sizes; controls and actions must never be clipped behind the viewport edge.
 - Form-dialog footers use two equal-width actions when both are present: Cancel or Back on the left and the primary action on the right. Use one full-width action for read-only dialogs. Do not right-align compact action buttons.

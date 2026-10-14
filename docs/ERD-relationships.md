@@ -1,6 +1,6 @@
 # JamJade ERD — Relationship Guide
 
-This guide translates the relationships in `ERD.md` into plain sentences. “Can have many” means zero or more related rows; “may have one” means zero or one. Where a relationship is optional, the child foreign key may be `NULL`.
+This guide translates the relationships in `ERD.md` into plain sentences. “Can have many” means zero or more related rows; “may have one” means zero or one. Where a relationship is optional, the child foreign key may be `NULL`. The 2026-09-26/28 live relationship snapshot is historical; the monitoring-zone, geofence-state, and delivery-quote relationships below reflect the source-reviewed migrations through 2026-10-12.
 
 ## `users`
 
@@ -19,6 +19,8 @@ This guide translates the relationships in `ERD.md` into plain sentences. “Can
 - A user can create many vehicle maintenance plans, while a maintenance plan may name one creating user.
 - A user can create, start, complete, or cancel many maintenance records; each maintenance record may name one user for each of those roles.
 - A user can operate many telematics trips, and each telematics trip has one operator user.
+- A user can request many delivery quotes, and each delivery quote belongs to one user.
+- A user can review many delivery quotes, while a delivery quote may name one reviewing user.
 - A user can receive many notifications, while a notification may be linked to one user.
 
 ## `customer_profiles`
@@ -69,8 +71,11 @@ This guide translates the relationships in `ERD.md` into plain sentences. “Can
 - A booking can have many payments, and each payment belongs to one booking.
 - A booking can have many additional charges, and each additional charge belongs to one booking.
 - A booking can have many vehicle inspections, while a vehicle inspection may be linked to one booking.
-- A self-drive booking may have one immutable booking-geofence snapshot and one telematics setup session.
+- A self-drive booking may have many booking-geofence rows and one telematics setup session. Custom rows are editable before release; active defaults are copied at Start Rental and every released row becomes immutable.
+- A booking-geofence row may have one source geofence template, while a template can source many booking rows. The source is optional for custom zones.
+- A booking-geofence row can have many per-trip geofence-state rows; each state belongs to one telematics trip and one booking zone, with a unique `(telematics_trip_id, booking_geofence_id)` pair.
 - A booking may have one telematics trip, and each telematics trip belongs to one booking.
+- A booking may consume one delivery quote, and a delivery quote may be consumed by at most one booking through nullable unique `delivery_quotes.booking_id`.
 - A booking can be referenced by many notifications, while a notification may be linked to one booking.
 
 ## `booking_events`
@@ -146,19 +151,42 @@ This guide translates the relationships in `ERD.md` into plain sentences. “Can
 - A maintenance record may name one creating, starting, completing, and cancelling user; a user can hold each of those roles for many records.
 - A maintenance record may reference one resulting-condition inspection, and an inspection can be referenced by many maintenance records.
 
+## `geofences`
+
+- A geofence is a reusable circle or polygon monitoring template, and a user may create many geofences through the nullable `created_by` FK.
+- A geofence can be copied into many booking-geofence rows through nullable `source_geofence_id`.
+- `geofences` uses soft deletion. A default may be deactivated or soft-deleted even when released zones reference it; soft deletion leaves the template row and does not alter copied geometry.
+
 ## `booking_geofences` and telematics setup
 
-- A reusable geofence template can be copied into many booking snapshots; each snapshot stores its own circle or polygon geometry and remains immutable.
-- A geofence creator may create many templates. A used template cannot be soft-deleted, and soft deletion never erases the template row.
-- A booking geofence belongs to one booking and may record one source geofence template and one assigning user.
-- A telematics setup session belongs to one booking and may reference one immutable booking geofence.
-- A setup session has many append-only setup-step attempts; each attempt may name one actor user.
+- A booking geofence belongs to one booking and may record one source geofence template and one assigning user. A booking can have many rows because `booking_id` is indexed rather than unique.
+- The unique `(booking_id, source_geofence_id)` constraint prevents duplicate template copies for one booking while allowing multiple custom rows with `NULL` source values.
+- Each row stores copied circle/polygon geometry, scope, notification preferences, and optional `frozen_at`. The model prevents updates/deletes after freezing. Release copies active default templates and freezes all rows; setup/release is not gated by a geofence step.
+- A telematics setup session belongs to one booking and has no `booking_geofence_id` relationship. It has many retryable setup-step attempts; each attempt may name one actor user.
+
+## `telematics_geofence_states`
+
+- A geofence-state row belongs to one `telematics_trips` row and one frozen `booking_geofences` row.
+- A trip can have many states, one for each frozen booking zone; a zone can have many states across trips.
+- The unique `(telematics_trip_id, booking_geofence_id)` key gives each trip/zone pair one membership/debounce state. The row stores current membership, uncertainty, candidate transition counters, and the latest captured timestamp.
 
 ## `telematics_trips`
 
 - A telematics trip belongs to one booking, and a booking may have one telematics trip.
 - A telematics trip has one operator user, and a user can operate many telematics trips.
 - A telematics trip can have many telematics events, and each telematics event belongs to one trip.
+
+## `delivery_pricing_settings`
+
+- The table has no foreign keys and is used as a singleton-style configuration row by the delivery pricing service.
+- It stores minimum fee, included distance, per-kilometre rate, and garage address/coordinates. Delivery quotes copy these values into their own pricing snapshot.
+
+## `delivery_quotes`
+
+- A delivery quote belongs to one user and one vehicle through required foreign keys. A vehicle and user can each have many quotes.
+- A quote may name one reviewing user through nullable `reviewed_by`; a reviewer can review many quotes.
+- A quote may be consumed by one booking through nullable unique `booking_id`; a booking can consume at most one quote.
+- `destination_point` is a physical `TEXT` column carrying Laravel-encrypted temporary coordinates. `point_expires_at` bounds retention, and expiry cleanup clears the value. Route geometry is returned transiently and is not a relational child.
 
 ## `telematics_events`
 

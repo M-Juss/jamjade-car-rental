@@ -12,7 +12,7 @@ The repository contains three independent codebases:
 
 The applications share one repository but are not one package-manager workspace. Run commands from the application directory they belong to, and do not assume dependencies, types, or runtime code are shared between applications.
 
-Read `docs/project-status-and-roadmap.md` for current project decisions, phase status, and the capstone's AI classification goal. Use the domain guides below for detailed contracts and inspect code before assuming a documented feature is operational.
+Read `docs/README.md` for the documentation map, then `docs/project-status-and-roadmap.md` for current project decisions, phase status, and the capstone's AI classification goal. Use the domain guides below for detailed contracts and inspect code before assuming a documented feature is operational.
 
 ## Product Architecture
 
@@ -23,6 +23,15 @@ Read `docs/project-status-and-roadmap.md` for current project decisions, phase s
 - Both frontends communicate with Laravel through the existing API service layers. Do not call backend URLs directly from presentation components when a service module should own the request.
 - Treat Laravel Form Requests as request contracts and Laravel API Resources as response contracts.
 - A contract change is not complete until every affected backend endpoint, web client, mobile client, type, validation schema, mapping, and test has been reviewed.
+
+## Current Cross-Application Boundaries
+
+- Delivery pricing is an administrator-only setting: the garage point, minimum fee, included distance, and per-kilometre rate are edited from the web management portal. A staff member with `manage bookings` may review a customer's selected route when the provider reports a toll, approve it with the reviewed toll amount, or reject it with a note. Customer booking creation accepts only a still-valid, complete quote; delivery quote expiry and route revalidation remain server rules. Read `docs/delivery-pricing.md` before changing this flow.
+- Self-drive monitoring uses the geofence library's active circle or polygon defaults plus optional booking-specific zones. Zones can be changed before release, but `Start Rental` copies and freezes every zone and its alert settings into the booking snapshot. Zone configuration and containment never gate setup checks or release. Read `docs/geofence-monitoring.md` before changing this flow.
+- Self-drive verification currently requires a driver's license and proof of billing. The mobile UI calls the latter “Proof of Address”; backend storage and APIs use `proof_of_billing`. Historical passport records may remain visible for legacy customers, but passport is not a new upload option.
+- Mobile account credentials have separate endpoints and forms: `PUT /mobile/account/email` handles the new email plus current password, while `PUT /mobile/account/password` handles current password, new password, and confirmation. Keep these flows separate from personal-profile and onboarding saves.
+- Web booking forms belong under `web-frontend/src/forms/booking/`. Booking action sequencing is owned by `web-frontend/src/modules/management/bookings/booking-next-action.ts` and `booking-workflow.ts`; API calls and payload mapping stay in `web-frontend/src/services/booking/`. Route entries should only compose the module.
+- Web delivery route previews and geofence editors use the singleton Google Maps loader at `web-frontend/src/lib/google-maps.ts`. Reuse `loadGoogleMaps` and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` for new map consumers; the existing fleet map has local loader setup and should not grow another copy when it is next touched.
 
 ## Working Principles
 
@@ -205,7 +214,7 @@ Video recording, sending/uploads, auditing, and dashcam offerings are outside pr
 
 - Telematics applies only to self-drive bookings. One booking has at most one post-release `telematics_trip`; pauses and resumes stay within that trip.
 - Pre-release readiness belongs to `telematics_setup_sessions` and retryable `telematics_setup_steps`, never to `booking_assignments`. The existing authorized Start Rental action remains the final release action.
-- Reusable circles belong to `geofences`. Copy their values into immutable `booking_geofences` snapshots; never read a historical rental boundary dynamically from an editable template.
+- Default monitoring circles/polygons belong to `geofences`. Optional custom booking zones may be edited before release. At Start Rental copy active defaults into `booking_geofences` and freeze every booking zone; never read released rental geometry or alert preferences dynamically from editable defaults. Zone configuration and containment never gate setup or release. Read `docs/geofence-monitoring.md` before changing this behavior.
 - `telematics_location_points` is high-volume route history. `telematics_trips` current-location fields are intentional latest-state cache. `telematics_events` contains significant occurrences only.
 - Do not add raw accelerometer or gyroscope sample tables, encode streams in JSON, or introduce driver-behavior/AI classifications without a separately approved design.
 - Read `docs/telematics-architecture.md` before changing telematics data, client behavior, or release logic; read `docs/telematics-handover-lifecycle.md` before changing handover endpoints or staff operations; read `docs/telematics-device-location.md` before changing native setup checks, permissions, GPS policy, or geofence evaluation.
@@ -218,7 +227,7 @@ Before changing vehicle inspections, current condition, or future outgoing/incom
 
 ## Existing Technical Debt
 
-The current repository does not yet satisfy every rule above. Known gaps include non-centralized color literals, inconsistent frontend validation placement, a manually validated web form, different Zod API conventions, incomplete dark-mode support, and missing frontend test foundations.
+The current repository does not yet satisfy every rule above. Known gaps include non-centralized color literals, inconsistent frontend validation placement, different Zod API conventions, incomplete dark-mode support, and missing frontend test foundations.
 
 - Treat these as explicit technical debt, not permission to expand an unrelated task.
 - When a touched area can be brought into compliance safely within scope, do so and verify it.

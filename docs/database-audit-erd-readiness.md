@@ -1,6 +1,30 @@
 # JamJade database audit and ERD readiness
 
+> Geofence update (2026-10-01): the historical single-boundary schema described below has been superseded by multiple default/custom monitoring zones, release-time freezing, and `telematics_geofence_states`. Setup now has six readiness checks and no geofence gate. See [current monitoring architecture](geofence-monitoring.md).
+
 Audited 2026-09-26. This is a read-only schema audit; no migration or data-changing SQL was run. The backend configuration names MySQL at `127.0.0.1:3306`, database `jamjade_car_rental`, with `APP_ENV=local`. The host and environment show a local development connection; **disposability was not independently verified**, so no destructive command was considered. The live schema was read through `information_schema`; migration status was read through Laravel.
+
+## Source-reviewed current migration delta (2026-10-14; inferred, not live-audited)
+
+This update did not read a database, load local environment values, run Artisan, or apply/reset migrations. It reviewed the repository's 40 migration files, affected Eloquent models, and geofence/delivery services. Assuming the migrations are applied in timestamp order to the 2026-09-28 live baseline of 45 tables, 455 columns, and 59 foreign keys, the migration-defined current shape is **48 tables, 510 columns, and 64 foreign keys**: 33 business tables, 6 authorization/audit tables, and 9 Laravel infrastructure tables. These are inferred counts, not claims about the currently live database.
+
+The `2026_10_01_000001_convert_geofences_to_monitoring_zones` migration changes the boundary contract as follows:
+
+- `geofences` gains `notify_on_enter` and `notify_on_exit`; its existing soft-delete storage remains.
+- `booking_geofences.booking_id` is no longer unique. The table gains an index on `booking_id`, `scope`, per-zone `notify_on_enter`/`notify_on_exit`, nullable `frozen_at`, and unique `(booking_id, source_geofence_id)`. A booking can therefore have multiple custom rows (`source_geofence_id` `NULL`) and at most one copied row for each source template.
+- Released rows are frozen snapshots. Start Rental copies active default templates, freezes all booking zones, and later model/service operations reject updates or deletes to frozen rows. Custom rows are editable only before release. A default may be deactivated or soft-deleted even when released zones reference it; soft deletion is retained by the model/service contract, while a source FK may still be nulled by a hard delete outside that contract and copied geometry remains.
+- `telematics_setup_sessions.booking_geofence_id` and its foreign key are removed. The six readiness checks do not include `geofence_check`, and zone configuration does not gate setup or release.
+- New `telematics_geofence_states` has 11 columns: `id`, `telematics_trip_id`, `booking_geofence_id`, `inside`, `uncertain`, `candidate_inside`, `candidate_count`, `candidate_started_at`, `last_captured_at`, and timestamps. Its two FKs cascade on parent deletion, and unique `(telematics_trip_id, booking_geofence_id)` gives one state per trip/zone pair.
+
+The `2026_10_12_000001_create_delivery_pricing` migration adds:
+
+- `delivery_pricing_settings` with 9 columns: singleton-style fee inputs (`minimum_fee`, `included_km`, `per_km_rate`), garage address/coordinates, and timestamps; it has no foreign keys.
+- `delivery_quotes` with 29 columns and four foreign keys: required `user_id` (cascade on user delete), required `vehicle_id`, nullable `reviewed_by`, and nullable unique `booking_id`. `destination_point` is physically `TEXT`; the Laravel model casts it as encrypted temporary coordinate-array data. `point_expires_at` bounds retention and expiry cleanup clears the value. Route geometry is transient; `pricing_snapshot` is JSON and preserves the inputs used for the quote.
+- `bookings.delivery_toll_fee`, a decimal amount defaulting to zero. It is the accepted initial delivery toll projection and is separate from post-rental additional charges.
+
+The complete inventory and foreign-key register below remain the **historical 2026-09-26/28 live snapshot**. They intentionally retain the original 45-table/455-column/59-FK evidence; use the delta above and the current migration-defined ERD for the later shape. No new live count is asserted.
+
+For current behavior beyond the physical migration delta, read [geofence monitoring](geofence-monitoring.md) and [delivery pricing](delivery-pricing.md). Those guides define the release-time freeze, soft-deletable defaults, server-side zone evaluation, quote retention, and one-time booking consumption rules.
 
 ## Scope retirement on 2026-09-29
 
@@ -12,9 +36,9 @@ The Staff/Driver refactor subsequently applied `2026_09_29_000002_fix_personnel_
 
 ## Verdict
 
-**READY WITH DOCUMENTED ISSUES.** All 36 repository migrations are recorded as applied and the 45 live tables support a truthful canonical ERD. Structural retention risks and a few model/schema cardinality mismatches should be resolved before a production schema freeze. They do not make the present ERD misleading when documented.
+**Historical baseline: READY WITH DOCUMENTED ISSUES.** The 2026-09-26/28 live snapshot supported a truthful canonical ERD at that date. Structural retention risks and a few model/schema cardinality mismatches should be resolved before a production schema freeze. The current migration-defined shape is documented separately above and has not been live-audited.
 
-## Table counts and categories
+## Historical table counts and categories (2026-09-26/28 baseline)
 
 | Category | Count | Tables |
 | --- | ---: | --- |
@@ -22,9 +46,9 @@ The Staff/Driver refactor subsequently applied `2026_09_29_000002_fix_personnel_
 | Authorization / auditing | 6 | `roles`, `permissions`, `model_has_roles`, `model_has_permissions`, `role_has_permissions`, `activity_log` |
 | Laravel / infrastructure | 9 | `migrations`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `sessions`, `personal_access_tokens`, `password_reset_tokens` |
 
-## Complete live-table inventory
+## Historical complete live-table inventory (2026-09-26/28)
 
-Every column below is shown as `name:type`; `?` means nullable. The inventory reports live MySQL metadata, including columns without Eloquent models. Index entries exclude the primary key. Timestamps are included in the column list. `deleted_at` identifies soft-delete storage, while actual Eloquent soft-delete behavior is discussed in the findings. `JSON` and polymorphic columns are explicit in the lists.
+Every column below is shown as `name:type`; `?` means nullable. The inventory reports live MySQL metadata at the historical audit date, including columns without Eloquent models. Index entries exclude the primary key. Timestamps are included in the column list. `deleted_at` identifies soft-delete storage, while actual Eloquent soft-delete behavior is discussed in the findings. `JSON` and polymorphic columns are explicit in the lists. It is superseded for current monitoring-zone and delivery tables by the source-reviewed delta above.
 
 ### Core business
 
@@ -503,7 +527,7 @@ Each row is a live MySQL constraint. `NO ACTION` is the reported update rule for
 | `vehicle_maintenance_records.vehicle_id` | `vehicles.id` | RESTRICT | NO ACTION |
 | `vehicles.current_condition_inspection_id` | `vehicle_inspections.id` | SET NULL | NO ACTION |
 
-## Core domain findings
+## Historical core domain findings (2026-09-26/28 baseline)
 
 ### Booking and driver assignment
 
@@ -539,7 +563,7 @@ Spatie roles and permissions use composite uniqueness for `(name,guard_name)`. `
 
 The `UserRole` PHP enum names admin, staff, and customer; the role seeder additionally creates a driver role. There is no dedicated owner role in the current role seed. Roles are rows in `roles` linked through Spatie's polymorphic assignment tables, not separate user tables.
 
-## Model and schema alignment
+## Historical model and schema alignment (2026-09-26/28 baseline)
 
 - `Booking::telematicsTrips()` is declared `hasMany`, but `telematics_trips.booking_id` is unique. The physical ERD correctly shows zero-or-one trip. This is an API/model cardinality mismatch, not evidence that multiple trips are allowed.
 - `User::emergencyContacts()` is declared `hasMany`, but `emergency_contacts.user_id` is unique. The physical ERD shows zero-or-one contact.
@@ -547,7 +571,7 @@ The `UserRole` PHP enum names admin, staff, and customer; the role seeder additi
 - `Booking` and `CustomerDocument` expose several virtual compatibility attributes that persist through related tables. Their fillable lists are not evidence that those attributes remain physical columns.
 - No important single-table FK was found without a corresponding child-side Eloquent relation among the audited business models. Inverse relations are not uniformly defined, which does not alter database cardinality. Pivot tables and polymorphic relations intentionally have no dedicated JamJade model for every table.
 
-## High-volume indexes and access paths
+## Historical high-volume indexes and access paths (2026-09-26/28 baseline)
 
 | Table | Current relevant indexes | Assessment |
 | --- | --- | --- |
@@ -557,7 +581,7 @@ The `UserRole` PHP enum names admin, staff, and customer; the role seeder additi
 | `payments` | `(booking_id,status)`, `(user_id,status)`, `(provider,status)`, unique provider references | Transaction lookup is covered; no `created_at` index for global time-range reporting. |
 | `vehicle_inspection_items` / `markers` / `signatures` | unique inspection-scoped keys | FK-leading unique indexes support fetching children by inspection. No database-backed inspection-photo table. |
 
-## Normalization and legacy review
+## Historical normalization and legacy review (2026-09-26/28 baseline)
 
 The current shape generally keeps independent facts in separate relations: one payment table, allocation pivot, child document files, child inspection evidence, and separate setup attempts/trip points/events. `bookings.payment_status`, `remaining_balance`, and quote totals are intentional stored projections/snapshots. Trip latest location is an intentional cache over point history. JSON is used for bounded polygon vertices, provider responses, setup evidence, event metadata, and notification data; there is no raw sensor stream hidden in JSON in the audited schema.
 
@@ -567,7 +591,7 @@ Removed prototype storage is absent from the live schema: `paypal_checkouts`, `a
 
 The older `docs/ERD-relationships.md` is a supplementary relationship guide. It omits the location-point relationship and the authorization/audit inventory, so it should not be treated as the complete physical ERD. No contradictory FK or cardinality statement was found in that guide.
 
-## Status and type representation
+## Historical status and type representation (2026-09-26/28 baseline)
 
 MySQL stores the reviewed domain statuses/types as `VARCHAR` fields, not SQL `ENUM` or `CHECK` constraints. PHP backed enums are used for booking status, booking payment status, rental type, document status, vehicle status, inspection type/status/signer, maintenance trigger/category/record status, setup status/step type/step status, charge type/responsibility, and telematics event type. Trip status and geofence geometry type are constrained by service logic/string values, not PHP enum casts in their models. `payments.status` uses provider-record values such as `pending` and `completed`; its `PaymentStatus` accessor maps these to domain labels, so it is not the same representation as `bookings.payment_status`. Due status is calculated, not stored.
 
@@ -592,7 +616,7 @@ MySQL stores the reviewed domain statuses/types as `VARCHAR` fields, not SQL `EN
 
 The 12 setup step types are `device_check`, `motion_permission`, `location_permission`, `background_location`, `gps_check`, `geofence_check`, `phone_mount`, `stationary_calibration`, `forward_calibration`, `braking_calibration`, `left_turn_calibration`, and `right_turn_calibration`. The last five are schema/type capacity only in the current mobile flow. The event enum declares `trip_started`, `trip_paused`, `trip_resumed`, `trip_ended`, `geofence_enter`, `geofence_exit`, `gps_unavailable`, `location_permission_revoked`, `device_orientation_changed`, `telemetry_interrupted`, `harsh_acceleration`, `harsh_braking`, `harsh_left_turn`, and `harsh_right_turn`; the enum does not establish that any automatic classifier exists.
 
-## Migration health and baseline decision
+## Historical migration health and baseline decision
 
 The live migration ledger contains **36 applied migrations**, with no pending repository migrations at audit time. Later migrations replace or remove earlier development schema: the August normalization drops/recreates payments and telematics tables; the September booking split replaces status logs and moves assignment/terms/email details; the telematics foundation removes old calibration and sensor fields; the polygon migration adds shape/JSON columns. The normalization and booking-split migrations have intentionally irreversible `down()` methods. This history is suitable to document now, but not yet a production-grade upgrade path for unknown persisted environments.
 
@@ -641,7 +665,9 @@ All 36 migration files below appear in the live ledger; pending: **none**.
 | `2026_09_18_000001_add_structured_address_to_customer_profiles` | 2 |
 | `2026_09_23_000001_add_geofence_shapes_and_soft_deletes` | 3 |
 
-## Issue register
+## Historical issue register (2026-09-26/28 baseline)
+
+The issue rows below belong to the historical single-zone baseline. The current monitoring-zone contract supersedes the old one-zone cardinality and setup-FK rows; use the source-reviewed delta and [geofence monitoring](geofence-monitoring.md) for current behavior.
 
 | Severity | Table / domain | Issue | Why it matters | Recommended future action |
 | --- | --- | --- | --- | --- |
@@ -660,4 +686,4 @@ All 36 migration files below appear in the live ledger; pending: **none**.
 
 ## Source and validation notes
 
-Sources were the 36 current migrations, live MySQL `information_schema` table/column/index/FK metadata and migration ledger, Eloquent models and enum casts, booking/inspection/payment/maintenance/geofence/telematics services, and supporting domain docs. The canonical ERD was generated from those live table/FK facts. Its business entity set and physical FK relationships are cross-checked against the 45-table/59-FK snapshot; infrastructure is inventoried but excluded from the business diagrams. No schema or application file was modified.
+Sources for the dated snapshot were the 36 migrations then present, live MySQL `information_schema` table/column/index/FK metadata and migration ledger, Eloquent models and enum casts, booking/inspection/payment/maintenance/geofence/telematics services, and supporting domain docs. The source-reviewed delta additionally used all 40 repository migrations plus the affected current models/services. The historical canonical ERD was generated from the dated live table/FK facts; its business entity set and physical FK relationships are cross-checked against the 45-table/59-FK snapshot. Infrastructure is inventoried but excluded from the business diagrams. No schema or application file was modified.
