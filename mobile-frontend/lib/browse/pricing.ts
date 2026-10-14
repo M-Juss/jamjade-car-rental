@@ -1,9 +1,8 @@
 import type { BookingFormData, PriceBreakdown, Vehicle } from '@/types/browse';
-import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
+import type { DeliveryQuote } from '@/services/api/delivery.service';
 
 export const OWNER_DRIVER_METRO_MANILA_DAILY_RATE = 700;
 export const OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE = 1000;
-export const DELIVERY_FEE = 900;
 export const DOWN_PAYMENT_RATE = 0.5;
 
 export const formatPeso = (amount: number) => {
@@ -65,23 +64,25 @@ export const getPriceBreakdown = (
   driverOption: BookingFormData['driverOption'],
   pickupOption: BookingFormData['pickupOption'],
   ownerDriverCoverage?: BookingFormData['ownerDriverCoverage'],
-  pickupLocation?: string,
+  _pickupLocation?: string,
+  quote?: DeliveryQuote,
 ): PriceBreakdown => {
   const safeDays = Math.max(0, numberOfDays);
   const subtotal = vehicle.pricePerDay * safeDays;
-  const deliveryFee =
-    pickupOption === 'delivery' && pickupLocation !== JAMJADE_GARAGE ? DELIVERY_FEE : 0;
+  const deliveryFee = pickupOption === 'delivery' ? quote?.deliveryFee ?? 0 : 0;
+  const deliveryTollFee = pickupOption === 'delivery' ? quote?.deliveryTollFee ?? 0 : 0;
   const ownerDriverRatePerDay = driverOption === 'owners_driver' ? getOwnerDriverRatePerDay(ownerDriverCoverage) : undefined;
   const ownerDriverFee = ownerDriverRatePerDay ? ownerDriverRatePerDay * safeDays : 0;
-  const totalAmount = subtotal + deliveryFee + ownerDriverFee;
+  const totalAmount = quote?.totalAmount ?? subtotal + deliveryFee + deliveryTollFee + ownerDriverFee;
   const downPaymentAmount = Math.ceil(totalAmount * DOWN_PAYMENT_RATE);
 
   return {
-    pricePerDay: vehicle.pricePerDay,
+    pricePerDay: quote?.pricePerDay ?? vehicle.pricePerDay,
     numberOfDays: safeDays,
-    subtotal,
+    subtotal: quote?.subtotal ?? subtotal,
     deliveryFee,
-    ownerDriverFee,
+    deliveryTollFee,
+    ownerDriverFee: quote?.ownerDriverFee ?? ownerDriverFee,
     ownerDriverRatePerDay,
     totalAmount,
     downPaymentAmount,

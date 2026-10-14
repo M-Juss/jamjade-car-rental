@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import { Redirect } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -10,7 +11,7 @@ export function AuthenticatedOnly({ children }: { children: ReactNode }) {
   if (status === 'loading') {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#346EF6" size="large" />
+        <ActivityIndicator color={themeColors.primary} size="large" />
       </View>
     );
   }

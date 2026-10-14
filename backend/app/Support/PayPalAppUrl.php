@@ -46,6 +46,24 @@ final class PayPalAppUrl
         return is_string($url) && self::isAllowed($url) ? $url : null;
     }
 
+    public static function androidIntent(string $appUrl, string $fallbackUrl): ?string
+    {
+        $scheme = parse_url($appUrl, PHP_URL_SCHEME);
+
+        if (! is_string($scheme)
+            || ! in_array(strtolower($scheme), self::ALLOWED_SCHEMES, true)
+            || ! str_contains($appUrl, '://')) {
+            return null;
+        }
+
+        // The fragment is reserved for Intent extras. Never copy an app URL's
+        // fragment into that section, where it could change the launch target.
+        $target = explode('#', substr($appUrl, strpos($appUrl, '://') + 3), 2)[0];
+
+        return 'intent://'.$target.'#Intent;scheme='.strtolower($scheme).
+            ';S.browser_fallback_url='.rawurlencode($fallbackUrl).';end';
+    }
+
     private static function webOrigin(string $url): ?string
     {
         $parts = parse_url($url);

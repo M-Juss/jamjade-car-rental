@@ -1,11 +1,5 @@
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  X,
-} from 'lucide-react-native';
+import { themeColors } from '@/constants/theme';
+import { CalendarDays, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,11 +40,7 @@ function parseDateKey(value?: string) {
 
   const date = new Date(yearValue, monthValue - 1, dayValue);
 
-  if (
-    date.getFullYear() !== yearValue ||
-    date.getMonth() !== monthValue - 1 ||
-    date.getDate() !== dayValue
-  ) {
+  if (date.getFullYear() !== yearValue || date.getMonth() !== monthValue - 1 || date.getDate() !== dayValue) {
     return null;
   }
 
@@ -142,7 +132,12 @@ export function DatePickerInput({
   const maximumSelectableDate = useMemo(() => parseDateKey(maximumDate), [maximumDate]);
   const initialVisibleDateObject = useMemo(() => parseDateKey(initialVisibleDate), [initialVisibleDate]);
   const fallbackVisibleDate = useMemo(
-    () => selectedDate ?? initialVisibleDateObject ?? maximumSelectableDate ?? minimumSelectableDate ?? new Date(),
+    () =>
+      selectedDate ??
+      initialVisibleDateObject ??
+      maximumSelectableDate ??
+      minimumSelectableDate ??
+      new Date(),
     [initialVisibleDateObject, maximumSelectableDate, minimumSelectableDate, selectedDate],
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -164,11 +159,15 @@ export function DatePickerInput({
     getFirstDayOfMonth(visibleMonth).getTime() < getFirstDayOfMonth(maximumSelectableDate).getTime();
 
   const shiftMonth = (monthDelta: number) => {
-    setVisibleMonth((currentMonth) => new Date(currentMonth.getFullYear(), currentMonth.getMonth() + monthDelta, 1));
+    setVisibleMonth(
+      (currentMonth) => new Date(currentMonth.getFullYear(), currentMonth.getMonth() + monthDelta, 1),
+    );
   };
 
   const shiftYear = (yearDelta: number) => {
-    setVisibleMonth((currentMonth) => new Date(currentMonth.getFullYear() + yearDelta, currentMonth.getMonth(), 1));
+    setVisibleMonth(
+      (currentMonth) => new Date(currentMonth.getFullYear() + yearDelta, currentMonth.getMonth(), 1),
+    );
   };
 
   const handleSelectDate = (date: Date) => {
@@ -181,8 +180,8 @@ export function DatePickerInput({
   };
 
   return (
-    <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
-      <Text className="text-[12px] font-black uppercase text-muted-foreground">
+    <View className="gap-1.5">
+      <Text className="font-sans text-caption font-medium text-foreground">
         {label}
         {required ? <Text className="text-destructive"> *</Text> : null}
       </Text>
@@ -192,40 +191,52 @@ export function DatePickerInput({
         disabled={disabled}
         onPress={() => setIsCalendarOpen(true)}
         className={cx(
-          'min-h-[54px] flex-row items-center rounded-[20px] border bg-surface px-4',
+          'min-h-control flex-row items-center rounded-field border bg-surface px-4',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
           disabled && 'opacity-70',
         )}>
-        <CalendarDays size={18} color="#346EF6" strokeWidth={2.35} />
+        <CalendarDays size={18} color={themeColors.primary} strokeWidth={2.35} />
         <Text
           className={cx(
-            'min-w-0 flex-1 px-3 text-[14px] font-semibold',
-            value ? 'text-foreground' : 'text-subtle-foreground',
+            'font-sans',
+            'min-w-0 flex-1 px-3 text-[15px]',
+            value ? 'text-foreground' : 'text-secondary-foreground',
           )}>
           {value ? formatDisplayDate(value) : placeholder}
         </Text>
       </Pressable>
-      <View className="absolute left-1 right-1 top-full mt-1.5">
+      <View className={error || helperText ? 'px-1' : 'hidden'}>
         {error || helperText ? (
-          <Text className={cx('text-[11px] font-bold leading-4 text-subtle-foreground', error && 'text-destructive')}>
+          <Text
+            className={cx(
+              'font-sans',
+              'text-caption text-secondary-foreground',
+              error && 'text-destructive',
+            )}>
             {error || helperText}
           </Text>
         ) : null}
       </View>
 
-      <Modal animationType="fade" transparent visible={isCalendarOpen} onRequestClose={() => setIsCalendarOpen(false)}>
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isCalendarOpen}
+        onRequestClose={() => setIsCalendarOpen(false)}>
         <View className="flex-1 justify-end bg-black/35">
           <Pressable accessibilityRole="button" className="flex-1" onPress={() => setIsCalendarOpen(false)} />
           <View
-            className="rounded-t-[32px] bg-background px-5 pt-4"
+            className="rounded-t-sheet bg-background px-5 pt-4"
             style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
             <View className="mb-4 items-center">
               <View className="h-1.5 w-12 rounded-full bg-border" />
             </View>
             <View className="mb-5 flex-row items-center gap-3">
               <View className="min-w-0 flex-1">
-                <Text className="text-[22px] font-black text-foreground">{label}</Text>
-                <Text className="mt-1 text-[12px] font-bold text-muted-foreground">Choose a date from the calendar.</Text>
+                <Text className="font-sans text-[22px] font-semibold text-foreground">{label}</Text>
+                <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
+                  Choose a date from the calendar.
+                </Text>
               </View>
               <Pressable
                 accessibilityLabel="Close calendar"
@@ -233,17 +244,17 @@ export function DatePickerInput({
                 hitSlop={8}
                 onPress={() => setIsCalendarOpen(false)}
                 className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-                <X size={19} color="#64748B" strokeWidth={2.45} />
+                <X size={19} color={themeColors.mutedForeground} strokeWidth={2.45} />
               </Pressable>
             </View>
 
-            <View className="rounded-[26px] border border-border bg-surface p-4">
+            <View className="rounded-card border border-border bg-surface p-4">
               <View className="flex-row items-center justify-between gap-2">
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => shiftYear(-1)}
                   className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-                  <ChevronsLeft size={18} color="#346EF6" strokeWidth={2.45} />
+                  <ChevronsLeft size={18} color={themeColors.primary} strokeWidth={2.45} />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -252,11 +263,15 @@ export function DatePickerInput({
                   onPress={() => shiftMonth(-1)}
                   className={cx(
                     'h-10 w-10 items-center justify-center rounded-full',
-                    canGoToPreviousMonth ? 'bg-muted' : 'bg-[#F1F5F9]',
+                    canGoToPreviousMonth ? 'bg-muted' : 'bg-muted',
                   )}>
-                  <ChevronLeft size={19} color={canGoToPreviousMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
+                  <ChevronLeft
+                    size={19}
+                    color={canGoToPreviousMonth ? themeColors.primary : '#CBD5E1'}
+                    strokeWidth={2.45}
+                  />
                 </Pressable>
-                <Text className="min-w-0 flex-1 text-center text-[16px] font-black text-foreground">
+                <Text className="font-sans min-w-0 flex-1 text-center text-[16px] font-semibold text-foreground">
                   {getMonthTitle(visibleMonth)}
                 </Text>
                 <Pressable
@@ -266,15 +281,19 @@ export function DatePickerInput({
                   onPress={() => shiftMonth(1)}
                   className={cx(
                     'h-10 w-10 items-center justify-center rounded-full',
-                    canGoToNextMonth ? 'bg-muted' : 'bg-[#F1F5F9]',
+                    canGoToNextMonth ? 'bg-muted' : 'bg-muted',
                   )}>
-                  <ChevronRight size={19} color={canGoToNextMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
+                  <ChevronRight
+                    size={19}
+                    color={canGoToNextMonth ? themeColors.primary : '#CBD5E1'}
+                    strokeWidth={2.45}
+                  />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => shiftYear(1)}
                   className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-                  <ChevronsRight size={18} color="#346EF6" strokeWidth={2.45} />
+                  <ChevronsRight size={18} color={themeColors.primary} strokeWidth={2.45} />
                 </Pressable>
               </View>
 
@@ -282,7 +301,7 @@ export function DatePickerInput({
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
                   <Text
                     key={weekday}
-                    className="text-center text-[10px] font-black uppercase text-subtle-foreground"
+                    className="font-sans text-center text-[11px] font-normal text-secondary-foreground"
                     style={{ width: `${100 / 7}%` }}>
                     {weekday}
                   </Text>
@@ -298,10 +317,14 @@ export function DatePickerInput({
                   const dateKey = getDateKey(date);
                   const isSelected = value === dateKey;
                   const isDisabled =
-                    isBeforeMinimum(date, minimumSelectableDate) || isAfterMaximum(date, maximumSelectableDate);
+                    isBeforeMinimum(date, minimumSelectableDate) ||
+                    isAfterMaximum(date, maximumSelectableDate);
 
                   return (
-                    <View key={dateKey} className="h-11 items-center justify-center" style={{ width: `${100 / 7}%` }}>
+                    <View
+                      key={dateKey}
+                      className="h-11 items-center justify-center"
+                      style={{ width: `${100 / 7}%` }}>
                       <Pressable
                         accessibilityRole="button"
                         accessibilityState={{ disabled: isDisabled, selected: isSelected }}
@@ -311,11 +334,12 @@ export function DatePickerInput({
                           'h-9 w-9 items-center justify-center rounded-full',
                           isSelected && 'bg-primary',
                           !isSelected && !isDisabled && 'bg-surface',
-                          isDisabled && 'bg-[#F1F5F9]',
+                          isDisabled && 'bg-muted',
                         )}>
                         <Text
                           className={cx(
-                            'text-[13px] font-black',
+                            'font-sans',
+                            'text-[13px] font-semibold',
                             isSelected && 'text-surface',
                             !isSelected && !isDisabled && 'text-foreground',
                             isDisabled && 'text-border',

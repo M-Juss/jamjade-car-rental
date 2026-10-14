@@ -35,7 +35,7 @@ return [
     ],
     'geofence_management' => [
         'label' => 'Geofence Library',
-        'description' => 'Create and maintain reusable rental boundary templates.',
+        'description' => 'View default monitoring zones and their rental history.',
         'permission' => 'manage geofences',
         'admin_path' => '/admin/geofences',
         'staff_path' => '/staff/geofences',
@@ -64,6 +64,15 @@ return [
         'admin_path' => '/admin/report',
         'staff_path' => '/staff/report',
         'staff_accessible' => true,
+    ],
+    'delivery_pricing' => [
+        'label' => 'Delivery Pricing',
+        'description' => 'Configure garage location and delivery rates for new quotes.',
+        'permission' => 'manage delivery pricing',
+        'admin_path' => '/admin/delivery-pricing',
+        'staff_path' => null,
+        'staff_accessible' => false,
+        'admin_only' => true,
     ],
     'personnel' => [
         'label' => 'Personnel',

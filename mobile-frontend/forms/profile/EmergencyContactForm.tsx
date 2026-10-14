@@ -11,20 +11,10 @@ import { BottomActionButton } from '@/components/ui/BottomActionButton';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
-import {
-  emergencyContactSchema,
-  sanitizePersonName,
-} from '@/validation';
-import {
-  skipEmergencyContact,
-  updateEmergencyContact,
-  useCustomer,
-} from '@/lib/customer/customer-store';
+import { emergencyContactSchema, sanitizePersonName } from '@/validation';
+import { skipEmergencyContact, updateEmergencyContact, useCustomer } from '@/lib/customer/customer-store';
 import type { EmergencyContact, EmergencyRelationship } from '@/types/customer';
-import {
-  saveEmergencyContact,
-  skipEmergencyContact as skipEmergencyContactApi,
-} from '@/services/api';
+import { saveEmergencyContact, skipEmergencyContact as skipEmergencyContactApi } from '@/services/api';
 import { ApiError } from '@/services/http';
 
 const relationshipOptions: Exclude<EmergencyRelationship, ''>[] = [
@@ -142,7 +132,7 @@ export function EmergencyContactForm() {
           totalSteps={3}
         />
 
-        <View className="mt-7 gap-4 rounded-[28px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
+        <View className="mt-7 gap-4 rounded-card border border-border bg-surface p-4 ">
           <Controller
             control={control}
             name="name"
@@ -177,7 +167,7 @@ export function EmergencyContactForm() {
             )}
           />
           <View className="relative mb-8 gap-2">
-            <Text className="text-[12px] font-black text-muted-foreground">
+            <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
               Relationship <Text className="text-destructive">*</Text>
             </Text>
             <View className="flex-row flex-wrap gap-2.5">
@@ -199,7 +189,12 @@ export function EmergencyContactForm() {
                       'min-h-[42px] items-center justify-center rounded-full border px-4',
                       isSelected ? 'border-primary bg-muted' : 'border-border bg-background',
                     )}>
-                    <Text className={cx('text-[13px] font-black', isSelected ? 'text-primary' : 'text-foreground')}>
+                    <Text
+                      className={cx(
+                        'font-sans',
+                        'text-[13px] font-semibold',
+                        isSelected ? 'text-primary' : 'text-foreground',
+                      )}>
                       {relationship}
                     </Text>
                   </Pressable>
@@ -208,9 +203,11 @@ export function EmergencyContactForm() {
             </View>
             <View className="absolute left-1 right-1 top-full mt-1.5">
               {errors.relationship ? (
-                <Text className="text-[11px] font-bold leading-4 text-destructive">{errors.relationship.message}</Text>
+                <Text className="font-sans text-[11px] font-medium leading-4 text-destructive">
+                  {errors.relationship.message}
+                </Text>
               ) : (
-                <Text className="text-[11px] font-bold leading-4 text-subtle-foreground">
+                <Text className="font-sans text-[11px] font-medium leading-4 text-secondary-foreground">
                   Select your relationship to the emergency contact.
                 </Text>
               )}

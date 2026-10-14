@@ -19,7 +19,7 @@ function ownersDriverBookingPayload(array $overrides = []): array
         'vehicle_id' => availableVehicle()->id,
         'rental_start_at' => now()->addDays(3)->setTime(9, 30)->format('Y-m-d H:i'),
         'rental_end_at' => now()->addDays(5)->setTime(9, 30)->format('Y-m-d H:i'),
-        'pickup_location_type' => 'delivery',
+        'pickup_location_type' => 'shop',
         'pickup_location' => 'Dasmarinas, Cavite',
         'return_location' => 'Dasmarinas, Cavite',
         'driver_option' => 'owners_driver',
@@ -42,14 +42,14 @@ it('waives the delivery fee when the owner-s driver pickup is the Jamjade Garage
         ->and($booking->pickup_location)->toBe('Jamjade Garage');
 });
 
-it('keeps the delivery fee for a specific delivery location', function () {
+it('uses the accepted delivery quote for a specific delivery location', function () {
     $user = customerUser();
     $booking = app(BookingService::class)->createAwaitingPayPalPayment(
         $user,
-        ownersDriverBookingPayload()
+        withTestDeliveryQuote($user, ownersDriverBookingPayload(['pickup_location_type' => 'delivery']), 254)
     );
 
-    expect($booking->delivery_fee)->toBe('900.00');
+    expect($booking->delivery_fee)->toBe('254.00');
 });
 
 it('derives the delivery time from the rental start time', function () {

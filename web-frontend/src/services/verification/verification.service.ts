@@ -11,9 +11,7 @@ import type {
 } from "./types";
 
 const DOCUMENT_TYPE_LABELS: Record<string, DocumentType> = {
-  valid_id: "Valid ID",
-  passport: "Passport",
-  proof_of_billing: "Meralco Bill",
+  proof_of_billing: "Proof of Address",
   drivers_license: "Driver's License",
 };
 
@@ -28,11 +26,13 @@ function resolveDocumentUrl(url?: string | null) {
 }
 
 function getDocumentType(record: BackendVerificationRecord): DocumentType {
-  if (record.name === "Valid ID" || record.name === "Passport" || record.name === "Meralco Bill" || record.name === "Driver's License") {
+  if (record.name === "Proof of Address" || record.name === "Driver's License") {
     return record.name;
   }
 
-  return DOCUMENT_TYPE_LABELS[record.documentType ?? ""] ?? "Valid ID";
+  const label = DOCUMENT_TYPE_LABELS[record.documentType ?? ""];
+  if (!label) throw new Error("Unsupported verification document type.");
+  return label;
 }
 
 function getStatus(status?: string): VerificationStatus {

@@ -9,7 +9,6 @@ export type CustomerDocumentDefinition = {
   name: string;
   shortDescription: string;
   uploadDescription: string;
-  optional?: boolean;
 };
 
 export const CUSTOMER_DOCUMENT_DEFINITIONS: CustomerDocumentDefinition[] = [
@@ -20,17 +19,10 @@ export const CUSTOMER_DOCUMENT_DEFINITIONS: CustomerDocumentDefinition[] = [
     uploadDescription: 'Add your license number, expiration date, and clear images of both sides.',
   },
   {
-    id: 'passport',
-    name: 'Passport',
-    shortDescription: 'Supporting identity document requested by the admin.',
-    uploadDescription: 'Upload a clear image of the information page of your passport.',
-    optional: true,
-  },
-  {
     id: 'proof-of-address',
-    name: 'Meralco Bill / Proof of Address',
-    shortDescription: 'Recent bill showing your current address.',
-    uploadDescription: 'Upload a clear image of a recent Meralco bill or other proof of address.',
+    name: 'Proof of Address',
+    shortDescription: 'Recent document showing your current address.',
+    uploadDescription: 'Upload a clear, recent document showing your name and current residential address, such as a utility bill, billing statement, or official address document. Add the back image only if the document has one.',
   },
 ];
 
@@ -71,9 +63,5 @@ export function hasDocumentDraft(
     );
   }
 
-  if (documentId === 'passport') {
-    return Boolean(documents.passport);
-  }
-
-  return Boolean(documents.proofOfAddress);
+  return Boolean(documents.proofOfAddress || documents.proofOfAddressBack);
 }

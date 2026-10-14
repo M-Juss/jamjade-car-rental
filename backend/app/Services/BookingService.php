@@ -23,8 +23,6 @@ class BookingService
 {
     public const DOWN_PAYMENT_RATE = 0.5;
 
-    public const DELIVERY_FEE = 900;
-
     public const SHOP_LOCATION = 'Jamjade Rent A Car Services';
 
     public const JAMJADE_GARAGE = 'Jamjade Garage';
@@ -42,7 +40,8 @@ class BookingService
         private readonly VehicleOperationalStatusService $operationalStatusService,
         private readonly RentalReadinessService $readinessService,
         private readonly AdditionalChargeService $additionalChargeService,
-        private readonly TelematicsSetupService $telematicsSetup
+        private readonly TelematicsSetupService $telematicsSetup,
+        private readonly DeliveryQuoteService $deliveryQuotes
     ) {}
 
     public function paginateForUser(User $user, array $filters = [], int $perPage = 10): LengthAwarePaginator
@@ -50,7 +49,7 @@ class BookingService
         return Booking::query()
             ->with([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
-                'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
             ])
             ->where('user_id', $user->id)
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
@@ -67,7 +66,7 @@ class BookingService
             ])
             ->with([
                 'vehicle.images', 'user.customerProfile', 'user.documents', 'payments', 'assignedDriver',
-                'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
             ])
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
@@ -169,7 +168,7 @@ class BookingService
 
             return $booking->fresh([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
-                'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
             ]);
         });
     }
@@ -232,26 +231,32 @@ class BookingService
             $rentalType = RentalType::from($data['driver_option']);
             $this->assertRentalAllowed($user, $rentalType);
 
-            $start = CarbonImmutable::parse($data['rental_start_at']);
-            $end = CarbonImmutable::parse($data['rental_end_at']);
+            $start = CarbonImmutable::parse($data['rental_start_at'])->utc();
+            $end = CarbonImmutable::parse($data['rental_end_at'])->utc();
             $this->assertVehicleScheduleAvailable($vehicle->id, $start, $end);
 
             $durationDays = max(1, (int) ceil($start->diffInRealHours($end) / 24));
             $pricePerDay = (float) $vehicle->price_per_day;
             $subtotal = $pricePerDay * $durationDays;
             $isOwnerDriver = $rentalType === RentalType::OwnersDriver;
-            $pickupLocationType = $isOwnerDriver ? 'delivery' : 'shop';
-            $pickupLocation = $isOwnerDriver ? $data['pickup_location'] : self::SHOP_LOCATION;
-            $returnLocation = $isOwnerDriver ? $data['return_location'] : self::SHOP_LOCATION;
+            $pickupLocationType = $isOwnerDriver ? $data['pickup_location_type'] : 'shop';
+            $quote = $pickupLocationType === 'delivery' ? $this->deliveryQuotes->forBooking($user, $data) : null;
+            $pickupLocation = $quote?->destination_address ?? self::JAMJADE_GARAGE;
+            $returnLocation = $pickupLocation;
             $ownerDriverCoverage = $isOwnerDriver ? $data['owner_driver_coverage'] : null;
-            $deliveryFee = $isOwnerDriver && $pickupLocation !== self::JAMJADE_GARAGE ? self::DELIVERY_FEE : 0;
+            $deliveryFee = $quote?->delivery_fee ?? 0;
+            $deliveryTollFee = $quote?->delivery_toll_fee ?? 0;
+            if ($quote) {
+                $pricePerDay = $quote->price_per_day;
+                $subtotal = $quote->subtotal;
+            }
             $ownerDriverFee = $isOwnerDriver
                 ? $this->ownerDriverRate($ownerDriverCoverage) * $durationDays
                 : 0;
-            $addOnsTotal = (float) ($data['add_ons_total'] ?? 0);
-            $discountTotal = (float) ($data['discount_total'] ?? 0);
+            $addOnsTotal = 0;
+            $discountTotal = 0;
             $totalAmount = max(
-                $subtotal + $deliveryFee + $ownerDriverFee + $addOnsTotal - $discountTotal,
+                $subtotal + $deliveryFee + $deliveryTollFee + $ownerDriverFee + $addOnsTotal - $discountTotal,
                 0
             );
             $requiredDownPayment = ceil($totalAmount * self::DOWN_PAYMENT_RATE);
@@ -288,6 +293,7 @@ class BookingService
                 'duration_days' => $durationDays,
                 'subtotal' => $subtotal,
                 'delivery_fee' => $deliveryFee,
+                'delivery_toll_fee' => $deliveryTollFee,
                 'owner_driver_fee' => $ownerDriverFee,
                 'add_ons_total' => $addOnsTotal,
                 'discount_total' => $discountTotal,
@@ -296,6 +302,8 @@ class BookingService
                 'total_amount' => $totalAmount,
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            $quote?->update(['status' => 'consumed', 'booking_id' => $booking->id]);
 
             $booking->terms()->create([
                 'customer_signature' => $data['customer_signature'],
@@ -387,7 +395,7 @@ class BookingService
 
             return $booking->fresh([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
-                'assignment', 'terms', 'confirmationEmail', 'events',
+                'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events',
             ]);
         });
     }

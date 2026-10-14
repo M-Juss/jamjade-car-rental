@@ -10,13 +10,11 @@ use App\Http\Requests\Admin\Booking\ListBookingsRequest;
 use App\Http\Requests\Admin\Booking\StoreAdditionalChargesRequest;
 use App\Http\Requests\Admin\Booking\StoreBookingInspectionRequest;
 use App\Http\Requests\Admin\BookingStatusRequest;
-use App\Http\Requests\Telematics\AssignBookingGeofenceRequest;
 use App\Http\Resources\AdditionalChargeResource;
 use App\Http\Resources\BookingResource;
 use App\Http\Resources\VehicleInspectionResource;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
-use App\Models\Geofence;
 use App\Models\User;
 use App\Services\AdditionalChargeService;
 use App\Services\BookingEmailService;
@@ -141,42 +139,6 @@ class BookingController extends Controller
         );
     }
 
-    public function geofenceTemplates(): JsonResponse
-    {
-        return $this->success('Active geofence templates fetched successfully.', [
-            'geofences' => Geofence::query()->where('is_active', true)->orderBy('name')->get()
-                ->map(fn (Geofence $geofence) => [
-                    'id' => $geofence->id,
-                    'name' => $geofence->name,
-                    'geometryType' => $geofence->geometry_type,
-                    'centerLatitude' => $geofence->center_latitude === null ? null : (float) $geofence->center_latitude,
-                    'centerLongitude' => $geofence->center_longitude === null ? null : (float) $geofence->center_longitude,
-                    'radiusMeters' => $geofence->radius_meters === null ? null : (float) $geofence->radius_meters,
-                    'polygonCoordinates' => $geofence->polygon_coordinates,
-                ]),
-        ]);
-    }
-
-    public function assignTelematicsGeofence(AssignBookingGeofenceRequest $request, Booking $booking): JsonResponse
-    {
-        $source = $request->filled('source_geofence_id')
-            ? Geofence::query()->findOrFail($request->integer('source_geofence_id'))
-            : null;
-        $this->telematicsSetupService->assignGeofenceSnapshot($booking, $source, array_filter([
-            'name' => $request->validated('name'),
-            'geometry_type' => $request->validated('geometry_type'),
-            'center_latitude' => $request->validated('center_latitude'),
-            'center_longitude' => $request->validated('center_longitude'),
-            'radius_meters' => $request->validated('radius_meters'),
-            'polygon_coordinates' => $request->validated('polygon_coordinates'),
-        ], fn ($value) => $value !== null), $request->user());
-
-        return $this->success(
-            'Booking geofence assigned successfully.',
-            new BookingResource($booking->fresh()->load($this->detailRelations()))
-        );
-    }
-
     public function complete(BookingStatusRequest $request, Booking $booking): JsonResponse
     {
         return $this->statusAction($request, $booking, BookingStatus::Completed, 'Rental completed successfully.');
@@ -274,7 +236,7 @@ class BookingController extends Controller
             'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'additionalCharges.responsibleUser',
             'vehicleInspections.items', 'vehicleInspections.markers', 'vehicleInspections.signatures.user:id,name',
             'vehicleInspections.creator:id,name', 'vehicleInspections.basedOnInspection',
-            'telematicsTrips', 'bookingGeofence', 'telematicsSetupSession.bookingGeofence', 'telematicsSetupSession.steps',
+            'telematicsTrips', 'bookingGeofences', 'telematicsSetupSession.steps',
         ];
     }
 }

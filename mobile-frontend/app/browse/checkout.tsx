@@ -1,41 +1,26 @@
+import { themeColors } from '@/constants/theme';
+import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { useFocusEffect } from '@react-navigation/native';
-import {
-  useLocalSearchParams,
-  useRootNavigationState,
-  useRouter,
-  type Href,
-} from 'expo-router';
+import { useLocalSearchParams, useRootNavigationState, useRouter, type Href } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  BookingStepper,
-  ErrorState,
-  PriceBreakdownCard,
-  SelectedVehicleSummary,
-} from '@/components/browse';
+import { BookingStepper, ErrorState, PriceBreakdownCard, SelectedVehicleSummary } from '@/components/browse';
 import { AuthenticatedOnly } from '@/components/auth/AuthenticatedOnly';
 import { TermsSignatureModal } from '@/components/browse/TermsSignatureModal';
 import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
-import {
-  getBookingFlow,
-  resetBookingFlow,
-  submitBookingTerms,
-} from '@/lib/browse/booking-flow';
-import {
-  formatBookingDate,
-  getPriceBreakdown,
-} from '@/lib/browse/pricing';
+import { getBookingFlow, resetBookingFlow, submitBookingTerms } from '@/lib/browse/booking-flow';
+import { formatBookingDate, getPriceBreakdown } from '@/lib/browse/pricing';
 import { formatDeliveryTime } from '@/lib/browse/rental-config';
 
 function SummaryCard({ children, title }: { title: string; children: ReactNode }) {
   return (
-    <View className="mt-5 rounded-[28px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
-      <Text className="mb-3 text-[18px] font-black text-foreground">{title}</Text>
+    <View className="mt-5 rounded-card border border-border bg-surface p-card ">
+      <Text className="font-sans mb-3 text-[18px] font-semibold text-foreground">{title}</Text>
       {children}
     </View>
   );
@@ -44,8 +29,12 @@ function SummaryCard({ children, title }: { title: string; children: ReactNode }
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View className="flex-row items-start justify-between gap-4 py-2">
-      <Text className="min-w-0 flex-1 text-[13px] font-bold text-muted-foreground">{label}</Text>
-      <Text className="max-w-[58%] text-right text-[13px] font-black text-foreground">{value}</Text>
+      <Text className="font-sans min-w-0 flex-1 text-[13px] font-medium text-secondary-foreground">
+        {label}
+      </Text>
+      <Text className="font-sans max-w-[58%] text-right text-[13px] font-semibold text-foreground">
+        {value}
+      </Text>
     </View>
   );
 }
@@ -105,6 +94,7 @@ function CheckoutScreen() {
       return null;
     }
 
+    if (booking.deliveryQuoteId && booking.priceBreakdown) return booking.priceBreakdown;
     return getPriceBreakdown(
       vehicle,
       booking.numberOfDays,
@@ -118,7 +108,7 @@ function CheckoutScreen() {
   if (booking && flowId && isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#346EF6" size="large" />
+        <ActivityIndicator color={themeColors.primary} size="large" />
       </View>
     );
   }
@@ -139,7 +129,7 @@ function CheckoutScreen() {
         actionLabel={error ? 'Try Again' : 'Restart Booking'}
         title="Vehicle unavailable"
         subtitle={error ?? 'The selected vehicle could not be loaded.'}
-        onAction={() => error ? void reload() : restartBooking()}
+        onAction={() => (error ? void reload() : restartBooking())}
       />
     );
   }
@@ -171,21 +161,22 @@ function CheckoutScreen() {
               accessibilityRole="button"
               onPress={restartBooking}
               className="h-12 w-12 items-center justify-center rounded-full bg-surface">
-              <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
             <View className="min-w-0 flex-1">
-              <Text className="text-[27px] font-black text-foreground">Review Booking</Text>
-              <Text className="mt-1 text-[13px] font-semibold text-muted-foreground">
+              <Text className="font-sans text-title font-semibold text-foreground">Review Booking</Text>
+              <Text className="font-sans mt-1 text-[13px] font-normal text-secondary-foreground">
                 Confirm details and sign the rental terms
               </Text>
             </View>
+            <LogoutHeaderButton />
           </View>
 
           <View className="mt-5">
             <BookingStepper step={2} />
           </View>
 
-          <View className="mt-6">
+          <View className="mt-5">
             <SelectedVehicleSummary vehicle={vehicle} />
           </View>
 
@@ -219,14 +210,17 @@ function CheckoutScreen() {
           </View>
 
           <SummaryCard title="Terms and Conditions">
-            <Text className="text-[13px] font-semibold leading-5 text-muted-foreground">
-              Review the full rental conditions and provide your signature. Payment remains locked until the signed terms are submitted.
+            <Text className="font-sans text-[13px] font-normal leading-5 text-secondary-foreground">
+              Review the full rental conditions and provide your signature. Payment remains locked until the
+              signed terms are submitted.
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => setIsTermsOpen(true)}
               className="mt-4 min-h-[54px] items-center justify-center rounded-full bg-primary">
-              <Text className="text-[14px] font-black text-surface">Read Terms and Conditions</Text>
+              <Text className="font-sans text-[14px] font-semibold text-surface">
+                Read Terms and Conditions
+              </Text>
             </Pressable>
           </SummaryCard>
         </View>

@@ -1,10 +1,11 @@
+import { floatingTabBarContentPadding } from '@/constants/layout';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import {
   Cake,
   CheckCircle2,
   FileText,
-  LogOut,
+  LockKeyhole,
   Mail,
   MapPin,
   Phone,
@@ -13,12 +14,10 @@ import {
   UsersRound,
 } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
-import { LogoutConfirmationDialog } from '@/components/auth/LogoutConfirmationDialog';
-import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import {
   DocumentRequirementRow,
   ProfileActionRow,
@@ -30,15 +29,11 @@ import {
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ProfileEmergencyContactForm } from '@/forms/profile/ProfileEmergencyContactForm';
 import { ProfilePersonalInformationForm } from '@/forms/profile/ProfilePersonalInformationForm';
-import {
-  CUSTOMER_DOCUMENT_DEFINITIONS,
-  hasDocumentDraft,
-} from '@/lib/customer/document-verification';
-import {
-  getCustomerFullName,
-  getCustomerInitials,
-  useCustomer,
-} from '@/lib/customer/customer-store';
+import { ChangeEmailForm } from '@/forms/account/ChangeEmailForm';
+import { ChangePasswordForm } from '@/forms/account/ChangePasswordForm';
+import { FormToast, useFormToast } from '@/forms/shared/FormToast';
+import { CUSTOMER_DOCUMENT_DEFINITIONS, hasDocumentDraft } from '@/lib/customer/document-verification';
+import { getCustomerFullName, getCustomerInitials, useCustomer } from '@/lib/customer/customer-store';
 import { formatDisplayDate } from '@/utils/calculateAge';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -53,21 +48,21 @@ function valueOrMissing(value?: string | number | null) {
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const handleTabScroll = useAutoHideCustomerTabBar();
   const customer = useCustomer();
-  const { refreshProfile, signOut } = useAuth();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isLogoutDialogVisible, setIsLogoutDialogVisible] = useState(false);
+  const { refreshProfile } = useAuth();
   const [isPersonalEditorOpen, setIsPersonalEditorOpen] = useState(false);
   const [isEmergencyEditorOpen, setIsEmergencyEditorOpen] = useState(false);
+  const [isEmailEditorOpen, setIsEmailEditorOpen] = useState(false);
+  const [isPasswordEditorOpen, setIsPasswordEditorOpen] = useState(false);
+  const toast = useFormToast();
   const fullName = getCustomerFullName(customer) || 'New Customer';
   const initials = getCustomerInitials(customer);
   const emergencyName = customer.emergencyContact.name || 'Not provided';
   const relationship = customer.emergencyContact.relationship || 'Not provided';
   const canVerifyDocuments = !customer.isBelow18;
-  const requiredDocumentsVerified = CUSTOMER_DOCUMENT_DEFINITIONS
-    .filter((document) => !document.optional || customer.documents.passportRequiredByAdmin)
-    .every((document) => customer.documentStatuses[document.id] === 'verified');
+  const requiredDocumentsVerified = CUSTOMER_DOCUMENT_DEFINITIONS.every(
+    (document) => customer.documentStatuses[document.id] === 'verified',
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -80,28 +75,37 @@ export default function ProfileScreen() {
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
-        onScroll={handleTabScroll}
-        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
-        <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
+        <View
+          className="w-full max-w-[560px] self-center px-screen"
+          style={{ paddingBottom: floatingTabBarContentPadding + insets.bottom, paddingTop: insets.top + 10 }}>
           <CustomerTabHeader title="Profile" />
 
-          <View className="mt-2 overflow-hidden rounded-[30px] border border-[#D6E5FF] bg-foreground p-5 shadow-xl shadow-foreground/15">
-            <View className="flex-row items-start gap-4">
-              <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-[28px] border-2 border-surface/45 bg-surface/15">
+          <View className="mt-3 overflow-hidden rounded-card border border-border bg-surface p-card">
+            <View className="flex-row items-center gap-3">
+              <View className="h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-field border border-border bg-muted">
                 {customer.profilePicture ? (
-                  <Image source={{ uri: customer.profilePicture }} resizeMode="cover" className="h-full w-full" />
+                  <Image
+                    accessibilityLabel="Profile photo"
+                    source={{ uri: customer.profilePicture }}
+                    resizeMode="cover"
+                    style={{ height: '100%', width: '100%' }}
+                  />
                 ) : (
                   <View className="h-full w-full items-center justify-center bg-muted">
-                    <Text className="text-[24px] font-black text-primary">{initials}</Text>
+                    <Text className="font-sans text-[24px] font-semibold text-primary">{initials}</Text>
                   </View>
                 )}
               </View>
               <View className="min-w-0 flex-1">
-                <Text className="text-[24px] font-black leading-[28px] text-surface" numberOfLines={2}>
+                <Text
+                  className="font-sans text-[22px] font-semibold leading-[28px] text-foreground"
+                  numberOfLines={2}>
                   {fullName}
                 </Text>
-                <Text className="mt-1 text-[13px] font-semibold leading-5 text-[#D8E5FF]" numberOfLines={1}>
+                <Text
+                  className="font-sans mt-1 text-[13px] font-medium leading-[18px] text-secondary-foreground"
+                  numberOfLines={1}>
                   {customer.email}
                 </Text>
                 <View className="mt-2">
@@ -111,7 +115,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <View className="mt-5">
+          <View className="mt-4">
             <ProfileKpiGrid
               joinedDate={formatDisplayDate(customer.joinedAt)}
               successfulBookings={customer.successfulBookings}
@@ -119,14 +123,17 @@ export default function ProfileScreen() {
             />
           </View>
 
-          <View className="mt-6">
+          <View className="mt-4">
             <ProfileSectionCard
               headerAction={<ProfileEditButton onPress={() => setIsPersonalEditorOpen(true)} />}
               icon={ShieldCheck}
               title="Personal Information">
               <ProfileInfoRow icon={UserRound} label="Full Name" value={fullName} />
-              <ProfileInfoRow icon={Mail} label="Email" value={customer.email} />
-              <ProfileInfoRow icon={Phone} label="Contact Number" value={valueOrMissing(customer.contactNumber)} />
+              <ProfileInfoRow
+                icon={Phone}
+                label="Contact Number"
+                value={valueOrMissing(customer.contactNumber)}
+              />
               <ProfileInfoRow
                 icon={Cake}
                 label="Birthdate and Age"
@@ -136,7 +143,27 @@ export default function ProfileScreen() {
             </ProfileSectionCard>
           </View>
 
-          <View className="mt-5">
+          <View className="mt-4">
+            <ProfileSectionCard icon={LockKeyhole} title="Account Information">
+              <ProfileInfoRow
+                accessibilityLabel="Change sign-in email"
+                icon={Mail}
+                label="Sign-in Email"
+                value={customer.email}
+                onPress={() => setIsEmailEditorOpen(true)}
+              />
+              <ProfileInfoRow
+                accessibilityLabel="Change password"
+                icon={LockKeyhole}
+                isLast
+                label="Password"
+                value="Change password"
+                onPress={() => setIsPasswordEditorOpen(true)}
+              />
+            </ProfileSectionCard>
+          </View>
+
+          <View className="mt-4">
             <ProfileSectionCard
               headerAction={
                 canVerifyDocuments ? (
@@ -172,8 +199,9 @@ export default function ProfileScreen() {
                 ) : null}
                 {customer.isBelow18 ? (
                   <View className="rounded-[20px] border border-warning-border bg-warning-surface px-4 py-3">
-                    <Text className="text-[12px] font-bold leading-5 text-warning">
-                      Booking is unavailable because JamJade only accepts bookings from customers aged 18 or older.
+                    <Text className="font-sans text-[12px] font-medium leading-5 text-warning">
+                      Booking is unavailable because JamJade only accepts bookings from customers aged 18 or
+                      older.
                     </Text>
                   </View>
                 ) : null}
@@ -181,27 +209,21 @@ export default function ProfileScreen() {
             </ProfileSectionCard>
           </View>
 
-          <View className="mt-5">
+          <View className="mt-4">
             <ProfileSectionCard
               headerAction={<ProfileEditButton onPress={() => setIsEmergencyEditorOpen(true)} />}
               icon={UsersRound}
               title="Emergency Contact">
               <ProfileInfoRow icon={UserRound} label="Contact Name" value={emergencyName} />
-              <ProfileInfoRow icon={Phone} label="Contact Number" value={valueOrMissing(customer.emergencyContact.contactNumber)} />
+              <ProfileInfoRow
+                icon={Phone}
+                label="Contact Number"
+                value={valueOrMissing(customer.emergencyContact.contactNumber)}
+              />
               <ProfileInfoRow icon={UsersRound} isLast label="Relationship" value={relationship} />
             </ProfileSectionCard>
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={isLoggingOut}
-            onPress={() => setIsLogoutDialogVisible(true)}
-            className="mt-8 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full border border-destructive-border bg-destructive-surface px-5">
-            <LogOut size={17} color="#DC2626" strokeWidth={2.45} />
-            <Text className="text-[13px] font-black text-destructive">
-              Logout
-            </Text>
-          </Pressable>
         </View>
       </ScrollView>
 
@@ -215,26 +237,18 @@ export default function ProfileScreen() {
         onClose={() => setIsEmergencyEditorOpen(false)}
         visible={isEmergencyEditorOpen}
       />
-      <LogoutConfirmationDialog
-        accountLabel="customer"
-        isLoading={isLoggingOut}
-        onCancel={() => setIsLogoutDialogVisible(false)}
-        onConfirm={async () => {
-          if (isLoggingOut) {
-            return;
-          }
-
-          setIsLoggingOut(true);
-
-          try {
-            await signOut();
-            setIsLogoutDialogVisible(false);
-            router.replace('/login' as Href);
-          } finally {
-            setIsLoggingOut(false);
-          }
-        }}
-        visible={isLogoutDialogVisible}
+      <ChangeEmailForm
+        email={customer.email}
+        visible={isEmailEditorOpen}
+        onClose={() => setIsEmailEditorOpen(false)}
+        onSaved={() => toast.showToast('Your sign-in email has been updated.', 'success')}
+      />
+      <ChangePasswordForm visible={isPasswordEditorOpen} onClose={() => setIsPasswordEditorOpen(false)} />
+      <FormToast
+        message={toast.message}
+        title={toast.title}
+        variant={toast.variant}
+        onDismiss={toast.clearToast}
       />
     </View>
   );

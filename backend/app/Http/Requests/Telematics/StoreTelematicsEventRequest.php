@@ -16,7 +16,7 @@ class StoreTelematicsEventRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'event_type' => ['required', Rule::enum(TelematicsEventType::class)],
+            'event_type' => ['required', Rule::enum(TelematicsEventType::class), Rule::notIn(['geofence_enter', 'geofence_exit'])],
             'severity' => ['nullable', 'in:low,medium,high'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],

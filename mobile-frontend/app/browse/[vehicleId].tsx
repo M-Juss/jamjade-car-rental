@@ -5,9 +5,9 @@ import { ActivityIndicator, View } from 'react-native';
 import {
   BookingAccountModal,
   ErrorState,
-  VehicleDetailsDrawer,
-  VehicleStoryCarousel,
+  VehicleDetailsContent,
 } from '@/components/browse';
+import { themeColors } from '@/constants/theme';
 import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
 import { toggleBookmarkedVehicle, useBookmarkedVehicleIds } from '@/lib/browse/bookmarks';
@@ -22,7 +22,6 @@ export default function VehicleDetailsScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const resolvedVehicleId = firstParam(vehicleId);
   const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
   const { status } = useAuth();
@@ -32,7 +31,7 @@ export default function VehicleDetailsScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#346EF6" size="large" />
+        <ActivityIndicator color={themeColors.primary} size="large" />
       </View>
     );
   }
@@ -75,19 +74,15 @@ export default function VehicleDetailsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-surface">
-      <VehicleStoryCarousel
+    <View className="flex-1 bg-muted">
+      <VehicleDetailsContent
+        key={vehicle.id}
         vehicle={vehicle}
-        activeIndex={activeImageIndex}
         isBookmarked={bookmarkedVehicleIds.includes(vehicle.id)}
-        onActiveIndexChange={setActiveImageIndex}
         onBookmarkPress={() => toggleBookmarkedVehicle(vehicle.id)}
         onBackPress={() => router.back()}
-      />
-      <VehicleDetailsDrawer
         bookNowDisabled={status === 'authenticated' && bookingAvailability.reason === 'balance'}
         bookNowInfo={bookingAvailability.reason === 'balance' ? bookingAvailability.message : undefined}
-        vehicle={vehicle}
         onBookNow={handleBookNow}
       />
       <BookingAccountModal

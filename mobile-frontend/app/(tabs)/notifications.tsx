@@ -1,3 +1,5 @@
+import { floatingTabBarContentPadding } from '@/constants/layout';
+import { themeColors } from '@/constants/theme';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import {
@@ -11,22 +13,16 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Modal,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, PanResponder, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
-import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import { setUnreadNotificationCount } from '@/lib/customer/notification-unread';
+import { canSelectTelematicsBooking } from '@/lib/telematics/setup';
 import { useAuth } from '@/providers/AuthProvider';
 import {
   getNotifications,
+  getBooking,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from '@/services/api';
@@ -53,7 +49,6 @@ type CustomerNotification = {
 
 const documentRouteByType: Record<string, string> = {
   drivers_license: 'driver-license',
-  passport: 'passport',
   proof_of_billing: 'proof-of-address',
 };
 
@@ -94,13 +89,13 @@ const categoryConfig: Record<NotificationCategory, CategoryConfig> = {
     label: 'Booking',
     icon: CalendarCheck,
     iconWrapClass: 'bg-muted',
-    iconColor: '#346EF6',
+    iconColor: themeColors.primary,
   },
   payment: {
     label: 'Payment',
     icon: CreditCard,
     iconWrapClass: 'bg-success-surface',
-    iconColor: '#047857',
+    iconColor: themeColors.success,
   },
   vehicle: {
     label: 'Vehicle',
@@ -112,7 +107,7 @@ const categoryConfig: Record<NotificationCategory, CategoryConfig> = {
     label: 'Trip',
     icon: Navigation,
     iconWrapClass: 'bg-warning-surface',
-    iconColor: '#C2410C',
+    iconColor: themeColors.warning,
   },
   system: {
     label: 'System',
@@ -190,9 +185,7 @@ function getDefaultActionLabel(category: NotificationCategory) {
 }
 
 function NotificationHeader() {
-  return (
-    <CustomerTabHeader title="Notifications" />
-  );
+  return <CustomerTabHeader title="Notifications" />;
 }
 
 function NotificationCard({
@@ -211,10 +204,14 @@ function NotificationCard({
       accessibilityLabel={`Open notification: ${notification.title}`}
       onPress={() => onOpen(notification)}
       className={cx(
-        'min-h-[100px] flex-row items-center gap-3 border-b border-border px-4 py-2',
+        'min-h-[84px] flex-row items-center gap-3 border-b border-border px-4 py-2',
         !notification.isRead && 'bg-muted/45',
       )}>
-      <View className={cx('h-10 w-10 self-center items-center justify-center rounded-full', category.iconWrapClass)}>
+      <View
+        className={cx(
+          'h-10 w-10 self-center items-center justify-center rounded-full',
+          category.iconWrapClass,
+        )}>
         <Icon size={19} color={category.iconColor} strokeWidth={2.35} />
       </View>
 
@@ -222,20 +219,25 @@ function NotificationCard({
         <View className="flex-row items-start gap-2">
           <Text
             className={cx(
+              'font-sans',
               'min-w-0 flex-1 text-[14px] leading-5 text-foreground',
-              notification.isRead ? 'font-bold' : 'font-black',
+              notification.isRead ? 'font-medium' : 'font-semibold',
             )}
             numberOfLines={1}>
             {notification.title}
           </Text>
-          {!notification.isRead ? <View accessibilityLabel="Unread" className="mt-1.5 h-2 w-2 rounded-full bg-primary" /> : null}
+          {!notification.isRead ? (
+            <View accessibilityLabel="Unread" className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
+          ) : null}
         </View>
 
-        <Text className="mt-0.5 min-h-[36px] text-[12px] font-medium leading-[18px] text-muted-foreground" numberOfLines={2}>
+        <Text
+          className="font-sans mt-0.5 text-[13px] leading-[18px] text-secondary-foreground"
+          numberOfLines={2}>
           {notification.message}
         </Text>
 
-        <Text className="mt-1 text-[10px] font-semibold text-subtle-foreground">
+        <Text className="font-sans mt-1 text-[12px] text-secondary-foreground">
           {formatTimeAgo(notification.createdAt)}
         </Text>
       </View>
@@ -243,21 +245,17 @@ function NotificationCard({
   );
 }
 
-function NotificationDetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value?: string;
-}) {
+function NotificationDetailRow({ label, value }: { label: string; value?: string }) {
   if (!value) {
     return null;
   }
 
   return (
     <View className="flex-row items-start justify-between gap-4 border-b border-border py-3">
-      <Text className="w-[112px] text-[11px] font-black uppercase text-subtle-foreground">{label}</Text>
-      <Text className="min-w-0 flex-1 text-right text-[13px] font-bold leading-5 text-foreground">{value}</Text>
+      <Text className="font-sans w-[112px] text-[11px] font-normal text-secondary-foreground">{label}</Text>
+      <Text className="font-sans min-w-0 flex-1 text-right text-[13px] font-medium leading-5 text-foreground">
+        {value}
+      </Text>
     </View>
   );
 }
@@ -273,15 +271,16 @@ function NotificationDetailModal({
 }) {
   const insets = useSafeAreaInsets();
   const sheetPanResponder = useMemo(
-    () => PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        gestureState.dy > 6 && gestureState.dy > Math.abs(gestureState.dx),
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 72 || gestureState.vy > 0.65) {
-          onClose();
-        }
-      },
-    }),
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          gestureState.dy > 6 && gestureState.dy > Math.abs(gestureState.dx),
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy > 72 || gestureState.vy > 0.65) {
+            onClose();
+          }
+        },
+      }),
     [onClose],
   );
 
@@ -292,17 +291,19 @@ function NotificationDetailModal({
   const category = categoryConfig[notification.category];
   const priority = priorityConfig[notification.priority];
   const rejectionReason =
-    typeof notification.data?.rejectionReason === 'string'
-      ? notification.data.rejectionReason
-      : undefined;
+    typeof notification.data?.rejectionReason === 'string' ? notification.data.rejectionReason : undefined;
 
   return (
     <Modal animationType="slide" transparent visible={Boolean(notification)} onRequestClose={onClose}>
       <View className="flex-1 justify-end bg-[#081A33]/45">
-        <Pressable accessibilityLabel="Close notification detail" className="absolute inset-0" onPress={onClose} />
+        <Pressable
+          accessibilityLabel="Close notification detail"
+          className="absolute inset-0"
+          onPress={onClose}
+        />
 
         <View
-          className="max-h-[88%] rounded-t-[34px] bg-background px-5 pt-4"
+          className="max-h-[88%] rounded-t-sheet bg-background px-5 pt-4"
           style={{ paddingBottom: insets.bottom + 18 }}>
           <View
             {...sheetPanResponder.panHandlers}
@@ -312,17 +313,21 @@ function NotificationDetailModal({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
-            <Text className="mt-1 text-[24px] font-black leading-[29px] text-foreground">{notification.title}</Text>
-            <Text className="mt-2 text-[14px] font-semibold leading-6 text-[#53647F]">{notification.fullMessage}</Text>
+            <Text className="font-sans mt-1 text-[24px] font-semibold leading-[29px] text-foreground">
+              {notification.title}
+            </Text>
+            <Text className="font-sans mt-2 text-[14px] font-normal leading-6 text-secondary-foreground">
+              {notification.fullMessage}
+            </Text>
 
             <View className="mt-4 flex-row items-center gap-2">
               <View className={cx('h-2.5 w-2.5 rounded-full', priority.dotClass)} />
-              <Text className="text-[12px] font-bold text-muted-foreground">
+              <Text className="font-sans text-[12px] font-medium text-secondary-foreground">
                 {category.label} · {priority.label} · {notification.isRead ? 'Read' : 'Unread'}
               </Text>
             </View>
 
-            <View className="mt-5 rounded-[26px] border border-border bg-surface px-4">
+            <View className="mt-5 rounded-card border border-border bg-surface px-4">
               <NotificationDetailRow label="Date" value={formatDateTime(notification.createdAt)} />
               <NotificationDetailRow label="Booking ID" value={notification.bookingId} />
               <NotificationDetailRow label="Vehicle" value={notification.vehicleName} />
@@ -338,9 +343,9 @@ function NotificationDetailModal({
             <Pressable
               accessibilityRole="button"
               onPress={() => onAction(notification)}
-              className="mt-5 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full bg-[#065F46] px-4">
-              <Info size={18} color="#FFFFFF" strokeWidth={2.5} />
-              <Text className="text-[14px] font-black text-surface" numberOfLines={1}>
+              className="mt-5 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full bg-success px-4">
+              <Info size={18} color={themeColors.surface} strokeWidth={2.5} />
+              <Text className="font-sans text-[14px] font-semibold text-surface" numberOfLines={1}>
                 {notification.actionLabel ?? getDefaultActionLabel(notification.category)}
               </Text>
             </Pressable>
@@ -355,10 +360,12 @@ function NotificationEmptyState() {
   return (
     <View className="items-center rounded-[32px] border border-dashed border-[#C8D4E8] bg-surface p-8">
       <View className="h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <Bell size={30} color="#346EF6" strokeWidth={2.25} />
+        <Bell size={30} color={themeColors.primary} strokeWidth={2.25} />
       </View>
-      <Text className="mt-4 text-center text-[20px] font-black text-foreground">No notifications found</Text>
-      <Text className="mt-2 text-center text-[14px] font-semibold leading-5 text-muted-foreground">
+      <Text className="font-sans mt-4 text-center text-[20px] font-semibold text-foreground">
+        No notifications found
+      </Text>
+      <Text className="font-sans mt-2 text-center text-[14px] font-normal leading-5 text-secondary-foreground">
         You are all caught up. New updates will appear here.
       </Text>
     </View>
@@ -368,9 +375,9 @@ function NotificationEmptyState() {
 function NotificationSkeletonCard() {
   return (
     <View className="flex-row items-start gap-3 border-b border-border px-4 py-3.5">
-      <View className="h-10 w-10 rounded-full bg-[#E9EFFA]" />
+      <View className="h-10 w-10 rounded-full bg-muted" />
       <View className="min-w-0 flex-1">
-        <View className="h-5 w-3/4 rounded-full bg-[#E9EFFA]" />
+        <View className="h-5 w-3/4 rounded-full bg-muted" />
         <View className="mt-2 h-4 w-full rounded-full bg-[#EEF3FB]" />
         <View className="mt-1.5 h-4 w-5/6 rounded-full bg-[#EEF3FB]" />
       </View>
@@ -392,7 +399,6 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { refreshProfile } = useAuth();
   const insets = useSafeAreaInsets();
-  const handleTabScroll = useAutoHideCustomerTabBar();
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<CustomerNotification | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -427,7 +433,8 @@ export default function NotificationsScreen() {
   }, [isLoading, unreadCount]);
 
   const orderedNotifications = useMemo(
-    () => [...notifications].sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)),
+    () =>
+      [...notifications].sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)),
     [notifications],
   );
 
@@ -460,16 +467,16 @@ export default function NotificationsScreen() {
   const handleNotificationAction = async (notification: CustomerNotification) => {
     setSelectedNotification(null);
 
-    if (
-      notification.data?.action === 'view_documents' ||
-      notification.data?.action === 'resubmit_document'
-    ) {
+    if (notification.data?.action === 'view_delivery_quote' && typeof notification.data.deliveryQuoteId === 'string' && typeof notification.data.vehicleId === 'string') {
+      router.push(`/browse/booking?vehicleId=${encodeURIComponent(notification.data.vehicleId)}&deliveryQuoteId=${encodeURIComponent(notification.data.deliveryQuoteId)}` as Href);
+      return;
+    }
+
+    if (notification.data?.action === 'view_documents' || notification.data?.action === 'resubmit_document') {
       await refreshProfile().catch(() => undefined);
 
       const documentType =
-        typeof notification.data.documentType === 'string'
-          ? notification.data.documentType
-          : '';
+        typeof notification.data.documentType === 'string' ? notification.data.documentType : '';
       const documentRoute = documentRouteByType[documentType];
 
       if (notification.data.action === 'resubmit_document' && documentRoute) {
@@ -490,6 +497,13 @@ export default function NotificationsScreen() {
     }
 
     if (notification.bookingId) {
+      // Resolve the booking through the service instead of trusting notification
+      // text or an old status. The tab rechecks server handover eligibility.
+      const booking = await getBooking(notification.bookingId).catch(() => null);
+      if (booking && canSelectTelematicsBooking(booking)) {
+        router.navigate({ pathname: '/(tabs)/telematics', params: { bookingId: booking.id } });
+        return;
+      }
       router.push(`/bookings/${encodeURIComponent(notification.bookingId)}` as Href);
       return;
     }
@@ -502,33 +516,41 @@ export default function NotificationsScreen() {
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
-        onScroll={handleTabScroll}
-        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}>
-        <View className="px-5" style={{ paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 10 }}>
+        <View
+          className="w-full max-w-[560px] self-center px-screen"
+          style={{ paddingBottom: floatingTabBarContentPadding + insets.bottom, paddingTop: insets.top + 10 }}>
           <NotificationHeader />
 
           <View className="mt-2 flex-row items-center justify-between gap-3 px-1">
             <View className="min-w-0 flex-1 flex-row items-center gap-2">
               <View className={cx('h-2 w-2 rounded-full', unreadCount > 0 ? 'bg-primary' : 'bg-border')} />
-              <Text className="text-[12px] font-bold text-muted-foreground" numberOfLines={1}>
-                {unreadCount > 0 ? `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}` : 'All caught up'}
+              <Text className="font-sans text-[12px] font-medium text-secondary-foreground" numberOfLines={1}>
+                {unreadCount > 0
+                  ? `${unreadCount} unread update${unreadCount === 1 ? '' : 's'}`
+                  : 'All caught up'}
               </Text>
               {unreadCount > 0 ? (
-                <Pressable accessibilityRole="button" onPress={handleMarkAllAsRead} className="min-h-[36px] justify-center px-1">
-                  <Text className="text-[11px] font-bold text-primary">Mark all read</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleMarkAllAsRead}
+                  className="min-h-[36px] justify-center px-1">
+                  <Text className="font-sans text-[11px] font-medium text-primary">Mark all read</Text>
                 </Pressable>
               ) : null}
             </View>
-            <Pressable accessibilityRole="button" onPress={() => void loadNotifications()} className="min-h-[36px] justify-center px-1">
-              <Text className="text-[12px] font-bold text-primary">Refresh</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void loadNotifications()}
+              className="min-h-[36px] justify-center px-1">
+              <Text className="font-sans text-[12px] font-medium text-primary">Refresh</Text>
             </Pressable>
           </View>
 
           <View className="mt-2 gap-2">
             {loadError ? (
               <View className="rounded-[24px] border border-destructive-border bg-destructive-surface p-4">
-                <Text className="text-[13px] font-bold text-destructive">{loadError}</Text>
+                <Text className="font-sans text-[13px] font-medium text-destructive">{loadError}</Text>
               </View>
             ) : null}
             {isLoading ? (

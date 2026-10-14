@@ -19,6 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The local HTTPS tunnel forwards requests to Laravel over loopback HTTP.
+        $middleware->trustProxies(
+            at: ['127.0.0.1', '::1'],
+            headers: Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         $middleware->statefulApi();
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : route('login'));
 

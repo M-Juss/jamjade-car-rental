@@ -1,10 +1,5 @@
-import {
-  BookOpenCheck,
-  ChevronRight,
-  FileBadge,
-  ReceiptText,
-  type LucideIcon,
-} from 'lucide-react-native';
+import { themeColors } from '@/constants/theme';
+import { ChevronRight, FileBadge, ReceiptText, type LucideIcon } from 'lucide-react-native';
 import { Pressable, Text, View, type PressableProps } from 'react-native';
 
 import { cx, profileColors } from '@/components/profile/ProfileCards';
@@ -12,14 +7,10 @@ import {
   getDocumentStatusLabel,
   type CustomerDocumentDefinition,
 } from '@/lib/customer/document-verification';
-import type {
-  CustomerDocumentId,
-  DocumentVerificationStatus,
-} from '@/types/customer';
+import type { CustomerDocumentId, DocumentVerificationStatus } from '@/types/customer';
 
 const DOCUMENT_ICONS: Record<CustomerDocumentId, LucideIcon> = {
   'driver-license': FileBadge,
-  passport: BookOpenCheck,
   'proof-of-address': ReceiptText,
 };
 
@@ -28,7 +19,7 @@ const STATUS_STYLES: Record<
   { background: string; border: string; text: string }
 > = {
   'not-submitted': {
-    background: 'bg-[#F1F5F9]',
+    background: 'bg-muted',
     border: 'border-border',
     text: 'text-[#475569]',
   },
@@ -49,16 +40,12 @@ const STATUS_STYLES: Record<
   },
 };
 
-export function DocumentReviewBadge({
-  status,
-}: {
-  status: DocumentVerificationStatus;
-}) {
+export function DocumentReviewBadge({ status }: { status: DocumentVerificationStatus }) {
   const style = STATUS_STYLES[status];
 
   return (
     <View className={cx('rounded-full border px-2.5 py-1.5', style.background, style.border)}>
-      <Text className={cx('text-[9px] font-black uppercase tracking-[0.3px]', style.text)}>
+      <Text className={cx('font-sans', 'text-[11px] font-semibold ', style.text)}>
         {getDocumentStatusLabel(status)}
       </Text>
     </View>
@@ -87,29 +74,26 @@ export function DocumentRequirementRow({
     <Wrapper
       accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
-      className={cx(
-        'flex-row items-center gap-3 py-3.5',
-        !isLast && 'border-b border-[#EEF2FF]',
-      )}>
+      className={cx('flex-row items-center gap-3 py-3.5', !isLast && 'border-b border-[#EEF2FF]')}>
       <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
         <Icon size={20} color={profileColors.brand} strokeWidth={2.35} />
       </View>
       <View className="min-w-0 flex-1">
-        <Text className="min-w-0 flex-shrink text-[14px] font-black leading-5 text-foreground">
+        <Text className="font-sans min-w-0 flex-shrink text-[14px] font-semibold leading-5 text-foreground">
           {definition.name}
         </Text>
         {!compact ? (
-          <Text className="mt-1 text-[11px] font-semibold leading-4 text-muted-foreground">
+          <Text className="font-sans mt-1 text-[11px] font-normal leading-4 text-secondary-foreground">
             {definition.shortDescription}
           </Text>
         ) : hasDraft && status === 'not-submitted' ? (
-          <Text className="mt-1 text-[10px] font-bold text-primary">Draft saved</Text>
+          <Text className="font-sans mt-1 text-[11px] font-medium text-primary">Draft saved</Text>
         ) : null}
       </View>
       <View className="items-end gap-2">
         <DocumentReviewBadge status={status} />
         {onPress && !compact ? (
-          <ChevronRight size={17} color="#A8B2C3" strokeWidth={2.45} />
+          <ChevronRight size={17} color={themeColors.subtleForeground} strokeWidth={2.45} />
         ) : null}
       </View>
     </Wrapper>

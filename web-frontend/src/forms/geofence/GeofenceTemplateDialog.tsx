@@ -2,20 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm, useWatch } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Circle, Fence, Minus, Trash2 } from "lucide-react";
 import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { appToast } from "@/lib/toast";
 import type { GeofenceRecord } from "@/services/geofence";
-import { createGeofence, updateGeofence } from "@/services/geofence";
+import { createGeofence, updateGeofence, saveBookingMonitoringZone } from "@/services/geofence";
 import { geofenceTemplateSchema, type GeofenceTemplateFormValues } from "@/validations/geofence/schemas";
 import { GeofenceMapEditor } from "@/modules/management/geofences/components/GeofenceMapEditor";
 
+type ZoneEditorRecord = Pick<GeofenceRecord, "id" | "name" | "geometryType" | "centerLatitude" | "centerLongitude" | "radiusMeters" | "polygonCoordinates" | "notifyOnEnter" | "notifyOnExit">;
+
 const defaults: GeofenceTemplateFormValues = {
   name: "",
+  notifyOnEnter: true,
+  notifyOnExit: true,
   geometryType: "circle",
   centerLatitude: "14.5995",
   centerLongitude: "120.9842",
@@ -23,9 +28,11 @@ const defaults: GeofenceTemplateFormValues = {
   polygonCoordinates: [],
 };
 
-function formValues(record?: GeofenceRecord): GeofenceTemplateFormValues {
+function formValues(record?: ZoneEditorRecord): GeofenceTemplateFormValues {
   return record ? {
     name: record.name,
+    notifyOnEnter: record.notifyOnEnter,
+    notifyOnExit: record.notifyOnExit,
     geometryType: record.geometryType,
     centerLatitude: record.centerLatitude?.toString() ?? "",
     centerLongitude: record.centerLongitude?.toString() ?? "",
@@ -39,11 +46,13 @@ export function GeofenceTemplateDialog({
   onOpenChange,
   record,
   onSaved,
+  bookingId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  record?: GeofenceRecord;
+  record?: ZoneEditorRecord;
   onSaved: () => void;
+  bookingId?: number;
 }) {
   const form = useForm<GeofenceTemplateFormValues>({ resolver: zodResolver(geofenceTemplateSchema), defaultValues: defaults });
   const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: "polygonCoordinates" });
@@ -65,6 +74,7 @@ export function GeofenceTemplateDialog({
     onOpenChange(false);
   };
   const submit = form.handleSubmit(async (values) => {
+    // Intentional editor requirement: explicitly close a drawn polygon before saving.
     if (values.geometryType === "polygon" && !polygonClosed) {
       const message = "Click the first boundary point to close the polygon before saving.";
       form.setError("root", { message, type: "manual" });
@@ -73,14 +83,17 @@ export function GeofenceTemplateDialog({
     }
 
     try {
-      if (record) await updateGeofence(record.id, values);
+      if (bookingId) await saveBookingMonitoringZone(bookingId, values, record?.id);
+      else if (record) await updateGeofence(record.id, values);
       else await createGeofence(values);
-      appToast.success(record ? "Geofence template updated successfully." : "Geofence template created successfully.");
+      appToast.success(record ? "Monitoring zone updated successfully." : "Monitoring zone created successfully.");
       close();
       onSaved();
     } catch (error) {
       const fieldMap: Record<string, keyof GeofenceTemplateFormValues> = {
         name: "name",
+        notify_on_enter: "notifyOnEnter",
+        notify_on_exit: "notifyOnExit",
         geometry_type: "geometryType",
         center_latitude: "centerLatitude",
         center_longitude: "centerLongitude",
@@ -90,10 +103,15 @@ export function GeofenceTemplateDialog({
       const apiError = error as { errors?: Record<string, string[]> };
       const entries = Object.entries(apiError.errors ?? {});
       entries.forEach(([key, messages]) => {
-        const field = fieldMap[key] ?? (key.startsWith("polygon_coordinates") ? "polygonCoordinates" : undefined);
+        const point = key.match(/^polygon_coordinates\.(\d+)\.(latitude|longitude)$/);
+        if (point && messages[0]) {
+          form.setError(`polygonCoordinates.${Number(point[1])}.${point[2] as "latitude" | "longitude"}`, { message: messages[0], type: "server" });
+          return;
+        }
+        const field = fieldMap[key];
         if (field && messages[0]) form.setError(field, { message: messages[0], type: "server" });
       });
-      const message = entries.length ? "Check the highlighted geofence details." : "The geofence template could not be saved. Please try again.";
+      const message = entries.some(([key]) => fieldMap[key] || key.startsWith("polygon_coordinates.")) ? "Check the highlighted zone details." : "The monitoring zone could not be saved. Refresh the booking or library and try again.";
       form.setError("root", { message, type: "server" });
       appToast.error(message);
     }
@@ -119,13 +137,11 @@ export function GeofenceTemplateDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }}>
       <FormDialogContent width="wide">
-        <FormDialogHeader title={record ? "Edit Geofence" : "Create Geofence"} icon={Fence} onClose={close} closeLabel="Close geofence form" />
+        <FormDialogHeader title={record ? "Edit Monitoring Zone" : bookingId ? "Create Booking Zone" : "Create Default Zone"} icon={Fence} onClose={close} closeLabel="Close geofence form" />
         <form onSubmit={(event) => void submit(event)} noValidate className="flex min-h-0 flex-1 flex-col">
-          <div className={geometryType === "polygon"
-            ? "flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-4 py-4 sm:px-6 sm:py-5"
-            : "grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"}>
+          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <InputWithLabel id="geofence-name" label="Geofence Name" required placeholder="Main rental area" error={form.formState.errors.name?.message} {...form.register("name")} />
+              <InputWithLabel id="geofence-name" label="Geofence Name" required placeholder="Monitoring zone name" error={form.formState.errors.name?.message} {...form.register("name")} />
               <fieldset className="space-y-2">
                 <legend className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Boundary Shape</legend>
                 <div className="grid grid-cols-2 gap-2">
@@ -134,6 +150,11 @@ export function GeofenceTemplateDialog({
                 </div>
               </fieldset>
             </div>
+            <fieldset className="shrink-0 space-y-2">
+              <legend className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Website alerts</legend>
+              <div className="flex flex-wrap gap-4">{(["notifyOnEnter", "notifyOnExit"] as const).map((name) => <Controller key={name} control={form.control} name={name} render={({ field }) => <label className="flex items-center gap-2 text-xs text-foreground"><Checkbox ref={field.ref} checked={field.value} onBlur={field.onBlur} onCheckedChange={(checked) => field.onChange(checked === true)} />{name === "notifyOnEnter" ? "Alert on entry" : "Alert on exit"}</label>} />)}</div>
+              <p className="text-xs text-muted-foreground">Confirmed crossings are always recorded. Selected crossings also appear as website alerts.</p>
+            </fieldset>
             <GeofenceMapEditor
               geometryType={geometryType}
               center={center}
@@ -159,7 +180,7 @@ export function GeofenceTemplateDialog({
               <div className="grid gap-4 sm:grid-cols-3">
                 <InputWithLabel id="geofence-latitude" label="Center Latitude" required inputMode="decimal" error={form.formState.errors.centerLatitude?.message} {...form.register("centerLatitude")} />
                 <InputWithLabel id="geofence-longitude" label="Center Longitude" required inputMode="decimal" error={form.formState.errors.centerLongitude?.message} {...form.register("centerLongitude")} />
-                <InputWithLabel id="geofence-radius" label="Radius (meters)" required type="number" min="0.01" max="100000" step="any" error={form.formState.errors.radiusMeters?.message} {...form.register("radiusMeters")} />
+                <InputWithLabel id="geofence-radius" label="Radius (meters)" required type="number" min="0" max="100000" step="any" error={form.formState.errors.radiusMeters?.message} {...form.register("radiusMeters")} />
               </div>
             ) : (
               <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -170,7 +191,7 @@ export function GeofenceTemplateDialog({
                     <Button type="button" size="sm" variant="outline" disabled={!fields.length} onClick={() => replace([])}><Trash2 className="size-3.5" />Clear</Button>
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
+                <div className="max-h-[240px] min-h-16 space-y-2 overflow-y-auto overscroll-contain pr-1">
                   {fields.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">Click the map to add the first boundary point.</p>
                   ) : null}
@@ -190,7 +211,7 @@ export function GeofenceTemplateDialog({
           </div>
           <FormDialogFooter>
             <Button type="button" variant="outline" onClick={close}>Cancel</Button>
-            <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? "Saving..." : record ? "Save Changes" : "Create Geofence"}</Button>
+            <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? "Saving..." : record ? "Save Changes" : "Create Zone"}</Button>
           </FormDialogFooter>
         </form>
       </FormDialogContent>

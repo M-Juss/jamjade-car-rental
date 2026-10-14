@@ -77,7 +77,7 @@ class ReportService
     public function analytics(string $range = '12_months'): array
     {
         $from = $this->rangeStart($range);
-        $bookings = Booking::with(['user', 'vehicle', 'payments', 'bookingGeofence'])
+        $bookings = Booking::with(['user', 'vehicle', 'payments', 'bookingGeofences'])
             ->when($from, fn ($query) => $query->where('created_at', '>=', $from))
             ->latest()
             ->get();
@@ -146,6 +146,7 @@ class ReportService
             'revenueBreakdown' => [
                 ['label' => 'Booked Subtotal', 'value' => (float) $bookings->sum('subtotal')],
                 ['label' => 'Delivery Fees', 'value' => (float) $bookings->sum('delivery_fee')],
+                ['label' => 'Delivery Tolls', 'value' => (float) $bookings->sum('delivery_toll_fee')],
                 ['label' => 'Add-ons', 'value' => (float) $bookings->sum('add_ons_total')],
                 ['label' => 'Penalties & Late Fees', 'value' => (float) $bookings->sum(
                     fn (Booking $booking) => (float) $booking->penalty_total + (float) $booking->late_fee
@@ -401,7 +402,7 @@ class ReportService
 
     private function bookingRow(Booking $booking): array
     {
-        $geofence = $booking->bookingGeofence;
+        $zones = $booking->bookingGeofences;
 
         return [
             'internalId' => $booking->id,
@@ -413,12 +414,12 @@ class ReportService
             'totalCost' => (float) $booking->total_amount,
             'status' => $booking->status->adminLabel(),
             'statusKey' => $booking->status->value,
-            'rentalBoundary' => $geofence ? [
-                'name' => $geofence->name_snapshot,
-                'geometryType' => $geofence->geometry_type,
-                'radiusMeters' => $geofence->radius_meters === null ? null : (float) $geofence->radius_meters,
-                'polygonPointCount' => count($geofence->polygon_coordinates ?? []),
-            ] : null,
+            'monitoringZones' => $zones->map(fn ($zone) => [
+                'name' => $zone->name_snapshot, 'scope' => $zone->scope,
+                'geometryType' => $zone->geometry_type,
+                'radiusMeters' => $zone->radius_meters === null ? null : (float) $zone->radius_meters,
+                'polygonPointCount' => count($zone->polygon_coordinates ?? []),
+            ])->all(),
         ];
     }
 

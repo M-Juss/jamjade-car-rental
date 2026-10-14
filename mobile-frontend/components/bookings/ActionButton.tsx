@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import type { LucideIcon } from 'lucide-react-native';
 import { Pressable, Text } from 'react-native';
 
@@ -7,40 +8,41 @@ export type ActionButtonVariant = 'primary' | 'secondary' | 'soft' | 'success' |
 
 const variantStyles = {
   primary: {
-    button: 'border-primary bg-primary shadow-md shadow-primary/20',
+    button: 'border-primary bg-primary ',
     text: 'text-surface',
-    icon: '#FFFFFF',
+    icon: themeColors.surface,
   },
   secondary: {
     button: 'border-border bg-surface',
     text: 'text-foreground',
-    icon: '#17315F',
+    icon: themeColors.foreground,
   },
   soft: {
     button: 'border-border bg-muted',
     text: 'text-primary',
-    icon: '#346EF6',
+    icon: themeColors.primary,
   },
   success: {
     button: 'border-success-border bg-success-surface',
     text: 'text-success',
-    icon: '#047857',
+    icon: themeColors.success,
   },
   warning: {
     button: 'border-warning-border bg-warning-surface',
     text: 'text-warning',
-    icon: '#C2410C',
+    icon: themeColors.warning,
   },
   danger: {
     button: 'border-destructive-border bg-destructive-surface',
     text: 'text-destructive',
-    icon: '#B91C1C',
+    icon: themeColors.destructive,
   },
 } satisfies Record<ActionButtonVariant, { button: string; text: string; icon: string }>;
 
 export function ActionButton({
   accessibilityLabel,
   className,
+  disabled = false,
   icon: Icon,
   label,
   onPress,
@@ -51,6 +53,7 @@ export function ActionButton({
   variant?: ActionButtonVariant;
   accessibilityLabel?: string;
   className?: string;
+  disabled?: boolean;
   onPress?: () => void;
 }) {
   const styles = variantStyles[variant];
@@ -59,14 +62,17 @@ export function ActionButton({
     <Pressable
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       className={cx(
         'min-h-[46px] flex-row items-center justify-center gap-2 rounded-full border px-4',
         styles.button,
         className,
+        disabled && 'opacity-50',
       )}>
       {Icon ? <Icon size={16} color={styles.icon} strokeWidth={2.55} /> : null}
-      <Text className={cx('text-center text-[13px] font-black', styles.text)}>{label}</Text>
+      <Text className={cx('font-sans', 'text-center text-[14px] font-medium', styles.text)}>{label}</Text>
     </Pressable>
   );
 }

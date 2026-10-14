@@ -1,151 +1,124 @@
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Image, Pressable, Text, useWindowDimensions, View, type ImageStyle } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { mobileLayout } from '@/constants/layout';
 import { useAuth } from '@/providers/AuthProvider';
 
-const carHero = require('@/assets/images/vios-hero.png');
-
-function cx(...classes: (string | false | null | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
+const welcomeTextScaleLimit = 1.3;
 
 export default function LandingScreen() {
   const router = useRouter();
   const { status, user } = useAuth();
   const insets = useSafeAreaInsets();
-  const { height, width } = useWindowDimensions();
-  const isCompact = height < 760 || width < 380;
-  const isTiny = height < 690 || width < 360;
-  const screenClass = 'relative flex-1 w-full overflow-hidden bg-background px-5';
-  const contentClass = cx(
-    'z-10 flex-1 w-full self-center',
-    width > 520 && 'max-w-[460px]',
+  const { fontScale, height, width } = useWindowDimensions();
+  const [artworkSize, setArtworkSize] = useState({ width: 0, height: 0 });
+  const availableHeight = height - insets.top - insets.bottom;
+  const isLandscape = width > height;
+  const textScale = Math.min(fontScale, welcomeTextScaleLimit);
+  const isCompact = availableHeight / textScale < 700;
+  const contentWidth = width - insets.left - insets.right;
+  const headingWidth = contentWidth * (isLandscape ? 0.5 : 1) - mobileLayout.screenPadding * 2;
+  const headingSize = Math.min(
+    isCompact ? 32 : 42,
+    headingWidth * 0.1,
+    (availableHeight / textScale) * (isLandscape ? 0.08 : 0.052),
   );
-  const contentStyle = {
-    paddingBottom: Math.max(insets.bottom + (isTiny ? 10 : 14), isTiny ? 12 : isCompact ? 16 : 20),
-    paddingTop: Math.max(insets.top + (isTiny ? 8 : 12), isTiny ? 24 : isCompact ? 30 : 36),
-  };
-  const titleClass = isTiny
-    ? 'text-[35px] font-black leading-[38px] text-foreground'
-    : isCompact
-      ? 'text-[39px] font-black leading-[42px] text-foreground'
-      : 'text-[45px] font-black leading-[48px] text-foreground';
-  const brandClass = isTiny
-    ? 'text-[39px] font-black italic leading-[41px] text-primary'
-    : isCompact
-      ? 'text-[44px] font-black italic leading-[46px] text-primary'
-      : 'text-[50px] font-black italic leading-[52px] text-primary';
-  const rentalClass = isTiny
-    ? 'mt-0 text-[24px] font-black italic leading-[28px] text-primary'
-    : isCompact
-      ? 'mt-0 text-[30px] font-black italic leading-[31px] text-primary'
-      : 'mt-0 text-[37px] font-black italic leading-[40px] text-primary';
-  const carFrameClass = isTiny
-    ? 'h-[205px] w-[118%]'
-    : isCompact
-      ? 'h-[258px] w-[122%]'
-      : 'h-[314px] w-[126%]';
-  const carSectionClass = isTiny
-    ? 'z-0 mt-1 min-h-[218px] items-center justify-center'
-    : isCompact
-      ? 'z-0 mt-2 min-h-[276px] items-center justify-center'
-      : 'z-0 mt-3 min-h-[330px] items-center justify-center';
-  const messageClass = isTiny
-    ? 'text-[13px] font-semibold leading-[19px] text-foreground'
-    : isCompact
-      ? 'text-[14px] font-semibold leading-5 text-foreground'
-      : 'text-[15px] font-semibold leading-[22px] text-foreground';
-  const buttonHeightClass = isTiny ? 'min-h-[46px]' : isCompact ? 'min-h-[50px]' : 'min-h-[56px]';
-  const primaryTextClass = isCompact
-    ? 'text-[15px] font-extrabold text-surface'
-    : 'text-[16px] font-extrabold text-surface';
-  const secondaryTextClass = isCompact
-    ? 'text-center text-[14px] font-extrabold text-foreground'
-    : 'text-center text-[15px] font-extrabold text-foreground';
+  const frameSpacing = isCompact ? 12 : 24;
+  // Keep the image edge to edge and center the fleet within the available height.
+  const artworkAspect = 1672 / 941;
+  const fleetTop = 0.32;
+  const fleetHeight = 0.44;
+  const artworkWidth = artworkSize.width;
+  const artworkHeight = artworkWidth * artworkAspect;
+  // Favor the front car and wheels when a short screen needs a tighter vertical crop.
+  const artworkTop = Math.min(
+    (artworkSize.height - artworkHeight * fleetHeight) / 2 - artworkHeight * fleetTop,
+    artworkSize.height - artworkHeight * 0.74,
+  );
 
   if (status === 'authenticated') {
     return <Redirect href={user?.roles?.includes('driver') ? '/(driver)/services' : '/(tabs)'} />;
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <View
+      className="flex-1 bg-background"
+      style={{
+        paddingTop: insets.top + frameSpacing,
+        paddingBottom: insets.bottom + frameSpacing,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+      }}>
       <Stack.Screen options={{ headerShown: false }} />
-      <StatusBar backgroundColor="transparent" style="dark" translucent />
-
-      <View className={screenClass}>
-        <View className="absolute right-[-128px] top-14 h-[318px] w-[318px] rounded-full bg-border" />
-        <View className="absolute left-[-120px] top-[-92px] h-[260px] w-[260px] rounded-full bg-surface" />
-        <View className="absolute left-7 top-[226px] h-9 w-9 rounded-full bg-[#BFD7FF] opacity-80" />
-        <View className="absolute left-[72px] top-[278px] h-4 w-4 rounded-full bg-[#DAD7FF] opacity-90" />
-        <View className="absolute right-10 top-[382px] h-8 w-8 rounded-full bg-[#CFF7E2] opacity-90" />
-        <View className="absolute right-[86px] top-[422px] h-5 w-5 rounded-full bg-[#FFD7EA] opacity-80" />
-        <View className="absolute left-[-20px] bottom-[218px] h-16 w-16 rounded-full bg-[#E7F0FF] opacity-95" />
-        <View className="absolute left-10 bottom-[188px] h-6 w-6 rounded-full bg-[#CFF7E2] opacity-75" />
-        <View className="absolute right-2 bottom-[114px] h-12 w-12 rounded-full bg-[#C9F0FF] opacity-90" />
-        <View className="absolute right-[68px] bottom-[164px] h-4 w-4 rounded-full bg-[#BFD7FF] opacity-80" />
-        <View className="absolute bottom-[178px] left-5 right-5 h-px bg-foreground/5" />
-
-        <View className={contentClass} style={contentStyle}>
-          <View>
-            <Text className={titleClass}>
-              Your Journey
+      <StatusBar style="dark" />
+      <View
+        className="w-full flex-1"
+        style={{ flexDirection: isLandscape ? 'row' : 'column' }}>
+        <View className="min-h-0 flex-1">
+          <View className="items-center px-screen">
+            <Text
+              accessibilityRole="header"
+              maxFontSizeMultiplier={welcomeTextScaleLimit}
+              className="font-sans text-center font-bold text-foreground"
+              style={{ fontSize: headingSize, lineHeight: headingSize * 1.08 }}>
+              Your Journey{'\n'}Starts with{'\n'}
+              <Text className="text-primary">JamJade{'\n'}Car Rental</Text>
             </Text>
-            <Text className={titleClass}>Starts With</Text>
-            <Text className={brandClass}>JamJade</Text>
-            <Text className={rentalClass}>Car Rental</Text>
           </View>
-
-          <View className={carSectionClass}>
-            <View className={cx('max-w-[488px] items-center justify-center overflow-hidden', carFrameClass)}>
-              <Image source={carHero} resizeMode="contain" style={$carImage} />
-            </View>
+          <View
+            className="min-h-0 flex-1 overflow-hidden"
+            style={{ marginVertical: isCompact ? 8 : 16 }}
+            onLayout={({ nativeEvent }) => {
+              const { width: artworkAreaWidth, height: artworkAreaHeight } = nativeEvent.layout;
+              setArtworkSize({ width: artworkAreaWidth, height: artworkAreaHeight });
+            }}>
+            <Image
+              source={require('@/assets/images/mobile-welcome-bg.png')}
+              resizeMode="contain"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: artworkTop,
+                height: artworkHeight,
+                width: artworkWidth,
+              }}
+              accessibilityLabel="JamJade rental fleet"
+            />
           </View>
-
-          <View className={cx('mt-auto gap-4', isCompact && 'gap-3', isTiny && 'gap-2.5')}>
-            <View className="overflow-hidden rounded-[26px] border border-border bg-surface/90 px-4 py-3 shadow-sm shadow-primary/10">
-              <View className="absolute bottom-[-28px] right-[-18px] h-20 w-20 rounded-full bg-border/60" />
-              <View className="mb-2 flex-row items-center gap-2">
-                <View className="h-2.5 w-2.5 rounded-full bg-primary" />
-                <Text className="text-[12px] font-black uppercase text-primary">
-                  Premium Rentals
-                </Text>
-              </View>
-              <Text className={messageClass}>
-                Cars ready for errands, business meetings, and weekend escapes. Choose your ride and
-                drive with confidence.
-              </Text>
-            </View>
-
-            <View className={cx('gap-3', isCompact && 'gap-2.5')}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/login')}
-                className={cx(
-                  'items-center justify-center rounded-full bg-primary shadow-lg shadow-[#004BFA]/20',
-                  buttonHeightClass,
-                )}>
-                <Text className={primaryTextClass}>Sign In or Create Account</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/vehicles')}
-                className={cx(
-                  'items-center justify-center rounded-full border border-primary/20 bg-surface',
-                  buttonHeightClass,
-                )}>
-                <Text className={secondaryTextClass}>Browse Available Cars</Text>
-              </Pressable>
-            </View>
+        </View>
+        <View
+          className="shrink-0 justify-center px-screen"
+          style={{ gap: isCompact ? 8 : 12, width: isLandscape ? contentWidth * 0.5 : '100%' }}>
+          <View className="relative overflow-hidden rounded-card border border-border bg-muted px-4 py-4">
+            <View className="absolute left-4 right-4 top-0 h-1 rounded-full bg-primary" />
+            <Text
+              maxFontSizeMultiplier={welcomeTextScaleLimit}
+              className={`font-sans text-center text-muted-foreground ${isCompact ? 'text-caption' : 'text-body'}`}>
+              Reliable daily and long-term rentals for business trips, family errands, and
+              weekend drives, with vehicles prepared for comfort, safety, and easy booking.
+            </Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/vehicles')}
+            className="min-h-control items-center justify-center overflow-hidden rounded-card border border-border bg-surface px-4 active:opacity-90">
+            <Text maxFontSizeMultiplier={welcomeTextScaleLimit} className="font-sans text-center text-button font-medium text-foreground">
+              Browse Available Cars
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/login')}
+            className="min-h-control items-center justify-center overflow-hidden rounded-card border border-primary bg-primary px-4 active:opacity-90">
+            <Text maxFontSizeMultiplier={welcomeTextScaleLimit} className="font-sans text-center text-button font-medium text-surface">
+              Sign In or Create Account
+            </Text>
+          </Pressable>
         </View>
       </View>
     </View>
   );
 }
-
-const $carImage: ImageStyle = {
-  height: '100%',
-  width: '100%',
-};

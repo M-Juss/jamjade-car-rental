@@ -2,6 +2,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { forwardRef, useState, type ComponentProps } from 'react';
 import { Pressable, Text, TextInput, type TextInputProps, View } from 'react-native';
 
+import { themeColors } from '@/constants/theme';
+
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
 type InputWithLabelProps = Omit<TextInputProps, 'style'> & {
@@ -30,7 +32,7 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
       helperText,
       required = false,
       disabled = false,
-      showPasswordToggle = false,
+      showPasswordToggle = true,
       secureTextEntry,
       editable,
       inputClassName,
@@ -46,60 +48,59 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
     const hasMessage = Boolean(error || helperText);
 
     return (
-      <View
-        className={cx(
-          'relative w-full gap-1.5',
-          hasMessage ? 'mb-8' : 'mb-4',
-          wrapperClassName,
-        )}>
-        <Text className="text-[12px] font-bold text-foreground">
+      <View className={cx('relative w-full gap-1.5', 'mb-0', wrapperClassName)}>
+        <Text className="font-sans text-caption font-medium text-foreground">
           {label}
           {required && <Text className="text-destructive"> *</Text>}
         </Text>
 
         <View
           className={cx(
-            'min-h-[48px] flex-row items-center rounded-full border border-[#E5EAF2] bg-surface px-4',
+            'min-h-control flex-row items-center rounded-field border border-border bg-surface px-4',
             error && 'border-destructive-border bg-destructive-surface',
             !isEditable && 'opacity-[0.62]',
           )}>
           {icon && (
             <View className="mr-2.5">
-              <MaterialIcons name={icon} size={20} color="#7D8798" />
+              <MaterialIcons name={icon} size={20} color={themeColors.mutedForeground} />
             </View>
           )}
 
           <TextInput
             ref={ref}
+            accessibilityLabel={label}
             editable={isEditable}
-            placeholderTextColor="#9AA4B8"
+            placeholderTextColor={themeColors.subtleForeground}
             secureTextEntry={isSecure}
-            className={cx('min-w-0 flex-1 py-0 text-[14px] font-medium text-foreground', inputClassName)}
+            className={cx('font-sans', 'min-w-0 flex-1 py-0 text-[15px] text-foreground', inputClassName)}
             {...props}
           />
 
           {showPasswordToggle && secureTextEntry && (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
-              hitSlop={10}
+              accessibilityLabel={`${isPasswordVisible ? 'Hide' : 'Show'} ${label.toLowerCase()}`}
+              accessibilityState={{ disabled: !isEditable, selected: isPasswordVisible }}
+              disabled={!isEditable}
+              hitSlop={4}
               onPress={() => setIsPasswordVisible((value) => !value)}
-              className="ml-2.5">
+              className="-mr-2 ml-1 h-11 w-11 items-center justify-center">
               <MaterialIcons
                 name={isPasswordVisible ? 'visibility-off' : 'visibility'}
                 size={20}
-                color="#7D8798"
+                color={themeColors.mutedForeground}
               />
             </Pressable>
           )}
         </View>
 
-        <View className="absolute left-1 right-1 top-full mt-1.5">
+        <View className={hasMessage ? 'px-1' : 'hidden'}>
           {hasMessage ? (
             <Text
               className={cx(
-                'text-[11px] leading-[16px] text-[#667085]',
-                error && 'font-bold text-destructive',
+                'font-sans',
+                'text-[13px] leading-[18px] text-secondary-foreground',
+                error && 'font-medium text-destructive',
               )}>
               {error || helperText}
             </Text>

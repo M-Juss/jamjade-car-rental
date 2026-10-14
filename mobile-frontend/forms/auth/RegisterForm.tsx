@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Stack, useRouter } from 'expo-router';
 import { Controller, type FieldErrors, useForm } from 'react-hook-form';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { z } from 'zod';
 
 import { AuthScreenFrame, AuthSubmitButton, InputWithLabel } from '@/components/common';
@@ -28,10 +28,12 @@ function getRegistrationErrorMessage(error: unknown) {
 type RegisterFormValues = z.input<typeof registerSchema>;
 
 function getValidationErrorMessage(errors: FieldErrors<RegisterFormValues>) {
-  return errors.email?.message
-    || errors.password?.message
-    || errors.confirmPassword?.message
-    || 'Check your registration details.';
+  return (
+    errors.email?.message ||
+    errors.password?.message ||
+    errors.confirmPassword?.message ||
+    'Check your registration details.'
+  );
 }
 
 export function RegisterForm() {
@@ -156,18 +158,9 @@ export function RegisterForm() {
               )}
             />
 
-            <View className="rounded-3xl border border-border bg-background px-4 py-3">
-              <Text className="text-[13px] font-bold leading-5 text-foreground">
-                Start your JamJade account.
-              </Text>
-              <Text className="mt-1 text-[12px] font-medium leading-[18px] text-muted-foreground">
-                Register once to make future reservations faster and easier.
-              </Text>
-            </View>
-
             <AuthSubmitButton
               disabled={isSubmitting}
-              label={isSubmitting ? 'Creating account...' : 'Continue'}
+              label={isSubmitting ? 'Creating account...' : 'Create Account'}
               onPress={handleSubmit(onSubmit, (errors) => {
                 toast.showToast(getValidationErrorMessage(errors));
               })}

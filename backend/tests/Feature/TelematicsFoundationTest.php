@@ -9,7 +9,6 @@ use App\Enums\TelematicsSetupStepType;
 use App\Enums\VehicleInspectionStatus;
 use App\Enums\VehicleStatus;
 use App\Models\Booking;
-use App\Models\Geofence;
 use App\Models\Payment;
 use App\Services\BookingInspectionService;
 use App\Services\BookingService;
@@ -82,12 +81,6 @@ function finalizeFoundationOutgoing(Booking $booking): void
 function readyFoundationSetup(Booking $booking): void
 {
     $service = app(TelematicsSetupService::class);
-    $service->assignGeofenceSnapshot($booking, null, [
-        'name' => 'Booking service area',
-        'center_latitude' => 14.299,
-        'center_longitude' => 120.958,
-        'radius_meters' => 3000,
-    ]);
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
     $service->startHandover($booking, vehicleManagerUser());
     $session->refresh();
@@ -118,34 +111,10 @@ it('does not require or create telematics setup for an owner-driver rental', fun
         ->and($started->telematicsSetupSession)->toBeNull();
 });
 
-it('copies reusable and customized circles into immutable booking snapshots', function () {
-    $template = Geofence::factory()->create([
-        'name' => 'Metro template', 'center_latitude' => 14.5000000, 'center_longitude' => 121.0000000, 'radius_meters' => 2500,
-    ]);
-    $booking = telematicsFoundationBooking();
-    $snapshot = app(TelematicsSetupService::class)->assignGeofenceSnapshot($booking, $template, [
-        'radius_meters' => 3500,
-    ]);
-    $template->update(['name' => 'Changed template', 'radius_meters' => 9000]);
-
-    expect($snapshot->fresh()->name_snapshot)->toBe('Metro template')
-        ->and($snapshot->fresh()->radius_meters)->toBe('3500.00');
-
-    $customBooking = telematicsFoundationBooking();
-    $custom = app(TelematicsSetupService::class)->assignGeofenceSnapshot($customBooking, null, [
-        'name' => 'Custom rental circle', 'center_latitude' => 14.31, 'center_longitude' => 120.97, 'radius_meters' => 1800,
-    ]);
-    expect($custom->source_geofence_id)->toBeNull()
-        ->and(fn () => $custom->update(['radius_meters' => 2000]))->toThrow(LogicException::class);
-});
-
 it('preserves setup-step retries and becomes ready only when every latest required step passes', function () {
     $booking = telematicsFoundationBooking();
     finalizeFoundationOutgoing($booking);
     $service = app(TelematicsSetupService::class);
-    $service->assignGeofenceSnapshot($booking, null, [
-        'name' => 'Readiness circle', 'center_latitude' => 14.299, 'center_longitude' => 120.958, 'radius_meters' => 3000,
-    ]);
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
     $service->startHandover($booking, vehicleManagerUser());
     $session->refresh();

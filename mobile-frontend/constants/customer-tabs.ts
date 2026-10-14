@@ -24,7 +24,7 @@ export const CUSTOMER_TABS: CustomerTabConfig[] = [
   {
     routeName: 'telematics',
     label: 'Telematics',
-    description: 'Active trip monitoring only',
+    description: 'Self-drive bookings, handover, and device setup',
     icon: 'steering',
     featured: true,
   },

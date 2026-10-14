@@ -47,19 +47,16 @@ const emptyDocuments = {
   driverLicenseFront: '',
   driverLicenseBack: '',
   proofOfAddress: '',
-  passport: '',
-  passportRequiredByAdmin: false,
+  proofOfAddressBack: '',
 };
 
 const emptyDocumentStatuses: CustomerDocumentStatuses = {
   'driver-license': 'not-submitted',
-  passport: 'not-submitted',
   'proof-of-address': 'not-submitted',
 };
 
 const emptyDocumentRejectionReasons: CustomerDocumentRejectionReasons = {
   'driver-license': '',
-  passport: '',
   'proof-of-address': '',
 };
 
@@ -198,10 +195,6 @@ export function hydrateCustomerFromUser(user: MobileUser) {
         }
       : { ...emptyCustomerAddress },
     profilePicture: profile?.profilePicture ?? '',
-    documents: {
-      ...currentCustomer.documents,
-      passportRequiredByAdmin: Boolean(profile?.passportRequired),
-    },
     emergencyContactSkipped: Boolean(profile?.emergencyContactSkippedAt),
     isProfileComplete: Boolean(profile?.profileCompletedAt),
     isBelow18,
@@ -218,10 +211,6 @@ function mapDocumentType(documentType: string): CustomerDocumentId | null {
 
   if (documentType === 'proof_of_billing') {
     return 'proof-of-address';
-  }
-
-  if (documentType === 'passport') {
-    return 'passport';
   }
 
   return null;
@@ -254,12 +243,11 @@ function getDocumentUploadValues(document: MobileDocument): Partial<DocumentVeri
     };
   }
 
-  if (document.documentType === 'passport') {
-    return { passport: needsReplacement ? '' : primaryUrl };
-  }
-
   if (document.documentType === 'proof_of_billing') {
-    return { proofOfAddress: needsReplacement ? '' : primaryUrl };
+    return {
+      proofOfAddress: needsReplacement ? '' : primaryUrl,
+      proofOfAddressBack: needsReplacement ? '' : backUrl,
+    };
   }
 
   return {};
@@ -285,17 +273,14 @@ function preserveLocalReplacementImages(
     );
   }
 
-  if (statuses.passport === 'rejected') {
-    nextDocuments.passport = localValue(
-      currentDocuments.passport,
-      nextDocuments.passport,
-    );
-  }
-
   if (statuses['proof-of-address'] === 'rejected') {
     nextDocuments.proofOfAddress = localValue(
       currentDocuments.proofOfAddress,
       nextDocuments.proofOfAddress,
+    );
+    nextDocuments.proofOfAddressBack = localValue(
+      currentDocuments.proofOfAddressBack,
+      nextDocuments.proofOfAddressBack,
     );
   }
 
@@ -349,10 +334,7 @@ export function hydrateCustomerFromProfile(overview: MobileProfileOverview) {
       successfulBookings: overview.bookingSummary.successfulBookings,
       totalSpent: overview.bookingSummary.totalSpent,
       hasOutstandingBalance: overview.bookingSummary.hasOutstandingBalance,
-      documentVerificationStatus: getOverallDocumentStatus(
-        documentStatuses,
-        documents.passportRequiredByAdmin,
-      ),
+      documentVerificationStatus: getOverallDocumentStatus(documentStatuses),
     };
   });
 }
@@ -489,10 +471,6 @@ export function submitDocumentVerification(documents: DocumentVerificationInput)
     documents,
     documentStatuses: {
       'driver-license': 'pending-review',
-      passport:
-        documents.passport || documents.passportRequiredByAdmin
-          ? 'pending-review'
-          : currentCustomer.documentStatuses.passport,
       'proof-of-address': 'pending-review',
     },
     selfDriveStatus: currentCustomer.isBelow18 ? 'not-eligible' : 'pending',
@@ -502,12 +480,10 @@ export function submitDocumentVerification(documents: DocumentVerificationInput)
 
 function getOverallDocumentStatus(
   statuses: CustomerDocumentStatuses,
-  passportRequired = false,
 ) {
   const requiredStatuses = [
     statuses['driver-license'],
     statuses['proof-of-address'],
-    ...(passportRequired ? [statuses.passport] : []),
   ];
 
   if (requiredStatuses.every((status) => status === 'verified')) {
@@ -555,10 +531,7 @@ export function submitCustomerDocument(
         ? mapDocumentStatus(submittedDocument.statusKey)
         : 'pending-review',
     } satisfies CustomerDocumentStatuses;
-    const documentVerificationStatus = getOverallDocumentStatus(
-      documentStatuses,
-      documents.passportRequiredByAdmin,
-    );
+    const documentVerificationStatus = getOverallDocumentStatus(documentStatuses);
 
     return {
       ...currentCustomer,

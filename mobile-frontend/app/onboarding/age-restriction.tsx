@@ -14,10 +14,7 @@ export default function AgeRestrictionScreen() {
   return (
     <OnboardingScreenFrame
       action={
-        <BottomActionButton
-          label="Back to Browse"
-          onPress={() => router.replace('/(tabs)' as Href)}
-        />
+        <BottomActionButton label="Back to Browse" onPress={() => router.replace('/(tabs)' as Href)} />
       }>
       <OnboardingHeader
         icon={ShieldAlert}
@@ -27,9 +24,11 @@ export default function AgeRestrictionScreen() {
 
       <View
         accessibilityRole="alert"
-        className="mt-7 rounded-[28px] border border-warning-border bg-warning-surface p-5">
-        <Text className="text-[17px] font-black text-warning">You can still browse vehicles</Text>
-        <Text className="mt-2 text-[13px] font-semibold leading-5 text-warning">
+        className="mt-7 rounded-card border border-warning-border bg-warning-surface p-5">
+        <Text className="font-sans text-[17px] font-semibold text-warning">
+          You can still browse vehicles
+        </Text>
+        <Text className="font-sans mt-2 text-[13px] font-semibold leading-5 text-warning">
           For safety and rental eligibility, booking remains disabled until the account meets the minimum age
           requirement.
         </Text>

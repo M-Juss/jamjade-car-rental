@@ -93,7 +93,7 @@ class ProfileService
     public function update(User $user, array $data, ?UploadedFile $profilePicture = null)
     {
         return DB::transaction(function () use ($user, $data, $profilePicture) {
-            $userData = Arr::only($data, ['email', 'phone_number']);
+            $userData = Arr::only($data, ['phone_number']);
 
             if ($userData !== []) {
                 $user->forceFill($userData)->save();
@@ -185,6 +185,6 @@ class ProfileService
             return false;
         }
 
-        return (bool) $profile->can_self_drive;
+        return app(SelfDriveVerificationService::class)->summary($user)['canSelfDrive'];
     }
 }

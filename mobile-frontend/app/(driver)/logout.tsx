@@ -1,3 +1,4 @@
+import { floatingTabBarContentPadding } from '@/constants/layout';
 import { Redirect, useRouter, type Href } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
 import { useState } from 'react';
@@ -21,24 +22,32 @@ export default function DriverLogoutScreen() {
   return (
     <View className="flex-1 bg-background">
       <ScrollView contentInsetAdjustmentBehavior="never" showsVerticalScrollIndicator={false}>
-        <View className="px-5" style={{ paddingBottom: insets.bottom + 110, paddingTop: insets.top + 12 }}>
+        <View
+          className="w-full max-w-[560px] self-center px-screen"
+          style={{ paddingBottom: insets.bottom + floatingTabBarContentPadding, paddingTop: insets.top + 12 }}>
           <CustomerTabHeader title="Logout" />
 
-          <View className="mt-2 rounded-[30px] border border-border bg-surface p-5 shadow-md shadow-foreground/5">
+          <View className="mt-2 rounded-card border border-border bg-surface p-card ">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-destructive-surface">
               <LogOut color={themeColors.destructive} size={27} strokeWidth={2.4} />
             </View>
-            <Text className="mt-5 text-[22px] font-black text-foreground">Ready to log out?</Text>
-            <Text className="mt-2 text-[13px] font-semibold leading-5 text-muted-foreground">
-              Your secure driver token will be removed from this device. You can sign in again whenever you are ready.
+            <Text className="font-sans mt-5 text-[22px] font-semibold text-foreground">
+              Ready to log out?
+            </Text>
+            <Text className="font-sans mt-2 text-[13px] font-normal leading-5 text-secondary-foreground">
+              You will be signed out on this device. You can sign in again whenever you are ready.
             </Text>
             <Pressable
               accessibilityRole="button"
               disabled={isLoggingOut}
               onPress={() => setIsLogoutDialogVisible(true)}
-              className="mt-6 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full bg-destructive">
-              {isLoggingOut ? <ActivityIndicator color={themeColors.surface} /> : <LogOut color={themeColors.surface} size={17} strokeWidth={2.5} />}
-              <Text className="text-[14px] font-black text-surface">Logout</Text>
+              className="mt-6 min-h-control flex-row items-center justify-center gap-2 rounded-full bg-destructive">
+              {isLoggingOut ? (
+                <ActivityIndicator color={themeColors.surface} />
+              ) : (
+                <LogOut color={themeColors.surface} size={17} strokeWidth={2.5} />
+              )}
+              <Text className="font-sans text-[14px] font-semibold text-surface">Logout</Text>
             </Pressable>
           </View>
         </View>

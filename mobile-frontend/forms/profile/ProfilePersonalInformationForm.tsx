@@ -9,26 +9,17 @@ import { DatePickerInput } from '@/components/ui/DatePickerInput';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
-import {
-  basicInfoSchema,
-  sanitizePersonName,
-} from '@/validation';
+import { basicInfoSchema, sanitizePersonName } from '@/validation';
 import {
   createCustomerProfile,
   emptyCustomerAddress,
   getCustomerInitials,
 } from '@/lib/customer/customer-store';
-import type {
-  BasicCustomerProfileInput,
-  Customer,
-} from '@/types/customer';
+import type { BasicCustomerProfileInput, Customer } from '@/types/customer';
 import { updateProfile } from '@/services/api';
 import { ApiError } from '@/services/http';
 import { useAuth } from '@/providers/AuthProvider';
-import {
-  BOOKING_AGE_REQUIREMENT_MESSAGE,
-  getLatestEligibleBirthdateKey,
-} from '@/utils/calculateAge';
+import { BOOKING_AGE_REQUIREMENT_MESSAGE, getLatestEligibleBirthdateKey } from '@/utils/calculateAge';
 
 function getFormValues(customer: Customer): BasicCustomerProfileInput {
   return {
@@ -42,7 +33,6 @@ function getFormValues(customer: Customer): BasicCustomerProfileInput {
         },
     birthdate: customer.birthdate,
     contactNumber: customer.contactNumber,
-    email: customer.email,
     firstName: customer.firstName,
     lastName: customer.lastName,
     profilePicture: customer.profilePicture,
@@ -106,7 +96,6 @@ export function ProfilePersonalInformationForm({
           province_code: 'addressDetails.provinceCode',
           region_code: 'addressDetails.regionCode',
           birthdate: 'birthdate',
-          email: 'email',
           first_name: 'firstName',
           last_name: 'lastName',
           phone_number: 'contactNumber',
@@ -134,14 +123,7 @@ export function ProfilePersonalInformationForm({
   return (
     <ProfileFormSheet
       onClose={onClose}
-      overlay={(
-        <FormToast
-          message={message}
-          onDismiss={clearToast}
-          title={title}
-          variant={variant}
-        />
-      )}
+      overlay={<FormToast message={message} onDismiss={clearToast} title={title} variant={variant} />}
       title="Edit Personal Information"
       visible={visible}>
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -156,7 +138,7 @@ export function ProfilePersonalInformationForm({
           }}
         />
 
-        <View className="mt-4 rounded-[28px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
+        <View className="mt-4 rounded-card border border-border bg-surface p-4 ">
           <Controller
             control={control}
             name="firstName"
@@ -189,28 +171,6 @@ export function ProfilePersonalInformationForm({
                 onChangeText={(value) => field.onChange(sanitizePersonName(value))}
                 placeholder="Enter last name"
                 required
-                value={field.value}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="email"
-            render={({ field, fieldState }) => (
-              <FormInput
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect={false}
-                error={fieldState.error?.message}
-                icon="mail-outline"
-                keyboardType="email-address"
-                label="Email Address"
-                maxLength={255}
-                onBlur={field.onBlur}
-                onChangeText={field.onChange}
-                placeholder="you@example.com"
-                required
-                textContentType="emailAddress"
                 value={field.value}
               />
             )}
@@ -270,7 +230,7 @@ export function ProfilePersonalInformationForm({
             accessibilityRole="button"
             onPress={onClose}
             className="min-h-[50px] flex-1 items-center justify-center rounded-full border border-border bg-surface px-4">
-            <Text className="text-[13px] font-black text-foreground">Cancel</Text>
+            <Text className="font-sans text-[13px] font-semibold text-foreground">Cancel</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -278,8 +238,8 @@ export function ProfilePersonalInformationForm({
             onPress={handleSubmit(onSubmit, () => {
               showToast('Check the highlighted personal information fields.');
             })}
-            className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-primary px-4 shadow-md shadow-primary/20">
-            <Text className="text-[13px] font-black text-surface">
+            className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-primary px-4 ">
+            <Text className="font-sans text-[13px] font-semibold text-surface">
               {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Text>
           </Pressable>

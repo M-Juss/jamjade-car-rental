@@ -1,4 +1,5 @@
 export type PersonnelCategory = "staff" | "driver";
+export type PersonnelFilter = "all" | PersonnelCategory;
 
 export type PersonnelRole = {
   name: PersonnelCategory;

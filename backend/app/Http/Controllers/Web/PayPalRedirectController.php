@@ -31,9 +31,20 @@ class PayPalRedirectController extends Controller
             $appUrl .= (str_contains($appUrl, '?') ? '&' : '?').http_build_query($query);
         }
 
+        $launchUrl = $appUrl;
+        if (str_contains(strtolower($request->userAgent() ?? ''), 'android')) {
+            $launchUrl = PayPalAppUrl::androidIntent(
+                $appUrl,
+                $request->fullUrlWithQuery(['manual_return' => '1'])
+            ) ?? $appUrl;
+        }
+
+        $autoRedirect = ! $request->boolean('manual_return');
+
         return response()
             ->view('paypal.redirect', [
-                'appUrl' => $appUrl,
+                'launchUrl' => $launchUrl,
+                'autoRedirect' => $autoRedirect,
                 'cancelled' => $action === 'cancel',
             ])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate');

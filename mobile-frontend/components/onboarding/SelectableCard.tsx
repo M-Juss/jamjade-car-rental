@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import { Check, type LucideIcon } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
@@ -27,24 +28,26 @@ export function SelectableCard({
       disabled={disabled}
       onPress={onPress}
       className={cx(
-        'rounded-[24px] border p-4 shadow-md shadow-foreground/5',
+        'rounded-[24px] border p-4 ',
         isSelected ? 'border-primary bg-muted' : 'border-border bg-surface',
         disabled && 'opacity-60',
       )}>
-      <View className="flex-row items-start justify-between gap-3">
+      <View className="flex-row items-center gap-3">
         {Icon ? (
-          <View className={cx('h-11 w-11 items-center justify-center rounded-full', isSelected ? 'bg-primary' : 'bg-muted')}>
-            <Icon size={21} color={isSelected ? '#FFFFFF' : '#346EF6'} strokeWidth={2.35} />
+          <View
+            className={cx(
+              'h-10 w-10 items-center justify-center rounded-full',
+              isSelected ? 'bg-primary' : 'bg-muted',
+            )}>
+            <Icon size={20} color={isSelected ? themeColors.surface : themeColors.primary} strokeWidth={2} />
           </View>
         ) : null}
-        {isSelected ? (
-          <View className="h-7 w-7 items-center justify-center rounded-full bg-primary">
-            <Check size={16} color="#FFFFFF" strokeWidth={3} />
-          </View>
-        ) : null}
+        <View className="min-w-0 flex-1">
+          <Text className="font-sans text-[15px] font-semibold leading-5 text-foreground">{title}</Text>
+          <Text className="font-sans mt-1 text-caption text-secondary-foreground">{description}</Text>
+        </View>
+        {isSelected ? <Check size={19} color={themeColors.primary} /> : null}
       </View>
-      <Text className="mt-4 text-[16px] font-black leading-5 text-foreground">{title}</Text>
-      <Text className="mt-1.5 text-[12px] font-semibold leading-5 text-muted-foreground">{description}</Text>
     </Pressable>
   );
 }

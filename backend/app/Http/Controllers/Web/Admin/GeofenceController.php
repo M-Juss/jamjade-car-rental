@@ -30,13 +30,13 @@ class GeofenceController extends Controller
             ->orderBy('name')
             ->get();
 
-        return $this->success('Geofence templates fetched successfully.', GeofenceResource::collection($geofences));
+        return $this->success('Default monitoring zones fetched successfully.', GeofenceResource::collection($geofences));
     }
 
     public function store(StoreGeofenceRequest $request): JsonResponse
     {
         return $this->created(
-            'Geofence template created successfully.',
+            'Default monitoring zone created successfully.',
             new GeofenceResource($this->service->create($request->validated(), $request->user())->load('creator:id,name')->loadCount('bookingSnapshots'))
         );
     }
@@ -44,7 +44,7 @@ class GeofenceController extends Controller
     public function update(UpdateGeofenceRequest $request, Geofence $geofence): JsonResponse
     {
         return $this->success(
-            'Geofence template updated successfully.',
+            'Default monitoring zone updated successfully.',
             new GeofenceResource($this->service->update($geofence, $request->validated())->load('creator:id,name')->loadCount('bookingSnapshots'))
         );
     }
@@ -52,7 +52,7 @@ class GeofenceController extends Controller
     public function activate(Geofence $geofence): JsonResponse
     {
         return $this->success(
-            'Geofence template activated successfully.',
+            'Default monitoring zone activated successfully.',
             new GeofenceResource($this->service->setActive($geofence, true)->load('creator:id,name')->loadCount('bookingSnapshots'))
         );
     }
@@ -60,20 +60,16 @@ class GeofenceController extends Controller
     public function deactivate(Geofence $geofence): JsonResponse
     {
         return $this->success(
-            'Geofence template deactivated successfully.',
+            'Default monitoring zone deactivated successfully.',
             new GeofenceResource($this->service->setActive($geofence, false)->load('creator:id,name')->loadCount('bookingSnapshots'))
         );
     }
 
     public function destroy(Geofence $geofence): JsonResponse
     {
-        if (! $this->service->delete($geofence)) {
-            return $this->error('This template is assigned to a booking and cannot be deleted. Deactivate it to prevent future assignment.', [
-                'geofence' => ['This template is assigned to a booking and cannot be deleted.'],
-            ], 409);
-        }
+        $this->service->delete($geofence);
 
-        return $this->success('Geofence template moved to deleted templates.', [
+        return $this->success('Default monitoring zone moved to archived zones.', [
             'id' => (string) $geofence->id,
             'isDeleted' => true,
         ]);

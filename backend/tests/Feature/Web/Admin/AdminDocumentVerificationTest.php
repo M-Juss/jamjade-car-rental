@@ -203,7 +203,7 @@ it('lists every customer and separates pending review from self-drive eligibilit
         ->assertJsonFragment(['id' => $pendingCustomer->id, 'reviewStatus' => 'pending_review']);
 });
 
-it('requires the conditional passport and exposes only the selected customer documents', function () {
+it('ignores legacy passport requirements and preserves old documents outside the active review', function () {
     $customer = documentCustomerUser();
     $customer->customerProfile()->update(['passport_required' => true]);
 
@@ -211,19 +211,35 @@ it('requires the conditional passport and exposes only the selected customer doc
         $customer->documents()->create(['document_type' => $type, 'status' => DocumentStatus::Approved]);
     }
 
+    $passport = $customer->documents()->create(['document_type' => CustomerDocument::PASSPORT, 'status' => DocumentStatus::Pending]);
+
     $this->actingAs(documentReviewer())
         ->getJson("/admin/self-drive-verification/customers/{$customer->id}")
         ->assertOk()
-        ->assertJsonPath('data.canSelfDrive', false)
-        ->assertJsonPath('data.requiredDocumentCount', 3)
-        ->assertJsonPath('data.documentCounts.missing', 1)
-        ->assertJsonCount(3, 'data.documents');
-
-    $customer->documents()->create(['document_type' => CustomerDocument::PASSPORT, 'status' => DocumentStatus::Approved]);
+        ->assertJsonPath('data.canSelfDrive', true)
+        ->assertJsonPath('data.requiredDocumentCount', 2)
+        ->assertJsonPath('data.documentCounts.missing', 0)
+        ->assertJsonCount(2, 'data.documents');
 
     $this->getJson('/admin/self-drive-verification/customers?eligibility=eligible')
         ->assertOk()
         ->assertJsonPath('meta.total', 1);
+
+    $this->getJson('/admin/document-verification?per_page=100')
+        ->assertOk()
+        ->assertJsonCount(2, 'data');
+
+    Sanctum::actingAs($customer);
+    $this->getJson('/api/mobile/profile')
+        ->assertOk()
+        ->assertJsonPath('data.profile.canSelfDrive', true)
+        ->assertJsonPath('data.profile.verificationStatus', 'approved')
+        ->assertJsonPath('data.selfDriveAvailability.canSelfDrive', true)
+        ->assertJsonCount(2, 'data.documents')
+        ->assertJsonCount(2, 'data.selfDriveAvailability.requiredDocuments');
+
+    expect($passport->fresh()->status)->toBe(DocumentStatus::Pending);
+    expect($customer->customerProfile()->first()->passport_required)->toBeTrue();
 });
 
 it('does not treat approved documents as self-drive eligibility without the required age', function () {
@@ -260,7 +276,10 @@ it('moves a customer from pending review to eligible after the final required ap
         ->assertJsonPath('data.reviewStatus', 'pending_review')
         ->assertJsonPath('data.canSelfDrive', false);
 
-    $this->postJson("/admin/document-verification/{$bill->id}/approve")->assertOk();
+    $this->postJson("/admin/document-verification/{$bill->id}/approve")
+        ->assertOk()
+        ->assertJsonPath('data.documentType', CustomerDocument::PROOF_OF_BILLING)
+        ->assertJsonPath('data.name', 'Proof of Address');
 
     $this->getJson('/admin/self-drive-verification/customers?eligibility=eligible')
         ->assertOk()

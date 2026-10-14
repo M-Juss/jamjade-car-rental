@@ -37,9 +37,6 @@ class GeofenceTemplateService
     {
         return DB::transaction(function () use ($geofence) {
             $geofence = Geofence::query()->lockForUpdate()->findOrFail($geofence->id);
-            if ($geofence->bookingSnapshots()->exists()) {
-                return false;
-            }
 
             return (bool) $geofence->delete();
         });

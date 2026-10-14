@@ -32,7 +32,7 @@ export function LogoutConfirmationDialog({
         <Pressable accessibilityRole="button" className="absolute inset-0" onPress={onCancel} />
         <Pressable
           accessibilityRole="alert"
-          className="rounded-[30px] border border-border bg-background p-5 shadow-xl shadow-foreground/20"
+          className="rounded-card border border-border bg-background p-5 "
           onPress={(event) => event.stopPropagation()}
           style={{ marginBottom: Math.max(insets.bottom * 0.35, 0) }}>
           <View className="flex-row items-start gap-3">
@@ -40,8 +40,8 @@ export function LogoutConfirmationDialog({
               <LogOut color={themeColors.destructive} size={21} strokeWidth={2.5} />
             </View>
             <View className="min-w-0 flex-1">
-              <Text className="text-[20px] font-black text-foreground">Log out?</Text>
-              <Text className="mt-1 text-[13px] font-semibold leading-5 text-muted-foreground">
+              <Text className="font-sans text-[20px] font-semibold text-foreground">Log out?</Text>
+              <Text className="font-sans mt-1 text-[13px] font-normal leading-5 text-secondary-foreground">
                 Are you sure you want to end your {accountLabel} session on this device?
               </Text>
             </View>
@@ -62,14 +62,18 @@ export function LogoutConfirmationDialog({
               disabled={isLoading}
               onPress={onCancel}
               className="min-h-[50px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
-              <Text className="text-[13px] font-black text-foreground">Cancel</Text>
+              <Text className="font-sans text-[13px] font-semibold text-foreground">Cancel</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               disabled={isLoading}
               onPress={onConfirm}
               className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-destructive">
-              {isLoading ? <Text className="text-[13px] font-black text-surface">Logging out...</Text> : <Text className="text-[13px] font-black text-surface">Log out</Text>}
+              {isLoading ? (
+                <Text className="font-sans text-[13px] font-semibold text-surface">Logging out...</Text>
+              ) : (
+                <Text className="font-sans text-[13px] font-semibold text-surface">Log out</Text>
+              )}
             </Pressable>
           </View>
         </Pressable>

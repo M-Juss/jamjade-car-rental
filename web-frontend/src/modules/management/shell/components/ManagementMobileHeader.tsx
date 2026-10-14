@@ -30,7 +30,7 @@ export default function ManagementMobileHeader({ portal, pendingReservations }: 
       </button>
 
       <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-2">
-        <Image src="/JamJadeLogo.png" alt="" width={28} height={28} sizes="28px" className="object-contain" />
+        <Image src="/JamJadeLogo-gradient.png" alt="" width={28} height={28} sizes="28px" className="object-contain" />
         <span className="text-sm font-semibold tracking-tight text-foreground">JamJade Car Rental</span>
       </div>
 
@@ -54,7 +54,7 @@ export default function ManagementMobileHeader({ portal, pendingReservations }: 
         <SheetContent id="management-mobile-nav" side="left" className="w-72 max-w-[288px] gap-0 border-r border-border p-0" showCloseButton>
           <SheetTitle className="sr-only">{portal === "admin" ? "Admin" : "Staff"} navigation</SheetTitle>
           <div className="mx-3 mb-1 mt-3 flex h-11 items-center gap-2.5">
-            <Image src="/JamJadeLogo.png" alt="JamJade" width={36} height={36} sizes="36px" className="object-contain" />
+            <Image src="/JamJadeLogo-gradient.png" alt="JamJade" width={36} height={36} sizes="36px" className="object-contain" />
             <p className="text-sm font-semibold tracking-tight text-foreground">JamJade Car Rental</p>
           </div>
           <div className="mx-3 my-1.5 h-px shrink-0 bg-border" />

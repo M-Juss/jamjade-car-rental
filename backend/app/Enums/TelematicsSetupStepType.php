@@ -9,7 +9,6 @@ enum TelematicsSetupStepType: string
     case LocationPermission = 'location_permission';
     case BackgroundLocation = 'background_location';
     case GpsCheck = 'gps_check';
-    case GeofenceCheck = 'geofence_check';
     case PhoneMount = 'phone_mount';
     case StationaryCalibration = 'stationary_calibration';
     case ForwardCalibration = 'forward_calibration';

@@ -3,12 +3,12 @@ import type {
   CustomerDocumentUploads,
 } from '@/types/customer';
 import { apiPost } from '@/services/http';
+import { formatDriverLicenseNumber, isValidDriverLicenseNumber } from '@/lib/customer/driver-license';
 
 import type { MobileDocument } from './types';
 
 const DOCUMENT_TYPES: Record<CustomerDocumentId, string> = {
   'driver-license': 'drivers_license',
-  passport: 'passport',
   'proof-of-address': 'proof_of_billing',
 };
 
@@ -61,14 +61,18 @@ function buildDocumentBody(
   formData.append('document_type', DOCUMENT_TYPES[documentId]);
 
   if (documentId === 'driver-license') {
-    formData.append('document_number', documents.driverLicenseNumber);
+    if (!isValidDriverLicenseNumber(documents.driverLicenseNumber)) {
+      throw new Error('Enter a license number with at most 11 letters or digits.');
+    }
+    formData.append('document_number', formatDriverLicenseNumber(documents.driverLicenseNumber));
     formData.append('expires_at', documents.driverLicenseExpirationDate);
     appendUpload(formData, 'front_file', documents.driverLicenseFront);
     appendUpload(formData, 'back_file', documents.driverLicenseBack);
-  } else if (documentId === 'passport') {
-    appendUpload(formData, 'file', documents.passport);
   } else {
     appendUpload(formData, 'file', documents.proofOfAddress);
+    if (documents.proofOfAddressBack) {
+      appendUpload(formData, 'back_file', documents.proofOfAddressBack);
+    }
   }
 
   return formData;

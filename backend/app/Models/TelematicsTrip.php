@@ -28,7 +28,6 @@ class TelematicsTrip extends Model
         'current_speed',
         'battery_percent',
         'gps_signal_percent',
-        'current_zone',
         'last_location_at',
     ];
 
@@ -63,6 +62,11 @@ class TelematicsTrip extends Model
     public function events(): HasMany
     {
         return $this->hasMany(TelematicsEvent::class, 'trip_id');
+    }
+
+    public function geofenceStates(): HasMany
+    {
+        return $this->hasMany(TelematicsGeofenceState::class);
     }
 
     public function locationPoints(): HasMany

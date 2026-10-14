@@ -4,12 +4,11 @@ export const SHOP_LOCATION = 'Jamjade Rent A Car Services';
 
 export const JAMJADE_GARAGE = 'Jamjade Garage';
 
-export const TERMS_VERSION = '2026-06-13';
+export const TERMS_VERSION = '2026-10-12';
 
 export const REQUIRED_DOCUMENTS = [
   "Driver's License",
-  'Meralco Bill / Proof of Address',
-  'Passport (if requested by admin)',
+  'Proof of Address',
 ];
 
 export function formatDeliveryTime(value?: string | null) {
@@ -36,12 +35,6 @@ export function formatDeliveryTime(value?: string | null) {
 }
 
 export const optionalServices: OptionalService[] = [
-  {
-    id: 'delivery',
-    label: 'Delivery service',
-    description: 'Vehicle delivery to your preferred pickup point.',
-    price: 900,
-  },
   {
     id: 'owners_driver',
     label: "Owner's driver",

@@ -25,6 +25,9 @@
                 <td class="amount">{{ $formatMoney($booking->delivery_fee) }}</td>
             </tr>
         @endif
+        @if ((float) $booking->delivery_toll_fee > 0)
+            <tr><td>Delivery Toll</td><td class="amount">{{ $formatMoney($booking->delivery_toll_fee) }}</td></tr>
+        @endif
         @if ((float) $booking->owner_driver_fee > 0)
             <tr>
                 <td>Owner's Driver Fee</td>

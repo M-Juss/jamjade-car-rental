@@ -94,6 +94,46 @@ class AuthService
             ->log('Customer logged out and revoked the active Sanctum token.');
     }
 
+    public function updateAccountEmail(User $user, array $data): User
+    {
+        return DB::transaction(function () use ($user, $data) {
+            $account = User::query()->lockForUpdate()->findOrFail($user->id);
+            $this->verifyCurrentPassword($account, $data['current_password']);
+
+            if ($account->email !== $data['email']) {
+                $account->forceFill(['email' => $data['email'], 'email_verified_at' => null])->save();
+            }
+
+            return $account->load('customerProfile', 'roles');
+        });
+    }
+
+    public function changeAccountPassword(User $user, array $data): void
+    {
+        DB::transaction(function () use ($user, $data) {
+            $account = User::query()->lockForUpdate()->findOrFail($user->id);
+            $this->verifyCurrentPassword($account, $data['current_password']);
+            $account->forceFill([
+                'password' => $data['password'],
+                'remember_token' => Str::random(60),
+            ])->save();
+            $account->tokens()->delete();
+
+            activity()->causedBy($account)->performedOn($account)
+                ->event('mobile_password_changed')
+                ->log('Customer changed their password and revoked mobile sessions.');
+        });
+    }
+
+    private function verifyCurrentPassword(User $user, string $password): void
+    {
+        if (! Hash::check($password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+    }
+
     private function issueMobileToken(User $user, string $deviceName): string
     {
         $user->tokens()->where('name', $deviceName)->delete();

@@ -1,6 +1,6 @@
 export type VerificationStatus = "pending" | "approved" | "rejected";
 
-export type DocumentType = "Valid ID" | "Passport" | "Meralco Bill" | "Driver's License";
+export type DocumentType = "Proof of Address" | "Driver's License";
 
 export type FileType = "image" | "pdf";
 

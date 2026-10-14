@@ -48,6 +48,7 @@ class Booking extends Model
         'duration_days',
         'subtotal',
         'delivery_fee',
+        'delivery_toll_fee',
         'owner_driver_fee',
         'add_ons_total',
         'discount_total',
@@ -96,6 +97,7 @@ class Booking extends Model
             'price_per_day' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'delivery_fee' => 'decimal:2',
+            'delivery_toll_fee' => 'decimal:2',
             'owner_driver_fee' => 'decimal:2',
             'add_ons_total' => 'decimal:2',
             'discount_total' => 'decimal:2',
@@ -182,9 +184,14 @@ class Booking extends Model
         return $this->hasMany(TelematicsTrip::class);
     }
 
-    public function bookingGeofence(): HasOne
+    public function deliveryQuote(): HasOne
     {
-        return $this->hasOne(BookingGeofence::class);
+        return $this->hasOne(DeliveryQuote::class);
+    }
+
+    public function bookingGeofences(): HasMany
+    {
+        return $this->hasMany(BookingGeofence::class);
     }
 
     public function telematicsSetupSession(): HasOne

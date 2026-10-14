@@ -51,6 +51,9 @@ export type Booking = {
   pricePerDay: number;
   subtotal: number;
   deliveryFee: number;
+  deliveryTollFee: number;
+  deliveryLocation?: { address: string; placeId: string | null; point: { latitude: number; longitude: number } | null; routeLabel: string } | null;
+
   outsideManilaFee: number;
   ownerDriverFee: number;
   optionalServices: number;
@@ -81,6 +84,7 @@ export type Booking = {
     typeLabel: string;
     description: string;
     amount: number;
+    outstandingAmount: number;
     responsibility: 'customer' | 'driver';
     paymentStatus: string;
     paidAt?: string | null;

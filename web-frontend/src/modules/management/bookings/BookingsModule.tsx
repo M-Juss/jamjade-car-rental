@@ -1,5 +1,7 @@
 "use client";
 
+import { DeliveryQuoteRequests } from "@/modules/management/delivery/DeliveryQuoteRequests";
+
 import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
@@ -39,8 +41,9 @@ import { TableActionMenu, type TableActionMenuItem } from "@/components/common/t
 import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { appToast } from "@/lib/toast";
 import { BookingDetailsDialog } from "@/forms/booking/BookingDetailsDialog";
+import { bookingWorkflowPhase, bookingWorkflowTitles } from "./booking-workflow";
 import { BookingWorkflowDialog } from "@/forms/booking/BookingWorkflowDialog";
-import { bookingActionLabels, nextBookingAction, type BookingNextAction } from "./booking-next-action";
+import { nextBookingAction, type BookingNextAction } from "./booking-next-action";
 import {
   cancelBooking,
   getBooking,
@@ -180,9 +183,9 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
     }
   };
 
-  const handleDriverAssigned = useCallback((updatedBooking: BookingRecord) => {
+  const handleBookingUpdated = useCallback((updatedBooking: BookingRecord) => {
     setSelectedBooking(updatedBooking);
-    setIsLoading(true);
+    setBookings((current) => current.map((record) => record.backendId === updatedBooking.backendId ? updatedBooking : record));
     setError(null);
     setReloadKey((current) => current + 1);
   }, []);
@@ -191,9 +194,9 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
     try {
       setLoadingActionId(booking.backendId);
       const latest = await getBooking(booking);
-      handleDriverAssigned(latest);
+      handleBookingUpdated(latest);
       const action = requested ?? nextBookingAction(latest);
-      if (action) setWorkflowAction(action);
+      if (action) { setDetailsOpen(false); setWorkflowAction(action); }
       else appToast.error("This booking has no remaining action.");
     } catch {
       appToast.error("The latest booking state could not be loaded. Try again.");
@@ -219,7 +222,7 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
         onClick: () => { setSelectedBooking(booking); setDetailsOpen(true); },
       },
       ...(next ? [{
-        label: bookingActionLabels[next],
+        label: bookingWorkflowTitles[bookingWorkflowPhase(next)],
         icon: <ArrowRight size={13} className="mr-2" />,
         onClick: () => { void openNext(booking); },
         disabled: loadingActionId === booking.backendId,
@@ -246,6 +249,8 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">{group === "history" ? "Booking History" : "Booking Management"}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{group === "history" ? "Review completed, cancelled, and rejected bookings." : "Track reservations and payment states from live booking records."}</p>
       </div>
+
+      {group === "booking" && <DeliveryQuoteRequests />}
 
       {error ? (
         <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[12.5px] font-medium text-rose-700">
@@ -474,14 +479,17 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
           booking={selectedBooking}
+          onContinue={(record) => { void openNext(record); }}
+          isContinuing={loadingActionId === selectedBooking.backendId}
         />
       ) : null}
 
       {selectedBooking && workflowAction ? <BookingWorkflowDialog
+        key={selectedBooking.backendId}
         action={workflowAction}
         booking={selectedBooking}
         onClose={() => setWorkflowAction(null)}
-        onUpdated={handleDriverAssigned}
+        onUpdated={handleBookingUpdated}
       /> : null}
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>

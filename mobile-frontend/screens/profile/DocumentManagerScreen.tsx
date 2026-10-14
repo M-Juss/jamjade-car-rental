@@ -1,29 +1,19 @@
+import { themeColors } from '@/constants/theme';
+import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { useRouter } from 'expo-router';
-import {
-  ArrowLeft,
-  CheckCircle2,
-  CircleDashed,
-  Clock3,
-  type LucideIcon,
-} from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2, CircleDashed, Clock3, type LucideIcon } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  DocumentTypeTabs,
-  DocumentUploadPanel,
-} from '@/components/profile';
+import { DocumentTypeTabs, DocumentUploadPanel } from '@/components/profile';
 import {
   removeRenterDocumentImage,
   storeRenterDocumentImage,
   useRenterDocuments,
 } from '@/lib/profile/document-store';
 import { pickImageFromDevice } from '@/lib/customer/image-picker';
-import type {
-  RenterDocument,
-  RenterDocumentId,
-} from '@/lib/profile/profile-data';
+import type { RenterDocument, RenterDocumentId } from '@/lib/profile/profile-data';
 
 type WebFileInput = {
   accept: string;
@@ -112,8 +102,8 @@ function DocumentSummaryPill({
       <View className={`${iconBgClassName} h-9 w-9 items-center justify-center rounded-full`}>
         <Icon size={18} color={iconColor} strokeWidth={2.45} />
       </View>
-      <Text className="mt-2 text-[20px] font-black text-foreground">{value}</Text>
-      <Text className="mt-0.5 text-[10px] font-black uppercase text-subtle-foreground">{label}</Text>
+      <Text className="font-sans mt-2 text-[20px] font-semibold text-foreground">{value}</Text>
+      <Text className="font-sans mt-0.5 text-[11px] font-normal text-secondary-foreground">{label}</Text>
     </View>
   );
 }
@@ -122,8 +112,11 @@ export function DocumentManagerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const renterDocuments = useRenterDocuments();
-  const [selectedDocumentId, setSelectedDocumentId] = useState<RenterDocumentId>(renterDocuments[0]?.id ?? 'drivers-license');
-  const selectedDocument = renterDocuments.find((document) => document.id === selectedDocumentId) ?? renterDocuments[0];
+  const [selectedDocumentId, setSelectedDocumentId] = useState<RenterDocumentId>(
+    renterDocuments[0]?.id ?? 'drivers-license',
+  );
+  const selectedDocument =
+    renterDocuments.find((document) => document.id === selectedDocumentId) ?? renterDocuments[0];
 
   const summary = useMemo(
     () => ({
@@ -149,40 +142,50 @@ export function DocumentManagerScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="never">
-        <View className="px-5" style={{ paddingBottom: 34 + insets.bottom, paddingTop: insets.top + 10 }}>
-          <View className="relative min-h-[48px] flex-row items-center justify-center border-b border-border pb-4">
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never">
+        <View
+          className="w-full max-w-[560px] self-center px-screen"
+          style={{ paddingBottom: 34 + insets.bottom, paddingTop: insets.top + 10 }}>
+          <View className="min-h-[48px] flex-row items-center gap-2 border-b border-border pb-4">
             <Pressable
               accessibilityLabel="Go back"
               accessibilityRole="button"
               onPress={() => router.back()}
-              className="absolute left-0 h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
-              <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
+              className="h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface">
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
-            <Text className="px-16 text-center text-[22px] font-black leading-[27px] text-foreground" numberOfLines={1}>
+            <Text
+              className="font-sans min-w-0 flex-1 text-center text-[22px] font-semibold leading-[27px] text-foreground"
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              numberOfLines={1}>
               Manage Document
             </Text>
+            <LogoutHeaderButton />
           </View>
 
           <View className="mt-6 flex-row gap-2.5">
             <DocumentSummaryPill
               icon={CheckCircle2}
               iconBgClassName="bg-success-surface"
-              iconColor="#047857"
+              iconColor={themeColors.success}
               label="Verified"
               value={summary.verified}
             />
             <DocumentSummaryPill
               icon={Clock3}
               iconBgClassName="bg-warning-surface"
-              iconColor="#C2410C"
+              iconColor={themeColors.warning}
               label="Pending"
               value={summary.pending}
             />
             <DocumentSummaryPill
               icon={CircleDashed}
-              iconBgClassName="bg-[#F1F5F9]"
-              iconColor="#64748B"
+              iconBgClassName="bg-muted"
+              iconColor={themeColors.mutedForeground}
               label="Missing"
               value={summary.missing}
             />

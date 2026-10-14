@@ -7,10 +7,7 @@ import { ProfileFormSheet } from '@/components/profile';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
-import {
-  emergencyContactSchema,
-  sanitizePersonName,
-} from '@/validation';
+import { emergencyContactSchema, sanitizePersonName } from '@/validation';
 import { updateEmergencyContact } from '@/lib/customer/customer-store';
 import { saveEmergencyContact } from '@/services/api';
 import { ApiError } from '@/services/http';
@@ -94,18 +91,11 @@ export function ProfileEmergencyContactForm({
   return (
     <ProfileFormSheet
       onClose={onClose}
-      overlay={(
-        <FormToast
-          message={message}
-          onDismiss={clearToast}
-          title={title}
-          variant={variant}
-        />
-      )}
+      overlay={<FormToast message={message} onDismiss={clearToast} title={title} variant={variant} />}
       title="Edit Emergency Contact"
       visible={visible}>
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View className="gap-3 rounded-[28px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
+        <View className="gap-3 rounded-card border border-border bg-surface p-4 ">
           <Controller
             control={control}
             name="name"
@@ -140,7 +130,7 @@ export function ProfileEmergencyContactForm({
             )}
           />
           <View className="relative mb-8 gap-2">
-            <Text className="text-[12px] font-black text-muted-foreground">
+            <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
               Relationship <Text className="text-destructive">*</Text>
             </Text>
             <View className="flex-row flex-wrap gap-2.5">
@@ -162,7 +152,12 @@ export function ProfileEmergencyContactForm({
                       'min-h-[42px] items-center justify-center rounded-full border px-4',
                       isSelected ? 'border-primary bg-muted' : 'border-border bg-background',
                     )}>
-                    <Text className={cx('text-[13px] font-black', isSelected ? 'text-primary' : 'text-foreground')}>
+                    <Text
+                      className={cx(
+                        'font-sans',
+                        'text-[13px] font-semibold',
+                        isSelected ? 'text-primary' : 'text-foreground',
+                      )}>
                       {relationship}
                     </Text>
                   </Pressable>
@@ -171,9 +166,11 @@ export function ProfileEmergencyContactForm({
             </View>
             <View className="absolute left-1 right-1 top-full mt-1.5">
               {errors.relationship ? (
-                <Text className="text-[11px] font-bold leading-4 text-destructive">{errors.relationship.message}</Text>
+                <Text className="font-sans text-[11px] font-medium leading-4 text-destructive">
+                  {errors.relationship.message}
+                </Text>
               ) : (
-                <Text className="text-[11px] font-bold leading-4 text-subtle-foreground">
+                <Text className="font-sans text-[11px] font-medium leading-4 text-secondary-foreground">
                   Select your relationship to the emergency contact.
                 </Text>
               )}
@@ -186,7 +183,7 @@ export function ProfileEmergencyContactForm({
             accessibilityRole="button"
             onPress={onClose}
             className="min-h-[50px] flex-1 items-center justify-center rounded-full border border-border bg-surface px-4">
-            <Text className="text-[13px] font-black text-foreground">Cancel</Text>
+            <Text className="font-sans text-[13px] font-semibold text-foreground">Cancel</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -194,8 +191,8 @@ export function ProfileEmergencyContactForm({
             onPress={handleSubmit(onSubmit, () => {
               showToast('Check the highlighted emergency contact fields.');
             })}
-            className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-primary px-4 shadow-md shadow-primary/20">
-            <Text className="text-[13px] font-black text-surface">
+            className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-primary px-4 ">
+            <Text className="font-sans text-[13px] font-semibold text-surface">
               {isSubmitting ? 'Saving...' : 'Save'}
             </Text>
           </Pressable>

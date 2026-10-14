@@ -52,6 +52,12 @@ const actionsByStatus = {
   Confirmed: [
     detailAction,
     {
+      key: 'open_telematics',
+      label: 'View Telematics',
+      icon: Navigation,
+      variant: 'soft',
+    },
+    {
       key: 'payment_info',
       label: 'Payment Info',
       icon: CreditCard,

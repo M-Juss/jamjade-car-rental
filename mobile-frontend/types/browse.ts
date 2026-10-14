@@ -24,6 +24,9 @@ export type Vehicle = {
 };
 
 export type BookingFormData = {
+  deliveryQuoteId?: string;
+  deliveryQuoteExpiresAt?: string;
+  priceBreakdown?: PriceBreakdown;
   vehicleId: string;
   rentalDate: string;
   returnDate: string;
@@ -53,6 +56,7 @@ export type PriceBreakdown = {
   numberOfDays: number;
   subtotal: number;
   deliveryFee: number;
+  deliveryTollFee: number;
   ownerDriverFee: number;
   ownerDriverRatePerDay?: number;
   totalAmount: number;

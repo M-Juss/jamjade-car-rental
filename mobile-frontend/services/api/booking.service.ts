@@ -82,6 +82,8 @@ export function mapBooking(record: MobileBookingRecord): Booking {
     pricePerDay: Number(record.pricePerDay),
     subtotal: Number(record.subtotal),
     deliveryFee: Number(record.deliveryFee),
+    deliveryTollFee: Number(record.deliveryTollFee),
+    deliveryLocation: record.deliveryLocation,
     outsideManilaFee: Number(record.outsideManilaFee),
     ownerDriverFee: Number(record.ownerDriverFee),
     optionalServices: Number(record.optionalServices),

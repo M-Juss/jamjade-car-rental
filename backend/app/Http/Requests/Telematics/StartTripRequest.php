@@ -19,7 +19,7 @@ class StartTripRequest extends BaseFormRequest
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'battery_percent' => ['nullable', 'integer', 'between:0,100'],
             'gps_signal_percent' => ['nullable', 'integer', 'between:0,100'],
-            'current_zone' => ['nullable', 'string', 'max:120'],
+            'current_zone' => ['prohibited'],
         ];
     }
 }

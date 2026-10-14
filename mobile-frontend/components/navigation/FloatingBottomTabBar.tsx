@@ -1,11 +1,13 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useCustomerTabBarVisibility } from '@/components/navigation/CustomerTabBarVisibilityContext';
+import { fontFamilies } from '@/constants/fonts';
+import { mobileLayout } from '@/constants/layout';
+
 import type { FloatingTabConfig } from '@/constants/navigation-tabs';
 import { themeColors } from '@/constants/theme';
 import { setUnreadNotificationCount, useUnreadNotificationCount } from '@/lib/customer/notification-unread';
@@ -17,9 +19,10 @@ type FloatingBottomTabBarProps = BottomTabBarProps & {
 };
 
 const ACTIVE = themeColors.primary;
-const INACTIVE = themeColors.subtleForeground;
-const BAR_HEIGHT = 74;
-const FLOAT_GAP = 10;
+const INACTIVE = themeColors.mutedForeground;
+const BAR_HEIGHT = mobileLayout.tabBarHeight;
+const BAR_LIFT = mobileLayout.tabBarLift;
+const FLOAT_GAP = mobileLayout.floatingGap;
 
 export function FloatingBottomTabBar({
   descriptors,
@@ -30,9 +33,28 @@ export function FloatingBottomTabBar({
 }: FloatingBottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const unreadNotificationCount = useUnreadNotificationCount();
-  const { isTabBarHidden } = useCustomerTabBarVisibility();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(() => Keyboard.isVisible());
+  const focusedRoute = state.routes[state.index];
+  const isTabBarHidden =
+    isKeyboardVisible && Boolean(descriptors[focusedRoute.key]?.options.tabBarHideOnKeyboard);
   const translateY = useRef(new Animated.Value(0)).current;
-  const hideOffset = BAR_HEIGHT + insets.bottom + FLOAT_GAP + 20;
+  const hideOffset = BAR_HEIGHT + BAR_LIFT + insets.bottom + FLOAT_GAP + 20;
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true),
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false),
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -57,13 +79,26 @@ export function FloatingBottomTabBar({
       toValue: isTabBarHidden ? hideOffset : 0,
       useNativeDriver: true,
     }).start();
+
+    return () => translateY.stopAnimation();
   }, [hideOffset, isTabBarHidden, translateY]);
 
   return (
     <Animated.View
+      accessibilityElementsHidden={isTabBarHidden}
+      importantForAccessibility={isTabBarHidden ? 'no-hide-descendants' : 'auto'}
       pointerEvents={isTabBarHidden ? 'none' : 'box-none'}
-      style={[styles.safeArea, { paddingBottom: insets.bottom + FLOAT_GAP, transform: [{ translateY }] }]}>
-      <View style={[styles.bar, { height: BAR_HEIGHT }]}>
+      style={[
+        styles.safeArea,
+        {
+          paddingBottom: insets.bottom + FLOAT_GAP,
+          paddingLeft: Math.max(12, insets.left),
+          paddingRight: Math.max(12, insets.right),
+          transform: [{ translateY }],
+        },
+      ]}>
+      <View style={styles.bar}>
+        <View pointerEvents="none" style={styles.barSurface} />
         {tabs.map((tab) => {
           const routeIndex = state.routes.findIndex((routeItem) => routeItem.name === tab.routeName);
 
@@ -75,11 +110,13 @@ export function FloatingBottomTabBar({
           const options = descriptors[route.key]?.options;
           const isFocused = state.index === routeIndex;
           const isDisabled = Boolean(tab.disabled);
+          const isFeatured = Boolean(tab.featured);
           const isNotificationsTab = tab.routeName === 'notifications';
           const color = isFocused ? ACTIVE : INACTIVE;
-          const accessibilityLabel = isNotificationsTab && unreadNotificationCount > 0
-            ? `${tab.label}, ${unreadNotificationCount} unread`
-            : tab.disabledAccessibilityLabel ?? options?.tabBarAccessibilityLabel ?? tab.label;
+          const accessibilityLabel =
+            isNotificationsTab && unreadNotificationCount > 0
+              ? `${tab.label}, ${unreadNotificationCount} unread`
+              : (tab.disabledAccessibilityLabel ?? options?.tabBarAccessibilityLabel ?? tab.label);
 
           const handlePress = () => {
             if (isDisabled) {
@@ -109,50 +146,53 @@ export function FloatingBottomTabBar({
             });
           };
 
-          if (tab.featured) {
-            return (
-              <Pressable
-                accessibilityLabel={accessibilityLabel}
-                accessibilityRole="button"
-                accessibilityState={isDisabled ? { disabled: true } : isFocused ? { selected: true } : undefined}
-                key={route.key}
-                onLongPress={handleLongPress}
-                onPress={handlePress}
-                style={styles.featuredButton}>
-                <View style={[styles.featuredOuter, isFocused && styles.featuredOuterActive, isDisabled && styles.disabledFeaturedOuter]}>
-                  <View style={[styles.featuredInner, isDisabled && styles.disabledFeaturedInner]}>
-                    <MaterialCommunityIcons name={tab.icon} size={26} color={themeColors.surface} />
-                  </View>
-                </View>
-                <Text style={[styles.featuredLabel, isFocused && styles.activeLabel, isDisabled && styles.disabledLabel]} numberOfLines={1}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          }
-
           return (
             <Pressable
               accessibilityLabel={accessibilityLabel}
               accessibilityRole="button"
-              accessibilityState={isDisabled ? { disabled: true } : isFocused ? { selected: true } : undefined}
+              accessibilityState={
+                isDisabled ? { disabled: true } : isFocused ? { selected: true } : undefined
+              }
               key={route.key}
               onLongPress={handleLongPress}
               onPress={handlePress}
-              style={styles.tabButton}>
-              <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name={tab.icon} size={22} color={isDisabled ? themeColors.border : color} />
-                {isNotificationsTab && unreadNotificationCount > 0 ? (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadBadgeText}>
-                      {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                    </Text>
+              // NativeWind's native interop needs static styles to preserve the equal-width layout.
+              style={[styles.tabButton, isFeatured && styles.featuredButton]}>
+              {({ pressed }) => (
+                <View style={[styles.tabContent, pressed && styles.pressedTabButton]}>
+                  <View
+                    style={[
+                      styles.iconContainer,
+                      isFeatured && styles.featuredIconContainer,
+                      isFeatured && isDisabled && styles.disabledFeaturedIconContainer,
+                    ]}>
+                    <MaterialCommunityIcons
+                      name={tab.icon}
+                      size={isFeatured ? 24 : 22}
+                      color={isFeatured ? themeColors.surface : isDisabled ? themeColors.subtleForeground : color}
+                    />
+                    {isNotificationsTab && unreadNotificationCount > 0 ? (
+                      <View style={styles.unreadBadge}>
+                        <Text className="font-sans" style={styles.unreadBadgeText}>
+                          {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
-                ) : null}
-              </View>
-              <Text style={[styles.label, isFocused && styles.activeLabel, isDisabled && styles.disabledLabel]} numberOfLines={1}>
-                {tab.label}
-              </Text>
+                  <Text
+                    className="font-sans"
+                    style={[
+                      styles.label,
+                      isFeatured && styles.featuredLabel,
+                      isFocused && styles.activeLabel,
+                      isDisabled && styles.disabledLabel,
+                    ]}
+                    maxFontSizeMultiplier={1.3}
+                    numberOfLines={1}>
+                    {tab.label}
+                  </Text>
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -166,46 +206,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     bottom: 0,
     left: 0,
-    paddingHorizontal: 14,
-    pointerEvents: 'box-none',
-    position: 'absolute',
     right: 0,
+    position: 'absolute',
   },
   bar: {
     alignItems: 'center',
-    backgroundColor: themeColors.surface,
-    borderColor: themeColors.border,
-    borderRadius: 30,
-    borderWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    height: BAR_HEIGHT + BAR_LIFT,
     maxWidth: 430,
     paddingHorizontal: 6,
-    shadowColor: themeColors.primary,
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
     width: '100%',
+  },
+  barSurface: {
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    bottom: 0,
+    height: BAR_HEIGHT,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    shadowColor: themeColors.foreground,
+    shadowOffset: { height: 3, width: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
   tabButton: {
     alignItems: 'center',
     flex: 1,
-    gap: 5,
-    height: 68,
+    height: BAR_HEIGHT + BAR_LIFT,
     justifyContent: 'center',
     minWidth: 0,
+    paddingTop: BAR_LIFT,
   },
+  tabContent: {
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 2,
+    width: '100%',
+  },
+  featuredButton: { paddingTop: 0 },
+  pressedTabButton: { opacity: 0.72 },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 30,
+    height: 26,
+    position: 'relative',
+  },
+  featuredIconContainer: {
+    backgroundColor: themeColors.primary,
+    borderColor: themeColors.surface,
+    borderRadius: 25,
+    borderWidth: 3,
+    height: 50,
+    width: 50,
+  },
+  disabledFeaturedIconContainer: { backgroundColor: themeColors.subtleForeground },
   label: {
     color: INACTIVE,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: fontFamilies.medium,
+    fontWeight: 'normal',
     lineHeight: 14,
-    maxWidth: 76,
+    maxWidth: '100%',
     textAlign: 'center',
   },
-  iconContainer: {
-    position: 'relative',
-  },
+  activeLabel: { color: ACTIVE },
+  featuredLabel: { fontFamily: fontFamilies.semibold },
+  disabledLabel: { color: themeColors.subtleForeground },
   unreadBadge: {
     alignItems: 'center',
     backgroundColor: themeColors.destructive,
@@ -217,67 +287,14 @@ const styles = StyleSheet.create({
     minWidth: 19,
     paddingHorizontal: 3,
     position: 'absolute',
-    right: -12,
-    top: -10,
+    right: -8,
+    top: -5,
   },
   unreadBadgeText: {
     color: themeColors.surface,
     fontSize: 9,
-    fontWeight: '900',
+    fontFamily: fontFamilies.semibold,
+    fontWeight: 'normal',
     lineHeight: 11,
-  },
-  activeLabel: {
-    color: ACTIVE,
-  },
-  featuredButton: {
-    alignItems: 'center',
-    flex: 1.14,
-    height: 102,
-    justifyContent: 'flex-start',
-    minWidth: 0,
-  },
-  featuredOuter: {
-    alignItems: 'center',
-    backgroundColor: themeColors.surface,
-    borderColor: themeColors.border,
-    borderRadius: 42,
-    borderWidth: 4,
-    height: 84,
-    justifyContent: 'center',
-    marginTop: -32,
-    shadowColor: themeColors.primary,
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.24,
-    shadowRadius: 12,
-    width: 84,
-  },
-  featuredOuterActive: {
-    borderColor: themeColors.surface,
-  },
-  featuredInner: {
-    alignItems: 'center',
-    backgroundColor: themeColors.primary,
-    borderRadius: 32,
-    height: 64,
-    justifyContent: 'center',
-    width: 64,
-  },
-  disabledFeaturedOuter: {
-    shadowOpacity: 0.08,
-  },
-  disabledFeaturedInner: {
-    backgroundColor: themeColors.subtleForeground,
-  },
-  featuredLabel: {
-    color: INACTIVE,
-    fontSize: 10,
-    fontWeight: '800',
-    lineHeight: 13,
-    marginTop: 1,
-    maxWidth: 80,
-    textAlign: 'center',
-  },
-  disabledLabel: {
-    color: themeColors.border,
   },
 });

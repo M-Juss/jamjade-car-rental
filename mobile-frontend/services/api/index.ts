@@ -1,4 +1,5 @@
 export * from './auth.service';
+export * from './account.service';
 export * from './address.service';
 export * from './booking.service';
 export * from './document.service';

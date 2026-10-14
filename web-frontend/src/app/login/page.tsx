@@ -1,6 +1,7 @@
 import { LoginForm } from "@/forms/auth/LoginForm";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   return (
@@ -13,8 +14,18 @@ export default function LoginPage() {
         <ChevronLeft size={24} aria-hidden="true" />
       </Link>
       <div className="flex w-full max-w-lg flex-col items-center rounded-md bg-white p-8 shadow-md sm:p-12">
-        <div className="flex space-x-2 ">
-          <p className="text-2xl font-bold text-primary ">JAMJADE CAR RENTAL</p>
+        <div className="mb-2 flex items-center gap-2">
+          <Image
+            src="/JamJadeLogo-gradient.png"
+            alt=""
+            width={48}
+            height={48}
+            sizes="48px"
+            className="size-12 shrink-0 object-contain"
+          />
+          <p className="text-lg font-semibold leading-tight text-primary sm:text-xl">
+            JAMJADE CAR RENTAL
+          </p>
         </div>
         <p className="text-sm mb-6">Enter your credentials to continue </p>
         <LoginForm/>

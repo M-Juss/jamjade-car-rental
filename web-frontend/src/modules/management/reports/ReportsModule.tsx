@@ -142,7 +142,7 @@ export function ReportsAnalytics() {
   );
   const filteredBookingRows = useMemo(
     () => (data?.bookings ?? []).filter((row) =>
-      `${row.bookingId} ${row.customer} ${row.vehicle} ${row.status} ${row.rentalBoundary?.name ?? ""}`.toLowerCase().includes(query)
+      `${row.bookingId} ${row.customer} ${row.vehicle} ${row.status} ${row.monitoringZones?.map((zone) => zone.name).join(" ") ?? ""}`.toLowerCase().includes(query)
     ),
     [data, query],
   );
@@ -540,7 +540,7 @@ export function ReportsAnalytics() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-background">
-                      {["Booking ID", "Customer", "Vehicle", "Rental Date", "Return Date", "Rental Boundary", "Total Cost", "Status"].map((heading) => (
+                      {["Booking ID", "Customer", "Vehicle", "Rental Date", "Return Date", "Monitoring Zones", "Total Cost", "Status"].map((heading) => (
                         <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
                       ))}
                     </TableRow>
@@ -555,7 +555,7 @@ export function ReportsAnalytics() {
                         <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
                         <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.rentalDate ?? "N/A"}</TableCell>
                         <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.returnDate ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground"><span className="font-medium text-foreground">{row.rentalBoundary?.name ?? "—"}</span>{row.rentalBoundary ? <span className="mt-0.5 block text-[11px]">{row.rentalBoundary.geometryType === "circle" ? `Circle · ${row.rentalBoundary.radiusMeters?.toLocaleString() ?? "—"} m` : `Polygon · ${row.rentalBoundary.polygonPointCount} points`}</span> : null}</TableCell>
+                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.monitoringZones?.length ? row.monitoringZones.map((zone, index) => <span key={index} className="block font-medium text-foreground">{zone.name}</span>) : "—"}</TableCell>
                         <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.totalCost)}</TableCell>
                         <TableCell className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
                       </TableRow>

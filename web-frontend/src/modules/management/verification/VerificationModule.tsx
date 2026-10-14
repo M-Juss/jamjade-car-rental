@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Clock, Eye, FileCheck, FileText, ShieldCheck, Users, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Clock, Eye, FileCheck, ShieldCheck, Users, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,8 +33,7 @@ const reviewStatus: Record<SelfDriveReviewStatus, { label: string; className: st
 
 const documentLabels: Record<string, string> = {
   drivers_license: "Driver's License",
-  proof_of_billing: "Meralco Bill",
-  passport: "Passport",
+  proof_of_billing: "Proof of Address",
 };
 
 function ReviewStatusBadge({ status }: { status: SelfDriveReviewStatus }) {
@@ -254,16 +253,12 @@ export default function SelfDriveVerificationModule() {
                         <h2 className="text-sm font-bold text-foreground">{selectedDocument.documentType}</h2>
                         <VerificationStatusBadge status={selectedDocument.status} />
                       </div>
-                      {selectedDocument.fileType === "pdf" ? (
-                        <Button variant="outline" disabled={!selectedDocument.documentUrl} onClick={() => setPreview({ title: selectedDocument.documentType, url: selectedDocument.documentUrl, fileType: "pdf", alt: selectedDocument.documentType })}>
-                          <FileText size={14} className="mr-2" /> View PDF
-                        </Button>
-                      ) : (
-                        <div className={`grid gap-3 ${selectedDocument.documentType === "Driver's License" ? "sm:grid-cols-2" : ""}`}>
-                          <VerificationDocumentSidePreview record={selectedDocument} side="front" label={selectedDocument.documentType === "Driver's License" ? "Front Side" : "Document"} onOpen={setPreview} />
-                          {selectedDocument.documentType === "Driver's License" && <VerificationDocumentSidePreview record={selectedDocument} side="back" label="Back Side" onOpen={setPreview} />}
-                        </div>
-                      )}
+                      <div className={`grid gap-3 ${selectedDocument.documentType === "Driver's License" || selectedDocument.documentBackUrl ? "sm:grid-cols-2" : ""}`}>
+                        <VerificationDocumentSidePreview key={`${selectedDocument.id}-front`} record={selectedDocument} side="front" label={selectedDocument.documentType === "Driver's License" ? "Front Side" : "Document"} onOpen={setPreview} />
+                        {(selectedDocument.documentType === "Driver's License" || selectedDocument.documentBackUrl) && (
+                          <VerificationDocumentSidePreview key={`${selectedDocument.id}-back`} record={selectedDocument} side="back" label="Back Side" onOpen={setPreview} />
+                        )}
+                      </div>
                       <div className="space-y-1 text-xs text-muted-foreground">
                         {selectedDocument.documentNumber && <p>Document number: {selectedDocument.documentNumber}</p>}
                         {selectedDocument.expiresAt && <p>Expires: {formatDate(selectedDocument.expiresAt)}</p>}

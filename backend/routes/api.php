@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\Mobile\AccountController;
 use App\Http\Controllers\Api\Mobile\AddressDirectoryController;
 use App\Http\Controllers\Api\Mobile\AuthController;
 use App\Http\Controllers\Api\Mobile\BookingController;
+use App\Http\Controllers\Api\Mobile\DeliveryQuoteController;
 use App\Http\Controllers\Api\Mobile\DocumentController;
 use App\Http\Controllers\Api\Mobile\DriverBookingController;
 use App\Http\Controllers\Api\Mobile\NotificationController;
@@ -29,6 +31,11 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+        Route::middleware(['role:customer', 'throttle:mobile-account'])->group(function () {
+            Route::put('/account/email', [AccountController::class, 'updateEmail'])->name('account.email');
+            Route::put('/account/password', [AccountController::class, 'changePassword'])->name('account.password');
+        });
+
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
         Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update-upload');
@@ -40,6 +47,15 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/address/provinces', [AddressDirectoryController::class, 'provinces'])->name('address.provinces');
         Route::get('/address/cities-municipalities', [AddressDirectoryController::class, 'citiesMunicipalities'])->name('address.cities-municipalities');
         Route::get('/address/barangays', [AddressDirectoryController::class, 'barangays'])->name('address.barangays');
+
+        Route::middleware(['role:customer', 'throttle:20,1'])->prefix('delivery')->group(function () {
+            Route::get('/places', [DeliveryQuoteController::class, 'suggestions'])->name('delivery.places');
+            Route::get('/place', [DeliveryQuoteController::class, 'place'])->name('delivery.place');
+            Route::post('/routes', [DeliveryQuoteController::class, 'routes']);
+            Route::get('/quotes', [DeliveryQuoteController::class, 'index']);
+            Route::get('/quotes/{quote}', [DeliveryQuoteController::class, 'show']);
+            Route::post('/quotes/{quote}/select', [DeliveryQuoteController::class, 'select']);
+        });
 
         Route::get('/bookings', [BookingController::class, 'index'])->middleware('role:customer')->name('bookings.index');
         Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:customer')->name('bookings.store');

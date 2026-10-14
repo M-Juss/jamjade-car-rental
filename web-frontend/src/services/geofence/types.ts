@@ -8,10 +8,12 @@ export type GeofenceRecord = {
   centerLongitude: number | null;
   radiusMeters: number | null;
   polygonCoordinates: GeofenceCoordinate[] | null;
+  notifyOnEnter: boolean;
+  notifyOnExit: boolean;
   isActive: boolean;
   isDeleted: boolean;
   deletedAt?: string | null;
-  assignedBookingCount: number;
+  rentalSnapshotCount: number;
   createdBy?: { id: string; name: string } | null;
   createdAt?: string | null;
   updatedAt?: string | null;

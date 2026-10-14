@@ -1,17 +1,18 @@
 "use client";
 
 import { useDownloadApp } from "@/modules/marketing/DownloadAppProvider";
+import { Button } from "@/components/ui/button";
 
 export default function RentNowButton() {
   const { openDownloadApp } = useDownloadApp();
 
   return (
-    <button
+    <Button
       type="button"
       onClick={openDownloadApp}
-      className="min-w-32 min-h-11 cursor-pointer rounded-md bg-white px-5 py-3 text-center text-sm font-semibold text-foreground shadow-lg shadow-black/20 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      className="min-h-12 min-w-32 cursor-pointer px-6 text-sm font-semibold hover:bg-primary-hover"
     >
       Rent Now
-    </button>
+    </Button>
   );
 }

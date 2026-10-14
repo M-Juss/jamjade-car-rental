@@ -29,7 +29,9 @@ class ProfileController extends Controller
 
     public function show(Request $request): JsonResponse
     {
-        $user = $request->user()->load(['customerProfile.user', 'documents.reviewer', 'emergencyContacts', 'roles']);
+        $user = $request->user()->load(['customerProfile.user', 'documents' => fn ($query) => $query
+            ->whereIn('document_type', CustomerDocument::ALLOWED_DOCUMENT_TYPES)
+            ->with(['reviewer', 'files']), 'emergencyContacts', 'roles']);
         $successfulBookings = $user->bookings()
             ->where('status', BookingStatus::Completed)
             ->count();

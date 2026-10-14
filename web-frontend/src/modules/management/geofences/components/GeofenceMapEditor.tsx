@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
+import { loadGoogleMaps } from "@/lib/google-maps";
 import { Loader2, MapPin } from "lucide-react";
 import type { GeofenceCoordinate } from "@/services/booking/types";
 
@@ -11,14 +11,14 @@ type GeofenceMapEditorProps = {
   radiusMeters?: number;
   points: GeofenceCoordinate[];
   polygonClosed: boolean;
-  onCircleCenter: (coordinate: GeofenceCoordinate) => void;
-  onPolygonPoint: (coordinate: GeofenceCoordinate) => void;
-  onClosePolygon: () => void;
-  onOpenPolygon: () => void;
+  readOnly?: boolean;
+  onCircleCenter?: (coordinate: GeofenceCoordinate) => void;
+  onPolygonPoint?: (coordinate: GeofenceCoordinate) => void;
+  onClosePolygon?: () => void;
+  onOpenPolygon?: () => void;
 };
 
 const defaultCenter = { lat: 14.5995, lng: 120.9842 };
-let mapsConfigured = false;
 
 export function GeofenceMapEditor({
   geometryType,
@@ -26,6 +26,7 @@ export function GeofenceMapEditor({
   radiusMeters,
   points,
   polygonClosed,
+  readOnly = false,
   onCircleCenter,
   onPolygonPoint,
   onClosePolygon,
@@ -33,6 +34,7 @@ export function GeofenceMapEditor({
 }: GeofenceMapEditorProps) {
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const initialViewportSetRef = useRef(false);
   const shapeRef = useRef<google.maps.Circle | google.maps.Polygon | google.maps.Polyline | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const onCircleRef = useRef(onCircleCenter);
@@ -40,6 +42,7 @@ export function GeofenceMapEditor({
   const geometryTypeRef = useRef(geometryType);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [loading, setLoading] = useState(Boolean(apiKey));
+  const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const error = apiKey ? loadError : "Map preview needs NEXT_PUBLIC_GOOGLE_MAPS_API_KEY configured.";
 
@@ -52,30 +55,29 @@ export function GeofenceMapEditor({
   useEffect(() => {
     if (!apiKey) return;
     let cancelled = false;
-    if (!mapsConfigured) {
-      setOptions({ key: apiKey, v: "weekly" });
-      mapsConfigured = true;
-    }
-    importLibrary("maps").then(() => {
+    loadGoogleMaps(apiKey).then(() => {
       if (cancelled || !nodeRef.current) return;
       const map = new google.maps.Map(nodeRef.current, {
         center: defaultCenter,
         zoom: 12,
         disableDefaultUI: true,
         clickableIcons: false,
-        gestureHandling: "greedy",
+        gestureHandling: readOnly ? "cooperative" : "greedy",
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
       });
-      map.addListener("click", (event: google.maps.MapMouseEvent) => {
-        if (event.latLng) {
-          const coordinate = { latitude: event.latLng.lat(), longitude: event.latLng.lng() };
-          if (geometryTypeRef.current === "circle") onCircleRef.current(coordinate);
-          else onPolygonRef.current(coordinate);
-        }
-      });
+      if (!readOnly) {
+        map.addListener("click", (event: google.maps.MapMouseEvent) => {
+          if (event.latLng) {
+            const coordinate = { latitude: event.latLng.lat(), longitude: event.latLng.lng() };
+            if (geometryTypeRef.current === "circle") onCircleRef.current?.(coordinate);
+            else onPolygonRef.current?.(coordinate);
+          }
+        });
+      }
       mapRef.current = map;
+      setMapReady(true);
       setLoading(false);
     }).catch(() => {
       if (!cancelled) {
@@ -83,18 +85,19 @@ export function GeofenceMapEditor({
         setLoading(false);
       }
     });
-    return () => { cancelled = true; };
-  }, [apiKey]);
+    return () => { cancelled = true; mapRef.current = null; };
+  }, [apiKey, readOnly]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!mapReady || !map) return;
     shapeRef.current?.setMap(null);
+    shapeRef.current = null;
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
 
     if (geometryType === "circle" && center) {
-      map.panTo({ lat: center.latitude, lng: center.longitude });
+      const position = { lat: center.latitude, lng: center.longitude };
       markersRef.current.push(new google.maps.Marker({ map, position: { lat: center.latitude, lng: center.longitude }, title: "Fence center" }));
       if (radiusMeters && radiusMeters > 0) {
         shapeRef.current = new google.maps.Circle({
@@ -108,15 +111,23 @@ export function GeofenceMapEditor({
           strokeWeight: 2,
         });
       }
+      if (!initialViewportSetRef.current && shapeRef.current instanceof google.maps.Circle) {
+        const bounds = shapeRef.current.getBounds();
+        if (bounds) map.fitBounds(bounds, 32);
+        else map.panTo(position);
+      } else {
+        map.panTo(position);
+      }
+      initialViewportSetRef.current = true;
     } else if (geometryType === "polygon" && points.length > 0) {
       const path = points.map((point) => ({ lat: point.latitude, lng: point.longitude }));
       markersRef.current = path.map((position, index) => {
-        const canTogglePolygonClosure = index === 0 && path.length >= 3;
+        const canTogglePolygonClosure = !readOnly && index === 0 && path.length >= 3;
         const marker = new google.maps.Marker({
           map,
           position,
           label: String(index + 1),
-          title: index === 0 && path.length >= 3
+          title: !readOnly && index === 0 && path.length >= 3
             ? polygonClosed ? "Click to reopen the polygon" : "Click to close the polygon"
             : `Boundary point ${index + 1}`,
           clickable: canTogglePolygonClosure,
@@ -124,8 +135,8 @@ export function GeofenceMapEditor({
 
         if (canTogglePolygonClosure) {
           marker.addListener("click", () => {
-            if (polygonClosed) onOpenPolygon();
-            else onClosePolygon();
+            if (polygonClosed) onOpenPolygon?.();
+            else onClosePolygon?.();
           });
         }
 
@@ -145,13 +156,21 @@ export function GeofenceMapEditor({
       } else if (path.length >= 2) {
         shapeRef.current = new google.maps.Polyline({ map, path, clickable: false, strokeColor: "#346EF6", strokeWeight: 2 });
       }
-      map.panTo(path[path.length - 1]);
+      if (!initialViewportSetRef.current) {
+        if (path.length === 1) map.panTo(path[0]);
+        else {
+          const bounds = new google.maps.LatLngBounds();
+          path.forEach((position) => bounds.extend(position));
+          map.fitBounds(bounds, 32);
+        }
+        initialViewportSetRef.current = true;
+      }
     }
-  }, [center, geometryType, onClosePolygon, onOpenPolygon, points, polygonClosed, radiusMeters]);
+  }, [center, geometryType, mapReady, onClosePolygon, onOpenPolygon, points, polygonClosed, radiusMeters, readOnly]);
 
   return (
     <div className="relative shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-      <div ref={nodeRef} className="h-[180px] w-full sm:h-[320px] lg:h-[360px]" aria-label="Geofence map editor" />
+      <div ref={nodeRef} className="h-[180px] w-full sm:h-[320px] lg:h-[360px]" aria-label={readOnly ? "Geofence boundary map" : "Geofence map editor"} />
       {loading ? <div className="absolute inset-0 flex items-center justify-center bg-surface/90 text-sm text-muted-foreground"><Loader2 className="mr-2 size-4 animate-spin" />Loading map</div> : null}
       {error ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface px-5 text-center text-sm text-muted-foreground"><MapPin className="size-5 text-primary" /><span>{error}</span></div> : null}
     </div>

@@ -11,6 +11,7 @@ use App\Models\TelematicsEvent;
 use App\Models\TelematicsLocationPoint;
 use App\Models\TelematicsTrip;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -62,7 +63,6 @@ class TelematicsService
                 'current_longitude' => $data['longitude'],
                 'battery_percent' => $data['battery_percent'] ?? null,
                 'gps_signal_percent' => $data['gps_signal_percent'] ?? null,
-                'current_zone' => $data['current_zone'] ?? null,
                 'last_location_at' => now(),
             ]);
 
@@ -153,6 +153,9 @@ class TelematicsService
     public function storeEvent(TelematicsTrip $trip, array $data, User $user): TelematicsEvent
     {
         $this->assertTripOwner($trip, $user);
+        if (in_array($data['event_type'], ['geofence_enter', 'geofence_exit'], true)) {
+            throw ValidationException::withMessages(['event_type' => ['Geofence events are determined by the server.']]);
+        }
 
         if ($trip->status === 'ended' && $data['event_type'] !== TelematicsEventType::TripEnded->value) {
             throw ValidationException::withMessages([
@@ -176,6 +179,7 @@ class TelematicsService
     public function storeLocation(TelematicsTrip $trip, array $data, User $user): TelematicsTrip
     {
         return DB::transaction(function () use ($trip, $data, $user) {
+            $trip = TelematicsTrip::query()->lockForUpdate()->findOrFail($trip->id);
             $this->assertTripOwner($trip, $user);
 
             if ($trip->status !== 'started') {
@@ -184,15 +188,23 @@ class TelematicsService
                 ]);
             }
 
-            $trip->update([
-                'current_latitude' => $data['latitude'],
-                'current_longitude' => $data['longitude'],
-                'current_speed' => $data['speed'] ?? $trip->current_speed,
-                'battery_percent' => $data['battery_percent'] ?? $trip->battery_percent,
-                'gps_signal_percent' => $data['gps_signal_percent'] ?? $trip->gps_signal_percent,
-                'current_zone' => $data['current_zone'] ?? $trip->current_zone,
-                'last_location_at' => $data['captured_at'],
-            ]);
+            $capturedAt = CarbonImmutable::parse($data['captured_at']);
+            if ($capturedAt->greaterThan(now()->addSeconds(config('telematics.setup_gps_future_skew_seconds')))) {
+                throw ValidationException::withMessages(['captured_at' => ['The location timestamp is in the future.']]);
+            }
+            if ($trip->locationPoints()->where('captured_at', $capturedAt)->exists()) {
+                return $trip->fresh(['booking.vehicle.images', 'events', 'geofenceStates.zone']);
+            }
+            if (! $trip->last_location_at || $capturedAt->greaterThan($trip->last_location_at)) {
+                $trip->update([
+                    'current_latitude' => $data['latitude'],
+                    'current_longitude' => $data['longitude'],
+                    'current_speed' => $data['speed'] ?? $trip->current_speed,
+                    'battery_percent' => $data['battery_percent'] ?? $trip->battery_percent,
+                    'gps_signal_percent' => $data['gps_signal_percent'] ?? $trip->gps_signal_percent,
+                    'last_location_at' => $data['captured_at'],
+                ]);
+            }
 
             TelematicsLocationPoint::create([
                 'telematics_trip_id' => $trip->id,
@@ -205,7 +217,9 @@ class TelematicsService
                 'received_at' => now(),
             ]);
 
-            return $trip->fresh(['booking.vehicle.images', 'events']);
+            app(GeofenceMonitoringService::class)->evaluateLocation($trip, $data);
+
+            return $trip->fresh(['booking.vehicle.images', 'events', 'geofenceStates.zone']);
         });
     }
 

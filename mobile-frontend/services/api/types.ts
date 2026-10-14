@@ -25,7 +25,6 @@ export type MobileCustomerProfile = {
   emergencyContactSkippedAt?: string | null;
   canSelfDrive?: boolean;
   verificationStatus?: string | null;
-  passportRequired?: boolean;
   drivingIntent?: 'self_drive' | 'owner_driver' | 'not_sure' | null;
   joinedSince?: string | null;
 };
@@ -113,7 +112,6 @@ export type MobileProfileOverview = {
 };
 
 export type ProfileUpdatePayload = {
-  email: string;
   firstName: string;
   lastName: string;
   contactNumber: string;
@@ -169,6 +167,7 @@ export type MobileVehicleRecord = {
 export type PayPalPaymentOption = 'down_payment' | 'full_payment';
 
 export type PayPalOrderPayload = {
+  deliveryQuoteId?: string;
   vehicleId: string;
   rentalStartAt: string;
   rentalEndAt: string;
@@ -221,6 +220,9 @@ export type MobileBookingRecord = {
   pricePerDay: number;
   subtotal: number;
   deliveryFee: number;
+  deliveryTollFee: number;
+  deliveryLocation?: { address: string; placeId: string | null; point: { latitude: number; longitude: number } | null; routeLabel: string } | null;
+
   outsideManilaFee: number;
   ownerDriverFee: number;
   optionalServices: number;
@@ -252,6 +254,7 @@ export type MobileBookingRecord = {
     typeLabel: string;
     description: string;
     amount: number;
+    outstandingAmount: number;
     responsibility: 'customer' | 'driver';
     paymentStatus: string;
     paidAt?: string | null;

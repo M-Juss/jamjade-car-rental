@@ -158,8 +158,9 @@ it('keeps terminal booking history view only for management actions', function (
         ->assertJsonPath('data.statusKey', BookingStatus::Completed->value);
     $this->actingAs($admin)->postJson("/admin/bookings/{$booking->id}/resend-confirmation-email")
         ->assertUnprocessable();
-    $this->actingAs($admin)->postJson("/admin/bookings/{$booking->id}/telematics-setup/geofence", [
+    $this->actingAs($admin)->postJson("/admin/bookings/{$booking->id}/monitoring-zones", [
         'name' => 'History boundary',
+        'notify_on_enter' => true, 'notify_on_exit' => true,
         'geometry_type' => 'circle',
         'center_latitude' => 14.6,
         'center_longitude' => 121.0,

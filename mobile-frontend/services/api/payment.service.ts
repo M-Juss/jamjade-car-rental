@@ -8,6 +8,7 @@ import type {
 
 export async function createPayPalOrder(payload: PayPalOrderPayload) {
   const response = await apiPost<PayPalOrderResponse>('/mobile/paypal/orders', {
+    delivery_quote_id: payload.deliveryQuoteId,
     vehicle_id: payload.vehicleId,
     rental_start_at: payload.rentalStartAt,
     rental_end_at: payload.rentalEndAt,

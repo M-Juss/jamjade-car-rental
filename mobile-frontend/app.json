@@ -4,7 +4,7 @@
     "slug": "jamjade-car-rental",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/JamJadeLogo.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "mobilefrontend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,9 +14,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
@@ -47,12 +46,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/JamJadeLogo-gradient.png",
+          "imageWidth": 260,
           "resizeMode": "contain",
-          "backgroundColor": "#000000",
+          "backgroundColor": "#F8FAFF",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#F8FAFF"
           }
         }
       ],
@@ -83,6 +82,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "baddcc70-6975-4b90-8346-19debcc18d60"
+      }
     }
   }
 }

@@ -42,7 +42,6 @@ function getUploadType(fileName: string) {
 function buildProfileBody(payload: ProfileUpdatePayload) {
   const addressDetails = payload.addressDetails;
   const body = {
-    email: payload.email,
     first_name: payload.firstName,
     last_name: payload.lastName,
     phone_number: payload.contactNumber,

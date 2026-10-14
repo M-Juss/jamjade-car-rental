@@ -27,11 +27,12 @@ class RentalReadinessService
     {
         $booking->loadMissing([
             'user.customerProfile', 'user.documents', 'assignedDriver', 'assignment', 'events',
-            'vehicle', 'vehicleInspections', 'telematicsSetupSession.steps', 'bookingGeofence',
+            'vehicle', 'vehicleInspections', 'telematicsSetupSession.steps',
         ]);
         $outgoing = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized');
         $incoming = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'incoming' && $inspection->status->value === 'finalized');
         $selfDrive = $booking->rental_type === RentalType::SelfDrive;
+        $testMode = $selfDrive && app(TelematicsHandoverEligibilityService::class)->testModeEnabled();
         $documentsApproved = ! $selfDrive || $this->documentsApproved($booking);
         $driverAssigned = $selfDrive || $booking->assignedDriver !== null;
         $driverEligible = $selfDrive || ($booking->assignedDriver
@@ -41,14 +42,14 @@ class RentalReadinessService
 
         return [
             'bookingConfirmed' => $booking->status === BookingStatus::Confirmed,
-            'paymentAcceptedForInspection' => in_array($booking->payment_status, [PaymentStatus::Partial, PaymentStatus::Paid], true),
-            'fullyPaid' => $booking->payment_status === PaymentStatus::Paid && (float) $booking->remaining_balance <= 0,
-            'ageEligible' => CustomerAgePolicy::isEligible($booking->user->customerProfile?->birthdate),
-            'documentsApproved' => $documentsApproved,
+            'paymentAcceptedForInspection' => $testMode || in_array($booking->payment_status, [PaymentStatus::Partial, PaymentStatus::Paid], true),
+            'fullyPaid' => $testMode || ($booking->payment_status === PaymentStatus::Paid && (float) $booking->remaining_balance <= 0),
+            'ageEligible' => $testMode || CustomerAgePolicy::isEligible($booking->user->customerProfile?->birthdate),
+            'documentsApproved' => $testMode || $documentsApproved,
             'driverAssigned' => $driverAssigned,
             'driverEligible' => (bool) $driverEligible,
             'vehicleOperational' => $booking->vehicle?->status === VehicleStatus::Available,
-            'outgoingFinalized' => $outgoing !== null,
+            'outgoingFinalized' => $testMode || $outgoing !== null,
             'telematicsSetupRequired' => $selfDrive,
             'telematicsSetupReady' => ! $selfDrive || ($booking->telematicsSetupSession?->status === TelematicsSetupStatus::ReadyForRelease
                 && $this->telematicsSetup->isReady($booking->telematicsSetupSession)),

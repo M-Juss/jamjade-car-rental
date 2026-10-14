@@ -1,6 +1,6 @@
 import type { BookingRecord } from "@/services/booking";
 
-export const TELEMATICS_DEVICE_STEPS = ["device_check", "motion_permission", "location_permission", "background_location", "gps_check", "geofence_check", "phone_mount"];
+export const TELEMATICS_DEVICE_STEPS = ["device_check", "motion_permission", "location_permission", "background_location", "gps_check", "phone_mount"];
 export const TELEMATICS_CALIBRATION_STEPS = ["stationary_calibration", "forward_calibration", "braking_calibration", "left_turn_calibration", "right_turn_calibration"];
 
 export function setupStepsPassed(booking: BookingRecord, types: string[]) {
@@ -23,7 +23,7 @@ export type BookingNextAction =
 export function nextBookingAction(booking: BookingRecord): BookingNextAction | null {
   if (booking.statusKey === "confirmed") {
     if (booking.driverOption === "owners_driver" && !booking.assignedDriver) return "assign-driver";
-    if (!booking.rentalProgress?.outgoingFinalized) return "outgoing";
+    if (!booking.rentalProgress?.outgoingFinalized && !booking.telematicsHandover?.eligibility?.testMode) return "outgoing";
     if (booking.driverOption === "self_drive") {
       if (booking.telematicsSetupStatus === "ready_for_release") return "start-rental";
       if (booking.telematicsSetupStatus === "in_progress") {

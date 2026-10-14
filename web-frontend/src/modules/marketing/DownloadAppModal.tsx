@@ -20,7 +20,7 @@ export default function DownloadAppModal({
         {/* Header */}
         <div className="flex flex-col items-center pt-9 pb-5 px-8 text-center">
           <Image
-            src="/JamJadeLogo.png"
+            src="/JamJadeLogo-gradient.png"
             alt="JamJade Logo"
             width={82}
             height={82}

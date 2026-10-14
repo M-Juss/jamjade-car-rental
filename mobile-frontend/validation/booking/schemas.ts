@@ -109,16 +109,6 @@ export const bookingFormSchema = z
       });
     }
 
-    if (
-      form.driverOption === 'owners_driver' &&
-      form.pickupOption !== 'delivery'
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: "Owner's driver bookings require delivery.",
-        path: ['driverOption'],
-      });
-    }
 
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.deliveryTime)) {
       context.addIssue({

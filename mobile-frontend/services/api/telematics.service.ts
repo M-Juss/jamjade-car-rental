@@ -5,12 +5,12 @@ export type MobileTelematicsHandover = {
   bookingStatus: 'pending' | 'confirmed' | 'ongoing';
   rentalStartAt?: string | null;
   eligibility: {
+    testMode: boolean;
     hasSelfDriveBooking: boolean;
     documentsVerified: boolean;
     bookingConfirmed: boolean;
     rentalPeriodEligible: boolean;
     outgoingInspectionComplete: boolean;
-    geofenceAssigned: boolean;
     handoverStarted: boolean;
     setupStatus?: 'locked' | 'setup_required' | 'in_progress' | 'ready_for_release' | 'released' | null;
     canViewTelematics: boolean;
@@ -23,21 +23,6 @@ export type MobileTelematicsHandover = {
     startedAt?: string | null;
     readyAt?: string | null;
     releasedAt?: string | null;
-  } | null;
-  geofence: {
-    name: string;
-    geometryType: 'circle' | 'polygon';
-    centerLatitude: number | null;
-    centerLongitude: number | null;
-    radiusMeters: number | null;
-    polygonCoordinates: Array<{ latitude: number; longitude: number }> | null;
-  } | null;
-  geofenceCheck?: {
-    inside?: boolean | null;
-    distanceMeters?: number | null;
-    radiusMeters?: number | null;
-    geometryType?: 'circle' | 'polygon' | null;
-    checkedAt?: string | null;
   } | null;
   steps: Array<{
     type: string;

@@ -11,8 +11,6 @@ use App\Enums\VehicleInspectionSignerType;
 use App\Enums\VehicleInspectionStatus;
 use App\Enums\VehicleInspectionType;
 use App\Models\Booking;
-use App\Models\BookingGeofence;
-use App\Models\Geofence;
 use App\Models\TelematicsSetupSession;
 use App\Models\TelematicsSetupStep;
 use App\Models\User;
@@ -30,7 +28,6 @@ class TelematicsSetupService
         TelematicsSetupStepType::LocationPermission,
         TelematicsSetupStepType::BackgroundLocation,
         TelematicsSetupStepType::GpsCheck,
-        TelematicsSetupStepType::GeofenceCheck,
         TelematicsSetupStepType::PhoneMount,
     ];
 
@@ -51,70 +48,16 @@ class TelematicsSetupService
         return DB::transaction(function () use ($booking) {
             $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
             $session = $booking->telematicsSetupSession()->firstOrCreate([], [
-                'booking_geofence_id' => $booking->bookingGeofence?->id,
                 'status' => TelematicsSetupStatus::Locked,
             ]);
 
             if ($session->status === TelematicsSetupStatus::Locked) {
                 $session->update([
-                    'booking_geofence_id' => $booking->bookingGeofence?->id,
                     'status' => TelematicsSetupStatus::SetupRequired,
                 ]);
             }
 
-            return $session->fresh(['bookingGeofence', 'steps']);
-        });
-    }
-
-    public function assignGeofenceSnapshot(
-        Booking $booking,
-        ?Geofence $sourceGeofence,
-        array $definition,
-        ?User $actor = null
-    ): BookingGeofence {
-        return DB::transaction(function () use ($booking, $sourceGeofence, $definition, $actor) {
-            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
-            $this->assertSelfDrive($booking);
-
-            if ($booking->status->isTerminal()) {
-                throw ValidationException::withMessages([
-                    'booking' => ['A finalized booking is view only.'],
-                ]);
-            }
-
-            if ($sourceGeofence) {
-                $sourceGeofence = Geofence::query()->lockForUpdate()->findOrFail($sourceGeofence->id);
-                if (! $sourceGeofence->is_active) {
-                    throw ValidationException::withMessages(['geofence' => ['Only active geofence templates may be assigned.']]);
-                }
-            }
-            if ($booking->bookingGeofence()->exists()) {
-                throw ValidationException::withMessages(['geofence' => ['The booking geofence snapshot is immutable once assigned.']]);
-            }
-
-            $values = [
-                'name_snapshot' => $definition['name'] ?? $sourceGeofence?->name,
-                'geometry_type' => $definition['geometry_type'] ?? $sourceGeofence?->geometry_type ?? 'circle',
-                'center_latitude' => $definition['center_latitude'] ?? $sourceGeofence?->center_latitude,
-                'center_longitude' => $definition['center_longitude'] ?? $sourceGeofence?->center_longitude,
-                'radius_meters' => $definition['radius_meters'] ?? $sourceGeofence?->radius_meters,
-                'polygon_coordinates' => $definition['polygon_coordinates'] ?? $sourceGeofence?->polygon_coordinates,
-            ];
-            app(GeofenceGeometryService::class)->assertValid($values);
-
-            $snapshot = $booking->bookingGeofence()->create([
-                'source_geofence_id' => $sourceGeofence?->id,
-                ...$values,
-                'assigned_by' => $actor?->id,
-                'assigned_at' => now(),
-            ]);
-
-            $session = $booking->telematicsSetupSession()->firstOrCreate([], [
-                'status' => TelematicsSetupStatus::Locked,
-            ]);
-            $session->update(['booking_geofence_id' => $snapshot->id]);
-
-            return $snapshot;
+            return $session->fresh(['steps']);
         });
     }
 
@@ -132,6 +75,15 @@ class TelematicsSetupService
 
             $this->eligibility->assertCanStartHandover($booking);
 
+            $testMode = $this->eligibility->testModeEnabled();
+            if ($testMode) {
+                $session = $booking->telematicsSetupSession()->firstOrCreate([], [
+                    'status' => TelematicsSetupStatus::SetupRequired,
+                ]);
+                if ($session->status === TelematicsSetupStatus::Locked) {
+                    $session->update(['status' => TelematicsSetupStatus::SetupRequired]);
+                }
+            }
             $session = $booking->telematicsSetupSession()->lockForUpdate()->first();
             if (! $session || $session->status !== TelematicsSetupStatus::SetupRequired) {
                 throw ValidationException::withMessages([
@@ -139,15 +91,8 @@ class TelematicsSetupService
                 ]);
             }
 
-            $geofence = $booking->bookingGeofence()->first();
-            if (! $geofence || (int) $session->booking_geofence_id !== (int) $geofence->id) {
-                throw ValidationException::withMessages([
-                    'telematics_setup' => ['Assign an immutable booking geofence before starting telematics handover.'],
-                ]);
-            }
-
             $booking->load('vehicleInspections.signatures');
-            if (! $this->hasFinalizedOutgoingSignatures($booking)) {
+            if (! $testMode && ! $this->hasFinalizedOutgoingSignatures($booking)) {
                 throw ValidationException::withMessages([
                     'telematics_setup' => ['Finalize the Outgoing Inspection with personnel and renter signatures before starting telematics handover.'],
                 ]);
@@ -162,10 +107,10 @@ class TelematicsSetupService
                 ->causedBy($actor)
                 ->performedOn($booking)
                 ->event('telematics_handover_started')
-                ->withProperties(['telematics_setup_session_id' => $session->id])
+                ->withProperties(['telematics_setup_session_id' => $session->id, 'test_mode' => $testMode])
                 ->log('Staff started the telematics handover.');
 
-            return $session->fresh(['bookingGeofence', 'steps']);
+            return $session->fresh(['steps']);
         });
     }
 
@@ -269,6 +214,8 @@ class TelematicsSetupService
             ]);
         }
 
+        app(BookingGeofenceService::class)->freezeForRelease($booking);
+
         $session->update([
             'status' => TelematicsSetupStatus::Released,
             'released_at' => now(),
@@ -277,9 +224,16 @@ class TelematicsSetupService
 
     public function isReady(TelematicsSetupSession $session): bool
     {
-        $session->loadMissing(['booking.bookingGeofence', 'booking.vehicleInspections.signatures', 'steps']);
+        $session->loadMissing(['booking.vehicleInspections.signatures', 'steps']);
         $booking = $session->booking;
-        if (! $booking || $booking->rental_type !== RentalType::SelfDrive || ! $session->booking_geofence_id) {
+        if ($this->eligibility->testModeEnabled() && $booking?->rental_type === RentalType::SelfDrive) {
+            // Test release uses a real mount confirmation. Other checks retain
+            // their actual outcomes; unavailable calibration is never fabricated.
+            return $session->steps->where('step_type', TelematicsSetupStepType::PhoneMount)
+                ->sortByDesc('attempt_number')->first()?->status === TelematicsSetupStepStatus::Passed;
+        }
+
+        if (! $booking || $booking->rental_type !== RentalType::SelfDrive) {
             return false;
         }
 
@@ -310,14 +264,17 @@ class TelematicsSetupService
 
     private function assertPrerequisites(TelematicsSetupSession $session, TelematicsSetupStepType $type): void
     {
+        if ($this->eligibility->testModeEnabled()) {
+            return;
+        }
+
         $required = match ($type) {
             TelematicsSetupStepType::DeviceCheck => [],
             TelematicsSetupStepType::MotionPermission => [TelematicsSetupStepType::DeviceCheck],
             TelematicsSetupStepType::LocationPermission => [TelematicsSetupStepType::DeviceCheck, TelematicsSetupStepType::MotionPermission],
             TelematicsSetupStepType::BackgroundLocation => [TelematicsSetupStepType::LocationPermission],
             TelematicsSetupStepType::GpsCheck => [TelematicsSetupStepType::BackgroundLocation],
-            TelematicsSetupStepType::GeofenceCheck => [TelematicsSetupStepType::GpsCheck],
-            TelematicsSetupStepType::PhoneMount => [TelematicsSetupStepType::GeofenceCheck],
+            TelematicsSetupStepType::PhoneMount => [TelematicsSetupStepType::GpsCheck],
             default => [],
         };
         $latest = $session->steps->sortByDesc('attempt_number')->unique('step_type')
@@ -342,7 +299,6 @@ class TelematicsSetupService
             TelematicsSetupStepType::LocationPermission => $this->evaluatePermissionEvidence($evidence, 'foreground location permission'),
             TelematicsSetupStepType::BackgroundLocation => $this->evaluateBackgroundLocationEvidence($evidence),
             TelematicsSetupStepType::GpsCheck => $this->evaluateGpsEvidence($evidence),
-            TelematicsSetupStepType::GeofenceCheck => $this->evaluateGeofenceEvidence($session, $evidence),
             TelematicsSetupStepType::PhoneMount => $this->evaluatePhoneMountEvidence($evidence),
             default => throw ValidationException::withMessages(['step' => ['This setup step is not available.']]),
         };
@@ -442,28 +398,6 @@ class TelematicsSetupService
     }
 
     /** @return array{0: TelematicsSetupStepStatus, 1: array<string, mixed>, 2: ?string} */
-    private function evaluateGeofenceEvidence(TelematicsSetupSession $session, array $evidence): array
-    {
-        [$gpsStatus, $gpsEvidence, $gpsFailure] = $this->evaluateGpsEvidence($evidence);
-        if ($gpsStatus === TelematicsSetupStepStatus::Failed) {
-            return [$gpsStatus, $gpsEvidence, $gpsFailure];
-        }
-        $geofence = $session->bookingGeofence()->first();
-        if (! $geofence) {
-            return [TelematicsSetupStepStatus::Failed, $gpsEvidence, 'No immutable booking geofence is assigned.'];
-        }
-        $result = app(GeofenceGeometryService::class)->evaluate(
-            $geofence,
-            (float) $evidence['latitude'],
-            (float) $evidence['longitude']
-        );
-        $sanitized = [...$gpsEvidence, ...$result];
-
-        return [$result['inside'] ? TelematicsSetupStepStatus::Passed : TelematicsSetupStepStatus::Failed, $sanitized,
-            $result['inside'] ? null : 'The current GPS fix is outside the assigned rental area.'];
-    }
-
-    /** @return array{0: TelematicsSetupStepStatus, 1: array<string, mixed>, 2: ?string} */
     private function evaluatePhoneMountEvidence(array $evidence): array
     {
         $values = Validator::make($evidence, [
@@ -479,7 +413,9 @@ class TelematicsSetupService
     {
         $session->loadMissing('booking');
         $this->assertSelfDrive($session->booking);
-        if ($session->booking->status !== BookingStatus::Confirmed || $session->status !== TelematicsSetupStatus::InProgress) {
+        $workable = $session->status === TelematicsSetupStatus::InProgress
+            || ($this->eligibility->testModeEnabled() && $session->status === TelematicsSetupStatus::ReadyForRelease);
+        if ($session->booking->status !== BookingStatus::Confirmed || ! $workable) {
             throw ValidationException::withMessages(['telematics_setup' => ['Setup checks are available only after staff starts telematics handover.']]);
         }
         if ($session->status === TelematicsSetupStatus::Released) {

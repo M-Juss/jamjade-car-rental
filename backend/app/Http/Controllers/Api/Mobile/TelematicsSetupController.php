@@ -71,8 +71,6 @@ class TelematicsSetupController extends Controller
     private function handoverRelations(): array
     {
         return [
-            'bookingGeofence',
-            'telematicsSetupSession.bookingGeofence',
             'telematicsSetupSession.steps',
             'telematicsTrips',
         ];

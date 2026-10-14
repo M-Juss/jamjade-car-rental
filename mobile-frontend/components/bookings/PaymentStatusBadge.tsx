@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import { CreditCard, RotateCcw, WalletCards } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
@@ -10,28 +11,28 @@ const paymentStyles = {
     bg: 'bg-destructive-surface',
     border: 'border-destructive-border',
     text: 'text-destructive',
-    color: '#B91C1C',
+    color: themeColors.destructive,
     icon: CreditCard,
   },
   'Partially Paid': {
     bg: 'bg-warning-surface',
     border: 'border-warning-border',
     text: 'text-warning',
-    color: '#C2410C',
+    color: themeColors.warning,
     icon: WalletCards,
   },
   Paid: {
     bg: 'bg-success-surface',
     border: 'border-success-border',
     text: 'text-success',
-    color: '#047857',
+    color: themeColors.success,
     icon: WalletCards,
   },
   Refunded: {
     bg: 'bg-muted',
     border: 'border-border',
     text: 'text-primary',
-    color: '#346EF6',
+    color: themeColors.primary,
     icon: RotateCcw,
   },
 } satisfies Record<
@@ -50,9 +51,10 @@ export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   const Icon = style.icon;
 
   return (
-    <View className={cx('flex-row items-center gap-1 rounded-full border px-2.5 py-1', style.bg, style.border)}>
+    <View
+      className={cx('flex-row items-center gap-1 rounded-full border px-2.5 py-1', style.bg, style.border)}>
       <Icon size={12} color={style.color} strokeWidth={2.5} />
-      <Text className={cx('text-[10px] font-black', style.text)}>{status}</Text>
+      <Text className={cx('font-sans', 'text-[11px] font-semibold', style.text)}>{status}</Text>
     </View>
   );
 }

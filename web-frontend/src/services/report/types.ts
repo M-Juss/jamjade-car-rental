@@ -55,12 +55,12 @@ export type BookingReportRow = {
   totalCost: number;
   status: string;
   statusKey: string;
-  rentalBoundary?: {
+  monitoringZones?: Array<{
     name: string;
     geometryType: "circle" | "polygon";
     radiusMeters: number | null;
     polygonPointCount: number;
-  } | null;
+  }>;
 };
 
 export type DashboardActivity = {

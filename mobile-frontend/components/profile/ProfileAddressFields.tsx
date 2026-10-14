@@ -4,11 +4,7 @@ import { Text, View } from 'react-native';
 
 import { SelectWithLabel, type SelectOption } from '@/components/common/SelectWithLabel';
 import { FormInput } from '@/components/ui/FormInput';
-import {
-  getAddressBarangays,
-  getAddressCitiesMunicipalities,
-  getAddressProvinces,
-} from '@/services/api';
+import { getAddressBarangays, getAddressCitiesMunicipalities, getAddressProvinces } from '@/services/api';
 import type { CustomerAddress } from '@/types/customer';
 
 type ProfileAddressFieldsProps = {
@@ -34,11 +30,14 @@ function getLabel(options: SelectOption[], value?: string | null) {
   return options.find((option) => option.value === value)?.label;
 }
 
-function formatAddress(value: CustomerAddress, options: {
-  provinceOptions: SelectOption[];
-  cityOptions: SelectOption[];
-  barangayOptions: SelectOption[];
-}) {
+function formatAddress(
+  value: CustomerAddress,
+  options: {
+    provinceOptions: SelectOption[];
+    cityOptions: SelectOption[];
+    barangayOptions: SelectOption[];
+  },
+) {
   const provinceCode = value.provinceCode ?? (value.regionCode === NCR_CODE ? NCR_CODE : null);
   const parts = [
     value.addressLine.trim(),
@@ -263,9 +262,10 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
       />
 
       {directoryError ? (
-        <Text className="-mt-2 text-[11px] font-bold leading-4 text-destructive">{directoryError}</Text>
+        <Text className="font-sans -mt-2 text-[11px] font-medium leading-4 text-destructive">
+          {directoryError}
+        </Text>
       ) : null}
-
     </View>
   );
 }

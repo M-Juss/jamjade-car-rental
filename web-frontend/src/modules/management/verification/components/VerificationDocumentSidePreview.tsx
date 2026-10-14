@@ -32,6 +32,7 @@ export function VerificationDocumentSidePreview({
 }) {
   const documentSide = getDocumentSide(record, side);
   const [imageError, setImageError] = useState(false);
+  const isPdf = Boolean(documentSide.url && /\.pdf(?:[?#]|$)/i.test(documentSide.url));
   const hasPreview = Boolean(documentSide.url) && !imageError;
 
   return (
@@ -48,7 +49,7 @@ export function VerificationDocumentSidePreview({
             onOpen({
               title: `${record.documentType} - ${label}`,
               url: documentSide.url,
-              fileType: "image",
+              fileType: isPdf ? "pdf" : "image",
               alt: `${record.documentType} ${label.toLowerCase()} preview`,
             });
           }}
@@ -58,7 +59,12 @@ export function VerificationDocumentSidePreview({
           Open
         </Button>
       </div>
-      {hasPreview && documentSide.url ? (
+      {hasPreview && isPdf ? (
+        <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
+          <FileText size={34} className="text-subtle-foreground" />
+          <p className="mt-3 text-[12px] font-semibold text-muted-foreground">PDF document. Select Open to preview.</p>
+        </div>
+      ) : hasPreview && documentSide.url ? (
         <Image
           src={documentSide.url}
           alt={`${record.documentType} ${label.toLowerCase()} preview`}

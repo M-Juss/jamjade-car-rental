@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Controller, type FieldErrors, useForm } from 'react-hook-form';
 import { Text, View } from 'react-native';
 import { z } from 'zod';
@@ -58,6 +58,7 @@ function needsBasicProfileSetup(user: MobileUser) {
 
 export function LoginForm() {
   const router = useRouter();
+  const { passwordChanged } = useLocalSearchParams<{ passwordChanged?: string }>();
   const { signIn } = useAuth();
   const toast = useFormToast();
   const {
@@ -94,6 +95,15 @@ export function LoginForm() {
       <View className="flex-1">
         <AuthScreenFrame mode="login">
           <View className="gap-4">
+            {passwordChanged === '1' ? (
+              <View
+                accessibilityRole="alert"
+                className="rounded-field border border-success-border bg-success-surface p-3">
+                <Text className="font-sans text-caption text-success">
+                  Password updated. Sign in with your new password.
+                </Text>
+              </View>
+            ) : null}
             <Controller
               control={control}
               name="email"
@@ -138,18 +148,9 @@ export function LoginForm() {
               )}
             />
 
-            <View className="rounded-3xl border border-border bg-background px-4 py-3">
-              <Text className="text-[13px] font-bold leading-5 text-foreground">
-                Continue with your JamJade account.
-              </Text>
-              <Text className="mt-1 text-[12px] font-medium leading-[18px] text-muted-foreground">
-                Sign in to manage reservations, document verification, and trip updates.
-              </Text>
-            </View>
-
             <AuthSubmitButton
               disabled={isSubmitting}
-              label={isSubmitting ? 'Logging in...' : 'Continue'}
+              label={isSubmitting ? 'Logging in...' : 'Sign In'}
               onPress={handleSubmit(onSubmit, (errors) => {
                 toast.showToast(getValidationErrorMessage(errors));
               })}

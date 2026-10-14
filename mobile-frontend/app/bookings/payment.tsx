@@ -1,14 +1,18 @@
+import { themeColors } from '@/constants/theme';
+import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { ArrowLeft, CreditCard, ShieldAlert } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { firstParam } from '@/lib/browse/booking-params';
-import { formatPeso } from '@/lib/browse/pricing';
+import { SettlementPaymentCard } from '@/components/payments/SettlementPaymentCard';
+import { getSettlementSummary } from '@/lib/payments/settlement-summary';
 import { getPaymentErrorMessage } from '@/lib/payments/payment-error';
+import { createPayPalCallbackUrls } from '@/lib/payments/paypal-callbacks';
 import {
   abandonPayPalOrder,
   capturePayPalOrder,
@@ -43,8 +47,10 @@ export default function RemainingBalancePaymentScreen() {
       .finally(() => setIsLoading(false));
   }, [bookingId]);
 
+  const summary = booking ? getSettlementSummary(booking) : null;
+
   const payBalance = async () => {
-    if (!booking || isProcessing) {
+    if (!booking || !summary || summary.amount <= 0 || isProcessing) {
       return;
     }
 
@@ -54,15 +60,16 @@ export default function RemainingBalancePaymentScreen() {
     let approved = false;
 
     try {
-      const redirectUrl = Linking.createURL('paypal/return');
-      const cancelUrl = Linking.createURL('paypal/cancel');
-      const order = await createRemainingBalancePayPalOrder(
-        booking.id,
-        redirectUrl,
-        cancelUrl,
-      );
+      const { returnUrl, cancelUrl, sessionReturnUrl } = createPayPalCallbackUrls();
+      const order = await createRemainingBalancePayPalOrder(booking.id, returnUrl, cancelUrl);
       orderId = order.orderId;
-      const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, redirectUrl);
+      if (Math.round(order.amount * 100) !== Math.round(summary.amount * 100)) {
+        await abandonPayPalOrder(order.orderId);
+        setBooking(await getBooking(booking.id));
+        setError('The amount due changed. Review the updated balance before paying.');
+        return;
+      }
+      const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, sessionReturnUrl);
 
       if (result.type !== 'success') {
         await abandonPayPalOrder(order.orderId);
@@ -75,7 +82,7 @@ export default function RemainingBalancePaymentScreen() {
       if (result.url.includes('/cancel')) {
         await abandonPayPalOrder(order.orderId);
         router.replace(
-          `/browse/success?status=failed&source=balance&message=${encodeURIComponent('The remaining balance payment was cancelled.')}&retryPath=${encodeURIComponent(`/bookings/payment?bookingId=${booking.id}`)}` as Href,
+          `/browse/success?status=failed&source=balance&message=${encodeURIComponent('The payment was cancelled.')}&retryPath=${encodeURIComponent(`/bookings/payment?bookingId=${booking.id}`)}` as Href,
         );
         return;
       }
@@ -95,7 +102,7 @@ export default function RemainingBalancePaymentScreen() {
     } catch (paymentError) {
       const message = getPaymentErrorMessage(
         paymentError,
-        'The remaining balance payment could not be completed.',
+        'The payment could not be completed.',
       );
 
       if (orderId && !approved) {
@@ -113,70 +120,48 @@ export default function RemainingBalancePaymentScreen() {
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#346EF6" size="large" />
+        <ActivityIndicator color={themeColors.primary} size="large" />
       </View>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-background">
-      <View className="flex-1 px-5 py-3">
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            onPress={() => router.back()}
-            className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
-            <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
-          </Pressable>
-          <View className="min-w-0 flex-1">
-            <Text className="text-[25px] font-black text-foreground">Settle Balance</Text>
-            <Text className="mt-1 text-[13px] font-bold text-muted-foreground">{booking?.id}</Text>
-          </View>
-        </View>
-
-        {booking ? (
-          <View className="mt-8 rounded-[32px] border border-border bg-surface p-5">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-muted">
-              <CreditCard size={27} color="#346EF6" strokeWidth={2.4} />
-            </View>
-            <Text className="mt-5 text-[13px] font-black uppercase text-subtle-foreground">Amount Due</Text>
-            <Text className="mt-1 text-[34px] font-black text-foreground">
-              {formatPeso(booking.remainingBalance)}
-            </Text>
-            <Text className="mt-3 text-[14px] font-bold text-muted-foreground">{booking.vehicleName}</Text>
-            <Text className="mt-1 text-[12px] font-semibold text-subtle-foreground">
-              PayPal Sandbox payment in PHP
-            </Text>
-
-            <View className="mt-6 flex-row items-start gap-3 rounded-[22px] border border-warning-border bg-warning-surface p-4">
-              <ShieldAlert size={20} color="#C2410C" strokeWidth={2.4} />
-              <Text className="min-w-0 flex-1 text-[12px] font-bold leading-5 text-[#9A3412]">
-                Due {booking.balanceDueAt ? new Date(booking.balanceDueAt).toLocaleString() : 'before pickup'}.
-                If unpaid by the deadline, the booking is cancelled and the down payment is non-refundable.
-              </Text>
-            </View>
-
-            {error ? <Text className="mt-4 text-[13px] font-bold text-destructive">{error}</Text> : null}
-
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-5">
+        <View className="w-full max-w-[560px] self-center px-screen py-3">
+          <View className="flex-row items-center gap-3">
             <Pressable
               accessibilityRole="button"
-              disabled={isProcessing || booking.remainingBalance <= 0}
-              onPress={() => void payBalance()}
-              className="mt-6 min-h-[60px] flex-row items-center justify-center gap-2 rounded-full bg-[#0070BA]">
-              {isProcessing ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text className="text-[16px] font-black text-surface">Pay Remaining Balance</Text>
-              )}
+              accessibilityLabel="Go back"
+              onPress={() => router.back()}
+              className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
+            <View className="min-w-0 flex-1">
+              <Text className="font-sans text-[25px] font-semibold text-foreground">Settle Balance</Text>
+              <Text className="font-sans mt-1 text-[13px] font-medium text-secondary-foreground">
+                {booking?.id}
+              </Text>
+            </View>
+            <LogoutHeaderButton />
           </View>
-        ) : (
-          <View className="mt-8 rounded-[24px] border border-destructive-border bg-destructive-surface p-5">
-            <Text className="text-[14px] font-bold text-destructive">{error ?? 'Booking not found.'}</Text>
-          </View>
-        )}
-      </View>
+
+          {summary ? (
+            <SettlementPaymentCard
+              summary={summary}
+              isProcessing={isProcessing}
+              message={error}
+              onPay={() => void payBalance()}
+            />
+          ) : (
+            <View className="mt-5 rounded-[24px] border border-destructive-border bg-destructive-surface p-5">
+              <Text className="font-sans text-[14px] font-medium text-destructive">
+                {error ?? 'Booking not found.'}
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

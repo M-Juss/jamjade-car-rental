@@ -385,7 +385,7 @@
     $displayValue = static fn ($value): string => filled($value) ? (string) $value : 'Not provided';
     $formatMoney = static fn ($value): string => 'PHP '.number_format((float) $value, 2);
     $formatDate = static fn ($value, string $format = 'F j, Y - g:i A'): string => $value?->format($format) ?? 'Not provided';
-    $logoPath = public_path('images/JamJadeLogo.png');
+    $logoPath = public_path('images/JamJadeLogo-gradient.png');
     $logoDataUri = is_file($logoPath)
         ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath))
         : null;

@@ -1,11 +1,8 @@
+import { themeColors } from '@/constants/theme';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
-import {
-  CheckCircle2,
-  Clock3,
-  RotateCcw,
-} from 'lucide-react-native';
+import { CheckCircle2, Clock3, RotateCcw } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Text, View } from 'react-native';
@@ -20,6 +17,7 @@ import { FormInput } from '@/components/ui/FormInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { getCustomerDocumentSchema } from '@/validation';
 import { getCustomerDocumentDefinition } from '@/lib/customer/document-verification';
+import { formatDriverLicenseNumber } from '@/lib/customer/driver-license';
 import {
   saveCustomerDocumentDraft,
   submitCustomerDocument,
@@ -28,21 +26,13 @@ import {
 import { uploadCustomerDocument } from '@/services/api';
 import { ApiError } from '@/services/http';
 import type { DocumentImagePickError } from '@/lib/customer/image-picker';
-import type {
-  CustomerDocumentId,
-  CustomerDocumentUploads,
-} from '@/types/customer';
+import type { CustomerDocumentId, CustomerDocumentUploads } from '@/types/customer';
 import { useAuth } from '@/providers/AuthProvider';
 
 const IMAGE_HELPER = 'Use a clear, visible, well-lit image. Maximum file size is 5 MB.';
 
-function clearPreviousDocumentImages(
-  documentId: CustomerDocumentId,
-  documents: CustomerDocumentUploads,
-) {
-  const clearServerImage = (value: string) => (
-    /^https?:\/\//i.test(value) ? '' : value
-  );
+function clearPreviousDocumentImages(documentId: CustomerDocumentId, documents: CustomerDocumentUploads) {
+  const clearServerImage = (value: string) => (/^https?:\/\//i.test(value) ? '' : value);
 
   if (documentId === 'driver-license') {
     return {
@@ -52,13 +42,10 @@ function clearPreviousDocumentImages(
     };
   }
 
-  if (documentId === 'passport') {
-    return { ...documents, passport: clearServerImage(documents.passport) };
-  }
-
   return {
     ...documents,
     proofOfAddress: clearServerImage(documents.proofOfAddress),
+    proofOfAddressBack: clearServerImage(documents.proofOfAddressBack),
   };
 }
 
@@ -72,7 +59,11 @@ function ReviewStateNotice({
   const isVerified = status === 'verified';
   const isRejected = status === 'rejected';
   const Icon = isVerified ? CheckCircle2 : isRejected ? RotateCcw : Clock3;
-  const iconColor = isVerified ? '#047857' : isRejected ? '#DC2626' : '#C2410C';
+  const iconColor = isVerified
+    ? themeColors.success
+    : isRejected
+      ? themeColors.destructive
+      : themeColors.warning;
   const background = isVerified
     ? 'bg-success-surface border-success-border'
     : isRejected
@@ -95,8 +86,10 @@ function ReviewStateNotice({
         <Icon size={20} color={iconColor} strokeWidth={2.45} />
       </View>
       <View className="min-w-0 flex-1">
-        <Text className="text-[13px] font-black text-foreground">{title}</Text>
-        <Text className="mt-1 text-[12px] font-semibold leading-5 text-muted-foreground">{message}</Text>
+        <Text className="font-sans text-[13px] font-semibold text-foreground">{title}</Text>
+        <Text className="font-sans mt-1 text-[12px] font-normal leading-5 text-secondary-foreground">
+          {message}
+        </Text>
       </View>
       <DocumentReviewBadge status={status} />
     </View>
@@ -117,10 +110,7 @@ export function ProfileDocumentVerificationForm({
   const status = customer.documentStatuses[documentId];
   const isLocked = status === 'pending-review' || status === 'verified';
   const toast = useFormToast();
-  const documentSchema = useMemo(
-    () => getCustomerDocumentSchema(documentId),
-    [documentId],
-  );
+  const documentSchema = useMemo(() => getCustomerDocumentSchema(documentId), [documentId]);
   const {
     control,
     formState: { errors, isSubmitting },
@@ -170,18 +160,14 @@ export function ProfileDocumentVerificationForm({
     try {
       const submittedDocument = await uploadCustomerDocument(documentId, values);
       submitCustomerDocument(documentId, values, submittedDocument);
-      router.replace(
-        `/profile/documents${isOnboardingFlow ? '?source=onboarding' : ''}` as Href,
-      );
+      router.replace(`/profile/documents${isOnboardingFlow ? '?source=onboarding' : ''}` as Href);
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
-        const singleFileField =
-          documentId === 'passport' ? 'passport' : 'proofOfAddress';
         const fieldMap: Record<string, keyof CustomerDocumentUploads> = {
-          back_file: 'driverLicenseBack',
+          back_file: documentId === 'driver-license' ? 'driverLicenseBack' : 'proofOfAddressBack',
           document_number: 'driverLicenseNumber',
           expires_at: 'driverLicenseExpirationDate',
-          file: singleFileField,
+          file: 'proofOfAddress',
           front_file: 'driverLicenseFront',
         };
 
@@ -201,15 +187,10 @@ export function ProfileDocumentVerificationForm({
 
   const handleSaveLater = () => {
     saveCustomerDocumentDraft(documentId, getValues());
-    router.replace(
-      `/profile/documents${isOnboardingFlow ? '?source=onboarding' : ''}` as Href,
-    );
+    router.replace(`/profile/documents${isOnboardingFlow ? '?source=onboarding' : ''}` as Href);
   };
 
-  const renderUploadCard = (
-    key: keyof CustomerDocumentUploads,
-    label: string,
-  ) => (
+  const renderUploadCard = (key: keyof CustomerDocumentUploads, label: string, required = true) => (
     <UploadDocumentCard
       disabled={isLocked}
       error={errors[key]?.message}
@@ -222,7 +203,7 @@ export function ProfileDocumentVerificationForm({
         });
       }}
       onPickError={handlePickError}
-      required
+      required={required}
       value={String(form[key])}
     />
   );
@@ -237,12 +218,12 @@ export function ProfileDocumentVerificationForm({
               isSubmitting
                 ? 'Submitting...'
                 : status === 'verified'
-                ? 'Document Verified'
-                : status === 'pending-review'
-                  ? 'Pending Review'
-                  : status === 'rejected'
-                    ? 'Submit Corrected Document'
-                  : 'Submit Documents'
+                  ? 'Document Verified'
+                  : status === 'pending-review'
+                    ? 'Pending Review'
+                    : status === 'rejected'
+                      ? 'Submit Corrected Document'
+                      : 'Submit Documents'
             }
             onPress={handleSubmit(onSubmit, () => {
               toast.showToast('Please complete all required fields and document images.');
@@ -272,7 +253,7 @@ export function ProfileDocumentVerificationForm({
         <View className="mt-6 gap-4">
           {documentId === 'driver-license' ? (
             <>
-              <View className="rounded-[28px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
+              <View className="rounded-card border border-border bg-surface p-4 ">
                 <Controller
                   control={control}
                   name="driverLicenseNumber"
@@ -281,12 +262,13 @@ export function ProfileDocumentVerificationForm({
                       autoCapitalize="characters"
                       editable={!isLocked}
                       error={fieldState.error?.message}
+                      helperText="Up to 11 letters or digits. Hyphens are added automatically."
                       icon="credit-card"
                       label="Driver's License Number"
-                      maxLength={100}
+                      maxLength={13}
                       onBlur={field.onBlur}
-                      onChangeText={field.onChange}
-                      placeholder="Enter license number"
+                      onChangeText={(value) => field.onChange(formatDriverLicenseNumber(value))}
+                      placeholder="N03-12-123456"
                       required
                       value={field.value}
                     />
@@ -315,13 +297,12 @@ export function ProfileDocumentVerificationForm({
             </>
           ) : null}
 
-          {documentId === 'passport'
-            ? renderUploadCard('passport', 'Passport Information Page')
-            : null}
-
-          {documentId === 'proof-of-address'
-            ? renderUploadCard('proofOfAddress', 'Meralco Bill / Proof of Address')
-            : null}
+          {documentId === 'proof-of-address' ? (
+            <>
+              {renderUploadCard('proofOfAddress', 'Proof of Address')}
+              {renderUploadCard('proofOfAddressBack', 'Proof of Address Back (Optional)', false)}
+            </>
+          ) : null}
         </View>
       </OnboardingScreenFrame>
       <FormToast

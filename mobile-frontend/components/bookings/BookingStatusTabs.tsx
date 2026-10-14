@@ -12,7 +12,10 @@ export function BookingStatusTabs({
   onStatusChange: (status: BookingStatusFilter) => void;
 }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
       {BOOKING_STATUS_FILTERS.map((status) => {
         const isSelected = selectedStatus === status;
 
@@ -24,9 +27,14 @@ export function BookingStatusTabs({
             onPress={() => onStatusChange(status)}
             className={cx(
               'min-h-[42px] items-center justify-center rounded-full border px-4',
-              isSelected ? 'border-[#065F46] bg-[#065F46]' : 'border-[#E5E7EB] bg-[#F3F4F6]',
+              isSelected ? 'border-success bg-success' : 'border-[#E5E7EB] bg-[#F3F4F6]',
             )}>
-            <Text className={cx('text-[13px] font-black', isSelected ? 'text-surface' : 'text-foreground')}>
+            <Text
+              className={cx(
+                'font-sans',
+                'text-[13px] font-semibold',
+                isSelected ? 'text-surface' : 'text-foreground',
+              )}>
               {status}
             </Text>
           </Pressable>

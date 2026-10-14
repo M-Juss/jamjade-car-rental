@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { CustomerDocumentId } from '@/types/customer';
+import { isValidDriverLicenseNumber } from '@/lib/customer/driver-license';
 import {
   isValidPhoneNumber,
   personNameSchema,
@@ -70,9 +71,6 @@ export const basicInfoSchema = z.object({
       message: BOOKING_AGE_REQUIREMENT_MESSAGE,
     }),
   contactNumber: phoneSchema,
-  email: requiredString('Email address is required.')
-    .email('Enter a valid email address.')
-    .max(255, 'Email address must be 255 characters or fewer.'),
   firstName: personNameSchema('First name').max(
     100,
     'First name must be 100 characters or fewer.',
@@ -158,21 +156,13 @@ export const documentVerificationSchema = z
     ),
     driverLicenseNumber: requiredString(
       "Driver's license number is required.",
-    ).max(100, "Driver's license number must be 100 characters or fewer."),
-    passport: z.string(),
-    passportRequiredByAdmin: z.boolean(),
+    ).refine(isValidDriverLicenseNumber, {
+      message: 'Use only letters and digits, up to 11 characters, formatted like N03-12-123456.',
+    }),
+    proofOfAddressBack: z.string(),
     proofOfAddress: requiredString(
-      'Upload proof of address or Meralco bill.',
+      'Upload proof of address.',
     ),
-  })
-  .superRefine((form, context) => {
-    if (form.passportRequiredByAdmin && !form.passport.trim()) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Passport upload is required by admin.',
-        path: ['passport'],
-      });
-    }
   });
 
 const customerDocumentUploadsSchema = z.object({
@@ -180,8 +170,7 @@ const customerDocumentUploadsSchema = z.object({
   driverLicenseExpirationDate: z.string(),
   driverLicenseFront: z.string(),
   driverLicenseNumber: z.string(),
-  passport: z.string(),
-  passportRequiredByAdmin: z.boolean(),
+  proofOfAddressBack: z.string(),
   proofOfAddress: z.string(),
 });
 
@@ -194,10 +183,10 @@ export function getCustomerDocumentSchema(documentId: CustomerDocumentId) {
           message: "Driver's license number is required.",
           path: ['driverLicenseNumber'],
         });
-      } else if (form.driverLicenseNumber.length > 100) {
+      } else if (!isValidDriverLicenseNumber(form.driverLicenseNumber)) {
         context.addIssue({
           code: 'custom',
-          message: "Driver's license number must be 100 characters or fewer.",
+          message: 'Use only letters and digits, up to 11 characters, formatted like N03-12-123456.',
           path: ['driverLicenseNumber'],
         });
       }
@@ -233,18 +222,10 @@ export function getCustomerDocumentSchema(documentId: CustomerDocumentId) {
       }
     }
 
-    if (documentId === 'passport' && !form.passport.trim()) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Upload the passport information page.',
-        path: ['passport'],
-      });
-    }
-
     if (documentId === 'proof-of-address' && !form.proofOfAddress.trim()) {
       context.addIssue({
         code: 'custom',
-        message: 'Upload a Meralco bill or proof of address.',
+        message: 'Upload proof of address.',
         path: ['proofOfAddress'],
       });
     }

@@ -24,7 +24,8 @@ export type ManagementModuleId =
   | "maintenance"
   | "fleetTracker"
   | "reports"
-  | "personnel";
+  | "personnel"
+  | "deliveryPricing";
 
 type ManagementSection =
   | "Overview"
@@ -44,6 +45,7 @@ export type ManagementModule = {
 };
 
 export const managementModules: readonly ManagementModule[] = [
+  { id: "deliveryPricing", label: "Delivery Pricing", section: "Administration", icon: Settings, adminOnly: true, path: "delivery-pricing" },
   {
     id: "dashboard",
     label: "Dashboard",

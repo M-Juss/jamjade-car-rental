@@ -59,11 +59,13 @@
 <body>
     <main>
         <h1>{{ $cancelled ? 'Payment Cancelled' : 'Payment Approved' }}</h1>
-        <p>Returning you to the JamJade app to {{ $cancelled ? 'review the payment' : 'confirm your booking' }}.</p>
-        <a href="{{ $appUrl }}">Return to JamJade</a>
+        <p>{{ $autoRedirect ? 'Returning you to the JamJade app.' : 'Tap Return to JamJade to continue in the app.' }} Your {{ $cancelled ? 'cancelled payment can be reviewed' : 'payment will be confirmed' }} there.</p>
+        <a href="{{ $launchUrl }}">Return to JamJade</a>
     </main>
+    @if ($autoRedirect)
     <script>
-        window.location.replace(@json($appUrl));
+        window.location.replace(@json($launchUrl));
     </script>
+    @endif
 </body>
 </html>

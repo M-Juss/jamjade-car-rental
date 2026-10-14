@@ -19,20 +19,16 @@ class TelematicsHandoverResource extends JsonResource
     public function toArray(Request $request): array
     {
         $this->resource->loadMissing([
-            'bookingGeofence',
-            'telematicsSetupSession.bookingGeofence',
             'telematicsSetupSession.steps',
             'telematicsTrips',
         ]);
 
         $session = $this->telematicsSetupSession;
-        $geofence = $session?->bookingGeofence ?? $this->bookingGeofence;
         $latestSteps = $session?->steps
             ->sortByDesc('attempt_number')
             ->unique('step_type')
             ->keyBy(fn (TelematicsSetupStep $step) => $step->step_type->value) ?? collect();
         $hasActiveTrip = $this->telematicsTrips->contains(fn ($trip) => $trip->status !== 'ended');
-        $geofenceAttempt = $latestSteps->get(TelematicsSetupStepType::GeofenceCheck->value);
         $eligibility = app(TelematicsHandoverEligibilityService::class)->evaluate($this->resource);
 
         return [
@@ -45,21 +41,6 @@ class TelematicsHandoverResource extends JsonResource
                 'startedAt' => $session->started_at?->toISOString(),
                 'readyAt' => $session->ready_at?->toISOString(),
                 'releasedAt' => $session->released_at?->toISOString(),
-            ] : null,
-            'geofence' => $geofence ? [
-                'name' => $geofence->name_snapshot,
-                'geometryType' => $geofence->geometry_type,
-                'centerLatitude' => $geofence->center_latitude === null ? null : (float) $geofence->center_latitude,
-                'centerLongitude' => $geofence->center_longitude === null ? null : (float) $geofence->center_longitude,
-                'radiusMeters' => $geofence->radius_meters === null ? null : (float) $geofence->radius_meters,
-                'polygonCoordinates' => $geofence->polygon_coordinates,
-            ] : null,
-            'geofenceCheck' => $geofenceAttempt?->evidence ? [
-                'inside' => $geofenceAttempt->evidence['inside'] ?? null,
-                'distanceMeters' => $geofenceAttempt->evidence['distance_meters'] ?? null,
-                'radiusMeters' => $geofenceAttempt->evidence['radius_meters'] ?? null,
-                'geometryType' => $geofenceAttempt->evidence['geometry_type'] ?? null,
-                'checkedAt' => $geofenceAttempt->evidence['checked_at'] ?? null,
             ] : null,
             'steps' => collect(TelematicsSetupService::requiredSteps())
                 ->map(function (TelematicsSetupStepType $type) use ($latestSteps, $session): array {
@@ -79,8 +60,8 @@ class TelematicsHandoverResource extends JsonResource
                 })
                 ->values()
                 ->all(),
-            'canBeginSetup' => $session?->status === TelematicsSetupStatus::InProgress,
-            'canContinueSetup' => $session?->status === TelematicsSetupStatus::InProgress,
+            'canBeginSetup' => $eligibility['canWorkSetup'],
+            'canContinueSetup' => $eligibility['canWorkSetup'],
             'canStartTrip' => $session?->status === TelematicsSetupStatus::Released
                 && $this->status === BookingStatus::Ongoing
                 && ! $hasActiveTrip,
@@ -96,7 +77,6 @@ class TelematicsHandoverResource extends JsonResource
             TelematicsSetupStepType::LocationPermission => 'Location permission',
             TelematicsSetupStepType::BackgroundLocation => 'Background location permission',
             TelematicsSetupStepType::GpsCheck => 'GPS check',
-            TelematicsSetupStepType::GeofenceCheck => 'Geofence check',
             TelematicsSetupStepType::PhoneMount => 'Phone mount check',
             TelematicsSetupStepType::StationaryCalibration => 'Stationary calibration',
             TelematicsSetupStepType::ForwardCalibration => 'Forward calibration',

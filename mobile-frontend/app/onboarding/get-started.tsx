@@ -1,6 +1,6 @@
 import { useRouter, type Href } from 'expo-router';
 import { CarFront, FileCheck2, PhoneCall, ShieldCheck } from 'lucide-react-native';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { InfoCard } from '@/components/onboarding/InfoCard';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';

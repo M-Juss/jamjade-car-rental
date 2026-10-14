@@ -44,6 +44,9 @@ export type BookingRecord = {
   pricePerDay: number;
   subtotal: number;
   deliveryFee: number;
+  deliveryTollFee: number;
+  deliveryLocation?: { address: string; placeId: string | null; point: { latitude: number; longitude: number } | null; routeLabel: string } | null;
+
   outsideManilaFee: number;
   ownerDriverFee: number;
   tollFee: number;
@@ -77,6 +80,10 @@ export type BookingRecord = {
   driverAssignedAt?: string | null;
   telematicsSetupStatus?: "locked" | "setup_required" | "in_progress" | "ready_for_release" | "released" | null;
   telematicsHandover?: TelematicsHandover;
+  monitoringZones?: BookingMonitoringZone[];
+  canManageMonitoringZones?: boolean;
+  geofenceActivity?: Array<{ id: string; type: "geofence_enter" | "geofence_exit"; zoneName: string; notificationRequested: boolean; occurredAt: string }>;
+
   returnedAt?: string | null;
   completedAt?: string | null;
   returnChargesFinalizedAt?: string | null;
@@ -97,25 +104,17 @@ export type TelematicsHandover = {
   bookingCode: string;
   bookingStatus: BookingStatus;
   eligibility?: {
+    testMode: boolean;
     canStartHandover: boolean;
     documentsVerified: boolean;
     rentalPeriodEligible: boolean;
     outgoingInspectionComplete: boolean;
-    geofenceAssigned: boolean;
   };
   setup: {
     status: "locked" | "setup_required" | "in_progress" | "ready_for_release" | "released";
     startedAt?: string | null;
     readyAt?: string | null;
     releasedAt?: string | null;
-  } | null;
-  geofence: {
-    name: string;
-    geometryType: "circle" | "polygon";
-    centerLatitude: number | null;
-    centerLongitude: number | null;
-    radiusMeters: number | null;
-    polygonCoordinates: GeofenceCoordinate[] | null;
   } | null;
   steps: Array<{
     type: string;
@@ -156,6 +155,7 @@ export type AdditionalChargeRecord = {
   typeLabel: string;
   description: string;
   amount: number;
+  outstandingAmount: number;
   responsibility: "customer" | "driver";
   paymentStatus: PaymentStatus;
   paidAt?: string | null;
@@ -171,17 +171,18 @@ export type DriverCandidate = {
   hasOutstandingBalance: boolean;
 };
 
-export type GeofenceTemplate = {
-  id: number;
+export type BookingMonitoringZone = {
+  id: string | null;
   name: string;
+  scope: "default" | "custom";
   geometryType: "circle" | "polygon";
   centerLatitude: number | null;
   centerLongitude: number | null;
   radiusMeters: number | null;
   polygonCoordinates: GeofenceCoordinate[] | null;
-  isActive: boolean;
-  isDeleted?: boolean;
-  assignedBookingCount?: number;
+  notifyOnEnter: boolean;
+  notifyOnExit: boolean;
+  frozenAt: string | null;
 };
 
 export type GeofenceCoordinate = { latitude: number; longitude: number };

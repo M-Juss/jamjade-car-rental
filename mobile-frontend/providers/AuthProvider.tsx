@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
   getCurrentUser,
@@ -15,6 +7,7 @@ import {
   logout,
   register,
   restoreSession,
+  updateAccountEmail,
   type MobileLoginPayload,
   type MobileRegisterPayload,
   type MobileUser,
@@ -23,7 +16,9 @@ import {
   hydrateCustomerFromProfile,
   hydrateCustomerFromUser,
   resetCustomer,
+  updateRegisteredEmail,
 } from '@/lib/customer/customer-store';
+import type { UpdateAccountEmailInput } from '@/validation/account/schemas';
 
 type AuthStatus = 'loading' | 'authenticated' | 'guest';
 
@@ -33,7 +28,8 @@ type AuthContextValue = {
   refreshProfile: () => Promise<MobileUser>;
   signIn: (payload: MobileLoginPayload) => Promise<MobileUser>;
   signUp: (payload: MobileRegisterPayload) => Promise<MobileUser>;
-  signOut: () => Promise<void>;
+  signOut: (options?: { revokeRemoteToken?: boolean }) => Promise<void>;
+  changeEmail: (values: UpdateAccountEmailInput) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -51,28 +47,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return profile.user;
   }, []);
 
-  const applyUser = useCallback(async (nextUser: MobileUser) => {
-    if (nextUser.roles?.includes('driver')) {
-      setUser(nextUser);
+  const applyUser = useCallback(
+    async (nextUser: MobileUser) => {
+      if (nextUser.roles?.includes('driver')) {
+        setUser(nextUser);
+        setStatus('authenticated');
+        resetCustomer();
+
+        return nextUser;
+      }
+
+      let authenticatedUser = nextUser;
+
+      try {
+        authenticatedUser = await refreshProfile();
+      } catch {
+        hydrateCustomerFromUser(nextUser);
+        setUser(nextUser);
+      }
+
       setStatus('authenticated');
-      resetCustomer();
 
-      return nextUser;
-    }
-
-    let authenticatedUser = nextUser;
-
-    try {
-      authenticatedUser = await refreshProfile();
-    } catch {
-      hydrateCustomerFromUser(nextUser);
-      setUser(nextUser);
-    }
-
-    setStatus('authenticated');
-
-    return authenticatedUser;
-  }, [refreshProfile]);
+      return authenticatedUser;
+    },
+    [refreshProfile],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -111,25 +110,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [applyUser]);
 
-  const value = useMemo<AuthContextValue>(() => ({
-    status,
-    user,
-    refreshProfile,
-    signIn: async (payload) => {
-      const session = await login(payload);
-      return await applyUser(session.user);
-    },
-    signUp: async (payload) => {
-      const session = await register(payload);
-      return await applyUser(session.user);
-    },
-    signOut: async () => {
-      await logout();
-      setUser(null);
-      setStatus('guest');
-      resetCustomer();
-    },
-  }), [applyUser, refreshProfile, status, user]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status,
+      user,
+      refreshProfile,
+      signIn: async (payload) => {
+        const session = await login(payload);
+        return await applyUser(session.user);
+      },
+      signUp: async (payload) => {
+        const session = await register(payload);
+        return await applyUser(session.user);
+      },
+      changeEmail: async (values) => {
+        const updatedUser = await updateAccountEmail(values);
+        setUser(updatedUser);
+        updateRegisteredEmail(updatedUser.email);
+      },
+      signOut: async (options) => {
+        try {
+          await logout(options);
+        } finally {
+          setUser(null);
+          setStatus('guest');
+          resetCustomer();
+        }
+      },
+    }),
+    [applyUser, refreshProfile, status, user],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

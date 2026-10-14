@@ -54,9 +54,7 @@ export default function DrivingIntentScreen() {
 
       updateSelfDriveStatus('not-verified');
       const nextRoute = (
-        intent === 'self-drive'
-          ? '/profile/documents?source=onboarding'
-          : '/onboarding/account-ready'
+        intent === 'self-drive' ? '/profile/documents?source=onboarding' : '/onboarding/account-ready'
       ) as Href;
 
       router.replace(nextRoute);
@@ -86,43 +84,43 @@ export default function DrivingIntentScreen() {
             onPress={handleContinue}
           />
         }>
-      <OnboardingHeader
-        currentStep={3}
-        icon={CarFront}
-        subtitle="You can choose owner's driver now, apply for self-drive, or decide later during booking."
-        title="Do you plan to self-drive?"
-        totalSteps={3}
-      />
+        <OnboardingHeader
+          currentStep={3}
+          icon={CarFront}
+          subtitle="You can choose owner's driver now, apply for self-drive, or decide later during booking."
+          title="Do you plan to self-drive?"
+          totalSteps={3}
+        />
 
-      <View className="mt-7 gap-3">
-        <SelectableCard
-          description="You will need to verify your driving documents before using self-drive booking."
-          icon={ShieldCheck}
-          isSelected={intent === 'self-drive'}
-          onPress={() => selectIntent('self-drive')}
-          title="Yes, I want to self-drive"
-        />
-        <SelectableCard
-          description="You can book vehicles with Jamjade's owner's driver."
-          icon={UserRound}
-          isSelected={intent === 'owner-driver'}
-          onPress={() => selectIntent('owner-driver')}
-          title="No, I prefer owner's driver"
-        />
-        <SelectableCard
-          description="You can decide later from your profile or during booking."
-          icon={CircleHelp}
-          isSelected={intent === 'not-sure'}
-          onPress={() => selectIntent('not-sure')}
-          title="Not sure yet"
-        />
-      </View>
+        <View className="mt-7 gap-3">
+          <SelectableCard
+            description="You will need to verify your driving documents before using self-drive booking."
+            icon={ShieldCheck}
+            isSelected={intent === 'self-drive'}
+            onPress={() => selectIntent('self-drive')}
+            title="Yes, I want to self-drive"
+          />
+          <SelectableCard
+            description="You can book vehicles with Jamjade's owner's driver."
+            icon={UserRound}
+            isSelected={intent === 'owner-driver'}
+            onPress={() => selectIntent('owner-driver')}
+            title="No, I prefer owner's driver"
+          />
+          <SelectableCard
+            description="You can decide later from your profile or during booking."
+            icon={CircleHelp}
+            isSelected={intent === 'not-sure'}
+            onPress={() => selectIntent('not-sure')}
+            title="Not sure yet"
+          />
+        </View>
 
-      {error ? (
-        <Text className="mt-3 rounded-[20px] border border-destructive-border bg-destructive-surface px-4 py-3 text-[12px] font-bold leading-5 text-destructive">
-          {error}
-        </Text>
-      ) : null}
+        {error ? (
+          <Text className="font-sans mt-3 rounded-[20px] border border-destructive-border bg-destructive-surface px-4 py-3 text-[12px] font-medium leading-5 text-destructive">
+            {error}
+          </Text>
+        ) : null}
       </OnboardingScreenFrame>
       <FormToast
         message={toast.message}

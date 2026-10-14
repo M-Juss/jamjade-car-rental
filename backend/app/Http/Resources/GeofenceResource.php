@@ -17,10 +17,12 @@ class GeofenceResource extends JsonResource
             'centerLongitude' => $this->center_longitude === null ? null : (float) $this->center_longitude,
             'radiusMeters' => $this->radius_meters === null ? null : (float) $this->radius_meters,
             'polygonCoordinates' => $this->polygon_coordinates,
+            'notifyOnEnter' => $this->notify_on_enter,
+            'notifyOnExit' => $this->notify_on_exit,
             'isActive' => $this->is_active,
             'isDeleted' => $this->deleted_at !== null,
             'deletedAt' => $this->deleted_at?->toISOString(),
-            'assignedBookingCount' => $this->whenCounted('bookingSnapshots'),
+            'rentalSnapshotCount' => $this->whenCounted('bookingSnapshots'),
             'createdBy' => $this->whenLoaded('creator', fn () => $this->creator ? [
                 'id' => (string) $this->creator->id,
                 'name' => $this->creator->name,

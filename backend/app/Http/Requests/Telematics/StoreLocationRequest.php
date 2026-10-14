@@ -21,8 +21,8 @@ class StoreLocationRequest extends BaseFormRequest
             'heading' => ['nullable', 'numeric', 'between:0,360'],
             'battery_percent' => ['nullable', 'integer', 'between:0,100'],
             'gps_signal_percent' => ['nullable', 'integer', 'between:0,100'],
-            'current_zone' => ['nullable', 'string', 'max:120'],
-            'captured_at' => ['required', 'date'],
+            'current_zone' => ['prohibited'],
+            'captured_at' => ['required', 'date', 'before_or_equal:'.now()->addSeconds(config('telematics.setup_gps_future_skew_seconds'))->toISOString()],
         ];
     }
 }

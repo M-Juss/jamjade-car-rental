@@ -2,9 +2,9 @@
 
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, CircleXIcon, Loader2Icon } from "lucide-react"
+import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-const Toaster = ({ position = "bottom-right", ...props }: ToasterProps) => {
+const Toaster = ({ position = "top-right", ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
 
   return (
@@ -15,31 +15,11 @@ const Toaster = ({ position = "bottom-right", ...props }: ToasterProps) => {
       closeButton
       gap={12}
       icons={{
-        success: (
-          <span className="cn-toast-icon">
-            <CircleCheckIcon className="size-5" />
-          </span>
-        ),
-        info: (
-          <span className="cn-toast-icon">
-            <InfoIcon className="size-5" />
-          </span>
-        ),
-        warning: (
-          <span className="cn-toast-icon">
-            <TriangleAlertIcon className="size-5" />
-          </span>
-        ),
-        error: (
-          <span className="cn-toast-icon">
-            <CircleXIcon className="size-5" />
-          </span>
-        ),
-        loading: (
-          <span className="cn-toast-icon">
-            <Loader2Icon className="size-5 animate-spin" />
-          </span>
-        ),
+        success: <CircleCheckIcon className="size-4" />,
+        info: <InfoIcon className="size-4" />,
+        warning: <TriangleAlertIcon className="size-4" />,
+        error: <OctagonXIcon className="size-4" />,
+        loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
       style={
         {
@@ -51,12 +31,6 @@ const Toaster = ({ position = "bottom-right", ...props }: ToasterProps) => {
       }
       toastOptions={{
         duration: 4200,
-        classNames: {
-          toast: "cn-toast",
-          title: "cn-toast-title",
-          description: "cn-toast-description",
-          closeButton: "cn-toast-close",
-        },
       }}
       {...props}
     />

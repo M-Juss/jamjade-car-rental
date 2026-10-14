@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
@@ -36,14 +37,12 @@ function parseTime(value: string) {
   return {
     hour: hour24 % 12 || 12,
     minute: Number(match[2]),
-    period: hour24 >= 12 ? 'PM' as Period : 'AM' as Period,
+    period: hour24 >= 12 ? ('PM' as Period) : ('AM' as Period),
   };
 }
 
 function toTimeValue(hour: number, minute: number, period: Period) {
-  const hour24 = period === 'AM'
-    ? hour % 12
-    : (hour % 12) + 12;
+  const hour24 = period === 'AM' ? hour % 12 : (hour % 12) + 12;
 
   return `${hour24.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
 }
@@ -84,10 +83,15 @@ function TimeOption({
         disabled
           ? 'border-border bg-muted opacity-45'
           : isSelected
-          ? 'border-primary bg-primary'
-          : 'border-border bg-surface',
+            ? 'border-primary bg-primary'
+            : 'border-border bg-surface',
       )}>
-      <Text className={cx('text-[14px] font-black', isSelected && !disabled ? 'text-surface' : 'text-foreground')}>
+      <Text
+        className={cx(
+          'font-sans',
+          'text-[15px]',
+          isSelected && !disabled ? 'text-surface' : 'text-foreground',
+        )}>
         {label}
       </Text>
     </Pressable>
@@ -130,9 +134,7 @@ export function TimePickerWithLabel({
 
   useEffect(() => {
     if (isOpen) {
-      const initialTime = availableTimeValues.includes(value)
-        ? value
-        : availableTimeValues[0];
+      const initialTime = availableTimeValues.includes(value) ? value : availableTimeValues[0];
       const initialParts = parseTime(initialTime ?? '');
 
       setSelectedHour(initialParts.hour);
@@ -154,13 +156,14 @@ export function TimePickerWithLabel({
 
   const isUnavailable = (hour: number, minute: number, period: Period) =>
     !availableTimeValues.includes(toTimeValue(hour, minute, period));
-  const pickerHelperText = !hasAvailableTimes && pickupDate === getLocalDateKey()
-    ? 'No pickup times remain today. Select a future rental date.'
-    : helperText;
+  const pickerHelperText =
+    !hasAvailableTimes && pickupDate === getLocalDateKey()
+      ? 'No pickup times remain today. Select a future rental date.'
+      : helperText;
 
   return (
     <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4', wrapperClassName)}>
-      <Text className="text-[12px] font-bold text-foreground">
+      <Text className="font-sans text-caption font-medium text-foreground">
         {label}
         {required ? <Text className="text-destructive"> *</Text> : null}
       </Text>
@@ -171,24 +174,30 @@ export function TimePickerWithLabel({
         disabled={!hasAvailableTimes}
         onPress={() => setIsOpen(true)}
         className={cx(
-          'min-h-[48px] flex-row items-center rounded-full border bg-surface px-4',
+          'min-h-control flex-row items-center rounded-field border bg-surface px-4',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-[#E5EAF2]',
           !hasAvailableTimes && 'opacity-60',
         )}>
-        <MaterialIcons name="schedule" size={20} color="#7D8798" />
+        <MaterialIcons name="schedule" size={20} color={themeColors.mutedForeground} />
         <Text
           className={cx(
-            'min-w-0 flex-1 px-3 text-[14px] font-semibold',
-            value ? 'text-foreground' : 'font-medium text-subtle-foreground',
+            'font-sans',
+            'min-w-0 flex-1 px-3 text-[15px]',
+            value ? 'text-foreground' : 'font-medium text-secondary-foreground',
           )}>
           {value ? formatTimeWithPeriod(value) : placeholder}
         </Text>
-        <MaterialIcons name="keyboard-arrow-down" size={24} color="#7D8798" />
+        <MaterialIcons name="keyboard-arrow-down" size={24} color={themeColors.mutedForeground} />
       </Pressable>
 
       <View className="absolute left-1 right-1 top-full mt-1.5">
         {error || pickerHelperText ? (
-          <Text className={cx('text-[11px] leading-4 text-[#667085]', error && 'font-bold text-destructive')}>
+          <Text
+            className={cx(
+              'font-sans',
+              'text-[11px] leading-4 text-secondary-foreground',
+              error && 'font-medium text-destructive',
+            )}>
             {error || pickerHelperText}
           </Text>
         ) : null}
@@ -203,15 +212,15 @@ export function TimePickerWithLabel({
             onPress={() => setIsOpen(false)}
           />
           <View
-            className="rounded-t-[32px] bg-background px-5 pt-4"
+            className="rounded-t-sheet bg-background px-5 pt-4"
             style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
             <View className="mb-4 items-center">
               <View className="h-1.5 w-12 rounded-full bg-border" />
             </View>
             <View className="mb-5 flex-row items-start justify-between gap-3">
               <View className="min-w-0 flex-1">
-                <Text className="text-[22px] font-black text-foreground">{label}</Text>
-                <Text className="mt-1 text-[12px] font-bold text-muted-foreground">
+                <Text className="font-sans text-[22px] font-semibold text-foreground">{label}</Text>
+                <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
                   Choose the hour, minute, and AM or PM.
                 </Text>
               </View>
@@ -221,13 +230,13 @@ export function TimePickerWithLabel({
                 hitSlop={8}
                 onPress={() => setIsOpen(false)}
                 className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-                <MaterialIcons name="close" size={20} color="#64748B" />
+                <MaterialIcons name="close" size={20} color={themeColors.mutedForeground} />
               </Pressable>
             </View>
 
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">
+                <Text className="font-sans mb-2 text-center text-[11px] font-normal text-secondary-foreground">
                   Hour
                 </Text>
                 <ScrollView className="h-[220px]" showsVerticalScrollIndicator={false}>
@@ -246,7 +255,7 @@ export function TimePickerWithLabel({
               </View>
 
               <View className="flex-1">
-                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">
+                <Text className="font-sans mb-2 text-center text-[11px] font-normal text-secondary-foreground">
                   Minute
                 </Text>
                 <ScrollView className="h-[220px]" showsVerticalScrollIndicator={false}>
@@ -265,13 +274,15 @@ export function TimePickerWithLabel({
               </View>
 
               <View className="flex-1">
-                <Text className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">
+                <Text className="font-sans mb-2 text-center text-[11px] font-normal text-secondary-foreground">
                   Period
                 </Text>
                 <View className="gap-2">
-                    {PERIODS.map((period) => (
-                      <TimeOption
-                        disabled={!HOURS.some((hour) => MINUTES.some((minute) => !isUnavailable(hour, minute, period)))}
+                  {PERIODS.map((period) => (
+                    <TimeOption
+                      disabled={
+                        !HOURS.some((hour) => MINUTES.some((minute) => !isUnavailable(hour, minute, period)))
+                      }
                       key={period}
                       isSelected={selectedPeriod === period}
                       label={period}
@@ -283,8 +294,10 @@ export function TimePickerWithLabel({
             </View>
 
             <View className="mt-5 rounded-[22px] border border-border bg-surface px-4 py-3">
-              <Text className="text-center text-[12px] font-bold text-muted-foreground">Selected time</Text>
-              <Text className="mt-1 text-center text-[22px] font-black text-foreground">
+              <Text className="font-sans text-center text-[12px] font-medium text-secondary-foreground">
+                Selected time
+              </Text>
+              <Text className="font-sans mt-1 text-center text-[22px] font-semibold text-foreground">
                 {formatTimeWithPeriod(toTimeValue(selectedHour, selectedMinute, selectedPeriod))}
               </Text>
             </View>
@@ -298,7 +311,7 @@ export function TimePickerWithLabel({
                 'mt-4 min-h-[56px] items-center justify-center rounded-full bg-primary',
                 isUnavailable(selectedHour, selectedMinute, selectedPeriod) && 'opacity-50',
               )}>
-              <Text className="text-[15px] font-black text-surface">Apply Time</Text>
+              <Text className="font-sans text-[15px] font-semibold text-surface">Apply Time</Text>
             </Pressable>
           </View>
         </View>

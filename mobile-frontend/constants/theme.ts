@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { fontFamilies } from './fonts';
+
 export const themeColors = {
   background: '#F8FAFF',
   border: '#DDE8FF',
@@ -9,7 +11,10 @@ export const themeColors = {
   foreground: '#17315F',
   muted: '#EEF4FF',
   mutedForeground: '#6C7A96',
+  secondaryForeground: '#53647F',
   primary: '#346EF6',
+  // Google Maps requires a neutral attribution color.
+  googleAttribution: '#5E5E5E',
   primaryHover: '#2558D8',
   subtleForeground: '#91A0B8',
   success: '#047857',
@@ -44,8 +49,7 @@ export const Colors = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
+    sans: fontFamilies.regular,
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
     /** iOS `UIFontDescriptorSystemDesignRounded` */
@@ -54,13 +58,13 @@ export const Fonts = Platform.select({
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: fontFamilies.regular,
     serif: 'serif',
     rounded: 'normal',
     mono: 'monospace',
   },
   web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    sans: fontFamilies.regular,
     serif: "Georgia, 'Times New Roman', serif",
     rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",

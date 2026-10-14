@@ -19,6 +19,12 @@ class TelematicsHandoverEligibilityService
 {
     private const BUSINESS_TIMEZONE = 'Asia/Manila';
 
+    public function testModeEnabled(): bool
+    {
+        return app()->environment(['local', 'testing'])
+            && (bool) config('telematics.handover_test_mode', false);
+    }
+
     public function currentBookingFor(User $user): ?Booking
     {
         return Booking::query()
@@ -54,52 +60,59 @@ class TelematicsHandoverEligibilityService
     {
         $booking->loadMissing([
             'user.documents',
-            'bookingGeofence',
             'telematicsSetupSession',
             'vehicleInspections.signatures',
         ]);
 
+        $testMode = $this->testModeEnabled();
         $selfDrive = $booking->rental_type === RentalType::SelfDrive;
         $documentsVerified = $selfDrive && $this->documentsVerified($booking);
         $bookingConfirmed = $booking->status === BookingStatus::Confirmed;
         $rentalPeriodEligible = $bookingConfirmed && $this->isAtOrAfterRentalStart($booking);
         $outgoingInspectionComplete = $this->hasFinalizedOutgoingSignatures($booking);
-        $geofenceAssigned = $booking->bookingGeofence !== null
-            && (int) ($booking->telematicsSetupSession?->booking_geofence_id ?? 0) === (int) $booking->bookingGeofence->id;
         $setupStatus = $booking->telematicsSetupSession?->status?->value;
         $handoverStarted = $setupStatus === TelematicsSetupStatus::InProgress->value;
         $released = $booking->status === BookingStatus::Ongoing && $setupStatus === TelematicsSetupStatus::Released->value;
 
         return [
+            'testMode' => $testMode,
             'hasSelfDriveBooking' => $selfDrive,
             'documentsVerified' => $documentsVerified,
             'bookingConfirmed' => $bookingConfirmed,
             'rentalPeriodEligible' => $rentalPeriodEligible,
             'outgoingInspectionComplete' => $outgoingInspectionComplete,
-            'geofenceAssigned' => $geofenceAssigned,
             'handoverStarted' => $handoverStarted,
             'setupStatus' => $setupStatus,
             'canViewTelematics' => $selfDrive,
-            'canStartHandover' => $documentsVerified && $rentalPeriodEligible && $outgoingInspectionComplete && $geofenceAssigned
-                && $setupStatus === TelematicsSetupStatus::SetupRequired->value,
-            'canWorkSetup' => $documentsVerified && $rentalPeriodEligible && $bookingConfirmed && $handoverStarted,
-            'state' => $this->state($booking, $documentsVerified, $rentalPeriodEligible, $outgoingInspectionComplete, $geofenceAssigned, $handoverStarted, $released),
+            'canStartHandover' => $selfDrive && $bookingConfirmed && ($testMode
+                ? in_array($setupStatus, [null, TelematicsSetupStatus::Locked->value, TelematicsSetupStatus::SetupRequired->value], true)
+                : $documentsVerified && $rentalPeriodEligible && $outgoingInspectionComplete
+                    && $setupStatus === TelematicsSetupStatus::SetupRequired->value),
+            'canWorkSetup' => $selfDrive && $bookingConfirmed
+                && ($testMode || ($documentsVerified && $rentalPeriodEligible))
+                && ($handoverStarted || ($testMode && $setupStatus === TelematicsSetupStatus::ReadyForRelease->value)),
+            'state' => $testMode && $selfDrive && $bookingConfirmed
+                ? ($handoverStarted || $setupStatus === TelematicsSetupStatus::ReadyForRelease->value ? 'handover_in_progress' : 'handover_preparation')
+                : $this->state($booking, $documentsVerified, $rentalPeriodEligible, $outgoingInspectionComplete, $handoverStarted, $released),
         ];
     }
 
     public function assertCanStartHandover(Booking $booking): void
     {
+        if ($this->testModeEnabled()) {
+            return;
+        }
+
         $eligibility = $this->evaluate($booking);
         $missing = collect([
             'documentsVerified',
             'rentalPeriodEligible',
             'outgoingInspectionComplete',
-            'geofenceAssigned',
         ])->filter(fn (string $key) => ! $eligibility[$key])->values()->all();
 
         if ($missing !== []) {
             throw ValidationException::withMessages([
-                'telematics_setup' => ['Telematics handover cannot start until verification, the scheduled rental time, inspection signatures, and booking geofence are ready.'],
+                'telematics_setup' => ['Telematics handover cannot start until verification, the scheduled rental date and inspection signatures are ready.'],
                 'requirements' => $missing,
             ]);
         }
@@ -107,6 +120,10 @@ class TelematicsHandoverEligibilityService
 
     public function assertCanWorkSetup(Booking $booking): void
     {
+        if ($this->testModeEnabled()) {
+            return;
+        }
+
         $eligibility = $this->evaluate($booking);
 
         if (! $eligibility['documentsVerified'] || ! $eligibility['rentalPeriodEligible']) {
@@ -147,7 +164,7 @@ class TelematicsHandoverEligibilityService
             && $outgoing->signatures->contains('signer_type', VehicleInspectionSignerType::Renter);
     }
 
-    private function state(Booking $booking, bool $documentsVerified, bool $rentalPeriodEligible, bool $outgoingInspectionComplete, bool $geofenceAssigned, bool $handoverStarted, bool $released): string
+    private function state(Booking $booking, bool $documentsVerified, bool $rentalPeriodEligible, bool $outgoingInspectionComplete, bool $handoverStarted, bool $released): string
     {
         return match (true) {
             $released => 'released',
@@ -155,7 +172,7 @@ class TelematicsHandoverEligibilityService
             $booking->status !== BookingStatus::Confirmed => 'waiting_for_confirmation',
             ! $rentalPeriodEligible => 'rental_scheduled',
             ! $outgoingInspectionComplete => 'inspection_required',
-            ! $geofenceAssigned || ! $handoverStarted => 'handover_preparation',
+            ! $handoverStarted => 'handover_preparation',
             default => 'handover_in_progress',
         };
     }

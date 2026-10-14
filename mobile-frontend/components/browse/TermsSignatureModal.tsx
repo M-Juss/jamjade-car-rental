@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import { CheckCircle2, Eraser, FileSignature, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -35,17 +36,19 @@ const TERMS_SECTIONS: TermsSection[] = [
         title: 'Gasoline must be refilled upon return of the unit to the same level as when it was endorsed.',
       },
       {
-        title: 'Twenty-four (24) hours is the minimum rental period per day. Excess time will be charged as follows:',
+        title:
+          'Twenty-four (24) hours is the minimum rental period per day. Excess time will be charged as follows:',
         details: [
           'Sedan / Toyota Vios: PHP 200.00 per hour.',
           'Van / Hiace / Innova / Fortuner: PHP 300.00 per hour.',
         ],
       },
       {
-        title: 'Pickup and delivery of the unit to the renter will be charged PHP 900.00.',
+        title: 'Garage pickup and return are free. Delivery and any staff-approved toll are charged at the accepted quote amount.',
       },
       {
-        title: 'A rental extension is allowed only after surrendering the unit first and paying the remaining balance.',
+        title:
+          'A rental extension is allowed only after surrendering the unit first and paying the remaining balance.',
       },
       {
         title: 'The rented vehicle must be clean when returned to the company.',
@@ -57,16 +60,19 @@ const TERMS_SECTIONS: TermsSection[] = [
         title: 'Smoking is strictly prohibited.',
       },
       {
-        title: 'All transactions, including additional charges, must be completed online. All payments must be made payable to Mr. Alvin N. Macalam.',
+        title:
+          'All transactions, including additional charges, must be completed online. All payments must be made payable to Mr. Alvin N. Macalam.',
       },
       {
-        title: 'Cancellation of any vehicle booking or reservation is not allowed due to the possible loss of vehicle availability and profit.',
+        title:
+          'Cancellation of any vehicle booking or reservation is not allowed due to the possible loss of vehicle availability and profit.',
       },
       {
         title: 'A down payment upon delivery of the unit is acceptable.',
       },
       {
-        title: 'For down-payment rentals, the remaining balance must be completed within five (5) days from the reservation date or before the scheduled rental date, whichever comes first.',
+        title:
+          'For down-payment rentals, the remaining balance must be completed within five (5) days from the reservation date or before the scheduled rental date, whichever comes first.',
       },
     ],
   },
@@ -77,10 +83,12 @@ const TERMS_SECTIONS: TermsSection[] = [
         title: 'For self-drive renters, all damages will be charged to the renter.',
       },
       {
-        title: 'A refundable participation fee of PHP 10,000.00 must be paid in advance for any damages incurred in an accident.',
+        title:
+          'A refundable participation fee of PHP 10,000.00 must be paid in advance for any damages incurred in an accident.',
       },
       {
-        title: 'A rental fee will be charged for each day the vehicle cannot be used for business because of repairs.',
+        title:
+          'A rental fee will be charged for each day the vehicle cannot be used for business because of repairs.',
       },
       {
         title: 'Physical verification of documentation is required once the vehicle has been delivered.',
@@ -89,7 +97,8 @@ const TERMS_SECTIONS: TermsSection[] = [
         title: 'Clutch damage will be charged PHP 9,000.00.',
       },
       {
-        title: 'Before operating the vehicle, the renter must complete Jamjade’s staff-controlled telematics handover. Any future mobile monitoring requires clear consent and an authorized trip start.',
+        title:
+          'Before operating the vehicle, the renter must complete Jamjade’s staff-controlled telematics handover. Any future mobile monitoring requires clear consent and an authorized trip start.',
       },
     ],
   },
@@ -97,11 +106,9 @@ const TERMS_SECTIONS: TermsSection[] = [
     title: "Terms and Conditions for Renting a Car with Owner's Driver",
     terms: [
       {
-        title: "Renting a car with the owner's driver includes an additional daily fee based on travel coverage:",
-        details: [
-          'Within Metro Manila: PHP 700.00 per day.',
-          'Outside Metro Manila: PHP 1,000.00 per day.',
-        ],
+        title:
+          "Renting a car with the owner's driver includes an additional daily fee based on travel coverage:",
+        details: ['Within Metro Manila: PHP 700.00 per day.', 'Outside Metro Manila: PHP 1,000.00 per day.'],
       },
       {
         title: "The renter is responsible for the driver's accommodations.",
@@ -205,19 +212,19 @@ export function TermsSignatureModal({
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
-      <View className="flex-1 bg-[#0B1220]/55">
+      <View className="flex-1 bg-foreground/55">
         <View
-          className="mt-auto max-h-[94%] overflow-hidden rounded-t-[34px] bg-background"
+          className="mt-auto max-h-[94%] overflow-hidden rounded-t-sheet bg-background"
           style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
           <View className="flex-row items-center gap-3 border-b border-border bg-surface px-5 pb-4 pt-5">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
-              <FileSignature size={21} color="#346EF6" strokeWidth={2.4} />
+              <FileSignature size={21} color={themeColors.primary} strokeWidth={2.4} />
             </View>
             <View className="min-w-0 flex-1">
-              <Text className="text-[19px] font-black text-foreground">
+              <Text className="font-sans text-[19px] font-semibold text-foreground">
                 {step === 'terms' ? 'Terms and Conditions' : 'Customer Signature'}
               </Text>
-              <Text className="mt-1 text-[12px] font-semibold text-muted-foreground">
+              <Text className="font-sans mt-1 text-[12px] font-normal text-secondary-foreground">
                 {step === 'terms'
                   ? 'Review all rental conditions before signing.'
                   : 'Agreement to these terms requires your signature.'}
@@ -228,7 +235,7 @@ export function TermsSignatureModal({
               accessibilityRole="button"
               onPress={onClose}
               className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-              <X size={19} color="#17315F" strokeWidth={2.5} />
+              <X size={19} color={themeColors.foreground} strokeWidth={2.5} />
             </Pressable>
           </View>
 
@@ -239,21 +246,27 @@ export function TermsSignatureModal({
                   {TERMS_SECTIONS.map((section, sectionIndex) => (
                     <View className={sectionIndex === 0 ? '' : 'mt-5'} key={section.title}>
                       <View className="mb-3 rounded-[18px] bg-foreground px-4 py-3">
-                        <Text className="text-[13px] font-black leading-5 text-surface">{section.title}</Text>
+                        <Text className="font-sans text-[13px] font-semibold leading-5 text-surface">
+                          {section.title}
+                        </Text>
                       </View>
                       {section.terms.map((term, termIndex) => (
                         <View
                           className="mb-3 flex-row items-start gap-3 rounded-[22px] border border-border bg-surface p-4"
                           key={term.title}>
                           <View className="h-7 w-7 items-center justify-center rounded-full bg-muted">
-                            <Text className="text-[11px] font-black text-primary">{termIndex + 1}</Text>
+                            <Text className="font-sans text-[11px] font-semibold text-primary">
+                              {termIndex + 1}
+                            </Text>
                           </View>
                           <View className="min-w-0 flex-1">
-                            <Text className="text-[13px] font-bold leading-5 text-foreground">{term.title}</Text>
+                            <Text className="font-sans text-[13px] font-medium leading-5 text-foreground">
+                              {term.title}
+                            </Text>
                             {term.details?.map((detail) => (
                               <View className="mt-2 flex-row items-start gap-2" key={detail}>
-                                <CheckCircle2 size={14} color="#159947" strokeWidth={2.4} />
-                                <Text className="min-w-0 flex-1 text-[12px] font-semibold leading-5 text-[#5D6B82]">
+                                <CheckCircle2 size={14} color={themeColors.success} strokeWidth={2.4} />
+                                <Text className="font-sans min-w-0 flex-1 text-[12px] font-semibold leading-5 text-[#5D6B82]">
                                   {detail}
                                 </Text>
                               </View>
@@ -270,21 +283,24 @@ export function TermsSignatureModal({
                   accessibilityRole="button"
                   onPress={() => setStep('signature')}
                   className="min-h-[58px] items-center justify-center rounded-full bg-primary">
-                  <Text className="text-[15px] font-black text-surface">Sign</Text>
+                  <Text className="font-sans text-[15px] font-semibold text-surface">Sign</Text>
                 </Pressable>
               </View>
             </>
           ) : (
             <View className="px-5 pb-2 pt-5">
               <View className="rounded-[24px] border border-border bg-surface p-4">
-                <Text className="text-[13px] font-black text-foreground">Draw your signature below</Text>
-                <Text className="mt-1 text-[12px] font-semibold leading-5 text-muted-foreground">
-                  Use your finger to sign. Submitting confirms that you have read and agree to all rental terms.
+                <Text className="font-sans text-[13px] font-semibold text-foreground">
+                  Draw your signature below
+                </Text>
+                <Text className="font-sans mt-1 text-[12px] font-normal leading-5 text-secondary-foreground">
+                  Use your finger to sign. Submitting confirms that you have read and agree to all rental
+                  terms.
                 </Text>
                 <View
                   {...signatureResponder.panHandlers}
                   collapsable={false}
-                  className="mt-4 h-[240px] overflow-hidden rounded-[20px] border border-dashed border-[#AFC5FF] bg-[#FBFCFF]">
+                  className="mt-4 h-[240px] overflow-hidden rounded-[20px] border border-dashed border-[#AFC5FF] bg-background">
                   <Svg height="100%" pointerEvents="none" width="100%">
                     {strokes.map((stroke, index) =>
                       stroke.length > 1 ? (
@@ -292,7 +308,7 @@ export function TermsSignatureModal({
                           d={strokeToPath(stroke)}
                           fill="none"
                           key={`signature-stroke-${index}`}
-                          stroke="#17315F"
+                          stroke={themeColors.foreground}
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={3}
@@ -300,14 +316,17 @@ export function TermsSignatureModal({
                       ) : null,
                     )}
                   </Svg>
-                  <View pointerEvents="none" className="absolute bottom-10 left-5 right-5 h-px bg-[#C8D4E8]" />
+                  <View
+                    pointerEvents="none"
+                    className="absolute bottom-10 left-5 right-5 h-px bg-[#C8D4E8]"
+                  />
                 </View>
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setStrokes([])}
                   className="mt-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-full border border-border bg-background">
-                  <Eraser size={17} color="#346EF6" strokeWidth={2.4} />
-                  <Text className="text-[13px] font-black text-primary">Clear Signature</Text>
+                  <Eraser size={17} color={themeColors.primary} strokeWidth={2.4} />
+                  <Text className="font-sans text-[13px] font-semibold text-primary">Clear Signature</Text>
                 </Pressable>
               </View>
 
@@ -316,7 +335,7 @@ export function TermsSignatureModal({
                   accessibilityRole="button"
                   onPress={() => setStep('terms')}
                   className="min-h-[56px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
-                  <Text className="text-[14px] font-black text-foreground">Review Terms</Text>
+                  <Text className="font-sans text-[14px] font-semibold text-foreground">Review Terms</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -326,7 +345,7 @@ export function TermsSignatureModal({
                   className={`min-h-[56px] flex-1 items-center justify-center rounded-full ${
                     hasSignature ? 'bg-primary' : 'bg-[#C8D4E8]'
                   }`}>
-                  <Text className="text-[14px] font-black text-surface">Submit</Text>
+                  <Text className="font-sans text-[14px] font-semibold text-surface">Submit</Text>
                 </Pressable>
               </View>
             </View>

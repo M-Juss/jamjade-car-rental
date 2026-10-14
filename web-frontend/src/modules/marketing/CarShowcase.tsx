@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Cog, Fuel, Armchair, Palette } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   Carousel,
   CarouselContent,
@@ -105,6 +106,9 @@ export default function CarShowcase() {
             className="w-full"
             aria-label="Available vehicles"
             onKeyDownCapture={(event) => {
+              if (event.target instanceof Element && event.target.closest('[data-vehicle-specs]')) {
+                return;
+              }
               if (event.key === "ArrowLeft") {
                 event.preventDefault();
                 goToPreviousVehicle();
@@ -160,12 +164,20 @@ export default function CarShowcase() {
                           </div>
                         </div>
                       </div>
-                      <CardContent className="px-8 py-6 sm:px-12 sm:py-7">
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-4 text-sm sm:gap-y-5 sm:text-base">
-                          <p className="flex items-center gap-2"><Armchair className="size-5 shrink-0 text-primary" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.seats} seater</span></p>
-                          <p className="flex items-center gap-2"><Palette className="size-5 shrink-0 text-primary" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.color || "Not specified"}</span></p>
-                          <p className="flex items-center gap-2"><Cog className="size-5 shrink-0 text-primary" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.transmission}</span></p>
-                          <p className="flex items-center gap-2"><Fuel className="size-5 shrink-0 text-primary" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.fuelType}</span></p>
+                      <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
+                        <div
+                          data-vehicle-specs
+                          role="region"
+                          aria-label={`${vehicle.name} specifications`}
+                          tabIndex={0}
+                          className="flex items-center justify-between gap-0.5 overflow-x-auto rounded-sm text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:gap-3 sm:text-sm">
+                          <p className="flex shrink-0 items-center gap-1 whitespace-nowrap sm:gap-1.5"><Palette className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.color || "Not specified"}</span></p>
+                          <Separator orientation="vertical" className="h-4 data-vertical:self-center" />
+                          <p className="flex shrink-0 items-center gap-1 whitespace-nowrap sm:gap-1.5"><Armchair className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.seats} seater</span></p>
+                          <Separator orientation="vertical" className="h-4 data-vertical:self-center" />
+                          <p className="flex shrink-0 items-center gap-1 whitespace-nowrap sm:gap-1.5"><Cog className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.transmission}</span></p>
+                          <Separator orientation="vertical" className="h-4 data-vertical:self-center" />
+                          <p className="flex shrink-0 items-center gap-1 whitespace-nowrap sm:gap-1.5"><Fuel className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden="true" /><span className="font-semibold text-foreground">{vehicle.fuelType}</span></p>
                         </div>
                       </CardContent>
                     </Card>

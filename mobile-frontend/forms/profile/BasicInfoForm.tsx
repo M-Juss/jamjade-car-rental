@@ -13,10 +13,7 @@ import { DatePickerInput } from '@/components/ui/DatePickerInput';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
-import {
-  basicInfoSchema,
-  sanitizePersonName,
-} from '@/validation';
+import { basicInfoSchema, sanitizePersonName } from '@/validation';
 import {
   createCustomerProfile,
   emptyCustomerAddress,
@@ -24,10 +21,7 @@ import {
   useCustomer,
 } from '@/lib/customer/customer-store';
 import type { BasicCustomerProfileInput } from '@/types/customer';
-import {
-  BOOKING_AGE_REQUIREMENT_MESSAGE,
-  getLatestEligibleBirthdateKey,
-} from '@/utils/calculateAge';
+import { BOOKING_AGE_REQUIREMENT_MESSAGE, getLatestEligibleBirthdateKey } from '@/utils/calculateAge';
 import { updateProfile } from '@/services/api';
 import { ApiError } from '@/services/http';
 
@@ -72,7 +66,6 @@ export function BasicInfoForm() {
           },
       birthdate: customer.birthdate,
       contactNumber: customer.contactNumber,
-      email: customer.email,
       firstName: customer.firstName,
       lastName: customer.lastName,
       profilePicture: customer.profilePicture,
@@ -80,11 +73,12 @@ export function BasicInfoForm() {
     resolver: zodResolver(basicInfoSchema),
   });
   const form = watch();
-  const initials = [form.firstName, form.lastName]
-    .filter(Boolean)
-    .map((name) => name[0])
-    .join('')
-    .toUpperCase() || getCustomerInitials(customer);
+  const initials =
+    [form.firstName, form.lastName]
+      .filter(Boolean)
+      .map((name) => name[0])
+      .join('')
+      .toUpperCase() || getCustomerInitials(customer);
 
   const onSubmit = async (values: BasicCustomerProfileInput) => {
     try {
@@ -157,7 +151,7 @@ export function BasicInfoForm() {
             }}
           />
 
-          <View className="gap-4 rounded-[28px] border border-border bg-surface p-4 shadow-md shadow-foreground/5">
+          <View className="gap-4 rounded-card border border-border bg-surface p-4 ">
             <Controller
               control={control}
               name="firstName"

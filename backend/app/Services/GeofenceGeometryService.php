@@ -71,12 +71,15 @@ class GeofenceGeometryService
         }
     }
 
-    /** @return array{inside: bool, geometry_type: string, distance_meters: ?float, radius_meters: ?float} */
+    /** @return array{inside: bool, geometry_type: string, distance_meters: ?float, radius_meters: ?float, boundary_distance_meters: float} */
     public function evaluate(BookingGeofence $geofence, float $latitude, float $longitude): array
     {
         if ($geofence->geometry_type === 'circle') {
+            $circle = $this->circles->evaluate($geofence, $latitude, $longitude);
+
             return [
-                ...$this->circles->evaluate($geofence, $latitude, $longitude),
+                ...$circle,
+                'boundary_distance_meters' => abs($circle['distance_meters'] - $circle['radius_meters']),
                 'geometry_type' => 'circle',
             ];
         }
@@ -86,11 +89,13 @@ class GeofenceGeometryService
             array_pop($points);
         }
         $inside = false;
+        $boundaryDistance = INF;
         $count = count($points);
         for ($index = 0, $previous = $count - 1; $index < $count; $previous = $index++) {
             $a = ['longitude' => (float) $points[$previous]['longitude'], 'latitude' => (float) $points[$previous]['latitude']];
             $b = ['longitude' => (float) $points[$index]['longitude'], 'latitude' => (float) $points[$index]['latitude']];
             $point = ['longitude' => $longitude, 'latitude' => $latitude];
+            $boundaryDistance = min($boundaryDistance, $this->distanceToSegment($point, $a, $b));
             if ($this->pointOnSegment($point, $a, $b)) {
                 $inside = true;
                 break;
@@ -108,7 +113,25 @@ class GeofenceGeometryService
             'geometry_type' => 'polygon',
             'distance_meters' => null,
             'radius_meters' => null,
+            'boundary_distance_meters' => $boundaryDistance,
         ];
+    }
+
+    private function distanceToSegment(array $point, array $a, array $b): float
+    {
+        // Local tangent-plane distance is adequate for the configured GPS uncertainty band.
+        $scale = 6371008.8 * M_PI / 180;
+        $longitudeScale = $scale * cos(deg2rad($point['latitude']));
+        $ax = ($a['longitude'] - $point['longitude']) * $longitudeScale;
+        $ay = ($a['latitude'] - $point['latitude']) * $scale;
+        $bx = ($b['longitude'] - $point['longitude']) * $longitudeScale;
+        $by = ($b['latitude'] - $point['latitude']) * $scale;
+        $dx = $bx - $ax;
+        $dy = $by - $ay;
+        $length = $dx * $dx + $dy * $dy;
+        $t = $length > 0 ? max(0, min(1, -($ax * $dx + $ay * $dy) / $length)) : 0;
+
+        return hypot($ax + $t * $dx, $ay + $t * $dy);
     }
 
     private function samePoint(array $first, array $second): bool

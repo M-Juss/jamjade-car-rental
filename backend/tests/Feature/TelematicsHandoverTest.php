@@ -27,16 +27,6 @@ function handoverBooking(RentalType $type = RentalType::SelfDrive): Booking
     return telematicsFoundationBooking($type);
 }
 
-function handoverSnapshot(Booking $booking): void
-{
-    app(TelematicsSetupService::class)->assignGeofenceSnapshot($booking, null, [
-        'name' => 'Handover service area',
-        'center_latitude' => 14.299,
-        'center_longitude' => 120.958,
-        'radius_meters' => 3000,
-    ], vehicleManagerUser());
-}
-
 it('rejects staff handover for non-self-drive bookings', function () {
     $booking = handoverBooking(RentalType::OwnersDriver);
 
@@ -44,9 +34,8 @@ it('rejects staff handover for non-self-drive bookings', function () {
         ->toThrow(ValidationException::class);
 });
 
-it('rejects handover before finalized outgoing signatures and an assigned snapshot', function () {
+it('requires finalized outgoing signatures but allows handover without zones', function () {
     $booking = handoverBooking();
-    handoverSnapshot($booking);
 
     expect(fn () => app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser()))
         ->toThrow(ValidationException::class);
@@ -57,14 +46,13 @@ it('rejects handover before finalized outgoing signatures and an assigned snapsh
 
     $withoutGeofence = handoverBooking();
     finalizeFoundationOutgoing($withoutGeofence);
-    expect(fn () => app(TelematicsSetupService::class)->startHandover($withoutGeofence, vehicleManagerUser()))
-        ->toThrow(ValidationException::class);
+    expect(app(TelematicsSetupService::class)->startHandover($withoutGeofence, vehicleManagerUser())->status)
+        ->toBe(TelematicsSetupStatus::InProgress);
 });
 
 it('starts the eligible handover through the authorized staff endpoint and records activity', function () {
     $booking = handoverBooking();
     finalizeFoundationOutgoing($booking);
-    handoverSnapshot($booking);
     $manager = vehicleManagerUser();
 
     $this->actingAs($manager)
@@ -80,7 +68,6 @@ it('starts the eligible handover through the authorized staff endpoint and recor
 it('returns a sanitized handover summary only to the owning renter', function () {
     $booking = handoverBooking();
     finalizeFoundationOutgoing($booking);
-    handoverSnapshot($booking);
     app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser());
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
     app(TelematicsSetupService::class)->recordStep($session, TelematicsSetupStepType::DeviceCheck, TelematicsSetupStepStatus::Passed, ['private' => 'evidence']);
@@ -90,7 +77,6 @@ it('returns a sanitized handover summary only to the owning renter', function ()
         ->assertOk()
         ->assertJsonPath('data.bookingCode', $booking->booking_code)
         ->assertJsonPath('data.setup.status', 'in_progress')
-        ->assertJsonPath('data.geofence.name', 'Handover service area')
         ->assertJsonPath('data.steps.0.type', 'device_check')
         ->assertJsonPath('data.steps.0.attemptCount', 1)
         ->assertJsonMissing(['id'])
@@ -103,7 +89,6 @@ it('returns a sanitized handover summary only to the owning renter', function ()
 it('keeps release gated until every latest check passes and preserves owner-driver release', function () {
     $booking = handoverBooking();
     finalizeFoundationOutgoing($booking);
-    handoverSnapshot($booking);
     $service = app(TelematicsSetupService::class);
     $service->startHandover($booking, vehicleManagerUser());
 

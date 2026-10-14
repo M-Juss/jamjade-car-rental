@@ -1,6 +1,8 @@
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 import CarShowcase from "@/modules/marketing/CarShowcase";
 import BookingSteps from "@/modules/marketing/BookingSteps";
+import DrivingInsights from "@/modules/marketing/DrivingInsights";
 import TestimonialsCarousel from "@/modules/marketing/TestimonialsCarousel";
 import SiteHeader from "@/modules/marketing/SiteHeader";
 import RentNowButton from "@/modules/marketing/RentNowButton";
@@ -22,40 +24,44 @@ export default function Home() {
 
         <main>
           {/* ── Hero ── */}
-          <section id="home" className="relative min-h-screen overflow-hidden bg-neutral-950">
-            <div className="absolute inset-0">
-              <Image
-                src="/JamJade-Hero.jpeg"
-                alt="JamJade rental car ready for a trip"
-                fill
-                priority
-                sizes="100vw"
-                className="object-cover object-center brightness-[0.82] saturate-105"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,15,28,0.88)_0%,rgba(10,15,28,0.58)_46%,rgba(10,15,28,0.18)_100%)]" />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,15,28,0.2)_0%,rgba(10,15,28,0.08)_58%,rgba(245,245,245,0.95)_100%)]" />
+          <section
+            id="home"
+            aria-labelledby="hero-heading"
+            className="relative isolate flex min-h-dvh flex-col overflow-hidden bg-background pt-16"
+          >
+            <div className="relative z-10 mx-auto w-full max-w-[1400px] shrink-0 px-4 pb-6 pt-8 sm:px-8 sm:pt-10 lg:px-20 lg:pb-16 lg:pt-[clamp(2rem,7dvh,5rem)]">
+              <div className="max-w-xl lg:w-[52%] lg:max-w-[640px]">
+                <h1
+                  id="hero-heading"
+                  className="text-[clamp(2.75rem,13vw,3.5rem)] font-bold leading-[1.05] tracking-tight text-foreground text-shadow-lg text-shadow-foreground/20 sm:text-7xl lg:text-[clamp(3rem,min(6.5vw,10dvh),6rem)]"
+                >
+                  Your Journey
+                  <span className="block">Starts with</span>
+                  <span className="block text-primary text-shadow-lg text-shadow-primary/25">JamJade</span>
+                </h1>
+                <p className="mt-6 max-w-md text-base leading-7 text-muted-foreground sm:text-lg lg:max-w-[min(32rem,38vw)] lg:text-xl lg:leading-8">
+                  Reliable daily and long-term rentals for business trips, family
+                  errands, and weekend drives, with vehicles prepared for comfort,
+                  safety, and easy booking.
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <RentNowButton />
+                  <Button asChild variant="outline" className="min-h-12 min-w-32 px-6 text-sm font-semibold">
+                    <a href="#showcase">View Fleet</a>
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-end px-6 pb-26 pt-28 sm:px-10 lg:px-20">
-              <h1 className="max-w-4xl text-5xl font-bold leading-none text-white sm:text-6xl lg:text-8xl">
-                Your Journey Starts with
-                <span className="block text-primary">JamJade</span>
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-white/78 sm:text-lg">
-                Reliable daily and long-term rentals for business trips, family
-                errands, and weekend drives, with vehicles prepared for comfort,
-                safety, and easy booking.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <RentNowButton />
-
-                <a
-                  href="#showcase"
-                  className="flex min-h-11 min-w-32 items-center justify-center rounded-md border border-white/35 bg-white/10 px-5 py-3 text-center text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/18 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  View Fleet
-                </a>
-              </div>
+            <div className="relative min-h-48 w-full flex-1 lg:absolute lg:bottom-0 lg:left-[15%] lg:right-0 lg:top-16 lg:min-h-0 lg:w-auto">
+              <Image
+                src="/Hero-Image.png"
+                alt="JamJade rental fleet with a silver van, family car, and sedan"
+                fill
+                preload
+                sizes="100vw"
+                className="object-cover object-right lg:object-contain lg:object-right-bottom"
+              />
             </div>
           </section>
 
@@ -64,6 +70,23 @@ export default function Home() {
             <div className="mx-auto w-full">
               <CarShowcase />
             </div>
+          </section>
+
+          <section
+            id="driving-insights"
+            aria-labelledby="driving-insights-heading"
+            className={`scroll-mt-20 bg-background ${sectionPadding}`}
+          >
+            <div className={sectionHeader}>
+              <h2 id="driving-insights-heading" className={sectionHeading}>
+                More insight. Every journey.
+              </h2>
+              <p className={sectionSubtext}>
+                AI driving-event classification brings vehicle movement and journey
+                context together to help our team understand each rental journey.
+              </p>
+            </div>
+            <DrivingInsights />
           </section>
 
           {/* ── How to Book ── */}
@@ -100,8 +123,8 @@ export default function Home() {
             </div>
             <div className="flex items-center justify-center">
               <iframe
-                title="Map centered on the JamJade showroom location"
-                src="https://maps.google.com/maps?ll=14.3668717,120.8277429&z=17&output=embed"
+                title="Map showing the JamJade showroom pin"
+                src="https://maps.google.com/maps?q=jamjade+rent+a+car+services,+Sahud-Ulan,+Tanza,+Cavite&ll=14.3668717,120.8277429&z=17&output=embed"
                 width="600"
                 height="450"
                 className="h-[450px] w-full max-w-[1100px] rounded-2xl border-0 shadow-2xl"
@@ -136,6 +159,14 @@ export default function Home() {
             {/* Brand */}
             <div className="flex flex-col">
               <div className="mb-4 flex items-center gap-2">
+                <Image
+                  src="/JamJadeLogo-gradient.png"
+                  alt=""
+                  width={48}
+                  height={48}
+                  sizes="48px"
+                  className="size-12 shrink-0 rounded-md bg-surface object-contain"
+                />
                 <p className="text-lg font-bold tracking-wide text-white">
                   JAMJADE CAR RENTAL
                 </p>
@@ -163,6 +194,7 @@ export default function Home() {
                 {[
                   { href: "#home", label: "Home" },
                   { href: "#showcase", label: "Car Showcase" },
+                  { href: "#driving-insights", label: "Driving Insights" },
                   { href: "#tutorial", label: "How to Book" },
                   { href: "#testimonials", label: "Reviews" },
                   { href: "#visit", label: "Visit Us" },

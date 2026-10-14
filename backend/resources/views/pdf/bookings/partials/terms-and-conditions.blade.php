@@ -10,7 +10,11 @@
                     <li>Van / Hiace / Innova / Fortuner: PHP 300.00 per hour.</li>
                 </ul>
             </li>
-            <li>Pickup and delivery of the unit to the renter will be charged PHP 900.00.</li>
+            @if ($booking->deliveryQuote || $booking->terms_version >= '2026-10-12')
+                <li>Garage pickup and return are free. Delivery and any staff-approved toll are charged at the accepted quote amount.</li>
+            @else
+                <li>Pickup and delivery of the unit to the renter will be charged PHP 900.00.</li>
+            @endif
             <li>A rental extension is allowed only after surrendering the unit first and paying the remaining balance.</li>
             <li>The rented vehicle must be clean when returned to the company.</li>
             <li>Pets are not allowed. A PHP 1,000.00 fee will be charged for violations.</li>

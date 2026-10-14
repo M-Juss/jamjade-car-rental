@@ -1,11 +1,4 @@
-import {
-  CircleCheck,
-  CircleX,
-  Info,
-  TriangleAlert,
-  X,
-  type LucideIcon,
-} from 'lucide-react-native';
+import { CircleCheck, CircleX, Info, TriangleAlert, X, type LucideIcon } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,14 +13,17 @@ type ToastState = {
   variant: FormToastVariant;
 };
 
-const TOAST_CONFIG: Record<FormToastVariant, {
-  backgroundColor: string;
-  borderColor: string;
-  icon: LucideIcon;
-  iconBackgroundColor: string;
-  iconColor: string;
-  title: string;
-}> = {
+const TOAST_CONFIG: Record<
+  FormToastVariant,
+  {
+    backgroundColor: string;
+    borderColor: string;
+    icon: LucideIcon;
+    iconBackgroundColor: string;
+    iconColor: string;
+    title: string;
+  }
+> = {
   success: {
     backgroundColor: themeColors.successSurface,
     borderColor: themeColors.successBorder,
@@ -75,17 +71,16 @@ export function useFormToast() {
     return () => clearTimeout(timeout);
   }, [toast]);
 
-  const showToast = useCallback((
-    nextMessage: string,
-    variant: FormToastVariant = 'error',
-    title?: string,
-  ) => {
-    setToast({
-      message: nextMessage,
-      title: title ?? TOAST_CONFIG[variant].title,
-      variant,
-    });
-  }, []);
+  const showToast = useCallback(
+    (nextMessage: string, variant: FormToastVariant = 'error', title?: string) => {
+      setToast({
+        message: nextMessage,
+        title: title ?? TOAST_CONFIG[variant].title,
+        variant,
+      });
+    },
+    [],
+  );
 
   const clearToast = useCallback(() => {
     setToast(null);
@@ -126,7 +121,7 @@ export function FormToast({
       className="absolute left-0 right-0 z-50 px-5"
       style={{ top: Math.max(insets.top + 10, 22) }}>
       <View
-        className="flex-row items-center gap-3 rounded-[18px] border px-4 py-3.5 shadow-lg shadow-foreground/10"
+        className="flex-row items-center gap-3 rounded-[18px] border px-4 py-3.5 "
         style={{
           backgroundColor: config.backgroundColor,
           borderColor: config.borderColor,
@@ -137,10 +132,10 @@ export function FormToast({
           <Icon size={22} color={config.iconColor} strokeWidth={2.6} />
         </View>
         <View className="min-w-0 flex-1">
-          <Text className="text-[14px] font-black leading-5 text-foreground">
+          <Text className="font-sans text-[14px] font-semibold leading-5 text-foreground">
             {title ?? config.title}
           </Text>
-          <Text className="mt-0.5 text-[12px] font-medium leading-[18px] text-muted-foreground">
+          <Text className="font-sans mt-0.5 text-[12px] font-medium leading-[18px] text-secondary-foreground">
             {message}
           </Text>
         </View>

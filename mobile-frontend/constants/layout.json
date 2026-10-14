@@ -1,0 +1,17 @@
+{
+  "screenPadding": 20,
+  "cardPadding": 16,
+  "sectionGap": 20,
+  "controlHeight": 48,
+  "tabBarHeight": 60,
+  "tabBarLift": 12,
+  "floatingGap": 8,
+  "radius": { "card": 22, "field": 14, "sheet": 28 },
+  "type": {
+    "title": [26, 32],
+    "section": [17, 22],
+    "body": [15, 22],
+    "caption": [13, 18],
+    "button": [15, 20]
+  }
+}

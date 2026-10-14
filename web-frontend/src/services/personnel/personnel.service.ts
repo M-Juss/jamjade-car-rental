@@ -1,9 +1,9 @@
 import { apiGet, apiPost, apiPut } from "@/services/http";
 import type { PersonnelAccountFormValues } from "@/validations/personnel/schemas";
-import type { PersonnelCategory, PersonnelResponse, PersonnelUser } from "./types";
+import type { PersonnelFilter, PersonnelResponse, PersonnelUser } from "./types";
 
 export async function getPersonnel(params: {
-  role: PersonnelCategory;
+  role: PersonnelFilter;
   search: string;
   status: string;
   page: number;

@@ -5,6 +5,8 @@ import type { GeofenceRecord } from "./types";
 function payload(values: GeofenceTemplateFormValues) {
   return {
     name: values.name.trim(),
+    notify_on_enter: values.notifyOnEnter,
+    notify_on_exit: values.notifyOnExit,
     geometry_type: values.geometryType,
     center_latitude: values.geometryType === "circle" ? Number(values.centerLatitude) : null,
     center_longitude: values.geometryType === "circle" ? Number(values.centerLongitude) : null,
@@ -33,4 +35,14 @@ export async function setGeofenceActive(id: string, active: boolean) {
 
 export async function deleteGeofence(id: string) {
   return (await apiDelete<{ id: string; isDeleted: boolean }>(`/admin/geofences/${id}`)).data;
+}
+
+export async function saveBookingMonitoringZone(bookingId: number, values: GeofenceTemplateFormValues, zoneId?: string) {
+  const url = `/admin/bookings/${bookingId}/monitoring-zones`;
+  if (zoneId) return (await apiPut(`${url}/${zoneId}`, payload(values))).data;
+  return (await apiPost(url, payload(values))).data;
+}
+
+export async function deleteBookingMonitoringZone(bookingId: number, zoneId: string) {
+  return (await apiDelete(`/admin/bookings/${bookingId}/monitoring-zones/${zoneId}`)).data;
 }

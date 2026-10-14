@@ -15,6 +15,7 @@ class AdditionalChargeResource extends JsonResource
             'typeLabel' => $this->type->label(),
             'description' => $this->description,
             'amount' => (float) $this->amount,
+            'outstandingAmount' => (float) $this->outstanding_amount,
             'responsibility' => $this->responsibility->value,
             'responsibleUser' => $this->whenLoaded('responsibleUser', fn () => [
                 'id' => $this->responsibleUser->id,

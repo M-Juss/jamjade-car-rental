@@ -20,14 +20,7 @@ class SelfDriveVerificationService
                 ->where('status', DocumentStatus::Approved->value))
             ->whereHas('documents', fn (Builder $documents) => $documents
                 ->where('document_type', CustomerDocument::PROOF_OF_BILLING)
-                ->where('status', DocumentStatus::Approved->value))
-            ->where(function (Builder $customers) {
-                $customers->whereHas('customerProfile', fn (Builder $profile) => $profile
-                    ->where('passport_required', false))
-                    ->orWhereHas('documents', fn (Builder $documents) => $documents
-                        ->where('document_type', CustomerDocument::PASSPORT)
-                        ->where('status', DocumentStatus::Approved->value));
-            });
+                ->where('status', DocumentStatus::Approved->value));
     }
 
     public function summary(User $customer): array

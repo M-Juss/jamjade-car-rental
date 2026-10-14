@@ -10,7 +10,6 @@ export type DocumentVerificationStatus =
 
 export type CustomerDocumentId =
   | 'driver-license'
-  | 'passport'
   | 'proof-of-address';
 
 export type CustomerDocumentStatuses = Record<CustomerDocumentId, DocumentVerificationStatus>;
@@ -48,8 +47,7 @@ export type CustomerDocumentUploads = {
   driverLicenseFront: string;
   driverLicenseBack: string;
   proofOfAddress: string;
-  passport: string;
-  passportRequiredByAdmin: boolean;
+  proofOfAddressBack: string;
 };
 
 export type Customer = {
@@ -82,7 +80,7 @@ export type Customer = {
 
 export type BasicCustomerProfileInput = Pick<
   Customer,
-  'email' | 'firstName' | 'lastName' | 'contactNumber' | 'birthdate' | 'address' | 'profilePicture'
+  'firstName' | 'lastName' | 'contactNumber' | 'birthdate' | 'address' | 'profilePicture'
 > & {
   addressDetails: CustomerAddress;
 };

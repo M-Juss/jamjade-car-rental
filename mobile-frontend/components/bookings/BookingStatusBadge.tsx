@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import { BadgeCheck, Ban, CheckCircle2, CircleAlert, Clock3 } from 'lucide-react-native';
 import { View, Text } from 'react-native';
 
@@ -10,7 +11,7 @@ const statusStyles = {
     bg: 'bg-warning-surface',
     border: 'border-warning-border',
     text: 'text-warning',
-    color: '#C2410C',
+    color: themeColors.warning,
     icon: Clock3,
   },
   Confirmed: {
@@ -24,21 +25,21 @@ const statusStyles = {
     bg: 'bg-success-surface',
     border: 'border-success-border',
     text: 'text-success',
-    color: '#047857',
+    color: themeColors.success,
     icon: CheckCircle2,
   },
   Ongoing: {
     bg: 'bg-success-surface',
     border: 'border-success-border',
     text: 'text-success',
-    color: '#047857',
+    color: themeColors.success,
     icon: CheckCircle2,
   },
   Returned: {
     bg: 'bg-warning-surface',
     border: 'border-warning-border',
     text: 'text-warning',
-    color: '#C2410C',
+    color: themeColors.warning,
     icon: Clock3,
   },
   Completed: {
@@ -52,7 +53,7 @@ const statusStyles = {
     bg: 'bg-destructive-surface',
     border: 'border-destructive-border',
     text: 'text-destructive',
-    color: '#B91C1C',
+    color: themeColors.destructive,
     icon: CircleAlert,
   },
   Cancelled: {
@@ -73,7 +74,13 @@ const statusStyles = {
   }
 >;
 
-export function BookingStatusBadge({ compact = false, status }: { status: BookingStatus; compact?: boolean }) {
+export function BookingStatusBadge({
+  compact = false,
+  status,
+}: {
+  status: BookingStatus;
+  compact?: boolean;
+}) {
   const style = statusStyles[status];
   const Icon = style.icon;
 
@@ -86,7 +93,9 @@ export function BookingStatusBadge({ compact = false, status }: { status: Bookin
         style.border,
       )}>
       <Icon size={compact ? 12 : 14} color={style.color} strokeWidth={2.6} />
-      <Text className={cx('font-black', compact ? 'text-[10px]' : 'text-[12px]', style.text)}>{status}</Text>
+      <Text className={cx('font-sans', 'font-semibold', compact ? 'text-[11px]' : 'text-[12px]', style.text)}>
+        {status}
+      </Text>
     </View>
   );
 }

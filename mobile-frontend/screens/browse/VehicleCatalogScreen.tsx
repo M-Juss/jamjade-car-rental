@@ -1,3 +1,5 @@
+import { floatingTabBarContentPadding } from '@/constants/layout';
+import { themeColors } from '@/constants/theme';
 import { useRouter, type Href } from 'expo-router';
 import { ArrowLeft, LogIn } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -7,8 +9,6 @@ import {
   ScrollView,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,13 +31,9 @@ type CatalogMode = 'customer' | 'guest';
 
 type VehicleCatalogScreenProps = {
   mode: CatalogMode;
-  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 };
 
-const defaultFilters: BrowseFilters = {
-  features: [],
-  sort: 'featured',
-};
+const defaultFilters: BrowseFilters = {};
 
 function matchesSearch(vehicle: Vehicle, searchTerm: string) {
   const normalized = searchTerm.trim().toLowerCase();
@@ -46,40 +42,35 @@ function matchesSearch(vehicle: Vehicle, searchTerm: string) {
     return true;
   }
 
-  return [
-    vehicle.name,
-    vehicle.brand,
-    vehicle.model,
-    vehicle.color,
-    vehicle.transmission,
-    vehicle.fuelType,
-  ]
+  return [vehicle.name, vehicle.brand, vehicle.model, vehicle.color, vehicle.transmission, vehicle.fuelType]
     .join(' ')
     .toLowerCase()
     .includes(normalized);
 }
 
 function matchesFilters(vehicle: Vehicle, filters: BrowseFilters, bookmarkedVehicleIds: string[]) {
-  const matchesPrice = !filters.maxPrice || vehicle.pricePerDay <= filters.maxPrice;
+  const matchesPrice =
+    (filters.minPrice === undefined || vehicle.pricePerDay >= filters.minPrice) &&
+    (filters.maxPrice === undefined || vehicle.pricePerDay <= filters.maxPrice);
+  const matchesBrand = !filters.brand || vehicle.brand === filters.brand;
+  const matchesColor = !filters.color || vehicle.color === filters.color;
   const matchesTransmission = !filters.transmission || vehicle.transmission === filters.transmission;
   const matchesFuelType = !filters.fuelType || vehicle.fuelType === filters.fuelType;
   const matchesSeats = !filters.seats || vehicle.seats === filters.seats;
-  const matchesFeatures = filters.features.every((feature) => vehicle.features.includes(feature));
-  const matchesFeatured = !filters.featuredOnly || Boolean(vehicle.isFeatured);
-  const matchesBookmarked = !filters.bookmarkedOnly || bookmarkedVehicleIds.includes(vehicle.id);
+  const matchesBookmarked = filters.sort !== 'saved' || bookmarkedVehicleIds.includes(vehicle.id);
 
   return (
     matchesPrice &&
+    matchesBrand &&
+    matchesColor &&
     matchesTransmission &&
     matchesFuelType &&
     matchesSeats &&
-    matchesFeatures &&
-    matchesFeatured &&
     matchesBookmarked
   );
 }
 
-function sortVehicles(vehicles: Vehicle[], sort: SortOption) {
+function sortVehicles(vehicles: Vehicle[], sort?: SortOption) {
   return [...vehicles].sort((first, second) => {
     if (sort === 'lowest_price') {
       return first.pricePerDay - second.pricePerDay;
@@ -89,11 +80,7 @@ function sortVehicles(vehicles: Vehicle[], sort: SortOption) {
       return second.pricePerDay - first.pricePerDay;
     }
 
-    if (sort === 'featured') {
-      return Number(Boolean(second.isFeatured)) - Number(Boolean(first.isFeatured));
-    }
-
-    return Date.parse(second.createdAt) - Date.parse(first.createdAt);
+    return 0;
   });
 }
 
@@ -109,14 +96,14 @@ function GuestCatalogHeader() {
           hitSlop={8}
           onPress={() => router.replace('/' as Href)}
           className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
-          <ArrowLeft size={21} color="#17315F" strokeWidth={2.5} />
+          <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.5} />
         </Pressable>
 
         <View className="min-w-0 flex-1">
-          <Text className="text-[11px] font-black uppercase tracking-[0.8px] text-primary">
-            Guest browsing
-          </Text>
-          <Text className="mt-0.5 text-[12px] font-semibold text-muted-foreground" numberOfLines={1}>
+          <Text className="font-sans text-[11px] font-semibold text-primary">Guest browsing</Text>
+          <Text
+            className="font-sans mt-0.5 text-[12px] font-normal text-secondary-foreground"
+            numberOfLines={1}>
             Explore before creating an account
           </Text>
         </View>
@@ -126,70 +113,58 @@ function GuestCatalogHeader() {
           accessibilityRole="button"
           onPress={() => router.push('/login' as Href)}
           className="min-h-12 flex-row items-center gap-2 rounded-full bg-primary px-4">
-          <LogIn size={17} color="#FFFFFF" strokeWidth={2.6} />
-          <Text className="text-[13px] font-black text-surface">Sign In</Text>
+          <LogIn size={17} color={themeColors.surface} strokeWidth={2.6} />
+          <Text className="font-sans text-[13px] font-semibold text-surface">Sign In</Text>
         </Pressable>
       </View>
-
     </>
   );
 }
 
-export function VehicleCatalogScreen({ mode, onScroll }: VehicleCatalogScreenProps) {
+export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<BrowseFilters>(defaultFilters);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
-  const {
-    vehicles: availableVehicles,
-    isLoading,
-    error,
-    refresh,
-  } = useAvailableVehicles();
+  const { vehicles: availableVehicles, isLoading, error, refresh } = useAvailableVehicles();
 
   const vehicles = useMemo(() => {
     const filteredVehicles = availableVehicles.filter(
-      (vehicle) => matchesSearch(vehicle, searchTerm) && matchesFilters(vehicle, filters, bookmarkedVehicleIds),
+      (vehicle) =>
+        matchesSearch(vehicle, searchTerm) && matchesFilters(vehicle, filters, bookmarkedVehicleIds),
     );
 
-    return sortVehicles(filteredVehicles, filters.sort ?? 'featured');
+    return sortVehicles(filteredVehicles, filters.sort);
   }, [availableVehicles, bookmarkedVehicleIds, filters, searchTerm]);
 
   const activeFilterCount =
-    Number(Boolean(filters.bookmarkedOnly)) +
-    Number(Boolean(filters.maxPrice)) +
-    Number(Boolean(filters.featuredOnly)) +
+    Number(filters.minPrice !== undefined || filters.maxPrice !== undefined) +
+    Number(Boolean(filters.brand)) +
+    Number(Boolean(filters.color)) +
     Number(Boolean(filters.transmission)) +
     Number(Boolean(filters.fuelType)) +
     Number(Boolean(filters.seats)) +
-    Number((filters.sort ?? 'featured') !== 'featured') +
-    filters.features.length;
-  const bottomPadding = mode === 'customer' ? 112 + insets.bottom : 32 + insets.bottom;
+    Number(Boolean(filters.sort));
+  const bottomPadding = mode === 'customer' ? floatingTabBarContentPadding + insets.bottom : 32 + insets.bottom;
 
   return (
     <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentInsetAdjustmentBehavior="never"
-        onScroll={onScroll}
-        refreshControl={(
+        refreshControl={
           <RefreshControl
-            colors={['#346EF6']}
+            colors={[themeColors.primary]}
             refreshing={isLoading && availableVehicles.length > 0}
-            tintColor="#346EF6"
+            tintColor={themeColors.primary}
             onRefresh={() => void refresh()}
           />
-        )}
-        scrollEventThrottle={16}
+        }
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: bottomPadding, paddingTop: insets.top + 10 }}>
-          {mode === 'guest' ? (
-            <GuestCatalogHeader />
-          ) : (
-            <CustomerTabHeader title="Browse Cars" />
-          )}
+          {mode === 'guest' ? <GuestCatalogHeader /> : <CustomerTabHeader title="Browse Cars" />}
 
           <View className="mt-2">
             <SearchInput
@@ -201,13 +176,13 @@ export function VehicleCatalogScreen({ mode, onScroll }: VehicleCatalogScreenPro
           </View>
 
           <View className="mt-5 flex-row items-center justify-between">
-            <Text className="text-[13px] font-black text-foreground">
+            <Text className="font-sans text-[13px] font-semibold text-foreground">
               {vehicles.length} available vehicles
             </Text>
-            <Text className="text-[12px] font-bold text-subtle-foreground">Live fleet</Text>
+            <Text className="font-sans text-[12px] font-medium text-secondary-foreground">Live fleet</Text>
           </View>
 
-          <View className="mt-4 gap-6">
+          <View className="mt-4 gap-3">
             {isLoading && availableVehicles.length === 0 ? (
               <LoadingState />
             ) : error && availableVehicles.length === 0 ? (

@@ -63,7 +63,7 @@ class BookingController extends Controller
     {
         return Booking::query()
             ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'vehicleInspections', 'telematicsTrips',
-                'assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser')])
             ->where('user_id', $request->user()->id)
             ->where(fn ($query) => $query->where('booking_code', $booking)->orWhere('id', $booking))

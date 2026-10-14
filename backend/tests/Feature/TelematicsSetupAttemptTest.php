@@ -6,7 +6,7 @@ use App\Enums\TelematicsSetupStatus;
 use App\Enums\TelematicsSetupStepStatus;
 use App\Enums\TelematicsSetupStepType;
 use App\Models\Booking;
-use App\Models\Geofence;
+use App\Models\BookingGeofence;
 use App\Services\BookingService;
 use App\Services\CircularGeofenceService;
 use App\Services\TelematicsSetupService;
@@ -26,12 +26,9 @@ function attemptBooking(): Booking
 {
     $booking = telematicsFoundationBooking();
     finalizeFoundationOutgoing($booking);
-    app(TelematicsSetupService::class)->assignGeofenceSnapshot($booking, null, [
-        'name' => 'Attempt boundary', 'center_latitude' => 14.299, 'center_longitude' => 120.958, 'radius_meters' => 1000,
-    ], vehicleManagerUser());
     app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser());
 
-    return $booking->fresh(['user', 'telematicsSetupSession.steps', 'bookingGeofence']);
+    return $booking->fresh(['user', 'telematicsSetupSession.steps', 'bookingGeofences']);
 }
 
 function passAttemptPrerequisites(Booking $booking, array $types): void
@@ -98,7 +95,7 @@ it('rejects another renter and owner-driver access', function () {
 
 it('treats a GPS point on the circular geofence radius as inside', function () {
     $booking = attemptBooking();
-    $geofence = $booking->bookingGeofence;
+    $geofence = BookingGeofence::factory()->create(['booking_id' => $booking->id, 'center_latitude' => 14.299, 'center_longitude' => 120.958, 'radius_meters' => 1000]);
     $radius = (float) $geofence->radius_meters;
     $earthRadius = 6371008.8;
     $latitudeAtBoundary = (float) $geofence->center_latitude + rad2deg($radius / $earthRadius);
@@ -114,7 +111,7 @@ it('treats a GPS point on the circular geofence radius as inside', function () {
         ->and($result['inside'])->toBeTrue();
 });
 
-it('validates fresh GPS quality and uses the immutable booking geofence server-side', function () {
+it('validates GPS quality without restricting setup to a zone', function () {
     $booking = attemptBooking();
     passAttemptPrerequisites($booking, [TelematicsSetupStepType::DeviceCheck, TelematicsSetupStepType::MotionPermission, TelematicsSetupStepType::LocationPermission, TelematicsSetupStepType::BackgroundLocation]);
     Sanctum::actingAs($booking->user);
@@ -125,9 +122,13 @@ it('validates fresh GPS quality and uses the immutable booking geofence server-s
     $this->postJson($url, ['evidence' => setupAttemptPayload(['accuracy' => 100])])->assertOk()->assertJsonPath('data.steps.4.status', 'failed');
     $this->postJson($url, ['evidence' => setupAttemptPayload()])->assertOk()->assertJsonPath('data.steps.4.status', 'passed');
 
-    $geofenceUrl = "/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/geofence_check/attempt";
-    $this->postJson($geofenceUrl, ['evidence' => setupAttemptPayload()])->assertOk()->assertJsonPath('data.geofenceCheck.inside', true);
-    $this->postJson($geofenceUrl, ['evidence' => setupAttemptPayload(['latitude' => 14.35, 'longitude' => 121.05])])->assertOk()->assertJsonPath('data.geofenceCheck.inside', false);
+    // An outside coordinate still passes GPS readiness; geofence setup is retired.
+    $this->postJson($url, ['evidence' => setupAttemptPayload(['latitude' => 14.35, 'longitude' => 121.05])])
+        ->assertOk()->assertJsonPath('data.steps.4.status', 'passed');
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/geofence_check/attempt", ['evidence' => setupAttemptPayload()])
+        ->assertUnprocessable();
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/phone_mount/attempt", ['evidence' => ['confirmed' => true, 'checked_at' => now()->toISOString()]])
+        ->assertOk()->assertJsonPath('data.steps.5.status', 'passed');
 
     expect($booking->fresh('telematicsSetupSession')->telematicsSetupSession->status)->toBe(TelematicsSetupStatus::InProgress);
     expect($booking->telematicsTrips()->count())->toBe(0);
@@ -138,24 +139,6 @@ it('validates fresh GPS quality and uses the immutable booking geofence server-s
         ->assertJsonMissing(['latitude'])
         ->assertJsonMissing(['longitude'])
         ->assertJsonMissing(['evidence']);
-});
-
-it('does not use a changed source template and requires geofence readiness before manual phone mount', function () {
-    $template = Geofence::factory()->create(['center_latitude' => 14.299, 'center_longitude' => 120.958, 'radius_meters' => 1000]);
-    $booking = telematicsFoundationBooking();
-    finalizeFoundationOutgoing($booking);
-    app(TelematicsSetupService::class)->assignGeofenceSnapshot($booking, $template, [], vehicleManagerUser());
-    app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser());
-    $template->update(['center_latitude' => 0, 'center_longitude' => 0, 'radius_meters' => 5]);
-    passAttemptPrerequisites($booking, [TelematicsSetupStepType::DeviceCheck, TelematicsSetupStepType::MotionPermission, TelematicsSetupStepType::LocationPermission, TelematicsSetupStepType::BackgroundLocation, TelematicsSetupStepType::GpsCheck]);
-    Sanctum::actingAs($booking->user);
-
-    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/geofence_check/attempt", ['evidence' => setupAttemptPayload()])
-        ->assertOk()->assertJsonPath('data.geofenceCheck.inside', true);
-    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/phone_mount/attempt", ['evidence' => ['confirmed' => true, 'checked_at' => now()->toISOString()]])
-        ->assertOk()->assertJsonPath('data.steps.6.status', 'passed');
-
-    expect($booking->fresh('telematicsSetupSession')->telematicsSetupSession->status)->toBe(TelematicsSetupStatus::InProgress);
 });
 
 it('keeps released setup read-only after staff starts the rental', function () {

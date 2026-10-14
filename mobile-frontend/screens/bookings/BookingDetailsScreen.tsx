@@ -1,3 +1,6 @@
+import { DeliveryLocationLink } from '@/components/bookings/DeliveryLocationLink';
+import { themeColors } from '@/constants/theme';
+import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import {
@@ -32,7 +35,8 @@ import {
   getBookingActions,
   type BookingAction,
 } from '@/components/bookings';
-import { formatPeso, isTelematicsEnabled } from '@/lib/bookings/helpers';
+import { formatPeso } from '@/lib/bookings/helpers';
+import { canSelectTelematicsBooking } from '@/lib/telematics/setup';
 import { cancelBooking, getBooking } from '@/services/api';
 import type { Booking, DocumentStatus } from '@/types/booking';
 
@@ -66,25 +70,17 @@ function DocumentStatusBadge({ status }: { status: DocumentStatus }) {
 
   return (
     <View className={cx('rounded-full border px-2.5 py-1', styles.bg, styles.border)}>
-      <Text className={cx('text-[10px] font-black', styles.text)}>{status}</Text>
+      <Text className={cx('font-sans', 'text-[11px] font-semibold', styles.text)}>{status}</Text>
     </View>
   );
 }
 
-function VehicleSpec({
-  icon: Icon,
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-  icon: typeof Car;
-}) {
+function VehicleSpec({ icon: Icon, label, value }: { label: string; value: string; icon: typeof Car }) {
   return (
-    <View className="min-h-[82px] flex-1 basis-[47%] rounded-[22px] border border-[#EAF0FB] bg-background p-4">
-      <Icon size={18} color="#346EF6" strokeWidth={2.35} />
-      <Text className="mt-2 text-[10px] font-black uppercase text-subtle-foreground">{label}</Text>
-      <Text className="mt-1 text-[13px] font-black leading-5 text-foreground" numberOfLines={2}>
+    <View className="min-h-[82px] flex-1 basis-[47%] rounded-[22px] border border-border bg-background p-4">
+      <Icon size={18} color={themeColors.primary} strokeWidth={2.35} />
+      <Text className="font-sans mt-2 text-[11px] font-normal text-secondary-foreground">{label}</Text>
+      <Text className="font-sans mt-1 text-[13px] font-semibold leading-5 text-foreground" numberOfLines={2}>
         {value}
       </Text>
     </View>
@@ -98,9 +94,10 @@ function DetailsActions({
   booking: Booking;
   onAction: (action: BookingAction, booking: Booking) => void;
 }) {
-  const actions = getBookingActions(booking.status, { includeDetails: false, isSelfDrive: booking.driverType === 'Self-Drive' }).filter(
-    (action) => action.key !== 'pay_balance' || booking.remainingBalance > 0,
-  );
+  const actions = getBookingActions(booking.status, {
+    includeDetails: false,
+    isSelfDrive: booking.driverType === 'Self-Drive',
+  }).filter((action) => action.key !== 'pay_balance' || booking.remainingBalance > 0);
   const primaryActionKeys: BookingAction['key'][] = [
     'payment_info',
     'pay_balance',
@@ -134,7 +131,7 @@ function DetailsActions({
       {supportingActions.length > 0 ? (
         <View className={cx('gap-3', primaryActions.length > 0 && 'border-t border-border pt-4')}>
           {primaryActions.length > 0 ? (
-            <Text className="text-[11px] font-black uppercase tracking-[0.8px] text-subtle-foreground">More actions</Text>
+            <Text className="font-sans text-[11px] font-normal text-secondary-foreground">More actions</Text>
           ) : null}
           {supportingActions.map((action) => (
             <ActionButton
@@ -205,8 +202,8 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
       return;
     }
 
-    if (action.key === 'open_telematics' && isTelematicsEnabled(selectedBooking)) {
-      router.push(`/telematics?bookingId=${encodeURIComponent(selectedBooking.id)}` as Href);
+    if (action.key === 'open_telematics' && canSelectTelematicsBooking(selectedBooking)) {
+      router.navigate({ pathname: '/(tabs)/telematics', params: { bookingId: selectedBooking.id } });
       return;
     }
 
@@ -214,13 +211,12 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
       router.push('/' as Href);
       return;
     }
-
   };
 
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#346EF6" size="large" />
+        <ActivityIndicator color={themeColors.primary} size="large" />
       </View>
     );
   }
@@ -240,68 +236,89 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="never">
-        <View className="px-5" style={{ paddingBottom: 34 + insets.bottom, paddingTop: insets.top + 10 }}>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never">
+        <View
+          className="w-full max-w-[560px] self-center px-screen"
+          style={{ paddingBottom: 34 + insets.bottom, paddingTop: insets.top + 10 }}>
           <View className="flex-row items-center gap-3">
             <Pressable
               accessibilityLabel="Go back"
               accessibilityRole="button"
               onPress={() => router.back()}
               className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
-              <ArrowLeft size={21} color="#17315F" strokeWidth={2.45} />
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
             <View className="min-w-0 flex-1">
-              <Text className="text-[25px] font-black leading-[30px] text-foreground">Booking Details</Text>
-              <Text className="mt-0.5 text-[13px] font-bold text-muted-foreground">{booking.id}</Text>
+              <Text className="font-sans text-title font-semibold text-foreground">Booking Details</Text>
+              <View className="mt-1 flex-row flex-wrap items-center gap-2">
+                <Text className="font-sans text-[13px] font-medium text-secondary-foreground">
+                  {booking.id}
+                </Text>
+                <BookingStatusBadge status={booking.status} compact />
+              </View>
             </View>
-            <BookingStatusBadge status={booking.status} compact />
+            <LogoutHeaderButton />
           </View>
 
-          <View className="mt-6 gap-5">
+          <View className="mt-6 gap-4">
             <SectionCard title="Rental Progress" icon={Navigation}>
               {[
                 ['Booking confirmed', booking.status !== 'Pending'],
                 ['Outgoing inspection', booking.rentalProgress.outgoingFinalized],
-                ['Telematics setup', ['ready_for_release', 'released'].includes(booking.telematicsSetupStatus ?? '')],
+                [
+                  'Telematics setup',
+                  ['ready_for_release', 'released'].includes(booking.telematicsSetupStatus ?? ''),
+                ],
                 ['Active rental', ['Active', 'Ongoing', 'Returned', 'Completed'].includes(booking.status)],
                 ['Return inspection', booking.rentalProgress.incomingFinalized],
                 ['Completed', booking.status === 'Completed'],
               ].map(([label, completed]) => (
-                <View key={String(label)} className="flex-row items-center gap-3 border-b border-[#EEF2FF] py-3">
-                  <View className={cx('h-7 w-7 items-center justify-center rounded-full', completed ? 'bg-success-surface' : 'bg-[#F1F5F9]')}>
-                    <Text className={cx('text-[12px] font-black', completed ? 'text-success' : 'text-subtle-foreground')}>
+                <View
+                  key={String(label)}
+                  className="flex-row items-center gap-3 border-b border-[#EEF2FF] py-3">
+                  <View
+                    className={cx(
+                      'h-7 w-7 items-center justify-center rounded-full',
+                      completed ? 'bg-success-surface' : 'bg-muted',
+                    )}>
+                    <Text
+                      className={cx(
+                        'font-sans',
+                        'text-[12px] font-semibold',
+                        completed ? 'text-success' : 'text-secondary-foreground',
+                      )}>
                       {completed ? '✓' : '○'}
                     </Text>
                   </View>
-                  <Text className="min-w-0 flex-1 text-[13px] font-bold text-foreground">{label}</Text>
+                  <Text className="font-sans min-w-0 flex-1 text-[13px] font-medium text-foreground">
+                    {label}
+                  </Text>
                 </View>
               ))}
 
-              {booking.driverType === 'Self-Drive' && ['setup_required', 'in_progress'].includes(booking.telematicsSetupStatus ?? '') ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => router.push(`/telematics?bookingId=${encodeURIComponent(booking.id)}` as Href)}
-                  className="mt-4 min-h-[52px] items-center justify-center rounded-full bg-primary px-5">
-                  <Text className="text-[14px] font-black text-surface">View Telematics Setup</Text>
-                </Pressable>
-              ) : null}
-
               {booking.telematicsSetupStatus === 'ready_for_release' && booking.status === 'Confirmed' ? (
-                <Text className="mt-4 rounded-[18px] border border-success-border bg-success-surface p-3 text-[12px] font-bold leading-5 text-success">
+                <Text className="font-sans mt-4 rounded-[18px] border border-success-border bg-success-surface p-3 text-[12px] font-medium leading-5 text-success">
                   Telematics setup is ready. Waiting for Jamjade to start the rental.
                 </Text>
               ) : null}
 
               {booking.rentalProgress.tripEnded && booking.status === 'Ongoing' ? (
-                <Text className="mt-4 rounded-[18px] border border-warning-border bg-warning-surface p-3 text-[12px] font-bold leading-5 text-warning">
-                  Trip ended. The booking remains active until Jamjade completes the Incoming Inspection and return process.
+                <Text className="font-sans mt-4 rounded-[18px] border border-warning-border bg-warning-surface p-3 text-[12px] font-medium leading-5 text-warning">
+                  Trip ended. The booking remains active until Jamjade completes the Incoming Inspection and
+                  return process.
                 </Text>
               ) : null}
             </SectionCard>
 
             <SectionCard title="Booking Overview" icon={ClipboardList}>
               <InfoRow label="Booking ID" value={booking.id} />
-              <InfoRow label="Current Status" value={<BookingStatusBadge status={booking.status} compact />} />
+              <InfoRow
+                label="Current Status"
+                value={<BookingStatusBadge status={booking.status} compact />}
+              />
               <InfoRow label="Created At" value={booking.createdAt} />
               <InfoRow label="Booking Type" value={booking.bookingType} />
             </SectionCard>
@@ -310,18 +327,20 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <Image
                 source={{ uri: `${booking.image}?auto=format&fit=crop&w=1200&q=88` }}
                 resizeMode="cover"
-                className="mb-4 h-[178px] w-full rounded-[24px] bg-[#E9EFFA]"
+                className="mb-4 h-[140px] w-full rounded-[24px] bg-muted"
               />
               <View className="mb-4 flex-row items-start justify-between gap-3">
                 <View className="min-w-0 flex-1">
-                  <Text className="text-[22px] font-black leading-[26px] text-[#10203F]">{booking.vehicleName}</Text>
-                  <Text className="mt-1 text-[12px] font-bold text-muted-foreground">
+                  <Text className="font-sans text-[22px] font-semibold leading-[26px] text-foreground">
+                    {booking.vehicleName}
+                  </Text>
+                  <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
                     {booking.brand} {booking.model}
                   </Text>
                 </View>
-                <Text className="text-right text-[17px] font-black text-primary">
+                <Text className="font-sans text-right text-[17px] font-semibold text-primary">
                   {formatPeso(booking.pricePerDay)}
-                  <Text className="text-[11px] font-extrabold text-subtle-foreground"> / day</Text>
+                  <Text className="text-[11px] font-normal text-secondary-foreground"> / day</Text>
                 </Text>
               </View>
               <View className="flex-row flex-wrap gap-3">
@@ -342,6 +361,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
             <SectionCard title="Pickup / Return Location" icon={MapPinned}>
               <InfoRow label="Pickup Type" value={booking.pickupType} />
               <InfoRow label="Pickup Location" value={booking.pickupLocation} />
+              {booking.deliveryLocation && <DeliveryLocationLink location={booking.deliveryLocation} />}
               {booking.pickupType === 'Delivery' && booking.deliveryTime ? (
                 <InfoRow label="Delivery Time" value={booking.deliveryTime} />
               ) : null}
@@ -351,14 +371,16 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <InfoRow label="Driver Type" value={booking.driverType} />
               {booking.driverType === 'Self-Drive' ? (
                 <View className="mt-3 gap-2">
-                  <Text className="text-[12px] font-black uppercase text-subtle-foreground">Required Documents</Text>
+                  <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
+                    Required Documents
+                  </Text>
                   {booking.documents.map((document) => (
                     <View
                       key={document.name}
-                      className="min-h-[50px] flex-row items-center justify-between gap-3 rounded-[18px] border border-[#EAF0FB] bg-background px-3 py-2">
+                      className="min-h-[50px] flex-row items-center justify-between gap-3 rounded-[18px] border border-border bg-background px-3 py-2">
                       <View className="min-w-0 flex-1 flex-row items-center gap-2">
-                        <FileCheck2 size={16} color="#346EF6" strokeWidth={2.35} />
-                        <Text className="min-w-0 flex-1 text-[13px] font-black text-foreground">
+                        <FileCheck2 size={16} color={themeColors.primary} strokeWidth={2.35} />
+                        <Text className="font-sans min-w-0 flex-1 text-[13px] font-semibold text-foreground">
                           {document.name}
                         </Text>
                       </View>
@@ -368,8 +390,8 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                 </View>
               ) : (
                 <View className="mt-3 flex-row items-start gap-3 rounded-[22px] border border-border bg-background p-4">
-                  <UserRound size={20} color="#346EF6" strokeWidth={2.35} />
-                  <Text className="min-w-0 flex-1 text-[13px] font-bold leading-5 text-muted-foreground">
+                  <UserRound size={20} color={themeColors.primary} strokeWidth={2.35} />
+                  <Text className="font-sans min-w-0 flex-1 text-[13px] font-medium leading-5 text-secondary-foreground">
                     Owner&apos;s driver selected. Additional fees may apply outside Manila.
                   </Text>
                 </View>
@@ -386,10 +408,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <InfoRow label="Transaction ID" value={booking.transactionId} />
               <InfoRow label="Paid At" value={booking.paidAt} />
               {booking.balanceDueAt ? (
-                <InfoRow
-                  label="Balance Due"
-                  value={new Date(booking.balanceDueAt).toLocaleString()}
-                />
+                <InfoRow label="Balance Due" value={new Date(booking.balanceDueAt).toLocaleString()} />
               ) : null}
             </SectionCard>
 
@@ -399,12 +418,20 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                   <View key={charge.id} className="border-b border-[#EEF2FF] py-3">
                     <View className="flex-row items-start justify-between gap-3">
                       <View className="min-w-0 flex-1">
-                        <Text className="text-[13px] font-black text-foreground">{charge.typeLabel}</Text>
-                        <Text className="mt-1 text-[12px] font-semibold leading-5 text-muted-foreground">{charge.description}</Text>
+                        <Text className="font-sans text-[13px] font-semibold text-foreground">
+                          {charge.typeLabel}
+                        </Text>
+                        <Text className="font-sans mt-1 text-[12px] font-normal leading-5 text-secondary-foreground">
+                          {charge.description}
+                        </Text>
                       </View>
-                      <Text className="text-[14px] font-black text-foreground">{formatPeso(charge.amount)}</Text>
+                      <Text className="font-sans text-[14px] font-semibold text-foreground">
+                        {formatPeso(charge.amount)}
+                      </Text>
                     </View>
-                    <Text className="mt-2 text-[10px] font-black uppercase text-subtle-foreground">{charge.paymentStatus}</Text>
+                    <Text className="font-sans mt-2 text-[11px] font-normal text-secondary-foreground">
+                      {charge.paymentStatus}
+                    </Text>
                   </View>
                 ))}
               </SectionCard>

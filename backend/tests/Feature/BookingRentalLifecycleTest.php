@@ -90,12 +90,6 @@ function finalizeLifecycleInspection(Booking $booking, string $type, User $manag
 function completeTelematicsSetup(Booking $booking): void
 {
     $service = app(TelematicsSetupService::class);
-    $service->assignGeofenceSnapshot($booking, null, [
-        'name' => 'Lifecycle test circle',
-        'center_latitude' => 14.299,
-        'center_longitude' => 120.958,
-        'radius_meters' => 5000,
-    ]);
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
     $service->startHandover($booking, vehicleManagerUser());
     $session->refresh();
@@ -196,6 +190,7 @@ it('does not auto assign a Driver when an owner driver booking is created', func
         'driver_option' => 'owners_driver',
         'owner_driver_coverage' => 'metro_manila',
         'customer_signature' => 'signed',
+        'pickup_location_type' => 'shop',
         'terms_version' => '2026-08-22',
     ]);
 

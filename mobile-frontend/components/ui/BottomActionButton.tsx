@@ -28,25 +28,25 @@ export function BottomActionButton({
   return (
     <View
       className="border-t border-border bg-background/95 px-5 pt-3"
-      style={{ paddingBottom: Math.max(insets.bottom + 12, 22) }}>
+      style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
       {footer}
       <Pressable
         accessibilityRole="button"
         disabled={disabled}
         onPress={onPress}
         className={cx(
-          'min-h-[58px] items-center justify-center rounded-full bg-primary px-5 shadow-lg shadow-primary/25',
-          disabled && 'bg-[#AFC5FF] shadow-none',
+          'min-h-control items-center justify-center rounded-full bg-primary px-5 ',
+          disabled && 'opacity-50',
         )}>
-        <Text className="text-[15px] font-black text-surface">{label}</Text>
+        <Text className="font-sans text-button font-medium text-surface">{label}</Text>
       </Pressable>
       {secondaryLabel && onSecondaryPress ? (
         <Pressable
           accessibilityRole="button"
           disabled={disabled}
           onPress={onSecondaryPress}
-          className="mt-3 min-h-[50px] items-center justify-center rounded-full border border-border bg-surface px-5">
-          <Text className="text-[14px] font-black text-foreground">{secondaryLabel}</Text>
+          className="mt-3 min-h-control items-center justify-center rounded-full border border-border bg-surface px-5">
+          <Text className="font-sans text-[14px] font-semibold text-foreground">{secondaryLabel}</Text>
         </Pressable>
       ) : null}
     </View>

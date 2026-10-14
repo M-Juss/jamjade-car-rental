@@ -5,7 +5,6 @@ namespace App\Http\Requests\Profile;
 use App\Http\Requests\BaseFormRequest;
 use App\Http\Requests\Concerns\ValidatesStructuredProfileAddress;
 use App\Support\CustomerAgePolicy;
-use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends BaseFormRequest
 {
@@ -19,7 +18,7 @@ class UpdateProfileRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['sometimes', 'required', 'email:rfc', 'max:255', Rule::unique('users', 'email')->ignore($this->user()->id)],
+            'email' => ['prohibited'],
             'first_name' => ['sometimes', 'required', 'string', 'max:100', 'regex:/^[\pL ]+$/u'],
             'last_name' => ['sometimes', 'required', 'string', 'max:100', 'regex:/^[\pL ]+$/u'],
             'birthdate' => [
@@ -43,12 +42,6 @@ class UpdateProfileRequest extends BaseFormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->has('email')) {
-            $this->merge([
-                'email' => strtolower(trim((string) $this->input('email'))),
-            ]);
-        }
-
         foreach (['first_name', 'last_name'] as $field) {
             if ($this->filled($field)) {
                 $this->merge([

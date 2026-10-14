@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Enums\BookingStatus;
 use App\Models\CustomerDocument;
+use App\Services\BookingGeofenceService;
 use App\Services\RentalReadinessService;
 use App\Support\PublicStorageUrl;
 use Carbon\CarbonImmutable;
@@ -16,9 +17,15 @@ class BookingResource extends JsonResource
     {
         // Booking details are normalized into focused child tables. Load them once
         // so the existing API response remains stable without N+1 accessor queries.
-        $this->resource->loadMissing(['assignedDriver', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession']);
+        $this->resource->loadMissing(['assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession']);
+
+        if ($this->relationLoaded('additionalCharges')) {
+            $this->additionalCharges->loadMissing('payments');
+        }
 
         $isManagement = (bool) $request->user()?->can('manage bookings');
+        $hasMonitoringDetails = $isManagement && $this->relationLoaded('bookingGeofences')
+            && $this->rental_type->value === 'self_drive';
         $isDriverView = $request->user()?->id === $this->assigned_driver_id
             && $request->user()?->id !== $this->user_id;
         $vehicle = $this->whenLoaded('vehicle');
@@ -71,6 +78,14 @@ class BookingResource extends JsonResource
                 $isManagement && $this->rental_type->value === 'self_drive',
                 fn () => new TelematicsHandoverResource($this->resource)
             ),
+            'monitoringZones' => $this->when($hasMonitoringDetails,
+                fn () => BookingGeofenceResource::collection(app(BookingGeofenceService::class)->zonesFor($this->resource))),
+            'canManageMonitoringZones' => $isManagement && ($request->user()?->hasRole('admin') ?? false)
+                && $this->rental_type->value === 'self_drive' && in_array($this->status->value, ['pending', 'confirmed'], true) && ! $this->started_at,
+            'geofenceActivity' => $this->when($hasMonitoringDetails, fn () => $this->telematicsEvents()->whereIn('event_type', ['geofence_enter', 'geofence_exit'])->orderByDesc('occurred_at')->limit(30)->get()->map(fn ($event) => [
+                'id' => (string) $event->id, 'type' => $event->event_type->value, 'zoneName' => $event->metadata['zone_name'] ?? 'Monitoring zone',
+                'notificationRequested' => $event->metadata['notification_requested'] ?? false, 'occurredAt' => $event->occurred_at?->toISOString(),
+            ])),
             'returnedAt' => $this->returned_at?->toISOString(),
             'completedAt' => $this->completed_at?->toISOString(),
             'returnChargesFinalizedAt' => $this->return_charges_finalized_at?->toISOString(),
@@ -79,6 +94,13 @@ class BookingResource extends JsonResource
             'seats' => $this->vehicle?->seats,
             'pricePerDay' => $isDriverView ? 0 : (float) $this->price_per_day,
             'subtotal' => $isDriverView ? 0 : (float) $this->subtotal,
+            'deliveryLocation' => $this->deliveryQuote ? [
+                'address' => $this->deliveryQuote->destination_address,
+                'placeId' => $this->deliveryQuote->destination_place_id,
+                'point' => $this->deliveryQuote->point_expires_at->isFuture() ? $this->deliveryQuote->destination_point : null,
+                'routeLabel' => $this->deliveryQuote->route_label,
+            ] : null,
+            'deliveryTollFee' => $isDriverView ? 0 : (float) $this->delivery_toll_fee,
             'deliveryFee' => $isDriverView ? 0 : (float) $this->delivery_fee,
             'outsideManilaFee' => $isDriverView ? 0 : (float) $this->outside_manila_fee,
             'ownerDriverFee' => $isDriverView ? 0 : (float) $this->owner_driver_fee,

@@ -14,7 +14,7 @@ export type CustomerProfile = {
 
 export type RenterDocumentStatus = 'Verified' | 'Pending' | 'Not Uploaded';
 
-export type RenterDocumentId = 'drivers-license' | 'passport' | 'proof-of-billing';
+export type RenterDocumentId = 'drivers-license' | 'proof-of-billing';
 
 export type RenterDocument = {
   id: RenterDocumentId;
@@ -36,21 +36,14 @@ export const renterDocumentDefinitions: RenterDocument[] = [
     id: 'drivers-license',
     name: "Driver's License",
     shortName: 'License',
-    description: 'Front photo of your valid driver license.',
-    status: 'Not Uploaded',
-  },
-  {
-    id: 'passport',
-    name: 'Passport',
-    shortName: 'Passport',
-    description: 'Supporting ID requested by the admin for renter verification.',
+    description: 'Clear front and back photos of your valid driver license.',
     status: 'Not Uploaded',
   },
   {
     id: 'proof-of-billing',
-    name: 'Proof of Billing',
-    shortName: 'Billing',
-    description: 'Recent utility bill or billing statement with address.',
+    name: 'Proof of Address',
+    shortName: 'Address',
+    description: 'Recent document showing your current address.',
     status: 'Not Uploaded',
   },
 ];

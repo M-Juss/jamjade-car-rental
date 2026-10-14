@@ -1,3 +1,4 @@
+import { themeColors } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { forwardRef, type ComponentProps } from 'react';
 import { Text, TextInput, type TextInputProps, View } from 'react-native';
@@ -19,51 +20,49 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export const FormInput = forwardRef<TextInput, FormInputProps>(
   (
-    {
-      label,
-      icon,
-      error,
-      helperText,
-      required = false,
-      editable = true,
-      multiline = false,
-      ...props
-    },
+    { label, icon, error, helperText, required = false, editable = true, multiline = false, ...props },
     ref,
   ) => (
-    <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
-      <Text className="text-[12px] font-black uppercase text-muted-foreground">
+    <View className="gap-1.5">
+      <Text className="font-sans text-caption font-medium text-foreground">
         {label}
         {required ? <Text className="text-destructive"> *</Text> : null}
       </Text>
       <View
         className={cx(
-          'flex-row rounded-[20px] border bg-surface px-4',
-          multiline ? 'min-h-[104px] items-start py-3' : 'min-h-[54px] items-center',
+          'flex-row rounded-field border bg-surface px-4',
+          multiline ? 'min-h-[104px] items-start py-3' : 'min-h-control items-center',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
           !editable && 'opacity-70',
         )}>
         {icon ? (
           <View className={cx('mr-2.5', multiline && 'mt-1')}>
-            <MaterialIcons name={icon} size={20} color="#7D8798" />
+            <MaterialIcons name={icon} size={20} color={themeColors.mutedForeground} />
           </View>
         ) : null}
         <TextInput
           ref={ref}
+          accessibilityLabel={label}
           editable={editable}
           multiline={multiline}
-          placeholderTextColor="#9AA4B8"
+          placeholderTextColor={themeColors.subtleForeground}
           textAlignVertical={multiline ? 'top' : 'center'}
           className={cx(
-            'min-w-0 flex-1 py-0 text-[14px] font-semibold text-foreground',
+            'font-sans',
+            'min-w-0 flex-1 py-0 text-[15px] text-foreground',
             multiline && 'min-h-[76px]',
           )}
           {...props}
         />
       </View>
-      <View className="absolute left-1 right-1 top-full mt-1.5">
+      <View className={error || helperText ? 'px-1' : 'hidden'}>
         {error || helperText ? (
-          <Text className={cx('text-[11px] font-bold leading-4 text-subtle-foreground', error && 'text-destructive')}>
+          <Text
+            className={cx(
+              'font-sans',
+              'text-caption text-secondary-foreground',
+              error && 'text-destructive',
+            )}>
             {error || helperText}
           </Text>
         ) : null}

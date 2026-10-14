@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\SelfDriveVerificationService;
 use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -15,6 +16,13 @@ class CustomerProfileResource extends JsonResource
         }
 
         $profilePicture = $this->profile_picture;
+        $summary = app(SelfDriveVerificationService::class)->summary($this->user);
+        $verificationStatus = match (true) {
+            $summary['documentCounts']['approved'] === $summary['requiredDocumentCount'] => 'approved',
+            $summary['documentCounts']['rejected'] > 0 => 'rejected',
+            $summary['documentCounts']['pending'] > 0 => 'pending_review',
+            default => 'documents_required',
+        };
 
         return [
             'id' => $this->id,
@@ -41,11 +49,10 @@ class CustomerProfileResource extends JsonResource
             'profilePicture' => PublicStorageUrl::make($profilePicture) ?? '',
             'profileCompletedAt' => $this->profile_completed_at?->toISOString(),
             'emergencyContactSkippedAt' => $this->emergency_contact_skipped_at?->toISOString(),
-            'canSelfDrive' => (bool) $this->can_self_drive,
-            'verificationStatus' => $this->verification_status,
-            'passportRequired' => (bool) $this->passport_required,
+            'canSelfDrive' => $summary['canSelfDrive'],
+            'verificationStatus' => $verificationStatus,
             'drivingIntent' => $this->driving_intent,
-            'accountStatus' => $this->can_self_drive ? 'Verified' : 'Pending',
+            'accountStatus' => $summary['canSelfDrive'] ? 'Verified' : 'Pending',
             'joinedSince' => $this->created_at?->format('F Y'),
         ];
     }

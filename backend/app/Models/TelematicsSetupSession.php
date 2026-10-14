@@ -14,7 +14,6 @@ class TelematicsSetupSession extends Model
 
     protected $fillable = [
         'booking_id',
-        'booking_geofence_id',
         'status',
         'started_at',
         'ready_at',
@@ -34,11 +33,6 @@ class TelematicsSetupSession extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
-    }
-
-    public function bookingGeofence(): BelongsTo
-    {
-        return $this->belongsTo(BookingGeofence::class);
     }
 
     public function steps(): HasMany

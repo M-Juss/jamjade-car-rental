@@ -151,7 +151,7 @@ it('persists each mobile onboarding step to the customer profile', function () {
     ])
         ->assertOk()
         ->assertJsonPath('data.drivingIntent', 'owner_driver')
-        ->assertJsonPath('data.passportRequired', false);
+        ->assertJsonMissingPath('data.passportRequired');
 
     $this->assertDatabaseHas('users', [
         'email' => 'onboarding.customer@example.com',
@@ -417,7 +417,7 @@ it('derives and stores delivery details for owner driver bookings', function () 
         'rental_end_at' => now()->addDays(4)->toDateTimeString(),
         'pickup_location_type' => 'delivery',
         'pickup_location' => 'Dasmarinas, Cavite',
-        'return_location' => 'Makati, Metro Manila',
+        'return_location' => 'Dasmarinas, Cavite',
         'driver_option' => 'owners_driver',
         'owner_driver_coverage' => 'metro_manila',
         'down_payment_amount' => 2600,
@@ -427,12 +427,12 @@ it('derives and stores delivery details for owner driver bookings', function () 
         'terms_version' => '2026-06-10',
     ];
 
-    $this->postJson('/api/mobile/bookings', $payload)
+    $this->postJson('/api/mobile/bookings', withTestDeliveryQuote($user, $payload))
         ->assertCreated()
         ->assertJsonPath('data.pickupType', 'Delivery')
         ->assertJsonPath('data.deliveryTime', $expectedDeliveryTime)
         ->assertJsonPath('data.deliveryTimeLabel', CarbonImmutable::parse($expectedDeliveryTime)->format('g:i A'))
-        ->assertJsonPath('data.returnLocation', 'Makati, Metro Manila')
+        ->assertJsonPath('data.returnLocation', 'Dasmarinas, Cavite')
         ->assertJsonPath('data.deliveryFee', 900)
         ->assertJsonPath('data.ownerDriverFee', 700)
         ->assertJsonPath('data.totalAmount', 5100);
@@ -441,7 +441,7 @@ it('derives and stores delivery details for owner driver bookings', function () 
         'user_id' => $user->id,
         'vehicle_id' => $vehicle->id,
         'pickup_location_type' => 'delivery',
-        'return_location' => 'Makati, Metro Manila',
+        'return_location' => 'Dasmarinas, Cavite',
         'delivery_fee' => 900,
         'owner_driver_fee' => 700,
     ]);
@@ -452,14 +452,14 @@ it('calculates outside Manila owner driver coverage only by rental day', functio
     $vehicle = availableVehicle();
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/mobile/bookings', [
+    $this->postJson('/api/mobile/bookings', withTestDeliveryQuote($user, [
         'vehicle_id' => $vehicle->id,
         'rental_start_at' => now()->addDays(3)->startOfDay()->toDateTimeString(),
         'rental_end_at' => now()->addDays(5)->startOfDay()->toDateTimeString(),
         'pickup_location_type' => 'delivery',
         'pickup_location' => 'Dasmarinas, Cavite',
         'delivery_time' => '09:00',
-        'return_location' => 'Tagaytay, Cavite',
+        'return_location' => 'Dasmarinas, Cavite',
         'driver_option' => 'owners_driver',
         'owner_driver_coverage' => 'outside_manila',
         'down_payment_amount' => 5000,
@@ -467,7 +467,7 @@ it('calculates outside Manila owner driver coverage only by rental day', functio
         'transaction_id' => 'GCASH-OUTSIDE-1',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-13',
-    ])
+    ]))
         ->assertCreated()
         ->assertJsonPath('data.durationDays', 2)
         ->assertJsonPath('data.ownerDriverFee', 2000)
@@ -486,7 +486,7 @@ it('enforces fulfillment options from the selected driver option', function () {
         'rental_end_at' => now()->addDays(4)->toDateTimeString(),
         'pickup_location' => 'Dasmarinas, Cavite',
         'return_location' => 'Makati, Metro Manila',
-        'down_payment_amount' => 2000,
+        'down_payment_amount' => 2500,
         'payment_method' => 'GCash',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-13',
@@ -507,8 +507,9 @@ it('enforces fulfillment options from the selected driver option', function () {
         'driver_option' => 'owners_driver',
         'owner_driver_coverage' => 'metro_manila',
     ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('pickup_location_type');
+        ->assertCreated()
+        ->assertJsonPath('data.pickupLocation', 'Jamjade Garage')
+        ->assertJsonPath('data.deliveryFee', 0);
 });
 
 it('requires full payment when the rental starts less than two calendar days away', function (int $leadDays) {
@@ -522,7 +523,7 @@ it('requires full payment when the rental starts less than two calendar days awa
         'vehicle_id' => $vehicle->id,
         'rental_start_at' => now('Asia/Manila')->addDays($leadDays)->toDateString(),
         'rental_end_at' => now('Asia/Manila')->addDays($leadDays + 1)->toDateString(),
-        'pickup_location_type' => 'delivery',
+        'pickup_location_type' => 'shop',
         'pickup_location' => 'Dasmarinas, Cavite',
         'delivery_time' => '09:00',
         'return_location' => 'Makati, Metro Manila',
@@ -595,7 +596,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
     $vehicle = availableVehicle();
     Sanctum::actingAs($user);
 
-    $createResponse = $this->postJson('http://192.168.1.50:8000/api/mobile/paypal/orders', [
+    $createResponse = $this->postJson('http://192.168.1.50:8000/api/mobile/paypal/orders', withTestDeliveryQuote($user, [
         'vehicle_id' => $vehicle->id,
         'rental_start_at' => now('Asia/Manila')->addDays(2)->toDateString(),
         'rental_end_at' => now('Asia/Manila')->addDays(3)->toDateString(),
@@ -610,7 +611,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         'terms_version' => '2026-06-09',
         'app_return_url' => 'exp://192.168.1.50:8081/--/paypal/return',
         'app_cancel_url' => 'exp://192.168.1.50:8081/--/paypal/cancel',
-    ]);
+    ]));
 
     $createResponse->assertCreated()
         ->assertJsonPath('data.orderId', 'PAYPAL-ORDER-TEST-1')
@@ -658,7 +659,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         ->assertJsonPath('data.paymentStatusKey', PaymentStatus::Partial->value)
         ->assertJsonPath('data.deliveryFee', 900)
         ->assertJsonPath('data.ownerDriverFee', 700)
-        ->assertJsonPath('data.returnLocation', 'Makati, Metro Manila')
+        ->assertJsonPath('data.returnLocation', 'Dasmarinas, Cavite')
         ->assertJsonPath('data.remainingBalance', 2550)
         ->assertJsonPath('data.balanceDueAt', $booking->rental_start_at->copy()->subDay()->toISOString());
 
@@ -880,17 +881,12 @@ it('uploads all supported customer document formats for review', function () {
         'back_file' => UploadedFile::fake()->image('license-back.jpg')->size(512),
     ], ['Accept' => 'application/json']);
 
-    $passportResponse = $this->post('/api/mobile/documents/upload', [
-        'document_type' => CustomerDocument::PASSPORT,
-        'file' => UploadedFile::fake()->image('passport.jpg')->size(512),
-    ], ['Accept' => 'application/json']);
-
     $billingResponse = $this->post('/api/mobile/documents/upload', [
         'document_type' => CustomerDocument::PROOF_OF_BILLING,
         'file' => UploadedFile::fake()->image('billing.jpg')->size(512),
     ], ['Accept' => 'application/json']);
 
-    foreach ([$licenseResponse, $passportResponse, $billingResponse] as $response) {
+    foreach ([$licenseResponse, $billingResponse] as $response) {
         $response->assertCreated()
             ->assertJsonPath('data.status', 'Pending');
     }
@@ -898,7 +894,11 @@ it('uploads all supported customer document formats for review', function () {
     $licenseResponse
         ->assertJsonPath('data.documentNumber', 'N01-23-456789')
         ->assertJsonPath('data.statusKey', 'pending');
-    $this->assertDatabaseCount('customer_documents', 3);
+    $billingResponse
+        ->assertJsonPath('data.documentType', CustomerDocument::PROOF_OF_BILLING)
+        ->assertJsonPath('data.name', 'Proof of Address')
+        ->assertJsonPath('data.backFileUrl', null);
+    $this->assertDatabaseCount('customer_documents', 2);
     $this->assertDatabaseCount('notifications', 0);
     $this->assertDatabaseHas('customer_profiles', [
         'user_id' => $customer->id,
@@ -921,8 +921,8 @@ it('accepts customer document images up to 5 MB and rejects larger images', func
         ->assertCreated();
 
     $this->post('/api/mobile/documents/upload', [
-        'document_type' => CustomerDocument::PASSPORT,
-        'file' => UploadedFile::fake()->image('passport.jpg')->size(5121),
+        'document_type' => CustomerDocument::PROOF_OF_BILLING,
+        'file' => UploadedFile::fake()->image('billing.jpg')->size(5121),
     ], ['Accept' => 'application/json'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('file');
@@ -975,12 +975,13 @@ it('validates mobile profile names and 11-digit contact numbers', function () {
         ->assertJsonPath('data.lastName', 'Santos Reyes');
 });
 
-it('updates the mobile sign-in email from personal information', function () {
+it('updates the mobile sign-in email from account information', function () {
     $user = customerUser(['email' => 'old.email@example.com']);
     Sanctum::actingAs($user);
 
-    $this->putJson('/api/mobile/profile', [
+    $this->putJson('/api/mobile/account/email', [
         'email' => 'New.Email@Example.com',
+        'current_password' => 'password123',
     ])
         ->assertOk()
         ->assertJsonPath('data.email', 'new.email@example.com');
@@ -1008,8 +1009,9 @@ it('rejects an email that belongs to another account when updating the mobile pr
     customerUser(['email' => 'taken.email@example.com']);
     Sanctum::actingAs($user);
 
-    $this->putJson('/api/mobile/profile', [
+    $this->putJson('/api/mobile/account/email', [
         'email' => 'taken.email@example.com',
+        'current_password' => 'password123',
     ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['email']);

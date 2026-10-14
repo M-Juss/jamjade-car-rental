@@ -26,7 +26,6 @@ class CustomerDocument extends Model
 
     public const ALLOWED_DOCUMENT_TYPES = [
         self::DRIVERS_LICENSE,
-        self::PASSPORT,
         self::PROOF_OF_BILLING,
     ];
 
@@ -37,13 +36,7 @@ class CustomerDocument extends Model
 
     public static function requiredSelfDriveDocumentsFor(User $user): array
     {
-        $requiredDocuments = self::REQUIRED_SELF_DRIVE_DOCUMENTS;
-
-        if ($user->customerProfile?->passport_required) {
-            $requiredDocuments[] = self::PASSPORT;
-        }
-
-        return $requiredDocuments;
+        return self::REQUIRED_SELF_DRIVE_DOCUMENTS;
     }
 
     protected $fillable = [
@@ -137,7 +130,7 @@ class CustomerDocument extends Model
             self::VALID_ID => 'Valid ID',
             self::DRIVERS_LICENSE => "Driver's License",
             self::PASSPORT => 'Passport',
-            self::PROOF_OF_BILLING => 'Meralco Bill',
+            self::PROOF_OF_BILLING => 'Proof of Address',
             default => str($type)->replace('_', ' ')->title()->toString(),
         };
     }

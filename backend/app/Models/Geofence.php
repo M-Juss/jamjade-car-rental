@@ -20,7 +20,7 @@ class Geofence extends Model
         'radius_meters',
         'polygon_coordinates',
         'is_active',
-        'created_by',
+        'created_by', 'notify_on_enter', 'notify_on_exit',
     ];
 
     protected function casts(): array
@@ -31,6 +31,8 @@ class Geofence extends Model
             'radius_meters' => 'decimal:2',
             'polygon_coordinates' => 'array',
             'is_active' => 'boolean',
+            'notify_on_enter' => 'boolean',
+            'notify_on_exit' => 'boolean',
         ];
     }
 

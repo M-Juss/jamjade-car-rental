@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
 const navLinks = [
   { href: "#home", label: "Home" },
   { href: "#showcase", label: "Showcase" },
+  { href: "#driving-insights", label: "Driving Insights" },
   { href: "#tutorial", label: "Guide" },
   { href: "#testimonials", label: "Reviews" },
   { href: "#visit", label: "Visit Us" },
@@ -16,13 +18,16 @@ export default function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 bg-[#f5f5f5]/90 backdrop-blur">
+    <header className="fixed inset-x-0 top-0 z-50 bg-background">
       <div className="mx-auto flex min-h-16 w-full max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-8 lg:px-20">
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            role="img"
-            aria-label="JamJade Logo"
-            className="size-12 shrink-0 bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] [mask-image:url('/JamJadeLogo.png')] [mask-position:center] [mask-repeat:no-repeat] [mask-size:contain]"
+          <Image
+            src="/JamJadeLogo-gradient.png"
+            alt="JamJade Logo"
+            width={48}
+            height={48}
+            sizes="48px"
+            className="size-12 shrink-0 object-contain"
           />
           <p className="truncate bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-sm font-semibold text-transparent sm:text-lg">
             JAMJADE CAR RENTAL
@@ -31,7 +36,7 @@ export default function SiteHeader() {
 
         <nav
           aria-label="Main navigation"
-          className="hidden items-center space-x-1 text-sm lg:flex"
+          className="hidden items-center space-x-1 text-sm xl:flex"
         >
           {navLinks.map((link) => (
             <a
@@ -56,7 +61,7 @@ export default function SiteHeader() {
           aria-controls="mobile-menu"
           aria-label={menuOpen ? "Close main menu" : "Open main menu"}
           onClick={() => setMenuOpen((open) => !open)}
-          className="flex size-11 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:hidden"
+          className="flex size-11 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary xl:hidden"
         >
           {menuOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
         </button>
@@ -66,7 +71,7 @@ export default function SiteHeader() {
         <nav
           id="mobile-menu"
           aria-label="Mobile navigation"
-          className="border-t border-black/10 bg-white/95 px-4 py-3 backdrop-blur lg:hidden"
+          className="border-t border-border bg-background px-4 py-3 xl:hidden"
         >
           <ul className="flex flex-col">
             {navLinks.map((link) => (

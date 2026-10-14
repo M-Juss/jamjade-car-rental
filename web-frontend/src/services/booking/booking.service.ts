@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from "@/services/http";
-import type { BookingRecord, DriverCandidate, GeofenceTemplate } from "./types";
+import type { BookingRecord, DriverCandidate } from "./types";
 import type { VehicleConditionFormValues } from "@/validations/vehicle/schemas";
 import { toConditionRequest } from "@/services/vehicle/vehicle.service";
 
@@ -65,23 +65,6 @@ export async function startTelematicsHandover(booking: BookingRecord) {
   return response.data;
 }
 
-export async function getGeofenceTemplates() {
-  const response = await apiGet<{ geofences: GeofenceTemplate[] }>("/admin/bookings/geofence-templates");
-  return response.data.geofences;
-}
-
-export async function assignBookingGeofence(booking: BookingRecord, payload: {
-  source_geofence_id?: number;
-  name?: string;
-  geometry_type?: "circle" | "polygon";
-  center_latitude?: number;
-  center_longitude?: number;
-  radius_meters?: number;
-  polygon_coordinates?: Array<{ latitude: number; longitude: number }>;
-}) {
-  return (await apiPost<BookingRecord>(`/admin/bookings/${booking.backendId}/telematics-setup/geofence`, payload)).data;
-}
-
 export async function finalizeBookingInspection(
   booking: BookingRecord,
   type: "outgoing" | "incoming",
@@ -92,7 +75,6 @@ export async function finalizeBookingInspection(
     condition: toConditionRequest(condition),
     operator_signature_data: operatorSignatureData,
   });
-  return getBooking(booking);
 }
 
 export type AdditionalChargePayload = {
@@ -111,7 +93,6 @@ export async function addAdditionalCharges(booking: BookingRecord, charges: Addi
       responsibility: booking.driverOption === "self_drive" ? "customer" : charge.responsibility,
     })),
   });
-  return getBooking(booking);
 }
 
 export async function getDrivers() {

@@ -1,9 +1,11 @@
+import { themeColors } from '@/constants/theme';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { fontFamilies } from '@/constants/fonts';
+
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
-import { useAutoHideCustomerTabBar } from '@/components/navigation/CustomerTabBarVisibilityContext';
 import type { CustomerTabIcon } from '@/constants/customer-tabs';
 
 type ScreenStat = {
@@ -37,7 +39,6 @@ export function CustomerTabScreen({
   title,
 }: CustomerTabScreenProps) {
   const insets = useSafeAreaInsets();
-  const handleTabScroll = useAutoHideCustomerTabBar();
 
   return (
     <View style={styles.safeArea}>
@@ -47,8 +48,6 @@ export function CustomerTabScreen({
           { paddingBottom: 112 + insets.bottom, paddingTop: insets.top + 12 },
         ]}
         contentInsetAdjustmentBehavior="never"
-        onScroll={handleTabScroll}
-        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}>
         <CustomerTabHeader title={title} />
@@ -56,11 +55,15 @@ export function CustomerTabScreen({
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View style={[styles.summaryIcon, { backgroundColor: accent }]}>
-              <MaterialCommunityIcons name={icon} size={24} color="#FFFFFF" />
+              <MaterialCommunityIcons name={icon} size={24} color={themeColors.surface} />
             </View>
             <View style={styles.summaryTextWrap}>
-              <Text style={styles.summaryTitle}>{summaryTitle}</Text>
-              <Text style={styles.summaryText}>{summaryText}</Text>
+              <Text className="font-sans" style={styles.summaryTitle}>
+                {summaryTitle}
+              </Text>
+              <Text className="font-sans" style={styles.summaryText}>
+                {summaryText}
+              </Text>
             </View>
           </View>
         </View>
@@ -68,8 +71,12 @@ export function CustomerTabScreen({
         <View style={styles.statsGrid}>
           {stats.map((stat) => (
             <View key={stat.label} style={styles.statCard}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
+              <Text className="font-sans" style={styles.statValue}>
+                {stat.value}
+              </Text>
+              <Text className="font-sans" style={styles.statLabel}>
+                {stat.label}
+              </Text>
             </View>
           ))}
         </View>
@@ -78,10 +85,12 @@ export function CustomerTabScreen({
           {actions.map((action) => (
             <View key={action.label} style={styles.actionRow}>
               <View style={styles.actionIcon}>
-                <MaterialCommunityIcons name={action.icon} size={22} color="#346EF6" />
+                <MaterialCommunityIcons name={action.icon} size={22} color={themeColors.primary} />
               </View>
-              <Text style={styles.actionLabel}>{action.label}</Text>
-              <MaterialCommunityIcons name="chevron-right" size={22} color="#91A0B8" />
+              <Text className="font-sans" style={styles.actionLabel}>
+                {action.label}
+              </Text>
+              <MaterialCommunityIcons name="chevron-right" size={22} color={themeColors.subtleForeground} />
             </View>
           ))}
         </View>
@@ -92,7 +101,7 @@ export function CustomerTabScreen({
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F8FAFF',
+    backgroundColor: themeColors.background,
     flex: 1,
   },
   scrollView: {
@@ -104,15 +113,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#DDE8FF',
-    borderRadius: 28,
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
+    borderRadius: 22,
     borderWidth: 1,
     marginTop: 8,
     padding: 18,
-    shadowColor: '#346EF6',
+    shadowColor: themeColors.primary,
     shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0,
     shadowRadius: 22,
   },
   summaryRow: {
@@ -131,15 +140,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryTitle: {
-    color: '#17315F',
+    color: themeColors.foreground,
     fontSize: 17,
-    fontWeight: '900',
+    fontFamily: fontFamilies.semibold,
+    fontWeight: 'normal',
     lineHeight: 22,
   },
   summaryText: {
-    color: '#6C7A96',
+    color: themeColors.mutedForeground,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
+    fontWeight: 'normal',
     lineHeight: 19,
     marginTop: 4,
   },
@@ -150,8 +161,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   statCard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E6EEFF',
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
     borderRadius: 22,
     borderWidth: 1,
     flexBasis: '47%',
@@ -160,15 +171,17 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   statValue: {
-    color: '#17315F',
+    color: themeColors.foreground,
     fontSize: 20,
-    fontWeight: '900',
+    fontFamily: fontFamilies.semibold,
+    fontWeight: 'normal',
     lineHeight: 24,
   },
   statLabel: {
-    color: '#6C7A96',
+    color: themeColors.mutedForeground,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: fontFamilies.medium,
+    fontWeight: 'normal',
     lineHeight: 16,
     marginTop: 3,
   },
@@ -178,28 +191,29 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E6EEFF',
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
     borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,
-    minHeight: 62,
+    minHeight: 52,
     paddingHorizontal: 14,
   },
   actionIcon: {
     alignItems: 'center',
-    backgroundColor: '#EEF3FF',
+    backgroundColor: themeColors.muted,
     borderRadius: 18,
     height: 36,
     justifyContent: 'center',
     width: 36,
   },
   actionLabel: {
-    color: '#17315F',
+    color: themeColors.foreground,
     flex: 1,
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: fontFamilies.semibold,
+    fontWeight: 'normal',
     lineHeight: 19,
   },
 });

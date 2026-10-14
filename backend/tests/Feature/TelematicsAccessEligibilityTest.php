@@ -61,12 +61,6 @@ function prepareAccessHandover(Booking $booking): void
         vehicleSignatureDataUrl(),
         vehicleManagerUser(),
     );
-    app(TelematicsSetupService::class)->assignGeofenceSnapshot($booking, null, [
-        'name' => 'Access boundary',
-        'center_latitude' => 14.299,
-        'center_longitude' => 120.958,
-        'radius_meters' => 1000,
-    ], vehicleManagerUser());
 }
 
 it('returns no telematics handover for a renter without a self-drive booking', function () {

@@ -21,12 +21,18 @@ class BookingGeofence extends Model
         'radius_meters',
         'polygon_coordinates',
         'assigned_by',
-        'assigned_at',
+        'assigned_at', 'scope', 'notify_on_enter', 'notify_on_exit', 'frozen_at',
     ];
 
     protected static function booted(): void
     {
-        static::updating(fn () => throw new LogicException('Booking geofence snapshots are immutable.'));
+        $immutable = function (BookingGeofence $zone) {
+            if ($zone->getOriginal('frozen_at') !== null) {
+                throw new LogicException('Released booking monitoring zones are immutable.');
+            }
+        };
+        static::updating($immutable);
+        static::deleting($immutable);
     }
 
     protected function casts(): array
@@ -37,6 +43,9 @@ class BookingGeofence extends Model
             'radius_meters' => 'decimal:2',
             'polygon_coordinates' => 'array',
             'assigned_at' => 'datetime',
+            'frozen_at' => 'datetime',
+            'notify_on_enter' => 'boolean',
+            'notify_on_exit' => 'boolean',
         ];
     }
 

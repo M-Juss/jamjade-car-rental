@@ -2,8 +2,11 @@
 
 use App\Http\Controllers\Web\Admin\AuthController;
 use App\Http\Controllers\Web\Admin\BookingController;
+use App\Http\Controllers\Web\Admin\BookingGeofenceController;
 use App\Http\Controllers\Web\Admin\CustomerController;
 use App\Http\Controllers\Web\Admin\DashboardController;
+use App\Http\Controllers\Web\Admin\DeliveryPricingController;
+use App\Http\Controllers\Web\Admin\DeliveryQuoteController;
 use App\Http\Controllers\Web\Admin\DocumentVerificationController;
 use App\Http\Controllers\Web\Admin\FleetTrackerController;
 use App\Http\Controllers\Web\Admin\GeofenceController;
@@ -50,8 +53,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('vehicles.destroy');
         });
 
-        Route::middleware('role_or_permission:admin|manage geofences')->group(function () {
-            Route::get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
+        Route::middleware('role_or_permission:admin|manage geofences')->get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
+        Route::middleware('role:admin')->group(function () {
+            Route::get('/delivery-pricing', [DeliveryPricingController::class, 'show']);
+            Route::put('/delivery-pricing', [DeliveryPricingController::class, 'update']);
+            Route::post('/bookings/{booking}/monitoring-zones', [BookingGeofenceController::class, 'store']);
+            Route::put('/bookings/{booking}/monitoring-zones/{zone}', [BookingGeofenceController::class, 'update']);
+            Route::delete('/bookings/{booking}/monitoring-zones/{zone}', [BookingGeofenceController::class, 'destroy']);
             Route::post('/geofences', [GeofenceController::class, 'store'])->name('geofences.store');
             Route::put('/geofences/{geofence}', [GeofenceController::class, 'update'])->name('geofences.update');
             Route::post('/geofences/{geofence}/activate', [GeofenceController::class, 'activate'])->name('geofences.activate');
@@ -60,16 +68,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         Route::middleware('permission:manage bookings')->group(function () {
+            Route::get('/delivery-quotes/{quote}/route', [DeliveryQuoteController::class, 'route']);
+            Route::get('/delivery-quotes', [DeliveryQuoteController::class, 'index']);
+            Route::post('/delivery-quotes/{quote}/review', [DeliveryQuoteController::class, 'review']);
             Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
             Route::get('/bookings/drivers', [BookingController::class, 'drivers'])->name('bookings.drivers');
-            Route::get('/bookings/geofence-templates', [BookingController::class, 'geofenceTemplates'])->name('bookings.geofence-templates');
             Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
             Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
             Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
             Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/start', [BookingController::class, 'start'])->name('bookings.start');
             Route::post('/bookings/{booking}/telematics-setup/start', [BookingController::class, 'startTelematicsHandover'])->name('bookings.telematics-setup.start');
-            Route::post('/bookings/{booking}/telematics-setup/geofence', [BookingController::class, 'assignTelematicsGeofence'])->name('bookings.telematics-setup.geofence');
             Route::post('/bookings/{booking}/returned', [BookingController::class, 'returned'])->name('bookings.returned');
             Route::post('/bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
             Route::get('/bookings/{booking}/readiness', [BookingController::class, 'readiness'])->name('bookings.readiness');

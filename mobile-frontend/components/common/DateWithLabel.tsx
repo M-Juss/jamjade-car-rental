@@ -1,16 +1,7 @@
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  X,
-} from 'lucide-react-native';
+import { themeColors } from '@/constants/theme';
+import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function cx(...classes: (string | false | null | undefined)[]) {
@@ -42,11 +33,7 @@ function parseDateKey(value?: string) {
 
   const date = new Date(yearValue, monthValue - 1, dayValue);
 
-  if (
-    date.getFullYear() !== yearValue ||
-    date.getMonth() !== monthValue - 1 ||
-    date.getDate() !== dayValue
-  ) {
+  if (date.getFullYear() !== yearValue || date.getMonth() !== monthValue - 1 || date.getDate() !== dayValue) {
     return null;
   }
 
@@ -148,7 +135,10 @@ export function DateWithLabel({
 }) {
   const insets = useSafeAreaInsets();
   const selectedDate = useMemo(() => parseDateKey(value), [value]);
-  const minimumSelectableDate = useMemo(() => startOfDay(parseDateKey(minimumDate) ?? new Date()), [minimumDate]);
+  const minimumSelectableDate = useMemo(
+    () => startOfDay(parseDateKey(minimumDate) ?? new Date()),
+    [minimumDate],
+  );
   const maximumSelectableDate = useMemo(() => parseDateKey(maximumDate), [maximumDate]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() =>
@@ -159,8 +149,7 @@ export function DateWithLabel({
   const minimumMonth = getFirstDayOfMonth(minimumSelectableDate);
   const canGoToPreviousMonth = visibleMonth.getTime() > minimumMonth.getTime();
   const canGoToNextMonth =
-    !maximumSelectableDate ||
-    visibleMonth.getTime() < getFirstDayOfMonth(maximumSelectableDate).getTime();
+    !maximumSelectableDate || visibleMonth.getTime() < getFirstDayOfMonth(maximumSelectableDate).getTime();
 
   useEffect(() => {
     if (isCalendarOpen) {
@@ -201,7 +190,7 @@ export function DateWithLabel({
 
   return (
     <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}>
-      <Text className="text-[12px] font-black uppercase tracking-[0.7px] text-subtle-foreground">{label}</Text>
+      <Text className="font-sans text-[12px] font-normal text-secondary-foreground">{label}</Text>
       <Pressable
         accessibilityRole="button"
         onPress={() => setIsCalendarOpen(true)}
@@ -209,36 +198,46 @@ export function DateWithLabel({
           'min-h-[54px] flex-row items-center rounded-2xl border bg-surface px-4',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
         )}>
-        <CalendarDays size={18} color="#346EF6" strokeWidth={2.35} />
+        <CalendarDays size={18} color={themeColors.primary} strokeWidth={2.35} />
         <Text
           className={cx(
-            'min-w-0 flex-1 px-3 text-[15px] font-bold',
-            value ? 'text-foreground' : 'text-subtle-foreground',
+            'font-sans',
+            'min-w-0 flex-1 px-3 text-[15px] font-medium',
+            value ? 'text-foreground' : 'text-secondary-foreground',
           )}>
           {value ? formatDisplayDate(value) : placeholder}
         </Text>
       </Pressable>
       <View className="absolute left-1 right-1 top-full mt-1.5">
         {error || helperText ? (
-          <Text className={cx('text-[11px] font-bold leading-4 text-subtle-foreground', error && 'text-destructive')}>
+          <Text
+            className={cx(
+              'font-sans',
+              'text-[11px] font-medium leading-4 text-secondary-foreground',
+              error && 'text-destructive',
+            )}>
             {error || helperText}
           </Text>
         ) : null}
       </View>
 
-      <Modal animationType="fade" transparent visible={isCalendarOpen} onRequestClose={() => setIsCalendarOpen(false)}>
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isCalendarOpen}
+        onRequestClose={() => setIsCalendarOpen(false)}>
         <View className="flex-1 justify-end bg-black/35">
           <Pressable accessibilityRole="button" className="flex-1" onPress={() => setIsCalendarOpen(false)} />
           <View
-            className="rounded-t-[32px] bg-background px-5 pt-4"
+            className="rounded-t-sheet bg-background px-5 pt-4"
             style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
             <View className="mb-4 items-center">
               <View className="h-1.5 w-12 rounded-full bg-border" />
             </View>
             <View className="mb-5 flex-row items-center gap-3">
               <View className="min-w-0 flex-1">
-                <Text className="text-[22px] font-black text-foreground">{label}</Text>
-                <Text className="mt-1 text-[12px] font-bold text-muted-foreground">
+                <Text className="font-sans text-[22px] font-semibold text-foreground">{label}</Text>
+                <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
                   {disabledDateRanges.length > 0
                     ? 'Past dates and confirmed booking dates are disabled.'
                     : 'Past dates are disabled.'}
@@ -250,11 +249,11 @@ export function DateWithLabel({
                 hitSlop={8}
                 onPress={() => setIsCalendarOpen(false)}
                 className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-                <X size={19} color="#64748B" strokeWidth={2.45} />
+                <X size={19} color={themeColors.mutedForeground} strokeWidth={2.45} />
               </Pressable>
             </View>
 
-            <View className="rounded-[26px] border border-border bg-surface p-4">
+            <View className="rounded-card border border-border bg-surface p-4">
               <View className="flex-row items-center justify-between">
                 <Pressable
                   accessibilityRole="button"
@@ -262,11 +261,17 @@ export function DateWithLabel({
                   onPress={goToPreviousMonth}
                   className={cx(
                     'h-10 w-10 items-center justify-center rounded-full',
-                    canGoToPreviousMonth ? 'bg-muted' : 'bg-[#F1F5F9]',
+                    canGoToPreviousMonth ? 'bg-muted' : 'bg-muted',
                   )}>
-                  <ChevronLeft size={19} color={canGoToPreviousMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
+                  <ChevronLeft
+                    size={19}
+                    color={canGoToPreviousMonth ? themeColors.primary : '#CBD5E1'}
+                    strokeWidth={2.45}
+                  />
                 </Pressable>
-                <Text className="text-[17px] font-black text-foreground">{getMonthTitle(visibleMonth)}</Text>
+                <Text className="font-sans text-[17px] font-semibold text-foreground">
+                  {getMonthTitle(visibleMonth)}
+                </Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ disabled: !canGoToNextMonth }}
@@ -274,9 +279,13 @@ export function DateWithLabel({
                   onPress={goToNextMonth}
                   className={cx(
                     'h-10 w-10 items-center justify-center rounded-full',
-                    canGoToNextMonth ? 'bg-muted' : 'bg-[#F1F5F9]',
+                    canGoToNextMonth ? 'bg-muted' : 'bg-muted',
                   )}>
-                  <ChevronRight size={19} color={canGoToNextMonth ? '#346EF6' : '#CBD5E1'} strokeWidth={2.45} />
+                  <ChevronRight
+                    size={19}
+                    color={canGoToNextMonth ? themeColors.primary : '#CBD5E1'}
+                    strokeWidth={2.45}
+                  />
                 </Pressable>
               </View>
 
@@ -284,7 +293,7 @@ export function DateWithLabel({
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
                   <Text
                     key={weekday}
-                    className="text-center text-[10px] font-black uppercase text-subtle-foreground"
+                    className="font-sans text-center text-[11px] font-normal text-secondary-foreground"
                     style={{ width: `${100 / 7}%` }}>
                     {weekday}
                   </Text>
@@ -308,7 +317,10 @@ export function DateWithLabel({
                   const isDisabled = isPastDate || isAfterMaximum || isBookedDate;
 
                   return (
-                    <View key={dateKey} className="h-11 items-center justify-center" style={{ width: `${100 / 7}%` }}>
+                    <View
+                      key={dateKey}
+                      className="h-11 items-center justify-center"
+                      style={{ width: `${100 / 7}%` }}>
                       <Pressable
                         accessibilityRole="button"
                         accessibilityState={{ disabled: isDisabled, selected: isSelected }}
@@ -318,11 +330,12 @@ export function DateWithLabel({
                           'h-9 w-9 items-center justify-center rounded-full',
                           isSelected && 'bg-primary',
                           !isSelected && !isDisabled && 'bg-surface',
-                          isDisabled && 'bg-[#F1F5F9]',
+                          isDisabled && 'bg-muted',
                         )}>
                         <Text
                           className={cx(
-                            'text-[13px] font-black',
+                            'font-sans',
+                            'text-[13px] font-semibold',
                             isSelected && 'text-surface',
                             !isSelected && !isDisabled && 'text-foreground',
                             isDisabled && 'text-border',

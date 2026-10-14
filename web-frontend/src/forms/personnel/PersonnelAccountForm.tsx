@@ -46,7 +46,7 @@ type PersonnelAccountFormProps = {
   mode: PersonnelAccountFormMode;
   personnel?: PersonnelUser | null;
   roles: PersonnelRole[];
-  category: "staff" | "driver";
+  category?: "staff" | "driver";
   onOpenChange: (open: boolean) => void;
   onSave: (values: PersonnelAccountFormValues) => Promise<void>;
 };
@@ -72,7 +72,7 @@ export function PersonnelAccountForm({
     email: personnel?.email ?? "",
     password: "",
     passwordConfirmation: "",
-    role: personnel?.role.name ?? category,
+    role: personnel?.role.name ?? category ?? "staff",
     status: personnel?.isActive === false ? "inactive" : "active",
   }), [personnel, category]);
 
@@ -171,7 +171,7 @@ export function PersonnelAccountForm({
   };
 
   const title = mode === "add"
-    ? category === "driver" ? "Add Driver" : "Add Staff"
+    ? category === "driver" ? "Add Driver" : category === "staff" ? "Add Staff" : "Add Personnel"
     : mode === "edit"
       ? "Edit Personnel"
       : "View Personnel";
