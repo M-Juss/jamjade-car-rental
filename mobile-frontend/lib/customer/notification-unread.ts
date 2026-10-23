@@ -1,6 +1,11 @@
 import { useSyncExternalStore } from 'react';
 
 let unreadNotificationCount = 0;
+let revision = 0;
+
+export function getUnreadNotificationRevision() {
+  return revision;
+}
 const listeners = new Set<() => void>();
 
 function subscribe(listener: () => void) {
@@ -16,6 +21,7 @@ function getSnapshot() {
 }
 
 export function setUnreadNotificationCount(count: number) {
+  revision += 1;
   const nextCount = Math.max(0, count);
 
   if (nextCount === unreadNotificationCount) {

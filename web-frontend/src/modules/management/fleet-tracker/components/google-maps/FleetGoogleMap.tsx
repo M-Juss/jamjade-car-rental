@@ -1,212 +1,154 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
-import { LocateFixed, Minus, Plus, Radar, Route } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { importLibrary } from "@googlemaps/js-api-loader";
+import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FleetVehicle } from "@/modules/management/fleet-tracker/data/mock-fleet-tracker";
+import { loadGoogleMaps } from "@/lib/google-maps";
+import type { FleetRental } from "@/services/fleet/types";
+import { formatReturnDateTime } from "@/services/booking/return-time";
+import { fleetStatusLabels } from "../../fleet-status";
 
-type FleetGoogleMapProps = {
-  vehicles: FleetVehicle[];
-  selectedId: string;
-  showGeofence: boolean;
-  onSelect: (id: string) => void;
-  onToggleGeofence: () => void;
-  className?: string;
+type Props = {
+  rentals: FleetRental[];
+  selectedId: number | null;
+  onSelect: (id: number, trigger: HTMLElement) => void;
+  loadingRentals: boolean;
+};
+type MarkerEntry = {
+  marker: google.maps.marker.AdvancedMarkerElement;
+  content: HTMLDivElement;
+  label: HTMLSpanElement;
+  tip: HTMLSpanElement;
 };
 
-const defaultCenter = { lat: 14.5995, lng: 120.9842 };
-
-const markerColors: Record<FleetVehicle["status"], string> = {
-  Active: "#10B981",
-  Paused: "#F59E0B",
-  Idle: "#64748B",
-  "Geofence Alert": "#F43F5E",
-  "GPS Lost": "#8B5CF6",
-};
-
-let isGoogleMapsConfigured = false;
-
-function createMarkerIcon(color: string, selected: boolean): google.maps.Icon {
-  const size = selected ? 22 : 18;
-  const svg = `
-    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${color}" stroke="white" stroke-width="4"/>
-    </svg>
-  `;
-
-  return {
-    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(size, size),
-    anchor: new google.maps.Point(size / 2, size / 2),
-  };
-}
-
-export function FleetGoogleMap({
-  vehicles,
-  selectedId,
-  showGeofence,
-  onSelect,
-  onToggleGeofence,
-  className,
-}: FleetGoogleMapProps) {
-  const mapNodeRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const geofenceRef = useRef<google.maps.Circle | null>(null);
-  const trafficLayerRef = useRef<google.maps.TrafficLayer | null>(null);
+export function FleetGoogleMap({ rentals, selectedId, onSelect, loadingRentals }: Props) {
+  const node = useRef<HTMLDivElement>(null);
+  const map = useRef<google.maps.Map | null>(null);
+  const markers = useRef(new Map<number, MarkerEntry>());
+  const select = useRef(onSelect);
+  const viewportIds = useRef("");
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const missingApiKeyError = apiKey ? null : "Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in .env.local";
-  const [isLoading, setIsLoading] = useState(Boolean(apiKey));
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [trafficEnabled, setTrafficEnabled] = useState(false);
-  const error = missingApiKeyError ?? loadError;
+  const [ready, setReady] = useState(false);
+  const [failure, setFailure] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
+  const locations = rentals.filter((rental) => rental.tracking.location
+    && Date.parse(rental.tracking.location.expiresAt) > clock);
 
-  const center = useMemo(() => {
-    const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedId);
-    return selectedVehicle ? { lat: selectedVehicle.lat, lng: selectedVehicle.lng } : defaultCenter;
-  }, [selectedId, vehicles]);
+  useEffect(() => { select.current = onSelect; }, [onSelect]);
 
   useEffect(() => {
     if (!apiKey) return;
-
     let cancelled = false;
-
-    if (!isGoogleMapsConfigured) {
-      setOptions({
-        key: apiKey,
-        v: "weekly",
+    const entries = markers.current;
+    loadGoogleMaps(apiKey).then(() => importLibrary("marker")).then(() => {
+      if (cancelled || !node.current) return;
+      map.current = new google.maps.Map(node.current, {
+        center: { lat: 14.5995, lng: 120.9842 },
+        zoom: 12,
+        mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID",
+        clickableIcons: false,
+        gestureHandling: "cooperative",
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
       });
-      isGoogleMapsConfigured = true;
-    }
-
-    Promise.all([importLibrary("maps"), importLibrary("marker")])
-      .then(() => {
-        if (cancelled || !mapNodeRef.current) return;
-
-        mapRef.current = new google.maps.Map(mapNodeRef.current, {
-          center: defaultCenter,
-          zoom: 12,
-          disableDefaultUI: true,
-          clickableIcons: false,
-          gestureHandling: "greedy",
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-        });
-        trafficLayerRef.current = new google.maps.TrafficLayer();
-        setIsLoading(false);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoadError("Unable to load Google Maps. Check the API key, domain restrictions, and Maps JavaScript API access.");
-          setIsLoading(false);
-        }
-      });
-
+      setReady(true);
+    }).catch(() => { if (!cancelled) setFailure(true); });
     return () => {
       cancelled = true;
+      entries.forEach(({ marker }) => { marker.map = null; google.maps.event.clearInstanceListeners(marker); });
+      entries.clear();
+      if (map.current) google.maps.event.clearInstanceListeners(map.current);
+      map.current = null;
     };
   }, [apiKey]);
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
+    const nextExpiry = Math.min(...rentals.flatMap((rental) => rental.tracking.location
+      ? [Date.parse(rental.tracking.location.expiresAt)] : []).filter((value) => value > clock));
+    if (!Number.isFinite(nextExpiry)) return;
+    const timer = setTimeout(() => setClock(Date.now()), Math.min(2_147_483_647, Math.max(1, nextExpiry - Date.now())));
+    return () => clearTimeout(timer);
+  }, [rentals, clock]);
 
-    markersRef.current.forEach((marker) => marker.setMap(null));
-    markersRef.current = vehicles.map((vehicle) => {
-      const marker = new google.maps.Marker({
-        map,
-        position: { lat: vehicle.lat, lng: vehicle.lng },
-        title: vehicle.carName,
-        icon: createMarkerIcon(markerColors[vehicle.status], selectedId === vehicle.id),
-        zIndex: selectedId === vehicle.id ? 20 : 10,
-      });
-
-      marker.addListener("click", () => onSelect(vehicle.id));
-      return marker;
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    const visible = rentals.filter((rental) => rental.tracking.location
+      && Date.parse(rental.tracking.location.expiresAt) > Math.max(clock, Date.now()));
+    const ids = new Set(visible.map((rental) => rental.id));
+    markers.current.forEach((entry, id) => {
+      if (!ids.has(id)) {
+        entry.marker.map = null;
+        google.maps.event.clearInstanceListeners(entry.marker);
+        markers.current.delete(id);
+      }
     });
-  }, [onSelect, selectedId, vehicles]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    map.panTo(center);
-  }, [center]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    geofenceRef.current?.setMap(null);
-    geofenceRef.current = null;
-
-    if (showGeofence) {
-      geofenceRef.current = new google.maps.Circle({
-        map,
-        center: defaultCenter,
-        radius: 18000,
-        fillColor: "#346EF6",
-        fillOpacity: 0.08,
-        strokeColor: "#346EF6",
-        strokeOpacity: 0.45,
-        strokeWeight: 2,
-      });
+    visible.forEach((rental) => {
+      const point = rental.tracking.location!;
+      let entry = markers.current.get(rental.id);
+      if (!entry) {
+        const content = document.createElement("div");
+        const label = document.createElement("span");
+        const tip = document.createElement("span");
+        tip.setAttribute("aria-hidden", "true");
+        content.append(label, tip);
+        const marker = new google.maps.marker.AdvancedMarkerElement({ map: map.current, content, gmpClickable: true });
+        marker.setAttribute("aria-haspopup", "dialog");
+        marker.className = "rounded-lg focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2";
+        marker.addListener("click", () => select.current(rental.id, marker));
+        entry = { content, marker, label, tip };
+        markers.current.set(rental.id, entry);
+      }
+      const recent = rental.tracking.status === "recent_location";
+      const fill = recent ? "bg-primary text-primary-foreground" : "bg-muted text-foreground";
+      entry.content.className = "relative whitespace-nowrap pb-2";
+      entry.label.className = `relative z-10 block rounded-lg border-2 border-surface px-2.5 py-1.5 text-[11px] font-semibold leading-4 shadow-sm ${fill} ${selectedId === rental.id ? "ring-2 ring-primary ring-offset-2" : ""}`;
+      entry.tip.className = `absolute bottom-[3px] left-1/2 z-20 size-3 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-surface ${fill}`;
+      const label = rental.vehicle?.plateNumber || rental.bookingCode;
+      const description = `${rental.vehicle?.name ?? "Vehicle"}, ${label}, ${fleetStatusLabels[rental.tracking.status]}, last shared ${formatReturnDateTime(rental.tracking.lastLocationAt, true)}, accuracy ${Math.round(point.accuracy)} meters`;
+      entry.label.textContent = label;
+      entry.content.setAttribute("aria-label", description);
+      entry.content.title = description;
+      entry.marker.title = description;
+      entry.marker.position = { lat: point.latitude, lng: point.longitude };
+      entry.marker.zIndex = selectedId === rental.id ? 20 : 10;
+    });
+    const key = visible.map((rental) => rental.id).sort().join(",");
+    if (key && viewportIds.current !== key) {
+      const bounds = new google.maps.LatLngBounds();
+      visible.forEach((rental) => bounds.extend({ lat: rental.tracking.location!.latitude, lng: rental.tracking.location!.longitude }));
+      if (visible.length === 1) { map.current.setCenter(bounds.getCenter()); map.current.setZoom(16); }
+      else map.current.fitBounds(bounds, 48);
     }
-  }, [showGeofence]);
+    viewportIds.current = key;
+    const selected = visible.find((rental) => rental.id === selectedId)?.tracking.location;
+    if (selected) map.current.panTo({ lat: selected.latitude, lng: selected.longitude });
+  }, [rentals, selectedId, ready, clock]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !trafficLayerRef.current) return;
-
-    trafficLayerRef.current.setMap(trafficEnabled ? map : null);
-  }, [trafficEnabled]);
-
-  const centerAllVehicles = () => {
-    const map = mapRef.current;
-    if (!map || !vehicles.length) return;
-
+  function centerLocations() {
+    if (!map.current || !locations.length) return;
     const bounds = new google.maps.LatLngBounds();
-    vehicles.forEach((vehicle) => bounds.extend({ lat: vehicle.lat, lng: vehicle.lng }));
-    map.fitBounds(bounds, 48);
-  };
+    locations.forEach((rental) => bounds.extend({ lat: rental.tracking.location!.latitude, lng: rental.tracking.location!.longitude }));
+    if (locations.length === 1) { map.current.setCenter(bounds.getCenter()); map.current.setZoom(16); }
+    else map.current.fitBounds(bounds, 48);
+  }
 
-  const updateZoom = (direction: "in" | "out") => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const currentZoom = map.getZoom() ?? 12;
-    map.setZoom(direction === "in" ? currentZoom + 1 : currentZoom - 1);
-  };
-
+  const unavailable = !apiKey || failure;
   return (
-    <div className={`relative min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 ${className ?? ""}`}>
-      <div ref={mapNodeRef} className="h-full w-full" />
-
-      {isLoading ? (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 text-xs font-medium text-muted-foreground">
-          Loading Google Maps...
+    <div className="relative h-[360px] overflow-hidden rounded-xl border border-border bg-background sm:h-[480px]">
+      <div ref={node} className="h-full w-full" aria-label="Latest shared rental locations" />
+      {unavailable || !ready || loadingRentals || !locations.length ? (
+        <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/90 p-6 text-center text-sm text-muted-foreground">
+          {!unavailable && (!ready || loadingRentals) ? <Loader2 className="size-6 animate-spin" aria-hidden /> : <MapPin className="size-7" aria-hidden />}
+          <p>{unavailable ? "Map unavailable. Rentals are listed alongside it." : !ready ? "Loading map" : loadingRentals ? "Loading locations" : "No shared locations on this page."}</p>
         </div>
       ) : null}
-
-      {error ? (
-        <div className="absolute inset-4 z-20 flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 p-4 text-center text-xs font-medium text-rose-600">
-          {error}
-        </div>
+      {ready && locations.length > 0 ? (
+        <Button variant="outline" size="icon-sm" className="absolute bottom-7 left-3 bg-surface" aria-label="Center locations on this page" onClick={centerLocations}>
+          <LocateFixed />
+        </Button>
       ) : null}
-
-      <div className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
-        Google Maps live fleet view
-      </div>
-
-      <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
-        <Button variant="outline" size="icon-sm" aria-label="Zoom in" onClick={() => updateZoom("in")}><Plus /></Button>
-        <Button variant="outline" size="icon-sm" aria-label="Zoom out" onClick={() => updateZoom("out")}><Minus /></Button>
-        <Button variant="outline" size="icon-sm" aria-label="Center all vehicles" onClick={centerAllVehicles}><LocateFixed /></Button>
-        <Button variant={showGeofence ? "secondary" : "outline"} size="icon-sm" aria-label="Toggle geofence" onClick={onToggleGeofence}><Route /></Button>
-        <Button variant={trafficEnabled ? "secondary" : "outline"} size="icon-sm" aria-label="Toggle traffic" onClick={() => setTrafficEnabled((value) => !value)}><Radar /></Button>
-      </div>
     </div>
   );
 }

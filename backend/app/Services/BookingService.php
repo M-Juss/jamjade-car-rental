@@ -12,6 +12,7 @@ use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\BookingAgreement;
 use App\Support\CustomerAgePolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -31,8 +32,6 @@ class BookingService
 
     public const OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE = 1000;
 
-    public const LATE_RETURN_HOURLY_RATE = 200;
-
     public function __construct(
         private readonly NotificationService $notificationService,
         private readonly BookingEmailService $bookingEmailService,
@@ -49,7 +48,7 @@ class BookingService
         return Booking::query()
             ->with([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
-                'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'telematicsSetupSession.latestStationary', 'cancellation',
             ])
             ->where('user_id', $user->id)
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
@@ -61,12 +60,13 @@ class BookingService
     {
         return Booking::query()
             ->withExists([
+                'additionalCharges as customer_charges_outstanding' => fn ($query) => $query->where('responsibility', 'customer')->outstanding(),
                 'vehicleInspections as outgoing_finalized' => fn ($query) => $query->where('type', 'outgoing')->where('status', 'finalized'),
                 'vehicleInspections as incoming_finalized' => fn ($query) => $query->where('type', 'incoming')->where('status', 'finalized'),
             ])
             ->with([
                 'vehicle.images', 'user.customerProfile', 'user.documents', 'payments', 'assignedDriver',
-                'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'telematicsSetupSession.latestStationary', 'cancellation',
             ])
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
@@ -79,6 +79,7 @@ class BookingService
                 });
             })
             ->when($filters['status'] ?? null, fn ($query, string $status) => $query->where('status', $status))
+            ->when($filters['attention'] ?? null, fn ($query, string $attention) => app(BookingAttentionService::class)->filter($query, $attention))
             ->when($filters['payment_status'] ?? null, fn ($query, string $status) => $query->where('payment_status', $status))
             ->when($filters['group'] ?? null, fn ($query, string $group) => $group === 'history'
                 ? $query->whereIn('status', BookingStatus::terminalValues())
@@ -109,8 +110,31 @@ class BookingService
         return $this->createBooking($user, $data, null, true);
     }
 
+    public function finalizeReturn(Booking $booking, User $actor, ?string $reason = null, array $extra = []): Booking
+    {
+        return DB::transaction(function () use ($booking, $actor, $reason, $extra) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if (in_array($booking->status, [BookingStatus::Returned, BookingStatus::Completed], true)
+                && $booking->return_charges_finalized_at && $booking->returned_at) {
+                return $booking;
+            }
+            if ($booking->status !== BookingStatus::Ongoing) {
+                throw ValidationException::withMessages(['booking' => ['Return processing can only be finalized for an ongoing booking.']]);
+            }
+            if (! $booking->return_charges_finalized_at) {
+                $booking = $this->additionalChargeService->finalizeReview($booking, $actor);
+            }
+
+            return $this->transition($booking, BookingStatus::Returned, $actor, $reason, $extra);
+        });
+    }
+
     public function transition(Booking $booking, BookingStatus $targetStatus, User $actor, ?string $reason = null, array $extra = []): Booking
     {
+        if ($targetStatus === BookingStatus::Cancelled) {
+            abort_unless($actor->hasAnyRole(['admin', 'staff']) && $actor->can('manage bookings'), 403);
+        }
+
         return DB::transaction(function () use ($booking, $targetStatus, $actor, $reason, $extra) {
             $booking = Booking::query()->lockForUpdate()->with('vehicle')->findOrFail($booking->id);
             $oldStatus = $booking->status;
@@ -121,7 +145,12 @@ class BookingService
                 ]);
             }
 
+            if ($targetStatus === BookingStatus::Cancelled && $oldStatus === BookingStatus::Confirmed && $booking->rental_end_at->lt(now()) && trim($reason ?? '') === '') {
+                throw ValidationException::withMessages(['reason' => ['Explain the resolution of this missed-start booking.']]);
+            }
+
             if ($targetStatus === BookingStatus::Ongoing) {
+                app(SelfDriveBookingAvailabilityService::class)->lockCustomer($booking->user_id);
                 $this->readinessService->assertStartAllowed($booking);
             } elseif ($targetStatus === BookingStatus::Returned) {
                 $this->readinessService->assertReturnAllowed($booking);
@@ -135,6 +164,14 @@ class BookingService
             ];
 
             $booking->fill($changes)->save();
+
+            if (in_array($targetStatus, [BookingStatus::Returned, BookingStatus::Completed], true)) {
+                app(LocationMonitoringService::class)->close($booking);
+            }
+
+            if ($targetStatus === BookingStatus::Cancelled) {
+                app(BookingCancellationService::class)->record($booking, $extra['cancellation_kind'] ?? 'management', $reason ?? 'Booking cancelled.', $actor);
+            }
 
             if ($targetStatus === BookingStatus::Ongoing) {
                 $booking->vehicle->update(['status' => VehicleStatus::Rented]);
@@ -168,24 +205,9 @@ class BookingService
 
             return $booking->fresh([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
-                'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'telematicsSetupSession', 'cancellation',
             ]);
         });
-    }
-
-    public function cancelByCustomer(Booking $booking, User $user, ?string $reason = null): Booking
-    {
-        if ($booking->user_id !== $user->id) {
-            abort(403, 'You can only cancel your own bookings.');
-        }
-
-        if (! in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed], true)) {
-            throw ValidationException::withMessages([
-                'status' => ['This booking can no longer be cancelled by the customer.'],
-            ]);
-        }
-
-        return $this->transition($booking, BookingStatus::Cancelled, $user, $reason ?? 'Cancelled by customer.');
     }
 
     public function assertVehicleScheduleAvailable(
@@ -215,6 +237,7 @@ class BookingService
         bool $awaitingPayPal
     ): Booking {
         return DB::transaction(function () use ($user, $data, $paymentProof, $awaitingPayPal) {
+            app(SelfDriveBookingAvailabilityService::class)->lockCustomer($user->id);
             if ($this->additionalChargeService->hasOutstanding($user, AdditionalChargeResponsibility::Customer)) {
                 throw ValidationException::withMessages([
                     'booking' => ['Settle your outstanding Jamjade balance before creating a new booking.'],
@@ -233,9 +256,16 @@ class BookingService
 
             $start = CarbonImmutable::parse($data['rental_start_at'])->utc();
             $end = CarbonImmutable::parse($data['rental_end_at'])->utc();
+            if ($rentalType === RentalType::SelfDrive) {
+                app(SelfDriveBookingAvailabilityService::class)->assertReservationAvailable($user, $start, $end);
+            }
             $this->assertVehicleScheduleAvailable($vehicle->id, $start, $end);
 
             $durationDays = max(1, (int) ceil($start->diffInRealHours($end) / 24));
+            $latePolicy = app(LateReturnPricingService::class)->policy($vehicle);
+            if (($data['late_return_policy_version'] ?? null) !== $latePolicy['version']) {
+                throw ValidationException::withMessages(['late_return_policy_version' => ['Late return pricing changed. Reload the vehicle and review the current terms before booking.']]);
+            }
             $pricePerDay = (float) $vehicle->price_per_day;
             $subtotal = $pricePerDay * $durationDays;
             $isOwnerDriver = $rentalType === RentalType::OwnersDriver;
@@ -259,6 +289,14 @@ class BookingService
                 $subtotal + $deliveryFee + $deliveryTollFee + $ownerDriverFee + $addOnsTotal - $discountTotal,
                 0
             );
+            if (isset($data['reviewed_pricing'])) {
+                foreach (['price_per_day' => $pricePerDay, 'subtotal' => $subtotal, 'delivery_fee' => $deliveryFee,
+                    'delivery_toll_fee' => $deliveryTollFee, 'owner_driver_fee' => $ownerDriverFee, 'total_amount' => $totalAmount] as $field => $amount) {
+                    if ((int) round((float) $data['reviewed_pricing'][$field] * 100) !== (int) round((float) $amount * 100)) {
+                        throw ValidationException::withMessages(['reviewed_pricing' => ['Pricing changed. Review the booking and sign the current agreement again.']]);
+                    }
+                }
+            }
             $requiredDownPayment = ceil($totalAmount * self::DOWN_PAYMENT_RATE);
             $downPayment = $awaitingPayPal ? 0 : (float) $data['down_payment_amount'];
 
@@ -298,7 +336,7 @@ class BookingService
                 'add_ons_total' => $addOnsTotal,
                 'discount_total' => $discountTotal,
                 'remaining_balance' => max($totalAmount - $downPayment, 0),
-                'balance_due_at' => $paymentStatus === PaymentStatus::Partial ? $start->subDay() : null,
+                'balance_due_at' => $paymentStatus === PaymentStatus::Partial ? BookingAgreement::balanceDeadline($start) : null,
                 'total_amount' => $totalAmount,
                 'notes' => $data['notes'] ?? null,
             ]);
@@ -309,10 +347,22 @@ class BookingService
                 'customer_signature' => $data['customer_signature'],
                 'terms_version' => $data['terms_version'],
                 'accepted_at' => now(),
+                'late_return_policy' => $latePolicy,
             ]);
 
+            // Save accepted details before any payment. This is not document issuance.
+            $booking->load('terms');
+            $snapshot = app(BookingConfirmationViewData::class)->make($booking);
+            $snapshot['formatVersion'] = 3;
+            $snapshot['agreementVersion'] = $data['terms_version'];
+            unset($snapshot['paymentStatusLabel'], $snapshot['paymentStatusClass'], $snapshot['receipt']);
+            $snapshot['payment'] = array_intersect_key($snapshot['payment'], array_flip(['totalAmount', 'pricePerDay', 'items']));
+            $snapshot['agreementHtml'] = view('pdf.bookings.partials.terms-and-conditions', ['confirmation' => $snapshot])->render();
+            $booking->terms->rental_context = $snapshot;
+            $booking->terms->save();
+
             if (! $awaitingPayPal) {
-                Payment::create([
+                $payment = Payment::create([
                     'booking_id' => $booking->id,
                     'user_id' => $user->id,
                     'provider' => str($data['payment_method'])->lower()->replace(' ', '_')->toString(),
@@ -349,48 +399,9 @@ class BookingService
                     : 'Customer created a booking.');
 
             if (! $awaitingPayPal) {
-                $this->notificationService->createForBooking(
-                    $booking,
-                    'booking',
-                    'Booking confirmed',
-                    "Booking {$booking->booking_code} was automatically confirmed after payment.",
-                    [
-                        'priority' => 'success',
-                        'action_label' => 'View Booking',
-                        'action' => 'view_booking',
-                    ]
-                );
+                $this->notificationService->createForCustomerPayment($booking, $payment, bookingConfirmed: true);
 
-                if ($paymentStatus === PaymentStatus::Partial) {
-                    $this->notificationService->createForBooking(
-                        $booking,
-                        'payment',
-                        'Remaining balance scheduled',
-                        sprintf(
-                            'PHP %s is due by %s. If unpaid, the booking will be cancelled and the down payment is non-refundable.',
-                            number_format((float) $booking->remaining_balance, 2),
-                            $booking->balance_due_at->format('F j, Y - g:i A')
-                        ),
-                        [
-                            'priority' => 'warning',
-                            'action_label' => 'Pay Remaining Balance',
-                            'action' => 'pay_balance',
-                            'remaining_balance' => (float) $booking->remaining_balance,
-                            'due_at' => $booking->balance_due_at->toISOString(),
-                            'non_refundable' => true,
-                        ]
-                    );
-                }
-
-                $bookingId = $booking->id;
-
-                DB::afterCommit(function () use ($bookingId) {
-                    $booking = Booking::query()->find($bookingId);
-
-                    if ($booking) {
-                        $this->bookingEmailService->sendBookingConfirmation($booking);
-                    }
-                });
+                $this->bookingEmailService->queueForPayment($payment);
             }
 
             return $booking->fresh([
@@ -484,8 +495,8 @@ class BookingService
             $notification['message'],
             [
                 'priority' => $notification['priority'],
-                'action_label' => 'View Booking',
-                'action' => 'view_booking',
+                'action_label' => $booking->rental_type === RentalType::SelfDrive && $status === BookingStatus::Ongoing ? 'View activity' : 'View Booking',
+                'action' => $booking->rental_type === RentalType::SelfDrive && $status === BookingStatus::Ongoing ? 'view_telematics_activity' : 'view_booking',
             ]
         );
     }

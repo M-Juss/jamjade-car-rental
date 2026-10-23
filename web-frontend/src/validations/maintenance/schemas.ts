@@ -1,5 +1,6 @@
 import { z } from "zod/v3";
 import type { VehicleRecord } from "@/services/vehicle";
+import { maintenanceDateKey } from "@/services/maintenance/dates";
 
 const requiredText = z.string().trim().min(1, "This field is required.");
 const positiveIntegerText = z.string().trim().refine(
@@ -101,8 +102,8 @@ export function createScheduleMaintenanceSchema(
     const endIsValid = validDateOnly(value.scheduledEnd);
     if (!startIsValid) {
       context.addIssue({ code: "custom", path: ["scheduledStart"], message: "Choose a valid start date." });
-    } else if (value.scheduledStart <= localDateKey(new Date())) {
-      context.addIssue({ code: "custom", path: ["scheduledStart"], message: "Start date must be after today." });
+    } else if (value.scheduledStart < maintenanceDateKey()) {
+      context.addIssue({ code: "custom", path: ["scheduledStart"], message: "Start date cannot be before today." });
     }
     if (!endIsValid) {
       context.addIssue({ code: "custom", path: ["scheduledEnd"], message: "Choose a valid expected end date." });
@@ -123,8 +124,8 @@ export function createRescheduleMaintenanceSchema(
   }).superRefine((value, context) => {
     const startValid = validDateOnly(value.scheduledStart);
     const endValid = validDateOnly(value.scheduledEnd);
-    if (!startValid || value.scheduledStart <= localDateKey(new Date())) {
-      context.addIssue({ code: "custom", path: ["scheduledStart"], message: "Choose a future start date." });
+    if (!startValid || value.scheduledStart < maintenanceDateKey()) {
+      context.addIssue({ code: "custom", path: ["scheduledStart"], message: "Choose today or a future start date." });
     }
     if (!endValid || (startValid && value.scheduledEnd < value.scheduledStart)) {
       context.addIssue({ code: "custom", path: ["scheduledEnd"], message: "Expected end date cannot be before the start date." });

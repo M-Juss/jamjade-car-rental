@@ -18,12 +18,30 @@ const nullableNumber = (value?: string) => value ? Number(value) : null;
 const nullableText = (value?: string) => value?.trim() || null;
 
 function dateBoundary(value: string, endOfDay = false) {
-  return new Date(`${value}T${endOfDay ? "23:59:59" : "00:00:00"}`).toISOString();
+  return new Date(`${value}T${endOfDay ? "23:59:59" : "00:00:00"}+08:00`).toISOString();
 }
 
 export async function getMaintenanceRecords(vehicleId?: string) {
   const query = vehicleId ? `?vehicle_id=${encodeURIComponent(vehicleId)}&per_page=100` : "?per_page=100";
   return (await apiGet<MaintenanceRecord[]>(`/admin/maintenance${query}`)).data;
+}
+
+export async function getVehicleMaintenanceHistory(vehicleId: string) {
+  const records: MaintenanceRecord[] = [];
+  let page = 1;
+  let lastPage = 1;
+
+  do {
+    const response = await apiGet<MaintenanceRecord[]>(
+      `/admin/maintenance?vehicle_id=${encodeURIComponent(vehicleId)}&per_page=100&page=${page}`,
+    );
+    records.push(...response.data);
+    lastPage = Number(response.meta?.last_page ?? 1);
+    page += 1;
+  } while (page <= lastPage);
+
+  return records.filter((record) => record.vehicleId === vehicleId
+    && (record.status === "completed" || record.status === "cancelled"));
 }
 
 export async function getMaintenancePlans(vehicleId?: string) {

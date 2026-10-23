@@ -22,7 +22,7 @@ class StoreGeofenceRequest extends BaseFormRequest
             'center_latitude' => ['required_if:geometry_type,circle', 'nullable', 'numeric', 'between:-90,90'],
             'center_longitude' => ['required_if:geometry_type,circle', 'nullable', 'numeric', 'between:-180,180'],
             'radius_meters' => ['required_if:geometry_type,circle', 'nullable', 'numeric', 'gt:0', 'max:100000'],
-            'polygon_coordinates' => ['required_if:geometry_type,polygon', 'nullable', 'array', 'min:3', 'max:100'],
+            'polygon_coordinates' => ['required_if:geometry_type,polygon', 'nullable', 'array', 'min:3'],
             'polygon_coordinates.*.latitude' => ['required_with:polygon_coordinates', 'numeric', 'between:-90,90'],
             'polygon_coordinates.*.longitude' => ['required_with:polygon_coordinates', 'numeric', 'between:-180,180'],
         ];

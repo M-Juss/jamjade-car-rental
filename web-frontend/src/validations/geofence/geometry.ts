@@ -22,7 +22,7 @@ function intersects(a: Point, b: Point, c: Point, d: Point) {
 // Mirrors GeofenceGeometryService's geometry rules, after field validation.
 export function polygonValidationError(input: Point[]): string | undefined {
   const points = input.length > 3 && same(input[0], input[input.length - 1]) ? input.slice(0, -1) : input;
-  if (points.length < 3 || points.length > 100) return "A polygon needs 3 to 100 unique boundary points.";
+  if (points.length < 3) return "A polygon needs at least 3 unique boundary points.";
   const count = points.length;
   if (points.some((point, index) => same(point, points[(index + 1) % count]))) return "Adjacent polygon points must be different.";
   for (let first = 0; first < count; first++) {

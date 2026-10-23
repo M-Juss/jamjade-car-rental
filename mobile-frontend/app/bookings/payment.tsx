@@ -1,5 +1,5 @@
 import { themeColors } from '@/constants/theme';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
+import { receiptSuccessRoute } from '@/lib/payments/receipt';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -97,7 +97,7 @@ export default function RemainingBalancePaymentScreen() {
       approved = true;
       const capturedBooking = await capturePayPalOrder(order.orderId);
       router.replace(
-        `/browse/success?status=success&source=balance&reference=${encodeURIComponent(capturedBooking.bookingCode)}&paymentStatus=${encodeURIComponent(capturedBooking.paymentStatus)}&remainingBalance=${encodeURIComponent(String(capturedBooking.remainingBalance))}` as Href,
+        receiptSuccessRoute(order.orderId, capturedBooking.bookingCode) as Href,
       );
     } catch (paymentError) {
       const message = getPaymentErrorMessage(
@@ -143,7 +143,6 @@ export default function RemainingBalancePaymentScreen() {
                 {booking?.id}
               </Text>
             </View>
-            <LogoutHeaderButton />
           </View>
 
           {summary ? (

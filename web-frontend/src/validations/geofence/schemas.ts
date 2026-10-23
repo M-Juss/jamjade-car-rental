@@ -13,8 +13,6 @@ const coordinateSchema = z.object({
 
 export const geofenceTemplateSchema = z.object({
   name: z.string().trim().min(1, "Enter a geofence name.").max(255),
-  notifyOnEnter: z.boolean(),
-  notifyOnExit: z.boolean(),
   geometryType: z.enum(["circle", "polygon"]),
   centerLatitude: z.string(),
   centerLongitude: z.string(),
@@ -32,8 +30,8 @@ export const geofenceTemplateSchema = z.object({
       context.addIssue({ code: "custom", path: ["radiusMeters"], message: "Enter a radius greater than 0 and no more than 100,000 meters." });
     }
   } else {
-    if (value.polygonCoordinates.length < 3 || value.polygonCoordinates.length > 100) {
-      context.addIssue({ code: "custom", path: ["polygonCoordinates"], message: "A polygon needs 3 to 100 points." });
+    if (value.polygonCoordinates.length < 3) {
+      context.addIssue({ code: "custom", path: ["polygonCoordinates"], message: "A polygon needs at least 3 points." });
     }
     let validCoordinates = true;
     value.polygonCoordinates.forEach((point, index) => {
@@ -43,7 +41,7 @@ export const geofenceTemplateSchema = z.object({
         parsed.error.issues.forEach((issue) => context.addIssue({ code: "custom", path: ["polygonCoordinates", index, ...issue.path], message: issue.message }));
       }
     });
-    if (validCoordinates && value.polygonCoordinates.length >= 3 && value.polygonCoordinates.length <= 100) {
+    if (validCoordinates && value.polygonCoordinates.length >= 3) {
       const message = polygonValidationError(value.polygonCoordinates.map((point) => ({ latitude: Number(point.latitude), longitude: Number(point.longitude) })));
       if (message) context.addIssue({ code: "custom", path: ["polygonCoordinates"], message });
     }

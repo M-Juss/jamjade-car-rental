@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Support\PayPalAppUrl;
+use App\Support\PayPalCallbackUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -35,7 +36,10 @@ class PayPalRedirectController extends Controller
         if (str_contains(strtolower($request->userAgent() ?? ''), 'android')) {
             $launchUrl = PayPalAppUrl::androidIntent(
                 $appUrl,
-                $request->fullUrlWithQuery(['manual_return' => '1'])
+                PayPalCallbackUrl::to(
+                    $request->getPathInfo().'?'.http_build_query([...$request->query(), 'manual_return' => '1']),
+                    $request,
+                )
             ) ?? $appUrl;
         }
 

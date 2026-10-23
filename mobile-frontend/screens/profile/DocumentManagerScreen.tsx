@@ -1,5 +1,4 @@
 import { themeColors } from '@/constants/theme';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, CircleDashed, Clock3, type LucideIcon } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -164,7 +163,6 @@ export function DocumentManagerScreen() {
               numberOfLines={1}>
               Manage Document
             </Text>
-            <LogoutHeaderButton />
           </View>
 
           <View className="mt-6 flex-row gap-2.5">

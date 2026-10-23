@@ -4,13 +4,13 @@ import type {
   DriverType,
   PaymentStatus,
 } from '@/types/booking';
-import { apiGet, apiPost, API_BASE_URL } from '@/services/http';
+import { apiGet, API_BASE_URL } from '@/services/http';
 
 import type { MobileBookingRecord } from './types';
 
 const backendOrigin = API_BASE_URL.match(/^(https?:\/\/[^/]+)/i)?.[1] ?? '';
 
-function normalizeImageUrl(value?: string | null) {
+export function normalizeBookingImageUrl(value?: string | null) {
   const imageUrl = value?.trim();
 
   if (!imageUrl) {
@@ -60,18 +60,26 @@ function mapFuelType(value: string): Booking['fuelType'] {
 
 export function mapBooking(record: MobileBookingRecord): Booking {
   return {
+    cancellation: record.cancellation,
+    lateReturn: record.lateReturn,
+    attention: record.attention,
     id: record.bookingCode || record.id,
     backendId: Number(record.backendId),
     vehicleName: record.vehicleName,
+    vehiclePlateNumber: record.vehiclePlateNumber,
     brand: record.brand,
     model: record.model,
-    image: normalizeImageUrl(record.image),
+    color: record.color,
+    image: normalizeBookingImageUrl(record.image),
     status: mapStatus(record.status),
     rentalDate: record.rentalDate,
     returnDate: record.returnDate,
+    rentalEndAt: record.rentalEndAt,
+    sharedVehicleLocation: record.sharedVehicleLocation,
     duration: Number(record.duration),
     pickupType: record.pickupType,
     pickupLocation: record.pickupLocation,
+    notes: record.notes,
     deliveryTime: record.deliveryTimeLabel ?? record.deliveryTime,
     returnLocation: record.returnLocation,
     driverType: mapDriverType(record.driverType),
@@ -129,15 +137,6 @@ export async function getBookings() {
 export async function getBooking(bookingId: string) {
   const response = await apiGet<MobileBookingRecord>(
     `/mobile/bookings/${encodeURIComponent(bookingId)}`,
-  );
-
-  return mapBooking(response.data);
-}
-
-export async function cancelBooking(bookingId: string, reason = 'Cancelled by customer.') {
-  const response = await apiPost<MobileBookingRecord>(
-    `/mobile/bookings/${encodeURIComponent(bookingId)}/cancel`,
-    { reason },
   );
 
   return mapBooking(response.data);

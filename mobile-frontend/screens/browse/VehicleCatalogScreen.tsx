@@ -164,7 +164,7 @@ export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
         }
         showsVerticalScrollIndicator={false}>
         <View className="px-5" style={{ paddingBottom: bottomPadding, paddingTop: insets.top + 10 }}>
-          {mode === 'guest' ? <GuestCatalogHeader /> : <CustomerTabHeader title="Browse Cars" />}
+          {mode === 'guest' ? <GuestCatalogHeader /> : <CustomerTabHeader title="Browse Cars" showLogout />}
 
           <View className="mt-2">
             <SearchInput

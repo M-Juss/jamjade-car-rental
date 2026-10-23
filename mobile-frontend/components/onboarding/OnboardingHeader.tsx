@@ -4,12 +4,11 @@ import { ArrowLeft, type LucideIcon } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { ProgressSteps } from '@/components/onboarding/ProgressSteps';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
-import { useAuth } from '@/providers/AuthProvider';
 
 type OnboardingHeaderProps = {
+  backDisabled?: boolean;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   icon?: LucideIcon;
   currentStep?: number;
   totalSteps?: number;
@@ -19,6 +18,7 @@ type OnboardingHeaderProps = {
 };
 
 export function OnboardingHeader({
+  backDisabled = false,
   currentStep,
   icon: Icon,
   navigationTitle,
@@ -29,7 +29,6 @@ export function OnboardingHeader({
   totalSteps,
 }: OnboardingHeaderProps) {
   const router = useRouter();
-  const { status } = useAuth();
 
   return (
     <View>
@@ -38,6 +37,8 @@ export function OnboardingHeader({
           <Pressable
             accessibilityLabel="Go back"
             accessibilityRole="button"
+            accessibilityState={{ disabled: backDisabled }}
+            disabled={backDisabled}
             onPress={onBackPress ?? (() => router.back())}
             className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
             <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
@@ -57,9 +58,7 @@ export function OnboardingHeader({
             </Text>
           </View>
         )}
-        {status === 'authenticated' ? (
-          <LogoutHeaderButton />
-        ) : navigationTitle && showBack ? (
+        {navigationTitle && showBack ? (
           <View className="h-11 w-11" />
         ) : Icon ? (
           <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
@@ -75,7 +74,7 @@ export function OnboardingHeader({
       ) : null}
 
       <Text className="font-sans mt-5 text-title font-semibold text-foreground">{title}</Text>
-      <Text className="font-sans mt-2 text-body text-secondary-foreground">{subtitle}</Text>
+      {subtitle ? <Text className="font-sans mt-2 text-body text-secondary-foreground">{subtitle}</Text> : null}
     </View>
   );
 }

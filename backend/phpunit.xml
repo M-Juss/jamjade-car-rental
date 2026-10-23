@@ -18,8 +18,12 @@
         </include>
     </source>
     <php>
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
+        <env name="PAYPAL_CALLBACK_ORIGIN" value="" force="true"/>
         <env name="TELEMATICS_HANDOVER_TEST_MODE" value="false" force="true"/>
+        <env name="RENTAL_EARLY_START_TEST_MODE" value="false" force="true"/>
+        <env name="TELEMATICS_CALIBRATION_PROFILE" value="standard" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

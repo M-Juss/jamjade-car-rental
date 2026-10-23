@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import { Search, SlidersHorizontal, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -15,7 +15,7 @@ import {
 } from '@/components/bookings';
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
 import { matchesBookingSearch, matchesBookingStatus } from '@/lib/bookings/helpers';
-import { cancelBooking, getBookings } from '@/services/api';
+import { getBookings } from '@/services/api';
 import { BOOKING_STATUS_FILTERS, type Booking, type BookingStatusFilter } from '@/types/booking';
 
 function cx(...classes: (string | false | null | undefined)[]) {
@@ -175,28 +175,12 @@ export function BookingScreen() {
       return;
     }
 
-    if (action.key === 'cancel_request') {
-      Alert.alert(
-        'Cancel booking?',
-        'Captured payments are subject to the booking terms and are not automatically refunded.',
-        [
-          { text: 'Keep Booking', style: 'cancel' },
-          {
-            text: 'Cancel Booking',
-            style: 'destructive',
-            onPress: () => void cancelBooking(booking.id).then(loadBookings),
-          },
-        ],
-      );
-      return;
-    }
-
     if (action.key === 'open_telematics') {
-      router.navigate({ pathname: '/(tabs)/telematics', params: { bookingId: booking.id } });
+      router.push(`/telematics/${encodeURIComponent(booking.id)}` as Href);
       return;
     }
 
-    if (action.key === 'book_another_vehicle' || action.key === 'book_again') {
+    if (action.key === 'book_again') {
       router.push('/' as Href);
       return;
     }
@@ -223,7 +207,7 @@ export function BookingScreen() {
         <View
           className="w-full max-w-[560px] self-center px-screen"
           style={{ paddingBottom: floatingTabBarContentPadding + insets.bottom, paddingTop: insets.top + 10 }}>
-          <CustomerTabHeader title="Bookings" />
+          <CustomerTabHeader title="Bookings" showLogout />
 
           <View className="mt-2 min-h-[56px] flex-row items-center rounded-full border border-border bg-surface px-4 ">
             <Search size={20} color={themeColors.subtleForeground} strokeWidth={2.3} />

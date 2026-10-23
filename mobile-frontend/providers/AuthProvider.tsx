@@ -12,6 +12,7 @@ import {
   type MobileRegisterPayload,
   type MobileUser,
 } from '@/services/api';
+import { isResearchAdmin } from '@/lib/auth/mobile-access';
 import {
   hydrateCustomerFromProfile,
   hydrateCustomerFromUser,
@@ -19,12 +20,17 @@ import {
   updateRegisteredEmail,
 } from '@/lib/customer/customer-store';
 import type { UpdateAccountEmailInput } from '@/validation/account/schemas';
+import { getCustomerOnboardingRoute, type CustomerOnboardingRoute } from '@/lib/customer/onboarding';
+
+import { setUnreadNotificationCount } from '@/lib/customer/notification-unread';
+import { locationMonitoring } from '@/services/telematics/location-monitoring';
 
 type AuthStatus = 'loading' | 'authenticated' | 'guest';
 
 type AuthContextValue = {
   status: AuthStatus;
   user: MobileUser | null;
+  onboardingRoute: CustomerOnboardingRoute | null;
   refreshProfile: () => Promise<MobileUser>;
   signIn: (payload: MobileLoginPayload) => Promise<MobileUser>;
   signUp: (payload: MobileRegisterPayload) => Promise<MobileUser>;
@@ -37,20 +43,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<MobileUser | null>(null);
+  const [onboardingRoute, setOnboardingRoute] = useState<CustomerOnboardingRoute | null>(null);
 
   const refreshProfile = useCallback(async () => {
     const profile = await getProfile();
 
     hydrateCustomerFromProfile(profile);
     setUser(profile.user);
+    setOnboardingRoute(getCustomerOnboardingRoute(profile.user, profile.emergencyContacts));
 
     return profile.user;
   }, []);
 
   const applyUser = useCallback(
     async (nextUser: MobileUser) => {
-      if (nextUser.roles?.includes('driver')) {
+      setUnreadNotificationCount(0);
+      if (isResearchAdmin(nextUser) || nextUser.roles?.includes('driver')) {
         setUser(nextUser);
+        setOnboardingRoute(null);
         setStatus('authenticated');
         resetCustomer();
 
@@ -64,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         hydrateCustomerFromUser(nextUser);
         setUser(nextUser);
+        setOnboardingRoute(getCustomerOnboardingRoute(nextUser));
       }
 
       setStatus('authenticated');
@@ -82,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!token) {
           if (isMounted) {
+            setUnreadNotificationCount(0);
             setStatus('guest');
           }
           return;
@@ -96,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await logout({ revokeRemoteToken: false });
 
         if (isMounted) {
+          setUnreadNotificationCount(0);
           setUser(null);
           setStatus('guest');
           resetCustomer();
@@ -114,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       user,
+      onboardingRoute,
       refreshProfile,
       signIn: async (payload) => {
         const session = await login(payload);
@@ -129,16 +143,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateRegisteredEmail(updatedUser.email);
       },
       signOut: async (options) => {
+        await locationMonitoring.reset();
         try {
           await logout(options);
         } finally {
+          setUnreadNotificationCount(0);
           setUser(null);
+          setOnboardingRoute(null);
           setStatus('guest');
           resetCustomer();
         }
       },
     }),
-    [applyUser, refreshProfile, status, user],
+    [applyUser, onboardingRoute, refreshProfile, status, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

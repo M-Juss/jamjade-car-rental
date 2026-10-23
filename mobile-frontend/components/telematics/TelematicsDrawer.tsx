@@ -1,0 +1,77 @@
+import type { ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { floatingTabBarContentPadding } from '@/constants/layout';
+
+export type TelematicsTab = 'details' | 'setup' | 'activity';
+const tabs = [{ key: 'details', label: 'Full details' }, { key: 'setup', label: 'Device setup' }, { key: 'activity', label: 'Activity' }] as const;
+
+export function telematicsDrawerPositions(height: number, topInset: number, bottomInset: number) {
+  const fullTop = topInset + 62;
+  return { fullTop, collapsedTop: Math.max(fullTop, Math.min(height * 0.37, height - bottomInset - 370)) };
+}
+
+export function TelematicsDrawer({ tab, onTab, expanded, onExpand, unread, summary, children }: {
+  tab: TelematicsTab; onTab: (tab: TelematicsTab) => void; expanded: boolean;
+  onExpand: (expanded: boolean) => void; unread: number; summary: ReactNode; children: ReactNode;
+}) {
+  const { height, width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const { fullTop, collapsedTop } = telematicsDrawerPositions(height, insets.top, insets.bottom);
+  const top = useRef(new Animated.Value(fullTop)).current;
+  const scroll = useRef<ScrollView>(null);
+  const offsets = useRef<Record<TelematicsTab, number>>({ details: 0, setup: 0, activity: 0 });
+  const touchY = useRef(0);
+  const collapsing = useRef(false);
+  const restoring = useRef(false);
+  useEffect(() => {
+    collapsing.current = !expanded;
+    if (!expanded) {
+      offsets.current[tab] = 0;
+      scroll.current?.scrollTo({ y: 0, animated: false });
+    }
+    const animation = Animated.timing(top, { toValue: expanded ? fullTop : collapsedTop, duration: 230, useNativeDriver: false });
+    animation.start(() => { collapsing.current = false; });
+    return () => animation.stop();
+  }, [expanded, fullTop, collapsedTop, top, tab]);
+  useLayoutEffect(() => {
+    restoring.current = true;
+    const target = expanded ? offsets.current[tab] : 0;
+    let settle: number | undefined;
+    const frame = requestAnimationFrame(() => {
+      scroll.current?.scrollTo({ y: target, animated: false });
+      settle = requestAnimationFrame(() => { restoring.current = false; });
+    });
+    return () => { cancelAnimationFrame(frame); if (settle !== undefined) cancelAnimationFrame(settle); };
+  }, [tab, expanded]);
+
+  return <Animated.View className="absolute bottom-0 self-center" style={{ top, width: Math.min(560, width - 2 * Math.max(insets.left, insets.right)) }}>
+    <View accessibilityRole="tablist" className="flex-row gap-1 px-screen">
+      {tabs.map((item) => <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: tab === item.key }} accessibilityLabel={`${item.label}${item.key === 'activity' && unread ? `, ${unread} unread` : ''}`} onPress={() => onTab(item.key)} className={`min-h-[46px] min-w-0 flex-1 items-center justify-center rounded-t-field border border-b-0 border-border px-1 py-2 ${expanded ? (tab === item.key ? 'bg-surface' : 'bg-muted') : 'bg-transparent'}`}>
+        <Text numberOfLines={2} className={`font-sans text-center text-[13px] font-semibold leading-4 ${tab === item.key ? 'text-primary' : 'text-secondary-foreground'}`}>{item.label}{item.key === 'activity' && unread ? ` (${unread > 99 ? '99+' : unread})` : ''}</Text>
+      </Pressable>)}
+    </View>
+    <View className="flex-1 overflow-hidden rounded-t-sheet border border-b-0 border-border bg-surface">
+      <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Show map' : 'Expand booking panel'} accessibilityState={{ expanded }} onPress={() => onExpand(!expanded)} className="min-h-[32px] items-center justify-center">
+        <View className="h-1 w-10 rounded-full bg-border" />
+      </Pressable>
+      <View className="px-card">{summary}</View>
+      <ScrollView ref={scroll} className="flex-1" contentInsetAdjustmentBehavior="never" showsVerticalScrollIndicator nestedScrollEnabled scrollEventThrottle={16}
+        onTouchStart={(event) => { touchY.current = event.nativeEvent.pageY; }}
+        onTouchEnd={(event) => { if (expanded && offsets.current[tab] <= 0 && event.nativeEvent.pageY - touchY.current > 55) onExpand(false); }}
+        onScroll={(event) => {
+          if (restoring.current) return;
+          const offset = Math.max(0, event.nativeEvent.contentOffset.y);
+          const previousOffset = offsets.current[tab];
+          offsets.current[tab] = offset;
+          if (expanded && !collapsing.current && previousOffset > 12 && offset <= 1) onExpand(false);
+          if (!expanded && !collapsing.current && offset > 12) onExpand(true);
+        }}
+        contentContainerStyle={{ padding: 16, paddingBottom: floatingTabBarContentPadding + insets.bottom + 48 }}>
+        {children}
+      </ScrollView>
+    </View>
+  </Animated.View>;
+}

@@ -2,6 +2,7 @@ import { themeColors } from '@/constants/theme';
 import { MapPinned, Search } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareField } from '@/components/common/KeyboardFormScrollView';
 import {
   canSearchGooglePlaces,
   createGooglePlacesSessionToken,
@@ -144,8 +145,8 @@ export function LocationSearchWithLabel({
   const showSuggestions = isFocused && suggestions.length > 0;
 
   return (
-    <View
-      className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4')}
+    <KeyboardAwareField
+      className="relative mb-4 gap-2"
     >
       <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
         {label}
@@ -247,7 +248,7 @@ export function LocationSearchWithLabel({
           Searching Google Maps...
         </Text>
       ) : null}
-      <View className="absolute left-1 right-1 top-full mt-1.5">
+      <View className="px-1">
         {error || helperText ? (
           <Text
             className={cx(
@@ -260,6 +261,6 @@ export function LocationSearchWithLabel({
           </Text>
         ) : null}
       </View>
-    </View>
+    </KeyboardAwareField>
   );
 }

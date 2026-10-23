@@ -14,7 +14,7 @@ class BookingStatusRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'reason' => ['nullable', 'string', 'max:1000'],
+            'reason' => [$this->routeIs('admin.bookings.cancel') ? 'required' : 'nullable', 'string', 'max:1000'],
             'admin_notes' => ['nullable', 'string', 'max:2000'],
         ];
     }

@@ -5,10 +5,23 @@ import sharp from 'sharp';
 
 // The website header asset is the source for all application branding.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const source = path.join(root, 'web-frontend/public/JamJadeLogo-gradient.png');
+const source = path.join(root, 'web-frontend/public/JamJadeLogo-solid.png');
 const mobile = path.join(root, 'mobile-frontend/assets/images');
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
 const { data, info } = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+const theme = await fs.readFile(path.join(root, 'web-frontend/src/app/globals.css'), 'utf8');
+const primary = theme.match(/--primary:\s*#([\da-f]{6})\s*;/i)?.[1];
+if (!primary) throw new Error('The primary theme color must be a six-digit hex value.');
+const rgb = [0, 2, 4].map(offset => Number.parseInt(primary.slice(offset, offset + 2), 16));
+
+// Keep every alpha value and the original silhouette; branding uses one solid color.
+for (let i = 0; i < data.length; i += 4) {
+  data[i] = rgb[0];
+  data[i + 1] = rgb[1];
+  data[i + 2] = rgb[2];
+}
+const logo = await sharp(data, { raw: info }).png().toBuffer();
+await fs.writeFile(source, logo);
 let left = info.width;
 let top = info.height;
 let right = 0;
@@ -25,7 +38,7 @@ for (let y = 0; y < info.height; y++) {
     }
   }
 }
-const mark = await sharp(source)
+const mark = await sharp(logo)
   .extract({ left, top, width: right - left + 1, height: bottom - top + 1 })
   .png()
   .toBuffer();
@@ -49,8 +62,8 @@ async function canvas(size, width, background, radius = 0) {
     .png().toBuffer();
 }
 
-await fs.copyFile(source, path.join(mobile, 'JamJadeLogo-gradient.png'));
-await fs.copyFile(source, path.join(root, 'backend/public/images/JamJadeLogo-gradient.png'));
+await fs.copyFile(source, path.join(mobile, 'JamJadeLogo-solid.png'));
+await fs.copyFile(source, path.join(root, 'backend/public/images/JamJadeLogo-solid.png'));
 const icon = await canvas(1024, 800, '#FFFFFF');
 await fs.writeFile(path.join(mobile, 'icon.png'), icon);
 

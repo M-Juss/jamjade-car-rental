@@ -1,5 +1,4 @@
 import { themeColors } from '@/constants/theme';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { ArrowLeft, type LucideIcon } from 'lucide-react-native';
@@ -12,12 +11,12 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 
 import {
   BookingStepper,
@@ -36,12 +35,13 @@ import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { bookingFormSchema, type BookingValidationInput } from '@/validation';
 import { useVehicle } from '@/hooks/use-vehicles';
 import { firstParam } from '@/lib/browse/booking-params';
-import { DeliveryRequestsPanel } from '@/components/browse/DeliveryRequestsPanel';
-import { getDeliveryQuote } from '@/services/api/delivery.service';
+import { isReadyDeliveryQuote } from '@/lib/browse/delivery-quotes';
+import { GarageLocationLink } from '@/components/browse/GarageLocationLink';
 import { DeliveryRouteForm } from '@/forms/booking/DeliveryRouteForm';
 import { quoteMatches, type DeliveryQuote } from '@/services/api/delivery.service';
 import { startBookingFlow } from '@/lib/browse/booking-flow';
-import { SHOP_LOCATION, JAMJADE_GARAGE } from '@/lib/browse/rental-config';
+import { canReviewBooking, overlapsUnavailableDates } from '@/lib/browse/booking-readiness';
+import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
 import { isFuturePickupTime } from '@/lib/browse/pickup-time';
 import {
   OWNER_DRIVER_METRO_MANILA_DAILY_RATE,
@@ -61,14 +61,6 @@ function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-function overlapsUnavailableDates(
-  startDate: string,
-  endDate: string,
-  unavailableDateRanges: VehicleUnavailableDateRange[],
-) {
-  return unavailableDateRanges.some((range) => startDate <= range.endDate && endDate >= range.startDate);
-}
-
 function getMaximumReturnDate(rentalDate: string, unavailableDateRanges: VehicleUnavailableDateRange[]) {
   if (!rentalDate) {
     return undefined;
@@ -85,7 +77,9 @@ function getMaximumReturnDate(rentalDate: string, unavailableDateRanges: Vehicle
 function Section({ children, title }: { title: string; children: ReactNode }) {
   return (
     <View className="mt-5">
-      <Text className="font-sans mb-3 text-[18px] font-semibold text-foreground">{title}</Text>
+      <View className="mb-3">
+        <Text accessibilityRole="header" className="font-sans text-[18px] font-semibold text-foreground">{title}</Text>
+      </View>
       {children}
     </View>
   );
@@ -224,8 +218,9 @@ function SelectableCard({
 }
 
 export function BookingForm() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { vehicleId, deliveryQuoteId } = useLocalSearchParams<{ vehicleId?: string; deliveryQuoteId?: string }>();
+  const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const resolvedVehicleId = firstParam(vehicleId);
   const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
   const customer = useCustomer();
@@ -238,6 +233,7 @@ export function BookingForm() {
     handleSubmit,
     setError,
     setValue,
+    trigger,
     watch,
   } = useForm<BookingValidationInput>({
     defaultValues: {
@@ -247,6 +243,7 @@ export function BookingForm() {
       numberOfDays: 0,
       ownerDriverCoverage: 'metro_manila',
       pickupLocation: '',
+      notes: '',
       pickupOption: 'shop',
       rentalDate: '',
       returnDate: '',
@@ -257,36 +254,18 @@ export function BookingForm() {
   const rentalDate = watch('rentalDate');
   const returnDate = watch('returnDate');
   const pickupLocation = watch('pickupLocation');
+  const notes = watch('notes') ?? '';
   const deliveryTime = watch('deliveryTime');
   const driverOption = watch('driverOption');
   const [isGaragePickup, setIsGaragePickup] = useState(true);
   const [deliveryQuote, setDeliveryQuote] = useState<DeliveryQuote | null>(null);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
   const pickupOption: BookingFormData['pickupOption'] = driverOption === 'self_drive' || isGaragePickup ? 'shop' : 'delivery';
   const ownerDriverCoverage = watch('ownerDriverCoverage');
-  const resumeQuote = (q: DeliveryQuote) => {
-    if (q.status === 'consumed' && q.bookingId) {
-      router.replace(`/bookings/${encodeURIComponent(q.bookingId)}` as Href);
-      return;
-    }
-    setValue('rentalDate', q.rentalStartAt.slice(0,10));
-    setValue('returnDate', q.rentalEndAt.slice(0,10));
-    setValue('deliveryTime', q.rentalStartAt.slice(11,16));
-    setValue('driverOption', 'owners_driver');
-    setValue('ownerDriverCoverage', q.ownerDriverCoverage);
-    setValue('pickupLocation', q.destinationAddress);
-    setIsGaragePickup(false);
-    setDeliveryQuote(q);
-    clearErrors();
-  };
-  const resumeRef = useRef(resumeQuote);
-  resumeRef.current = resumeQuote;
-  useEffect(() => {
-    const id = firstParam(deliveryQuoteId);
-    if (!id) return;
-    let active = true;
-    getDeliveryQuote(id).then(q => { if(active && q.vehicleId === resolvedVehicleId) resumeRef.current(q); }).catch(() => { if(active) toast.showToast('This delivery request could not be resumed. Refresh your saved requests.'); });
-    return () => {active = false;};
-  }, [deliveryQuoteId, resolvedVehicleId, toast.showToast]);
   const numberOfDays = useMemo(() => getNumberOfDays(rentalDate, returnDate), [rentalDate, returnDate]);
 
   useEffect(() => {
@@ -297,7 +276,6 @@ export function BookingForm() {
       setValue('driverOption', 'owners_driver');
       setValue('pickupOption', 'shop');
       setValue('pickupLocation', '');
-      setValue('deliveryTime', '');
       setIsGaragePickup(true);
       clearErrors(['deliveryTime', 'driverOption', 'pickupLocation']);
     }
@@ -319,6 +297,11 @@ export function BookingForm() {
     () => getMaximumReturnDate(rentalDate, vehicle?.unavailableDateRanges ?? []),
     [rentalDate, vehicle?.unavailableDateRanges],
   );
+  const readyDeliveryQuote = deliveryQuote && vehicle && pickupOption === 'delivery' &&
+    isReadyDeliveryQuote(deliveryQuote, now) &&
+    quoteMatches(deliveryQuote, vehicle.id, `${rentalDate} ${deliveryTime}`, `${returnDate} ${deliveryTime}`, ownerDriverCoverage, pickupLocation)
+    ? deliveryQuote
+    : undefined;
   const breakdown = useMemo(() => {
     if (!vehicle) {
       return null;
@@ -331,9 +314,15 @@ export function BookingForm() {
       pickupOption,
       ownerDriverCoverage,
       pickupLocation,
-      deliveryQuote && pickupOption === 'delivery' && quoteMatches(deliveryQuote, vehicle.id, `${rentalDate} ${deliveryTime}`, `${returnDate} ${deliveryTime}`, ownerDriverCoverage, pickupLocation) && deliveryQuote.status === 'ready' && Date.parse(deliveryQuote.expiresAt ?? '') > Date.now() ? deliveryQuote : undefined,
+      readyDeliveryQuote,
     );
-  }, [deliveryQuote, rentalDate, returnDate, deliveryTime, driverOption, numberOfDays, ownerDriverCoverage, pickupLocation, pickupOption, vehicle]);
+  }, [readyDeliveryQuote, driverOption, numberOfDays, ownerDriverCoverage, pickupLocation, pickupOption, vehicle]);
+
+  const showBookingReview = canReviewBooking(
+    { ...watch(), pickupOption, numberOfDays, canSelfDrive: selfDriveAvailability.canSelfDrive },
+    vehicle?.unavailableDateRanges ?? [],
+    Boolean(readyDeliveryQuote),
+  );
 
   if (isLoading) {
     return (
@@ -415,21 +404,23 @@ export function BookingForm() {
 
   const handleGaragePickupChange = () => {
     setIsGaragePickup(true);
+    setValue('notes', '');
     setValue('pickupLocation', JAMJADE_GARAGE, { shouldDirty: true });
     clearErrors('pickupLocation');
   };
 
   const handleCustomPickupChange = () => {
     setIsGaragePickup(false);
+    setValue('notes', '');
     setValue('pickupLocation', '', { shouldDirty: true });
     clearErrors('pickupLocation');
   };
 
   const handleDriverOptionChange = (nextDriverOption: BookingFormData['driverOption']) => {
     setValue('driverOption', nextDriverOption, { shouldDirty: true });
+    setValue('notes', '');
     setValue('pickupOption', 'shop');
     setValue('pickupLocation', '');
-    setValue('deliveryTime', '');
     setIsGaragePickup(true);
     clearErrors(['deliveryTime', 'driverOption', 'pickupLocation']);
   };
@@ -447,7 +438,7 @@ export function BookingForm() {
     }
 
     const pickupTime = values.deliveryTime ? ` ${values.deliveryTime}` : '';
-    if (values.pickupOption === 'delivery' && (!deliveryQuote || deliveryQuote.status !== 'ready' || Date.parse(deliveryQuote.expiresAt ?? '') <= Date.now() || !quoteMatches(deliveryQuote, vehicle.id, `${values.rentalDate}${pickupTime}`, `${values.returnDate}${pickupTime}`, values.ownerDriverCoverage, values.pickupLocation))) {
+    if (values.pickupOption === 'delivery' && (!isReadyDeliveryQuote(deliveryQuote) || !quoteMatches(deliveryQuote, vehicle.id, `${values.rentalDate}${pickupTime}`, `${values.returnDate}${pickupTime}`, values.ownerDriverCoverage, values.pickupLocation))) {
       setError('pickupLocation', { message: 'Choose a complete, valid delivery quote before continuing.' });
       toast.showToast('Delivery needs a complete, valid quote before checkout.');
       return;
@@ -465,6 +456,7 @@ export function BookingForm() {
       numberOfDays: values.numberOfDays,
       pickupOption: values.pickupOption,
       pickupLocation: values.pickupOption === 'shop' ? JAMJADE_GARAGE : values.pickupLocation.trim(),
+      notes: values.pickupOption === 'delivery' ? values.notes?.trim() || undefined : undefined,
       deliveryTime: values.deliveryTime,
       returnLocation: values.pickupOption === 'shop' ? JAMJADE_GARAGE : values.pickupLocation.trim(),
       driverOption: values.driverOption,
@@ -483,8 +475,11 @@ export function BookingForm() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-          <ScrollView
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+          className="flex-1">
+          <KeyboardFormScrollView
             className="flex-1"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
@@ -498,11 +493,7 @@ export function BookingForm() {
                 </Pressable>
                 <View className="min-w-0 flex-1">
                   <Text className="font-sans text-title font-semibold text-foreground">Booking Details</Text>
-                  <Text className="font-sans mt-1 text-[13px] font-normal text-secondary-foreground">
-                    Complete your rental request
-                  </Text>
                 </View>
-                <LogoutHeaderButton />
               </View>
 
               <View className="mt-5">
@@ -512,8 +503,6 @@ export function BookingForm() {
               <View className="mt-5">
                 <SelectedVehicleSummary vehicle={vehicle} />
               </View>
-
-              <DeliveryRequestsPanel vehicleId={vehicle.id} onResume={resumeQuote} />
 
               <Section title="Rental Schedule">
                 <View className="gap-4 rounded-card border border-border bg-surface p-4">
@@ -535,6 +524,16 @@ export function BookingForm() {
                     value={returnDate}
                     onChange={handleReturnDateChange}
                     placeholder="Select return date"
+                  />
+                  <TimePickerWithLabel
+                    required
+                    error={errors.deliveryTime?.message}
+                    helperText="The vehicle is picked up and returned at this time."
+                    label="Pickup time"
+                    placeholder="Select pickup time"
+                    value={deliveryTime}
+                    onChange={handleDeliveryTimeChange}
+                    pickupDate={rentalDate}
                   />
                   <View className="rounded-2xl bg-muted p-4">
                     <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
@@ -581,72 +580,50 @@ export function BookingForm() {
 
               <Section title={driverOption === 'self_drive' ? 'Pickup Details' : 'Delivery & Trip Details'}>
                 {driverOption === 'self_drive' ? (
-                  <View className="rounded-card border border-border bg-surface p-4">
-                    <View className="flex-row items-center gap-3">
-                      <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
-                        <browseIcons.MapPin size={21} color={themeColors.primary} strokeWidth={2.35} />
-                      </View>
-                      <View className="min-w-0 flex-1">
-                        <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
-                          Shop pickup required
-                        </Text>
-                        <Text className="font-sans mt-1 text-[15px] font-semibold text-foreground">
-                          {SHOP_LOCATION}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text className="font-sans mt-3 text-caption text-secondary-foreground">
-                      Self-drive vehicles must be collected from the shop for final verification and release.
-                    </Text>
-                  </View>
-                ) : isGaragePickup ? (
-                  <Text className="font-sans text-[13px] font-normal leading-6 text-secondary-foreground">
-                    Pickup and return at the Jamjade Garage are free.
-                  </Text>
-                ) : (
-                  <Text className="font-sans text-[13px] font-normal leading-6 text-secondary-foreground">
-                    Delivery is priced from the selected driving route. Any toll charge needs staff approval.
-                  </Text>
-                )}
+                  <GarageLocationLink />
+                ) : null}
 
                 {driverOption === 'owners_driver' ? (
-                  <View className="mt-4">
+                  <View>
                     <View className="gap-2">
                       <SelectableCard
                         icon={browseIcons.Car}
                         title="Jamjade Garage"
-                        description="Free pickup — no delivery fee."
+                        description="Free"
                         isSelected={isGaragePickup}
                         onPress={handleGaragePickupChange}
                       />
                       <SelectableCard
                         icon={browseIcons.MapPin}
                         title="Custom location"
-                        description="Choose a route and receive a delivery quote."
+                        description="Choose your delivery and end trip address."
                         isSelected={!isGaragePickup}
                         onPress={handleCustomPickupChange}
                       />
                     </View>
 
                     {isGaragePickup ? (
-                      <View className="mt-4 rounded-[24px] border border-border bg-surface p-4">
-                        <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
-                          Delivery location
-                        </Text>
-                        <Text className="font-sans mt-1 text-[15px] font-semibold text-foreground">
-                          {JAMJADE_GARAGE}
-                        </Text>
-                        <Text className="font-sans mt-2 text-caption text-secondary-foreground">
-                          The vehicle is released from and returned to the Jamjade Garage.
-                        </Text>
+                      <View className="mt-5 border-t border-border pt-5">
+                        <GarageLocationLink />
                       </View>
                     ) : (
-                      <View className="mt-4">
+                      <View className="mt-5 border-t border-border pt-5">
                         <DeliveryRouteForm
-                          key={`${vehicle.id}-${rentalDate}-${returnDate}-${deliveryTime}-${ownerDriverCoverage}`}
-                          initialQuote={deliveryQuote && quoteMatches(deliveryQuote, vehicle.id, `${rentalDate} ${deliveryTime}`, `${returnDate} ${deliveryTime}`, ownerDriverCoverage, pickupLocation) ? deliveryQuote : undefined}
+                          key={vehicle.id}
                           vehicleId={vehicle.id} start={`${rentalDate} ${deliveryTime}`} end={`${returnDate} ${deliveryTime}`} coverage={ownerDriverCoverage}
                           address={pickupLocation} onAddress={handlePickupLocationChange} onQuote={setDeliveryQuote}
+                          note={notes}
+                          noteError={errors.notes?.message}
+                          onToast={toast.showToast}
+                          onValidateSchedule={async () => {
+                            const valid = await trigger(['rentalDate', 'returnDate', 'deliveryTime']);
+                            if (!valid) toast.showToast('Complete the rental dates and pickup time.');
+                            return valid;
+                          }}
+                          onNote={(value) => {
+                            setValue('notes', value, { shouldDirty: true });
+                            clearErrors('notes');
+                          }}
                         />
                         {errors.pickupLocation && <Text accessibilityRole="alert" className="font-sans text-caption text-destructive">{errors.pickupLocation.message}</Text>}
                       </View>
@@ -654,17 +631,6 @@ export function BookingForm() {
                   </View>
                 ) : null}
 
-                <TimePickerWithLabel
-                  required
-                  error={errors.deliveryTime?.message}
-                  helperText="The vehicle is picked up and returned at this time."
-                  label="Pickup time"
-                  placeholder="Select pickup time"
-                  value={deliveryTime}
-                  onChange={handleDeliveryTimeChange}
-                  pickupDate={rentalDate}
-                  wrapperClassName="mt-4"
-                />
               </Section>
 
               {driverOption === 'owners_driver' && (
@@ -696,20 +662,24 @@ export function BookingForm() {
                 </Section>
               )}
 
-              <Section title="Price Breakdown">
-                {pickupOption === 'delivery' && (!deliveryQuote || deliveryQuote.status !== 'ready') ? <Text className="font-sans text-body text-secondary-foreground">Choose a delivery route and wait for any required toll approval to see the complete price.</Text> : <PriceBreakdownCard breakdown={breakdown} />}
-              </Section>
+              {showBookingReview ? (
+                <>
+                  <Section title="Price Breakdown">
+                    <PriceBreakdownCard breakdown={breakdown} />
+                  </Section>
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={handleSubmit(onSubmit, () => {
-                  toast.showToast('Check the highlighted booking details.');
-                })}
-                className="mt-6 min-h-control items-center justify-center rounded-full bg-primary ">
-                <Text className="font-sans text-[16px] font-semibold text-surface">Review Booking</Text>
-              </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={handleSubmit(onSubmit, () => {
+                      toast.showToast('Check the highlighted booking details.');
+                    })}
+                    className="mt-6 min-h-control items-center justify-center rounded-full bg-primary">
+                    <Text className="font-sans text-[16px] font-semibold text-surface">Review Booking</Text>
+                  </Pressable>
+                </>
+              ) : null}
             </View>
-          </ScrollView>
+          </KeyboardFormScrollView>
         </KeyboardAvoidingView>
         <FormToast
           message={toast.message}

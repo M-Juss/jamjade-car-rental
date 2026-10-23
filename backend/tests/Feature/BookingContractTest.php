@@ -15,7 +15,7 @@ beforeEach(function () {
 
 function ownersDriverBookingPayload(array $overrides = []): array
 {
-    return array_merge([
+    $payload = array_merge([
         'vehicle_id' => availableVehicle()->id,
         'rental_start_at' => now()->addDays(3)->setTime(9, 30)->format('Y-m-d H:i'),
         'rental_end_at' => now()->addDays(5)->setTime(9, 30)->format('Y-m-d H:i'),
@@ -27,6 +27,9 @@ function ownersDriverBookingPayload(array $overrides = []): array
         'customer_signature' => 'signed',
         'terms_version' => '2026-08-19',
     ], $overrides);
+    $payload['late_return_policy_version'] = lateReturnPolicyVersion($payload['vehicle_id']);
+
+    return $payload;
 }
 
 it('waives the delivery fee when the owner-s driver pickup is the Jamjade Garage', function () {
@@ -54,9 +57,13 @@ it('uses the accepted delivery quote for a specific delivery location', function
 
 it('derives the delivery time from the rental start time', function () {
     $user = customerUser();
+    $start = now()->addDays(3)->setTimezone('Asia/Manila')->setTime(9, 30);
     $booking = app(BookingService::class)->createAwaitingPayPalPayment(
         $user,
-        ownersDriverBookingPayload(['rental_start_at' => now()->addDays(3)->setTime(9, 30)->format('Y-m-d H:i')])
+        ownersDriverBookingPayload([
+            'rental_start_at' => $start->toIso8601String(),
+            'rental_end_at' => $start->copy()->addDays(2)->toIso8601String(),
+        ])
     );
 
     expect($booking->delivery_time)->toBe('09:30')

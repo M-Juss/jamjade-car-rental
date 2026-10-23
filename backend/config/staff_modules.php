@@ -10,8 +10,8 @@ return [
         'staff_accessible' => true,
     ],
     'fleet_tracker' => [
-        'label' => 'Fleet Tracker',
-        'description' => 'Track active vehicles and telematics activity.',
+        'label' => 'Fleet Monitoring',
+        'description' => 'View ongoing rentals and their tracking status.',
         'permission' => 'view fleet tracker',
         'admin_path' => '/admin/fleet',
         'staff_path' => '/staff/fleet',
@@ -66,8 +66,8 @@ return [
         'staff_accessible' => true,
     ],
     'delivery_pricing' => [
-        'label' => 'Delivery Pricing',
-        'description' => 'Configure garage location and delivery rates for new quotes.',
+        'label' => 'Pricing Settings',
+        'description' => 'Configure delivery pricing and hourly late return rates for new bookings.',
         'permission' => 'manage delivery pricing',
         'admin_path' => '/admin/delivery-pricing',
         'staff_path' => null,

@@ -12,6 +12,7 @@ use App\Services\VehicleInspectionService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 
@@ -23,6 +24,93 @@ beforeEach(function () {
 
 afterEach(function () {
     CarbonImmutable::setTestNow();
+});
+
+it('lists only owned non-terminal self-drive rentals with bounded pagination', function () {
+    $booking = telematicsAccessBooking(BookingStatus::Pending);
+    $upcoming = $booking->replicate();
+    $upcoming->forceFill(['booking_code' => 'BK-CARDS-UPCOMING', 'status' => BookingStatus::Confirmed, 'rental_start_at' => now()->addDay()])->save();
+    foreach ([BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::Completed, BookingStatus::Returned] as $status) {
+        $closed = $booking->replicate();
+        $closed->forceFill(['booking_code' => 'BK-CARDS-'.$status->value, 'status' => $status])->save();
+    }
+    $withDriver = $booking->replicate();
+    $withDriver->forceFill(['booking_code' => 'BK-CARDS-DRIVER', 'rental_type' => RentalType::OwnersDriver])->save();
+    telematicsAccessBooking();
+    Sanctum::actingAs($booking->user);
+    $this->getJson('/api/mobile/telematics/rentals?per_page=1')
+        ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.total', 2)->assertJsonPath('meta.last_page', 2)
+        ->assertJsonPath('data.0.bookingCode', $upcoming->booking_code)
+        ->assertJsonPath('data.0.eligibility.canWorkSetup', false)->assertJsonPath('data.0.eligibility.state', 'rental_scheduled');
+    $this->getJson('/api/mobile/telematics/rentals?per_page=1&page=2')
+        ->assertOk()->assertJsonPath('data.0.bookingCode', $booking->booking_code)
+        ->assertJsonPath('data.0.eligibility.state', 'waiting_for_confirmation');
+});
+
+it('returns an empty rental list and rejects invalid pagination', function () {
+    Sanctum::actingAs(customerUser());
+    $this->getJson('/api/mobile/telematics/rentals')->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson('/api/mobile/telematics/rentals?per_page=31&page=0')
+        ->assertUnprocessable()->assertJsonValidationErrors(['per_page', 'page']);
+});
+
+it('requires customer authentication for the rental list', function () {
+    $this->getJson('/api/mobile/telematics/rentals')->assertUnauthorized();
+    Sanctum::actingAs(vehicleManagerUser());
+    $this->getJson('/api/mobile/telematics/rentals')->assertForbidden();
+});
+
+it('unlocks a rental card only after staff start handover and keeps evidence private', function () {
+    $booking = telematicsAccessBooking();
+    prepareAccessHandover($booking);
+    Sanctum::actingAs($booking->user);
+    $this->getJson('/api/mobile/telematics/rentals')->assertOk()
+        ->assertJsonPath('data.0.eligibility.canWorkSetup', false)
+        ->assertJsonPath('data.0.eligibility.state', 'handover_preparation')->assertJsonPath('data.0.hasSetupAttempts', false);
+    app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser());
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/device_check/attempt", [
+        'evidence' => ['accelerometer_available' => true, 'gyroscope_available' => true,
+            'location_services_available' => true, 'platform' => 'android',
+            'build_context' => 'standalone', 'checked_at' => now()->toISOString()],
+    ])->assertOk();
+    $response = $this->getJson('/api/mobile/telematics/rentals')->assertOk()
+        ->assertJsonPath('data.0.eligibility.canWorkSetup', true)->assertJsonPath('data.0.hasSetupAttempts', true);
+    expect(array_keys($response->json('data.0')))->toBe([
+        'bookingCode', 'bookingStatus', 'vehicleName', 'image', 'rentalStartAt', 'rentalEndAt',
+        'rentalPeriodEnded', 'hasSetupAttempts', 'eligibility',
+    ]);
+});
+
+it('prioritizes the ongoing rental and locks competing handovers without per-card queries', function () {
+    $booking = telematicsAccessBooking();
+    $booking->update(['status' => BookingStatus::Ongoing]);
+    $booking->telematicsSetupSession()->create(['status' => TelematicsSetupStatus::Released]);
+    for ($index = 0; $index < 10; $index++) {
+        $next = $booking->replicate();
+        $next->forceFill(['booking_code' => 'BK-CARDS-NEXT-'.$index, 'status' => BookingStatus::Confirmed,
+            'rental_start_at' => now()->addDays($index + 1), 'rental_end_at' => now()->addDays($index + 2)])->save();
+    }
+    Sanctum::actingAs($booking->user);
+    $this->getJson('/api/mobile/telematics/rentals?per_page=1')->assertOk();
+    DB::enableQueryLog();
+    $this->getJson('/api/mobile/telematics/rentals?per_page=1')->assertOk();
+    $singleQueries = count(DB::getQueryLog());
+    DB::flushQueryLog();
+    $this->getJson('/api/mobile/telematics/rentals')->assertOk()
+        ->assertJsonPath('data.0.bookingCode', $booking->booking_code)->assertJsonPath('data.0.eligibility.state', 'released')
+        ->assertJsonPath('data.1.eligibility.state', 'other_rental_active')->assertJsonPath('data.1.eligibility.canWorkSetup', false);
+    expect(count(DB::getQueryLog()))->toBe($singleQueries);
+    DB::disableQueryLog();
+});
+
+it('reports expired periods and missing documents on rental cards', function () {
+    $booking = telematicsAccessBooking();
+    $booking->update(['rental_start_at' => now()->subDays(2), 'rental_end_at' => now()->subDay()]);
+    $booking->user->documents()->firstOrFail()->update(['status' => DocumentStatus::Pending]);
+    Sanctum::actingAs($booking->user);
+    $this->getJson('/api/mobile/telematics/rentals')->assertOk()
+        ->assertJsonPath('data.0.rentalPeriodEnded', true)->assertJsonPath('data.0.eligibility.documentsVerified', false)
+        ->assertJsonPath('data.0.eligibility.canWorkSetup', false);
 });
 
 function telematicsAccessBooking(BookingStatus $status = BookingStatus::Confirmed, RentalType $type = RentalType::SelfDrive, mixed $start = null): Booking
@@ -123,18 +211,18 @@ it('reports incomplete document verification and keeps setup locked', function (
 
 it('blocks staff handover before the booking rental date', function () {
     $booking = telematicsAccessBooking(BookingStatus::Confirmed, RentalType::SelfDrive, now()->addDay());
-    prepareAccessHandover($booking);
+    legacyLifecycleOutgoing($booking);
 
     expect(fn () => app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser()))
         ->toThrow(ValidationException::class);
 });
 
-it('allows a booking later today to start handover and work setup', function () {
+it('allows a booking to start handover and work setup inside its reserved interval', function () {
     CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 9, 18, 2, 0, 0, 'UTC'));
     $booking = telematicsAccessBooking(
         BookingStatus::Confirmed,
         RentalType::SelfDrive,
-        CarbonImmutable::create(2026, 9, 18, 10, 0, 0, 'UTC'),
+        CarbonImmutable::create(2026, 9, 18, 1, 0, 0, 'UTC'),
     );
     prepareAccessHandover($booking);
 
@@ -160,7 +248,7 @@ it('does not allow tomorrow\'s booking to start handover', function () {
         RentalType::SelfDrive,
         CarbonImmutable::create(2026, 9, 19, 1, 0, 0, 'UTC'),
     );
-    prepareAccessHandover($booking);
+    legacyLifecycleOutgoing($booking);
 
     expect(fn () => app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser()))
         ->toThrow(ValidationException::class);

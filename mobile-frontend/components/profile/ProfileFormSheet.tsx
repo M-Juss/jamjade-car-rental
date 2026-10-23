@@ -22,7 +22,7 @@ export function ProfileFormSheet({
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 justify-end bg-black/35">
         <Pressable accessibilityRole="button" className="flex-1" onPress={onClose} />
         <View

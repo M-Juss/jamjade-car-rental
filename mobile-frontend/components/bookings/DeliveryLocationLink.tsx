@@ -5,21 +5,27 @@ import { ActionButton } from './ActionButton';
 import type { Booking } from '@/types/booking';
 export function DeliveryLocationLink({
   location,
+  navigate = false,
 }: {
   location: NonNullable<Booking['deliveryLocation']>;
+  navigate?: boolean;
 }) {
   const [error, setError] = useState(false);
   const open = async () => {
     const params = new URLSearchParams({
       api: '1',
-      query: location.point
+      [navigate ? 'destination' : 'query']: location.point
         ? `${location.point.latitude},${location.point.longitude}`
         : location.address,
     });
     if (location.placeId && !location.point)
-      params.set('query_place_id', location.placeId);
+      params.set(navigate ? 'destination_place_id' : 'query_place_id', location.placeId);
+    if (navigate) {
+      params.set('travelmode', 'driving');
+      params.set('dir_action', 'navigate');
+    }
     try {
-      await Linking.openURL(`https://www.google.com/maps/search/?${params}`);
+      await Linking.openURL(`https://www.google.com/maps/${navigate ? 'dir' : 'search'}/?${params}`);
       setError(false);
     } catch {
       setError(true);
@@ -29,7 +35,7 @@ export function DeliveryLocationLink({
     <View className="mt-3 gap-2">
       <ActionButton
         icon={MapPin}
-        label="View Delivery Point"
+        label={navigate ? 'Navigate in Google Maps' : 'View Delivery Point'}
         variant="secondary"
         onPress={() => void open()}
       />

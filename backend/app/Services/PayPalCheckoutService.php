@@ -9,7 +9,9 @@ use App\Models\Booking;
 use App\Models\BookingAdditionalCharge;
 use App\Models\PayPalCheckout;
 use App\Models\User;
+use App\Support\BookingAgreement;
 use App\Support\PayPalAppUrl;
+use App\Support\PayPalCallbackUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
@@ -159,26 +161,39 @@ class PayPalCheckoutService
         array $additionalChargeIds = []
     ): array {
         $currency = 'PHP';
-        $checkout = PayPalCheckout::create([
-            'booking_id' => $booking->id,
-            'user_id' => $user->id,
-            'payment_option' => $paymentOption,
-            'amount' => $amount,
-            'currency' => $currency,
-            'status' => 'creating',
-        ]);
-        if ($additionalChargeIds !== []) {
-            $allocations = BookingAdditionalCharge::query()
-                ->whereIn('id', $additionalChargeIds)
-                ->with('payments')
-                ->get()
-                ->mapWithKeys(fn (BookingAdditionalCharge $charge) => [
-                    $charge->id => ['amount' => $charge->outstanding_amount],
-                ])
-                ->filter(fn (array $allocation) => (float) $allocation['amount'] > 0)
-                ->all();
-            $checkout->additionalCharges()->sync($allocations);
-        }
+        // Reserve the payment under the same booking lock used by charge edits.
+        // The provider request happens after this short transaction commits.
+        $checkout = DB::transaction(function () use ($booking, $user, $paymentOption, $amount, $currency, $additionalChargeIds) {
+            $currentBooking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if (in_array($paymentOption, ['remaining_balance', 'driver_outstanding'], true)) {
+                $charges = $currentBooking->additionalCharges()->where('responsible_user_id', $user->id)
+                    ->where('responsibility', $paymentOption === 'remaining_balance' ? 'customer' : 'driver')
+                    ->outstanding()->with('payments')->orderBy('id')->lockForUpdate()->get();
+                $expectedIds = array_map('intval', $additionalChargeIds);
+                sort($expectedIds);
+                $currentAmount = $paymentOption === 'remaining_balance'
+                    ? (float) $currentBooking->remaining_balance : (float) $charges->sum('outstanding_amount');
+                if ($charges->modelKeys() !== $expectedIds || abs($currentAmount - $amount) >= 0.005 || $currentBooking->status->isTerminal()) {
+                    throw ValidationException::withMessages(['booking' => ['The charges changed. Refresh the booking before paying.']]);
+                }
+                if ($currentBooking->paypalCheckouts()->where('user_id', $user->id)->where('purpose', $paymentOption)
+                    ->whereNotIn('status', ['completed', 'failed'])->exists()) {
+                    throw ValidationException::withMessages(['booking' => ['A checkout for this balance is already open.']]);
+                }
+            }
+            $checkout = PayPalCheckout::create([
+                'booking_id' => $booking->id, 'user_id' => $user->id, 'payment_option' => $paymentOption,
+                'amount' => $amount, 'currency' => $currency, 'status' => 'creating',
+            ]);
+            if ($additionalChargeIds !== []) {
+                $allocations = BookingAdditionalCharge::query()->whereIn('id', $additionalChargeIds)->with('payments')->get()
+                    ->mapWithKeys(fn (BookingAdditionalCharge $charge) => [$charge->id => ['amount' => $charge->outstanding_amount]])
+                    ->filter(fn (array $allocation) => (float) $allocation['amount'] > 0)->all();
+                $checkout->additionalCharges()->sync($allocations);
+            }
+
+            return $checkout;
+        });
 
         try {
             $order = $this->payPalClient->createOrder([
@@ -255,6 +270,19 @@ class PayPalCheckoutService
             return $this->loadBooking($checkout->booking_id);
         }
 
+        if ($checkout->booking->status === BookingStatus::Pending &&
+            ($checkout->booking->rental_end_at->lte(now()) ||
+                ($checkout->payment_option === 'down_payment' && BookingAgreement::balanceDeadline($checkout->booking->rental_start_at)->lte(now())))) {
+            throw ValidationException::withMessages(['booking' => ['This checkout expired. Review the booking and payment requirements again.']]);
+        }
+        if ($checkout->payment_option !== 'driver_outstanding' && $checkout->booking->status->isTerminal()) {
+            throw ValidationException::withMessages(['booking' => ['This booking no longer accepts payment.']]);
+        }
+        if ($checkout->payment_option !== 'driver_outstanding' && $checkout->booking->status === BookingStatus::Confirmed
+            && $checkout->booking->balance_due_at?->lte(now())) {
+            throw ValidationException::withMessages(['booking' => ['The payment deadline has passed.']]);
+        }
+
         if ($checkout->payment_option !== 'driver_outstanding') {
             $this->bookingService->assertCustomerAgeEligible($user);
         }
@@ -329,6 +357,9 @@ class PayPalCheckoutService
 
             $booking = Booking::query()->lockForUpdate()->findOrFail($lockedCheckout->booking_id);
             $lockedCheckout->load('additionalCharges');
+            if ($lockedCheckout->payment_option !== 'driver_outstanding' && $booking->status->isTerminal()) {
+                throw ValidationException::withMessages(['booking' => ['This booking no longer accepts payment. Contact Jamjade to reconcile any provider payment.']]);
+            }
 
             if ($lockedCheckout->payment_option === 'driver_outstanding') {
                 $chargeIds = $lockedCheckout->additionalCharges->pluck('id');
@@ -371,8 +402,8 @@ class PayPalCheckoutService
                 ? PaymentStatus::Paid
                 : PaymentStatus::Partial;
             $remainingBalance = max((float) $booking->total_amount - $paidAfterCapture, 0);
-            $balanceDueAt = $paymentStatus === PaymentStatus::Partial
-                ? $booking->rental_start_at->copy()->subDay()
+            $balanceDueAt = $paymentStatus === PaymentStatus::Partial && in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed], true)
+                ? ($booking->balance_due_at ?? BookingAgreement::balanceDeadline($booking->rental_start_at))
                 : null;
 
             $booking->update([
@@ -421,68 +452,11 @@ class PayPalCheckoutService
                         'reason' => 'Successful PayPal payment.',
                     ])
                     ->log('Booking automatically confirmed after payment.');
-
-                $this->notificationService->createForBooking(
-                    $booking,
-                    'booking',
-                    'Booking confirmed',
-                    "Booking {$booking->booking_code} was automatically confirmed after payment.",
-                    [
-                        'priority' => 'success',
-                        'action_label' => 'View Booking',
-                        'action' => 'view_booking',
-                    ]
-                );
             }
 
-            $this->notificationService->createForBooking(
-                $booking,
-                'payment',
-                $paymentStatus === PaymentStatus::Paid ? 'Payment completed' : 'Down payment received',
-                sprintf(
-                    'PayPal payment of PHP %s was recorded for booking %s.',
-                    number_format($amount, 2),
-                    $booking->booking_code
-                ),
-                [
-                    'priority' => 'success',
-                    'action_label' => 'View Booking',
-                    'action' => 'view_booking',
-                    'amount' => $amount,
-                    'payment_status' => $paymentStatus->value,
-                ]
-            );
+            $this->notificationService->createForCustomerPayment($booking, $lockedCheckout, $wasPending);
 
-            if ($paymentStatus === PaymentStatus::Partial) {
-                $this->notificationService->createForBooking(
-                    $booking,
-                    'payment',
-                    'Remaining balance scheduled',
-                    sprintf(
-                        'PHP %s is due by %s. If unpaid, the booking will be cancelled and the down payment is non-refundable.',
-                        number_format($remainingBalance, 2),
-                        $balanceDueAt->format('F j, Y - g:i A')
-                    ),
-                    [
-                        'priority' => 'warning',
-                        'action_label' => 'Pay Remaining Balance',
-                        'action' => 'pay_balance',
-                        'remaining_balance' => $remainingBalance,
-                        'due_at' => $balanceDueAt->toISOString(),
-                        'non_refundable' => true,
-                    ]
-                );
-            }
-
-            $bookingId = $booking->id;
-
-            DB::afterCommit(function () use ($bookingId) {
-                $booking = Booking::query()->find($bookingId);
-
-                if ($booking) {
-                    $this->bookingEmailService->sendBookingConfirmation($booking);
-                }
-            });
+            $this->bookingEmailService->queueForPayment($lockedCheckout);
 
             return $this->loadBooking($booking->id);
         });
@@ -556,14 +530,9 @@ class PayPalCheckoutService
 
     private function requestCallbackUrl(string $routeName, string $appUrl): string
     {
-        if (app()->bound('request')) {
-            return request()->getSchemeAndHttpHost().route(
-                $routeName,
-                ['target' => PayPalAppUrl::encode($appUrl)],
-                false
-            );
-        }
-
-        return route($routeName, ['target' => PayPalAppUrl::encode($appUrl)]);
+        return PayPalCallbackUrl::to(
+            route($routeName, ['target' => PayPalAppUrl::encode($appUrl)], false),
+            app()->bound('request') ? request() : null,
+        );
     }
 }

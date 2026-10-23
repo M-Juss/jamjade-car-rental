@@ -6,7 +6,8 @@ import {
   ClipboardCheck,
   Fence,
   LayoutDashboard,
-  Settings,
+  MapPin,
+  PhilippinePeso,
   ShieldCheck,
   History,
   Wrench,
@@ -45,7 +46,6 @@ export type ManagementModule = {
 };
 
 export const managementModules: readonly ManagementModule[] = [
-  { id: "deliveryPricing", label: "Delivery Pricing", section: "Administration", icon: Settings, adminOnly: true, path: "delivery-pricing" },
   {
     id: "dashboard",
     label: "Dashboard",
@@ -90,7 +90,7 @@ export const managementModules: readonly ManagementModule[] = [
     id: "vehicles",
     label: "Vehicle",
     section: "Fleet Operations",
-    icon: Settings,
+    icon: Car,
     permission: "manage vehicles",
     path: "vehicle",
   },
@@ -104,9 +104,9 @@ export const managementModules: readonly ManagementModule[] = [
   },
   {
     id: "fleetTracker",
-    label: "Fleet Tracker",
+    label: "Fleet Monitoring",
     section: "Fleet Operations",
-    icon: Car,
+    icon: MapPin,
     permission: "view fleet tracker",
     path: "fleet",
   },
@@ -126,6 +126,7 @@ export const managementModules: readonly ManagementModule[] = [
     adminOnly: true,
     path: "personnel",
   },
+  { id: "deliveryPricing", label: "Fee Pricing", section: "Administration", icon: PhilippinePeso, adminOnly: true, path: "delivery-pricing" },
 ] as const;
 
 export const managementSections: readonly ManagementSection[] = [

@@ -43,6 +43,7 @@ return [
         'currency' => 'PHP',
         'return_url' => env('PAYPAL_RETURN_URL'),
         'cancel_url' => env('PAYPAL_CANCEL_URL'),
+        'callback_origin' => env('PAYPAL_CALLBACK_ORIGIN'),
         'app_callback_origins' => array_values(array_filter(array_map(
             'trim',
             explode(',', (string) env(

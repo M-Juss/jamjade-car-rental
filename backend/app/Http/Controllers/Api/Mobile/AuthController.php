@@ -36,7 +36,7 @@ class AuthController extends Controller
             'tokenType' => 'Bearer',
             'token' => $result['token'],
             'user' => new UserResource($result['user']),
-        ]);
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function logout(Request $request): JsonResponse

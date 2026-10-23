@@ -38,17 +38,17 @@ export function BookingMonitoringZones({ booking, onUpdated }: { booking: Bookin
         <div className="flex flex-wrap items-center justify-between gap-2"><CardTitle className="flex items-center gap-2 text-sm"><Fence size={17} />Monitoring zones</CardTitle>
           {booking.canManageMonitoringZones ? <Button type="button" size="sm" variant="outline" onClick={() => { setEditing(null); setEditorOpen(true); }}><Plus size={14} />Add Booking Zone</Button> : null}
         </div>
-        <p className="text-xs leading-5 text-muted-foreground">Default zones apply automatically. Booking zones add to them. Entry and exit are information events and do not restrict vehicle movement. Zone settings are saved when staff releases the rental.</p>
+        <p className="text-xs leading-5 text-muted-foreground">Zones record entry and exit without restricting movement. Settings are fixed when the rental starts.</p>
       </CardHeader>
       <CardContent className="space-y-3 px-4 pb-4">
-        {(booking.monitoringZones ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No monitoring zones configured. This does not block handover or rental release.</p> : null}
+        {(booking.monitoringZones ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No monitoring zones.</p> : null}
         {(booking.monitoringZones ?? []).map((zone, index) => <div key={zone.id ?? `default-${index}`} className="space-y-2 rounded-xl bg-background p-3">
           <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-foreground">{zone.name}</p><Badge variant="secondary">{zone.scope === "default" ? "Default" : "Booking only"}{zone.frozenAt ? " · Saved" : ""}</Badge></div>
           <p className="text-xs text-muted-foreground">{zone.geometryType === "circle" ? `Circle · ${zone.radiusMeters?.toLocaleString()} m` : `Polygon · ${zone.polygonCoordinates?.length ?? 0} points`} · Alerts: {[zone.notifyOnEnter && "entry", zone.notifyOnExit && "exit"].filter(Boolean).join(" and ") || "recorded only"}</p>
           {booking.canManageMonitoringZones && zone.scope === "custom" && zone.id ? <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { setEditing(zone); setEditorOpen(true); }}><Pencil size={13} />Edit</Button><Button type="button" size="sm" variant="outline" onClick={() => setDeleting(zone)}><Trash2 size={13} />Remove</Button></div> : null}
         </div>)}
         <div className="space-y-2 border-t border-border pt-3"><p className="text-xs font-semibold text-foreground">Recent zone activity</p>
-          {(booking.geofenceActivity ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No crossings recorded. Continuous mobile tracking remains unavailable.</p> : null}
+          {(booking.geofenceActivity ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No crossings recorded.</p> : null}
           {(booking.geofenceActivity ?? []).map((event) => <div key={event.id} className="rounded-xl bg-background p-3 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-foreground">{event.type === "geofence_enter" ? "Entered" : "Exited"} {event.zoneName}</p>{event.notificationRequested ? <Badge variant="outline">Alert</Badge> : null}</div>
             <p className="mt-1 text-muted-foreground">{new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(event.occurredAt))}</p>

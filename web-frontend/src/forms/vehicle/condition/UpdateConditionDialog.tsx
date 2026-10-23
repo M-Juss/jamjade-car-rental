@@ -60,20 +60,14 @@ type UpdateConditionDialogProps = {
 
 function conditionFromSnapshot(inspection: VehicleInspectionRecord): VehicleConditionFormValues {
   const empty = createVehicleConditionDefaults();
-  const checklist = Object.fromEntries(
-    Object.entries(empty.checklist).map(([category, items]) => [
-      category,
-      Object.fromEntries(
-        Object.keys(items).map((key) => [
-          key,
-          inspection.checklist?.[category as keyof typeof empty.checklist]
-            ?.find((item) => item.key === key)?.value ?? false,
-        ]),
-      ),
-    ]),
-  ) as VehicleConditionFormValues["checklist"];
+  const checklist = Object.fromEntries(Object.keys(empty.checklist).map((category) => [
+    category, Object.fromEntries((inspection.checklist?.[category as keyof typeof empty.checklist] ?? []).map((item) => [item.key, item.value])),
+  ])) as VehicleConditionFormValues["checklist"];
 
   return {
+    checklist_definition: Object.fromEntries(Object.keys(empty.checklist).map((category) => [
+      category, Object.fromEntries((inspection.checklist?.[category as keyof typeof empty.checklist] ?? []).map((item) => [item.key, item.label])),
+    ])) as VehicleConditionFormValues["checklist_definition"], checklist_version: "",
     odometer: String(inspection.odometer),
     fuel_level: inspection.fuelLevel,
     comments: inspection.comments ?? "",

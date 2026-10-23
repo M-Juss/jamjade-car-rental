@@ -13,6 +13,7 @@ use App\Models\PayPalCheckout;
 use App\Models\TelematicsTrip;
 use App\Models\User;
 use App\Services\PaymentDeadlineService;
+use App\Support\BookingAgreement;
 use App\Support\PayPalAppUrl;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -173,7 +174,7 @@ it('persists each mobile onboarding step to the customer profile', function () {
     )->not->toBeNull();
 });
 
-it('rejects web admin accounts from mobile token login', function () {
+it('rejects web admin accounts from mobile token login outside RC mode', function () {
     $user = User::factory()->create([
         'email' => 'mobile.denied@example.com',
         'password' => 'password123',
@@ -300,6 +301,7 @@ it('returns confirmed booking date ranges for the specific vehicle', function ()
 it('creates a booking with backend pricing and down payment validation', function () {
     $user = customerUser();
     $vehicle = availableVehicle();
+    $vehicle->update(['color' => 'Silver']);
     Sanctum::actingAs($user);
 
     $response = $this->postJson('/api/mobile/bookings', [
@@ -315,14 +317,24 @@ it('creates a booking with backend pricing and down payment validation', functio
         'transaction_id' => 'GCASH-TEST-1',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-07',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ]);
 
     $response->assertCreated()
         ->assertJsonPath('success', true)
         ->assertJsonPath('data.status', 'Confirmed')
+        ->assertJsonPath('data.color', 'Silver')
         ->assertJsonPath('data.paymentStatus', 'Partially Paid');
 
     expect($response->json('data.bookingCode'))->toMatch('/^BK-\d{5}$/');
+
+    $this->getJson('/api/mobile/bookings/'.$response->json('data.bookingCode'))
+        ->assertOk()
+        ->assertJsonPath('data.color', 'Silver');
+
+    $this->getJson('/api/mobile/bookings')
+        ->assertOk()
+        ->assertJsonPath('data.0.color', 'Silver');
 
     $this->assertDatabaseHas('bookings', [
         'user_id' => $user->id,
@@ -349,6 +361,7 @@ it('rejects a pickup time that has already passed today', function () {
         'transaction_id' => 'GCASH-PAST-TIME',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-07',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('rental_start_at');
@@ -398,6 +411,7 @@ it('rejects booking dates that overlap a confirmed booking for the same vehicle'
         'transaction_id' => 'GCASH-OVERLAP',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-10',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('rental_start_at');
@@ -409,7 +423,7 @@ it('derives and stores delivery details for owner driver bookings', function () 
     Sanctum::actingAs($user);
 
     $start = now()->addDays(3);
-    $expectedDeliveryTime = $start->format('H:i');
+    $expectedDeliveryTime = $start->copy()->setTimezone('Asia/Manila')->format('H:i');
 
     $payload = [
         'vehicle_id' => $vehicle->id,
@@ -425,6 +439,7 @@ it('derives and stores delivery details for owner driver bookings', function () 
         'transaction_id' => 'GCASH-DELIVERY-1',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-10',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ];
 
     $this->postJson('/api/mobile/bookings', withTestDeliveryQuote($user, $payload))
@@ -467,6 +482,7 @@ it('calculates outside Manila owner driver coverage only by rental day', functio
         'transaction_id' => 'GCASH-OUTSIDE-1',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-13',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ]))
         ->assertCreated()
         ->assertJsonPath('data.durationDays', 2)
@@ -490,6 +506,7 @@ it('enforces fulfillment options from the selected driver option', function () {
         'payment_method' => 'GCash',
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-13',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ];
 
     $this->postJson('/api/mobile/bookings', [
@@ -532,6 +549,7 @@ it('requires full payment when the rental starts less than two calendar days awa
         'payment_option' => 'down_payment',
         'customer_signature' => '[[{"x":1,"y":1},{"x":2,"y":2}]]',
         'terms_version' => '2026-06-13',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
         'app_return_url' => 'exp://192.168.1.50:8081/--/paypal/return',
         'app_cancel_url' => 'exp://192.168.1.50:8081/--/paypal/cancel',
     ]);
@@ -548,7 +566,7 @@ it('requires full payment when the rental starts less than two calendar days awa
     Http::assertNothingSent();
 })->with([0, 1]);
 
-it('creates and captures a PayPal sandbox order in PHP', function () {
+it('creates and captures a PayPal sandbox order in PHP', function (?string $callbackOrigin, string $expectedOrigin) {
     Mail::fake();
     Storage::fake('local');
 
@@ -558,6 +576,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         'services.paypal.client_secret' => 'sandbox-client-secret',
         'services.paypal.return_url' => null,
         'services.paypal.cancel_url' => null,
+        'services.paypal.callback_origin' => $callbackOrigin,
     ]);
 
     Http::fake([
@@ -609,6 +628,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         'payment_option' => 'down_payment',
         'customer_signature' => '[[{"x":1,"y":1},{"x":2,"y":2}]]',
         'terms_version' => '2026-06-09',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
         'app_return_url' => 'exp://192.168.1.50:8081/--/paypal/return',
         'app_cancel_url' => 'exp://192.168.1.50:8081/--/paypal/cancel',
     ]));
@@ -643,12 +663,12 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         ->and($orderRequest['purchase_units'][0]['amount']['value'])->toBe('2550.00')
         ->and($orderRequest['payment_source']['paypal']['experience_context']['return_url'])
         ->toBe(
-            'http://192.168.1.50:8000/paypal/return/'.
+            $expectedOrigin.'/paypal/return/'.
             PayPalAppUrl::encode('exp://192.168.1.50:8081/--/paypal/return')
         )
         ->and($orderRequest['payment_source']['paypal']['experience_context']['cancel_url'])
         ->toBe(
-            'http://192.168.1.50:8000/paypal/cancel/'.
+            $expectedOrigin.'/paypal/cancel/'.
             PayPalAppUrl::encode('exp://192.168.1.50:8081/--/paypal/cancel')
         );
 
@@ -661,7 +681,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
         ->assertJsonPath('data.ownerDriverFee', 700)
         ->assertJsonPath('data.returnLocation', 'Dasmarinas, Cavite')
         ->assertJsonPath('data.remainingBalance', 2550)
-        ->assertJsonPath('data.balanceDueAt', $booking->rental_start_at->copy()->subDay()->toISOString());
+        ->assertJsonPath('data.balanceDueAt', BookingAgreement::balanceDeadline($booking->rental_start_at)->toISOString());
 
     $this->assertDatabaseHas('payments', [
         'booking_id' => $booking->id,
@@ -686,7 +706,7 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
 
     $this->assertDatabaseHas('notifications', [
         'booking_id' => $booking->id,
-        'title' => 'Remaining balance scheduled',
+        'title' => 'Booking confirmed',
         'action_label' => 'Pay Remaining Balance',
     ]);
 
@@ -699,11 +719,15 @@ it('creates and captures a PayPal sandbox order in PHP', function () {
     Mail::assertSent(
         BookingConfirmationMail::class,
         fn (BookingConfirmationMail $mail) => $mail->hasTo($user->email)
-            && $mail->envelope()->subject === "Jamjade Car Rental Booking Confirmation - {$booking->booking_code}"
-            && count($mail->attachments()) === 1
-            && Storage::disk('local')->exists($mail->pdfPath)
+            && str_starts_with($mail->envelope()->subject, "{$booking->booking_code} | Rental Information and Payment Receipt | RCP-")
+            && count($mail->attachments()) === 2
+            && Storage::disk('local')->exists($mail->document->rental_information_path)
+            && Storage::disk('local')->exists($mail->document->receipt_path)
     );
-});
+})->with([
+    'direct Laravel request' => [null, 'http://192.168.1.50:8000'],
+    'public portal proxy' => ['https://portal.example.test', 'https://portal.example.test'],
+]);
 
 it('pays an existing booking remaining balance with a new PayPal order', function () {
     config([

@@ -1,5 +1,7 @@
 "use client";
 
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, CalendarClock, Gauge, Loader2, Plus, Settings, Wrench } from "lucide-react";
 import {
@@ -182,10 +184,17 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
   return (
     <section className={compact ? "space-y-4" : "min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8"}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className={compact ? "text-lg font-bold text-foreground" : "text-2xl font-bold tracking-tight text-foreground"}>{compact ? "Vehicle Maintenance" : "Maintenance Management"}</h1>
-          <p className={compact ? "mt-1 text-xs text-muted-foreground" : "mt-0.5 text-sm text-muted-foreground"}>Plans are reminders. Only scheduled or in-progress work affects booking availability.</p>
-        </div>
+        {compact ? (
+          <div>
+            <h1 className="text-lg font-bold text-foreground">Vehicle Maintenance</h1>
+            <p className="mt-1 text-xs text-muted-foreground">Manage maintenance plans, scheduled work, and service history.</p>
+          </div>
+        ) : (
+          <ManagementPageHeading
+            title="Maintenance Management"
+            description="Manage maintenance plans, scheduled work, and service history."
+          />
+        )}
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="button" variant="outline" onClick={() => { setEditingPlan(undefined); setPlanOpen(true); }}><Settings /> Add Plan</Button>
           <Button type="button" onClick={() => openSchedule()}><Plus /> Custom Maintenance</Button>
@@ -218,9 +227,9 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
           </div></CardContent>
         </Card>
 
-        <TabsContent value="plans"><MaintenancePlansTable plans={filteredPlans} onSchedule={openSchedule} onEdit={(plan) => { setEditingPlan(plan); setPlanOpen(true); }} onDelete={setDeletePlan} onViewRecord={(recordId) => { const record = records.find((item) => item.id === recordId); if (record) setDetailsRecord(record); }} /></TabsContent>
-        <TabsContent value="active"><ScheduledMaintenanceTable records={filteredActive} onView={setDetailsRecord} onStart={(record) => setLifecycle({ record, mode: "start" })} onComplete={(record) => setLifecycle({ record, mode: "complete" })} onReschedule={setRescheduleRecord} onCancel={setCancelRecord} onCondition={(record) => void openConditionFlow(record)} /></TabsContent>
-        <TabsContent value="history"><MaintenanceHistoryTable records={filteredHistory} onView={setDetailsRecord} /></TabsContent>
+        <TabsContent value="plans"><MaintenancePlansTable paginationKey={`${search}|${statusFilter}`} plans={filteredPlans} onSchedule={openSchedule} onEdit={(plan) => { setEditingPlan(plan); setPlanOpen(true); }} onDelete={setDeletePlan} onViewRecord={(recordId) => { const record = records.find((item) => item.id === recordId); if (record) setDetailsRecord(record); }} /></TabsContent>
+        <TabsContent value="active"><ScheduledMaintenanceTable paginationKey={`${search}|${statusFilter}`} records={filteredActive} onView={setDetailsRecord} onStart={(record) => setLifecycle({ record, mode: "start" })} onComplete={(record) => setLifecycle({ record, mode: "complete" })} onReschedule={setRescheduleRecord} onCancel={setCancelRecord} onCondition={(record) => void openConditionFlow(record)} /></TabsContent>
+        <TabsContent value="history"><MaintenanceHistoryTable paginationKey={`${search}|${statusFilter}`} records={filteredHistory} onView={setDetailsRecord} /></TabsContent>
       </Tabs>
 
       <MaintenancePlanDialog open={planOpen} onOpenChange={(open) => { setPlanOpen(open); if (!open) setEditingPlan(undefined); }} vehicles={vehicles} fixedVehicleId={fixedVehicleId} editingPlan={editingPlan} onSaved={() => void load()} />

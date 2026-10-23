@@ -43,6 +43,7 @@ function toVehicleFormData(payload: CreateVehicleRequestPayload) {
   appendIfPresent(formData, "initial_condition[odometer]", payload.initial_condition.odometer);
   appendIfPresent(formData, "initial_condition[fuel_level]", payload.initial_condition.fuel_level);
   appendIfPresent(formData, "initial_condition[comments]", payload.initial_condition.comments);
+  formData.append("initial_condition[checklist_version]", payload.initial_condition.checklist_version);
   formData.append("initial_condition[signature_data]", payload.initial_condition.signature_data);
 
   Object.entries(payload.initial_condition.checklist).forEach(([category, items]) => {
@@ -73,6 +74,7 @@ export function toConditionRequest(condition: VehicleConditionRequestPayload) {
     fuel_level: condition.fuel_level,
     comments: condition.comments || null,
     checklist: condition.checklist,
+    checklist_version: condition.checklist_version,
     markers: condition.markers.map((marker) => ({
       sequence_number: marker.sequenceNumber,
       panel: marker.panel,

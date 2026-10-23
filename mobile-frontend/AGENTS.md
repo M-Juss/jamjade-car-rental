@@ -71,8 +71,7 @@ the root guide before changing a cross-application contract.
 
 ## Phase 3 Telematics Setup
 
-Telematics setup is currently a readiness workflow for self-drive handover. It
-does not implement active-trip collection, calibration, or location uploads.
+Telematics setup is a readiness workflow for Self Drive and With Assigned Driver handover. The owning Customer operates Self Drive; the currently assigned Driver operates With Assigned Driver. Device readiness remains separate from the subsequent, explicitly consented calibration stage. Released-rental GPS collection is a distinct, consented flow described in the foreground/background sharing guides; setup and calibration do not start rental GPS collection.
 The six mobile checks run in this order:
 
 1. `device_check`
@@ -98,11 +97,11 @@ The six mobile checks run in this order:
 
 The server response from `/mobile/telematics/setup` or
 `/mobile/bookings/{booking}/telematics-setup` is the eligibility authority.
-Render the returned state and `eligibility.canWorkSetup`; do not unlock the tab
+Render the returned state and `eligibility.canWorkSetup`; do not unlock a screen
 or checks from cached profile, booking, or document state. The booking selector
 is only a navigation filter. In standard mode, Laravel rechecks ownership,
-self-drive type, verified documents, confirmation, the current `Asia/Manila`
-rental date, and the staff-started `in_progress` handover on every setup
+the applicable rental type and current operator assignment, verified Customer documents for Self Drive, confirmation, server time within the reserved
+`[rental_start_at, rental_end_at)` interval, and the staff-started `in_progress` handover on every setup
 mutation. Local/testing handover test mode intentionally relaxes the business
 gates described in `../docs/telematics-handover-lifecycle.md`, while still
 requiring real evidence where the native check is available and never allowing
@@ -110,12 +109,41 @@ the client to bypass ownership or the no-tracking setup boundary.
 
 The existing staff `Start Rental` action is the only release action. A mobile
 setup screen must not simulate results, subscribe to sensors, start active
-location updates, upload telemetry, create trips, or implement calibration.
+location updates, upload active-trip telemetry or create trips. The approved Phase 4 calibration
+exception uses only bounded, explicitly consented foreground DeviceMotion
+captures through `services/telematics/calibration-capture.ts`; read
+`../docs/telematics-calibration.md` before changing that flow.
 Read `../docs/telematics-architecture.md`,
 `../docs/telematics-handover-lifecycle.md`, and
 `../docs/telematics-device-location.md` before changing this area.
 
 ## Native Configuration And Builds
+
+Approved 2026-10-19 exception: `../docs/telematics-mobile-dashboard.md` permits an explicit, one-use GPS preparation during device setup. The dedicated Telematics screen may consume it only while foregrounded/focused after fresh server-confirmed release and monitoring eligibility, then use the existing native collector. The accepted sharing mode may be stored securely per Customer and consent version; do not persist GPS data, session tokens or the one-use preparation instruction. It does not collect before release, start on a cold runtime, or automatically resume after Stop/interruption. Retain account/booking/handover/profile/version binding, visible cancellation, current permission checks and explicit recovery. This supersedes only the separate post-release sharing-action restriction in the older paragraphs below.
+
+Approved 2026-10-19 resume exception: the same dashboard guide permits one explicitly started, bounded foreground Stationary motion check before resuming an existing released trip. Reuse the native capture abstraction and projected Stationary settings; abort on cancellation, navigation, backgrounding or account change. The local pass is short-lived and single-use, and GPS still requires fresh server eligibility and native permissions. Never submit this check as setup evidence, modify released calibration, persist/upload motion or a new baseline, or claim to prove a secure mount. Continuous rental monitoring remains GPS only.
+
+The approved Phase 5 released-rental flow is documented in
+`../docs/telematics-foreground-location.md`. It uses a separately consented
+app-wide foreground Location watch, an in-memory session and encrypted
+latest-only backend updates. Do not start it from setup/calibration, persist a
+route queue, add motion/classification, register background work or resume it
+automatically. Stop on non-active AppState and sign-out/account change. Future
+background collection and route/dataset work need separate approved increments.
+
+The approved background permission preparation increment is documented in
+`../docs/telematics-background-permissions.md`. It reads/reuses native access and
+requests permission only after its disclosure and eligibility read. It does not
+register background updates, persist GPS or session data, or change foreground
+pause/resume; actual background collection remains a separate increment.
+
+The approved background-sharing follow-up is documented in
+`../docs/telematics-background-sharing.md` and supersedes the foreground-only
+collection restriction above for explicit foreground_background consent only.
+Use the separate native rental task, current consent mode/version, visible
+notification/indicator and in-memory receiver. Do not persist collection tokens
+or auto-resume after runtime loss. Preserve foreground-only mode, setup task
+isolation, latest-only uploads and cleanup on stop, sign-out and eligibility loss.
 
 - `app.json` owns the Expo Router, image picker, splash, SecureStore, location,
   sensors, and development-client plugins, along with Android edge-to-edge and
@@ -137,6 +165,30 @@ Read `../docs/telematics-architecture.md`,
   native build.
 
 ## Typography, Layout, And Safe Areas
+
+Apply the root guide's **Interface And User-Facing Copy** rules to every future
+screen and scoped UI change within the current JamJade identity. Preserve the
+established screen frames, typography, card shapes, icons, and interactions.
+The refinement targets gradients and unnecessary copy; do not replace the
+visual identity with a generic minimal design. Existing gradient assets and
+verbose introductions are not patterns to extend.
+Use solid `themeColors.primary` or the NativeWind `primary` token for blue
+branding and primary actions. Shared logo, splash, and icon updates must use
+the existing branding sync workflow and the native-build verification above.
+
+Use one clear screen title, direct action labels, and descriptions only when
+they explain a necessary rule or next step. Keep field guidance, record status,
+and action consequences beside the relevant content. Preserve consent,
+permission explanations, payment consequences, validation, and recovery steps.
+Public welcome, sign-in, and registration screens retain their existing headings
+and informational descriptions unless the user explicitly requests copy changes.
+The solid-branding and timezone display rules still apply to those screens.
+Do not add reminders, explanation panels, extra labels, or tooltips merely
+because a feature is new. Show brief guidance only where and when it is needed
+for the current task. Preserve established card and icon treatments; remove
+redundant text and extra containers introduced by the change before reducing
+text or touch-target sizes. Keep navigation and actions predictable without
+forcing desktop layouts onto phone screens.
 
 Urbanist is bundled under `assets/fonts/urbanist/` and loaded by
 `expo-font` in `app/_layout.tsx`. The static faces and aliases in

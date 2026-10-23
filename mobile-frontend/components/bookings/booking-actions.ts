@@ -1,5 +1,4 @@
 import {
-  CalendarX,
   Car,
   ClipboardList,
   CreditCard,
@@ -16,7 +15,6 @@ import type { ActionButtonVariant } from './ActionButton';
 
 export type BookingActionKey =
   | 'view_details'
-  | 'cancel_request'
   | 'payment_info'
   | 'pay_balance'
   | 'open_telematics'
@@ -40,15 +38,7 @@ const detailAction: BookingAction = {
 };
 
 const actionsByStatus = {
-  Pending: [
-    detailAction,
-    {
-      key: 'cancel_request',
-      label: 'Cancel Request',
-      icon: CalendarX,
-      variant: 'danger',
-    },
-  ],
+  Pending: [detailAction],
   Confirmed: [
     detailAction,
     {
@@ -70,7 +60,7 @@ const actionsByStatus = {
       key: 'open_telematics',
       label: 'Open Telematics',
       icon: Navigation,
-      variant: 'success',
+      variant: 'primary',
     },
     {
       key: 'contact_admin',
@@ -85,7 +75,7 @@ const actionsByStatus = {
       key: 'open_telematics',
       label: 'Open Telematics',
       icon: Navigation,
-      variant: 'success',
+      variant: 'primary',
     },
     {
       key: 'contact_admin',

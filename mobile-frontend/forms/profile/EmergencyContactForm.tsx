@@ -16,6 +16,7 @@ import { skipEmergencyContact, updateEmergencyContact, useCustomer } from '@/lib
 import type { EmergencyContact, EmergencyRelationship } from '@/types/customer';
 import { saveEmergencyContact, skipEmergencyContact as skipEmergencyContactApi } from '@/services/api';
 import { ApiError } from '@/services/http';
+import { useAuth } from '@/providers/AuthProvider';
 
 const relationshipOptions: Exclude<EmergencyRelationship, ''>[] = [
   'Parent',
@@ -32,6 +33,7 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export function EmergencyContactForm() {
   const router = useRouter();
+  const { refreshProfile } = useAuth();
   const customer = useCustomer();
   const [isSkipping, setIsSkipping] = useState(false);
   const toast = useFormToast();
@@ -61,6 +63,7 @@ export function EmergencyContactForm() {
     try {
       await saveEmergencyContact(values);
       updateEmergencyContact(values);
+      await refreshProfile();
       await goToNextStep();
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
@@ -98,6 +101,7 @@ export function EmergencyContactForm() {
     try {
       await skipEmergencyContactApi();
       skipEmergencyContact();
+      await refreshProfile();
       await goToNextStep();
     } catch (error) {
       toast.showToast(
@@ -127,7 +131,7 @@ export function EmergencyContactForm() {
         <OnboardingHeader
           currentStep={2}
           icon={PhoneCall}
-          subtitle="Complete all fields to save an emergency contact, or skip for now and add one later from your profile."
+          subtitle="Optional. You can add this later."
           title="Emergency contact"
           totalSteps={3}
         />

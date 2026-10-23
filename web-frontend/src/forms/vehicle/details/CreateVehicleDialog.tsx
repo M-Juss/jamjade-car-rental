@@ -8,6 +8,7 @@ import {
   useForm,
   useWatch,
 } from "react-hook-form";
+import { useVehicleOptions, vehicleSelectOptions } from "@/modules/management/vehicles/use-vehicle-options";
 import { appToast } from "@/lib/toast";
 import {
   Upload,
@@ -15,22 +16,6 @@ import {
   PhilippinePeso,
   Users,
   Settings2,
-  Check,
-  Wind,
-  Bluetooth,
-  Navigation,
-  Camera,
-  ParkingCircle,
-  Usb,
-  Wifi,
-  Armchair,
-  Gauge as CruiseIcon,
-  Shield,
-  Key,
-  Zap,
-  Baby,
-  Leaf,
-  Mountain,
 } from "lucide-react";
 import {
   Dialog,
@@ -43,6 +28,7 @@ import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/forms/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { VehicleImageGallery } from "@/modules/management/vehicles/components/VehicleImageGallery";
+import { VehicleFeatureSelector } from "@/modules/management/vehicles/components/VehicleFeatureSelector";
 import { AbsoluteFieldError } from "@/components/common/forms/AbsoluteFieldError";
 import {
   FormDialogContent,
@@ -59,40 +45,6 @@ import {
   type VehicleFormValues,
 } from "@/validations/vehicle/schemas";
 
-const FEATURES = [
-  { id: "ac", label: "Air Conditioning", icon: Wind },
-  { id: "bluetooth", label: "Bluetooth", icon: Bluetooth },
-  { id: "carplay", label: "Apple CarPlay", icon: Car },
-  { id: "android", label: "Android Auto", icon: Car },
-  { id: "gps", label: "GPS Navigation", icon: Navigation },
-  { id: "reverse", label: "Reverse Camera", icon: Camera },
-  { id: "parking", label: "Parking Sensors", icon: ParkingCircle },
-  { id: "usb", label: "USB Charging", icon: Usb },
-  { id: "wireless", label: "Wireless Charging", icon: Wifi },
-  { id: "leather", label: "Leather Seats", icon: Armchair },
-  { id: "cruise", label: "Cruise Control", icon: CruiseIcon },
-  { id: "abs", label: "ABS Brakes", icon: Shield },
-  { id: "airbag", label: "Airbags", icon: Shield },
-  { id: "pushstart", label: "Push Start", icon: Key },
-  { id: "keyless", label: "Keyless Entry", icon: Key },
-  { id: "childseat", label: "Child Seat", icon: Baby },
-  { id: "fueleff", label: "Fuel Efficient", icon: Leaf },
-  { id: "petfriendly", label: "Pet Friendly", icon: Leaf },
-  { id: "awd", label: "4WD / AWD", icon: Mountain },
-];
-
-const BRANDS = [
-  "Toyota",
-  "Honda",
-  "Mitsubishi",
-  "Ford",
-  "Hyundai",
-  "Nissan",
-  "Kia",
-  "Mazda",
-  "Suzuki",
-  "Isuzu",
-];
 
 const INITIAL_FORM: VehicleFormValues = {
   brand: "",
@@ -336,6 +288,7 @@ export function VehicleFormDialog({
   onOpenChange,
   onSave,
 }: VehicleFormDialogProps) {
+  const { data: configuration, error: configurationError, reload: reloadConfiguration } = useVehicleOptions(open);
   const [dragOver, setDragOver] = useState(false);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
@@ -488,20 +441,6 @@ export function VehicleFormDialog({
     );
   };
 
-  const toggleFeature = (feature: string) => {
-    const features = getValues("features");
-    const nextFeatures = features.includes(feature)
-      ? features.filter((item) => item !== feature)
-      : [...features, feature];
-
-    setValue("features", nextFeatures, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: false,
-    });
-    if (nextFeatures.length > 0) clearErrors("features");
-  };
-
   const handleSave = async (values: VehicleFormValues) => {
     try {
       await onSave?.(values);
@@ -511,7 +450,7 @@ export function VehicleFormDialog({
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
         Object.entries(error.errors).forEach(([serverField, messages]) => {
-          const clientField = serverField
+          const clientField = (serverField.startsWith("features.") ? "features" : serverField)
             .replace(/\.sequence_number/g, ".sequenceNumber")
             .replace(/\.x_position/g, ".xPosition")
             .replace(/\.y_position/g, ".yPosition")
@@ -613,7 +552,7 @@ export function VehicleFormDialog({
             closeLabel="Close vehicle form"
           />
 
-          <ScrollArea className="flex-1 overflow-y-auto">
+          <ScrollArea key={step} className="flex-1 overflow-y-auto">
             <div className="space-y-5 px-4 py-4 sm:px-6 sm:py-5">
               <div className="grid grid-cols-2 gap-2 rounded-xl bg-background p-1">
                 {[
@@ -638,6 +577,7 @@ export function VehicleFormDialog({
                 ))}
               </div>
 
+              {configurationError ? <div role="alert" className="flex items-center justify-between gap-3 text-sm text-destructive">{configurationError}<Button type="button" variant="outline" onClick={reloadConfiguration}>Retry</Button></div> : !configuration ? <p role="status" className="text-sm text-muted-foreground">Loading options...</p> : null}
               {step === "vehicle" ? (
                 <>
               <div className="relative pb-5">
@@ -753,10 +693,7 @@ export function VehicleFormDialog({
                       label="Brand"
                       required
                       placeholder="Select brand"
-                      options={BRANDS.map((brand) => ({
-                        value: brand,
-                        label: brand,
-                      }))}
+                      options={vehicleSelectOptions(configuration?.options.brand ?? [])}
                       value={selectedBrand}
                       onValueChange={(value) =>
                         setValue("brand", value, {
@@ -809,7 +746,7 @@ export function VehicleFormDialog({
                     />
                     <AbsoluteFieldError message={errors.plate_number?.message} />
                   </div>
-                  <div className="relative pb-5">
+                  <div className="relative pb-5 md:col-span-2">
                     <InputWithLabel
                       id="vehicle-price"
                       label="Price / Day (PHP)"
@@ -892,10 +829,7 @@ export function VehicleFormDialog({
                       label="Transmission"
                       required
                       placeholder="Select"
-                      options={[
-                        { value: "Automatic", label: "Automatic" },
-                        { value: "Manual", label: "Manual" },
-                      ]}
+                      options={vehicleSelectOptions(configuration?.options.transmission ?? [])}
                       value={selectedTransmission}
                       onValueChange={(value) =>
                         setValue("transmission", value, {
@@ -919,12 +853,7 @@ export function VehicleFormDialog({
                       label="Fuel Type"
                       required
                       placeholder="Select"
-                      options={[
-                        { value: "Gasoline", label: "Gasoline" },
-                        { value: "Diesel", label: "Diesel" },
-                        { value: "Hybrid", label: "Hybrid" },
-                        { value: "Electric", label: "Electric" },
-                      ]}
+                      options={vehicleSelectOptions(configuration?.options.fuel_type ?? [])}
                       value={selectedFuelType}
                       onValueChange={(value) =>
                         setValue("fuel_type", value, {
@@ -944,74 +873,17 @@ export function VehicleFormDialog({
 
               <Separator className="bg-border" />
 
-              <div id="vehicle-features" tabIndex={-1} className="relative scroll-mt-4 pb-5 outline-none">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
-                      <Zap size={12} className="text-primary" />
-                    </div>
-                    <h3 className="text-[12.5px] font-bold text-foreground">
-                      Features <span className="text-rose-400">*</span>
-                    </h3>
-                  </div>
-                  {selectedFeatures.length > 0 && (
-                    <span className="text-[11px] font-semibold text-primary bg-muted px-2.5 py-1 rounded-lg">
-                      {selectedFeatures.length} selected
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {FEATURES.map(({ id, label, icon: Icon }) => {
-                    const selected = selectedFeatures.includes(label);
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => toggleFeature(label)}
-                        disabled={isSubmitting}
-                        className={`
-                          relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl border text-center
-                          transition-all duration-150 cursor-pointer group disabled:cursor-not-allowed disabled:opacity-60
-                          ${
-                            selected
-                              ? "bg-muted border-primary shadow-[0_2px_8px_rgba(52,110,246,0.18)]"
-                              : "bg-background border-border hover:border-border hover:bg-muted"
-                          }
-                        `}
-                      >
-                        {selected && (
-                            <div className="absolute top-1.5 right-1.5 flex size-4 items-center justify-center rounded-full bg-primary">
-                              <Check
-                                size={9}
-                                className="text-white"
-                                strokeWidth={3}
-                              />
-                            </div>
-                        )}
-
-                        <div
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 ${selected ? "bg-primary" : "bg-white border border-border group-hover:border-border"}`}
-                        >
-                          <Icon
-                            size={13}
-                            className={
-                              selected ? "text-white" : "text-muted-foreground"
-                            }
-                            strokeWidth={2}
-                          />
-                        </div>
-                        <span
-                          className={`text-[10.5px] font-semibold leading-tight ${selected ? "text-primary" : "text-muted-foreground"}`}
-                        >
-                          {label}
-                        </span>
-                      </button>
-                    );
+              <div id="vehicle-features" tabIndex={-1} className="scroll-mt-4 outline-none">
+                <VehicleFeatureSelector
+                  value={selectedFeatures}
+                  options={configuration?.options.feature ?? []}
+                  disabled={isSubmitting}
+                  error={fieldMessage(errors.features?.message)}
+                  onChange={(features) => setValue("features", features, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
                   })}
-                </div>
-                <AbsoluteFieldError
-                  message={fieldMessage(errors.features?.message)}
                 />
               </div>
 
@@ -1076,7 +948,7 @@ export function VehicleFormDialog({
 
                   submitConditionForm();
                 }}
-                disabled={isSubmitting || isProcessingImages}
+                disabled={isSubmitting || isProcessingImages || !configuration}
                 className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Car size={14} className="mr-2" />

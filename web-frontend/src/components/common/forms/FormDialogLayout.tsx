@@ -45,6 +45,8 @@ type FormDialogHeaderProps = {
   icon: LucideIcon;
   onClose: () => void;
   closeLabel: string;
+  endContent?: ReactNode;
+  closeDisabled?: boolean;
   iconClassName?: string;
   className?: string;
 };
@@ -54,6 +56,8 @@ export function FormDialogHeader({
   icon: Icon,
   onClose,
   closeLabel,
+  endContent,
+  closeDisabled = false,
   iconClassName,
   className,
 }: FormDialogHeaderProps) {
@@ -68,16 +72,20 @@ export function FormDialogHeader({
             {title}
           </DialogTitle>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          aria-label={closeLabel}
-          className="size-9 shrink-0 rounded-xl text-muted-foreground"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {endContent}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label={closeLabel}
+            disabled={closeDisabled}
+            className="size-9 shrink-0 rounded-xl text-muted-foreground"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
     </DialogHeader>
   );

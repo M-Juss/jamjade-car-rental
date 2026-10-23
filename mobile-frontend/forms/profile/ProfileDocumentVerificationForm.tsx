@@ -192,9 +192,10 @@ export function ProfileDocumentVerificationForm({
 
   const renderUploadCard = (key: keyof CustomerDocumentUploads, label: string, required = true) => (
     <UploadDocumentCard
-      disabled={isLocked}
+      disabled={isLocked || isSubmitting}
       error={errors[key]?.message}
       helperText={IMAGE_HELPER}
+      isUploading={isSubmitting}
       label={label}
       onChange={(value) => {
         setValue(key, value, {
@@ -228,8 +229,8 @@ export function ProfileDocumentVerificationForm({
             onPress={handleSubmit(onSubmit, () => {
               toast.showToast('Please complete all required fields and document images.');
             })}
-            onSecondaryPress={isLocked ? undefined : handleSaveLater}
-            secondaryLabel={isLocked ? undefined : 'Save and Continue Later'}
+            onSecondaryPress={isLocked || isSubmitting ? undefined : handleSaveLater}
+            secondaryLabel={isLocked || isSubmitting ? undefined : 'Save and Continue Later'}
           />
         }>
         <OnboardingHeader
@@ -260,9 +261,8 @@ export function ProfileDocumentVerificationForm({
                   render={({ field, fieldState }) => (
                     <FormInput
                       autoCapitalize="characters"
-                      editable={!isLocked}
+                      editable={!isLocked && !isSubmitting}
                       error={fieldState.error?.message}
-                      helperText="Up to 11 letters or digits. Hyphens are added automatically."
                       icon="credit-card"
                       label="Driver's License Number"
                       maxLength={13}
@@ -279,7 +279,7 @@ export function ProfileDocumentVerificationForm({
                   name="driverLicenseExpirationDate"
                   render={({ field, fieldState }) => (
                     <DatePickerInput
-                      disabled={isLocked}
+                      disabled={isLocked || isSubmitting}
                       error={fieldState.error?.message}
                       initialVisibleDate={getRelativeDateKey(365)}
                       label="Driver's License Expiration Date"

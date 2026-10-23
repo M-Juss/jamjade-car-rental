@@ -124,6 +124,8 @@ vendor/bin/pint --test
 npm run build
 ```
 
+PHPUnit sets a 512 MB memory limit for PDF rendering.
+
 Use focused Pest files while iterating, for example the API feature tests under
 `tests/Feature/Api/Mobile/`, the web feature tests under
 `tests/Feature/Web/Admin/`, and the domain tests near

@@ -14,13 +14,9 @@ import type { Booking } from '@/types/booking';
 
 type ServiceFilter = 'Upcoming' | 'Active' | 'History';
 
-function serviceStage(booking: Booking) {
-  if (booking.status === 'Completed' || booking.status === 'Returned' || booking.status === 'Cancelled')
-    return 'Finished';
+function activeServiceStage(booking: Booking) {
   if (booking.rentalProgress.tripEnded) return 'Trip Ended · Awaiting Incoming Inspection';
-  if (booking.status === 'Ongoing' || booking.status === 'Active') return 'Active Service';
-  if (booking.telematicsSetupStatus === 'ready_for_release') return 'Ready · Waiting for Jamjade';
-  return 'Assigned · Awaiting Outgoing Inspection';
+  return 'Active Service';
 }
 
 export default function DriverServicesScreen() {
@@ -63,12 +59,13 @@ export default function DriverServicesScreen() {
   return (
     <View className="flex-1 bg-background">
       <ScrollView
+        className="flex-1"
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}>
         <View
           className="w-full max-w-[560px] self-center px-screen"
-          style={{ paddingBottom: insets.bottom + floatingTabBarContentPadding, paddingTop: insets.top + 12 }}>
-          <CustomerTabHeader title="Services" />
+          style={{ paddingBottom: insets.bottom + floatingTabBarContentPadding, paddingTop: insets.top + 10 }}>
+          <CustomerTabHeader title="Services" showLogout={false} />
 
           <View className="mt-2 flex-row gap-2">
             {(['Upcoming', 'Active', 'History'] as ServiceFilter[]).map((item) => (
@@ -93,42 +90,93 @@ export default function DriverServicesScreen() {
 
           <View className="mt-5 gap-4">
             {visible.map((booking) => {
+              const isCompactCard = filter !== 'Active';
+              const fullVehicleName = [booking.brand, booking.vehicleName, booking.model]
+                .filter(Boolean)
+                .reduce((name, part) => {
+                  if (name.toLowerCase().includes(part.toLowerCase())) return name;
+                  if (part.toLowerCase().includes(name.toLowerCase())) return part;
+                  return `${name} ${part}`;
+                }, '');
               const driverBalance = booking.additionalCharges
                 .filter((charge) => charge.paymentStatus !== 'paid')
                 .reduce((sum, charge) => sum + charge.amount, 0);
 
               return (
                 <View key={booking.id} className="rounded-card border border-border bg-surface p-5">
-                  <View className="flex-row items-start justify-between gap-3">
-                    <View className="min-w-0 flex-1">
-                      <Text className="font-sans text-[11px] font-semibold text-primary">{booking.id}</Text>
-                      <Text className="font-sans mt-1 text-[19px] font-semibold text-foreground">
-                        {booking.vehicleName}
+                  <View className={isCompactCard ? 'w-full' : 'flex-row items-start justify-between gap-3'}>
+                    <View className={isCompactCard ? 'min-w-0 w-full' : 'min-w-0 flex-1'}>
+                      <View className={isCompactCard ? 'relative min-h-[22px] justify-center pr-24' : undefined}>
+                        <Text className="font-sans text-[11px] font-semibold text-primary">{booking.id}</Text>
+                        {isCompactCard ? (
+                          <Text className="font-sans absolute right-0 top-0 rounded-full bg-muted px-2 py-1 text-[10px] font-semibold leading-[14px] text-primary">
+                            {booking.status}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Text
+                        adjustsFontSizeToFit={isCompactCard}
+                        minimumFontScale={0.8}
+                        numberOfLines={isCompactCard ? 1 : undefined}
+                        className="font-sans mt-1 text-[19px] font-semibold text-foreground">
+                        {isCompactCard
+                          ? [fullVehicleName, booking.vehiclePlateNumber].filter(Boolean).join(' - ')
+                          : booking.vehicleName}
                       </Text>
-                      <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
-                        {booking.rentalDate} → {booking.returnDate}
-                      </Text>
+                      {isCompactCard ? (
+                        <View className="mt-2 gap-1">
+                          <Text className="font-sans text-[12px] font-medium leading-5 text-secondary-foreground">
+                            Start: {booking.rentalDate}
+                          </Text>
+                          <Text className="font-sans text-[12px] font-medium leading-5 text-secondary-foreground">
+                            End: {booking.returnDate}
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
+                          {booking.rentalDate} → {booking.returnDate}
+                        </Text>
+                      )}
                       {booking.customer?.name ? (
                         <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
                           Customer: {booking.customer.name}
                         </Text>
                       ) : null}
+                      {isCompactCard && booking.customer?.phoneNumber ? (
+                        <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
+                          Contact: {booking.customer.phoneNumber}
+                        </Text>
+                      ) : null}
                     </View>
-                    <Text className="font-sans rounded-full bg-muted px-3 py-1.5 text-[11px] font-semibold text-primary">
-                      {booking.status}
-                    </Text>
+                    {!isCompactCard ? (
+                      <Text className="font-sans rounded-full bg-muted px-3 py-1.5 text-[11px] font-semibold text-primary">
+                        {booking.status}
+                      </Text>
+                    ) : null}
                   </View>
                   <View className="mt-4 flex-row items-start gap-2 rounded-[18px] bg-background p-3">
                     <MapPin color={themeColors.primary} size={17} />
                     <Text className="font-sans min-w-0 flex-1 text-[12px] font-medium leading-5 text-foreground">
-                      {booking.pickupLocation}
+                      JamJade Car Rental Garage
                     </Text>
                   </View>
-                  {booking.deliveryLocation && <DeliveryLocationLink location={booking.deliveryLocation} />}
-                  <Text className="font-sans mt-4 text-[12px] font-semibold text-foreground">
-                    {serviceStage(booking)}
-                  </Text>
+                  {booking.deliveryLocation && <><Text className="font-sans mt-3 text-body font-semibold text-foreground">{booking.deliveryLocation.address}</Text>{booking.notes ? <Text className="font-sans mt-2 text-caption text-secondary-foreground">Note: {booking.notes}</Text> : null}<DeliveryLocationLink location={booking.deliveryLocation} navigate /></>}
+                  {!isCompactCard ? (
+                    <Text className="font-sans mt-4 text-[12px] font-semibold text-foreground">
+                      {activeServiceStage(booking)}
+                    </Text>
+                  ) : null}
 
+                  {['Confirmed', 'Active', 'Ongoing'].includes(booking.status) ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => router.push(`/driver-telematics/${encodeURIComponent(booking.id)}` as Href)}
+                      className="mt-3 min-h-[48px] flex-row items-center justify-center gap-2 rounded-full bg-primary px-4">
+                      <Text className="font-sans text-[13px] font-semibold text-surface">
+                        {booking.status === 'Confirmed' ? 'Open vehicle setup' : 'Open Telematics'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                   {driverBalance > 0 ? (
                     <Pressable
                       onPress={() =>

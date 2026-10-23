@@ -205,8 +205,8 @@ export function DatePickerInput({
           {value ? formatDisplayDate(value) : placeholder}
         </Text>
       </Pressable>
-      <View className={error || helperText ? 'px-1' : 'hidden'}>
-        {error || helperText ? (
+      {error || helperText ? (
+        <View className="px-1">
           <Text
             className={cx(
               'font-sans',
@@ -215,8 +215,8 @@ export function DatePickerInput({
             )}>
             {error || helperText}
           </Text>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       <Modal
         animationType="fade"

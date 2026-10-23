@@ -21,6 +21,7 @@ export function AvatarUploader({
   error?: string;
 }) {
   const [pickError, setPickError] = useState('');
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
 
   const handlePickImage = async () => {
     const result = await pickImageFromDevice({ allowsEditing: true });
@@ -56,8 +57,14 @@ export function AvatarUploader({
       )}>
       <View className="flex-row items-center gap-4">
         <View className="h-[82px] w-[82px] items-center justify-center overflow-hidden rounded-card bg-muted">
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} resizeMode="cover" className="h-full w-full" />
+          {imageUri && imageUri !== failedPhoto ? (
+            <Image
+              source={{ uri: imageUri }}
+              onError={() => setFailedPhoto(imageUri)}
+              resizeMethod="resize"
+              resizeMode="cover"
+              className="h-full w-full"
+            />
           ) : initials ? (
             <Text className="font-sans text-[24px] font-semibold text-primary">{initials}</Text>
           ) : (

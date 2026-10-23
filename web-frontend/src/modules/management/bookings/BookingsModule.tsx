@@ -1,8 +1,13 @@
 "use client";
 
-import { DeliveryQuoteRequests } from "@/modules/management/delivery/DeliveryQuoteRequests";
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
 
-import { useCallback, useEffect, useState } from "react";
+import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
+
+import { useSearchParams } from "next/navigation";
+import { BookingStatusDisplay } from "./components/BookingStatusDisplay";
+
+import { Suspense, useCallback, useEffect, useState } from "react";
 import {
   Activity,
   CalendarCheck,
@@ -12,40 +17,26 @@ import {
   ArrowRight,
   UserRound,
   XCircle,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import {
-  Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { TableActionMenu, type TableActionMenuItem } from "@/components/common/tables/TableActionMenu";
+import { TablePagination } from "@/components/common/tables/TablePagination";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { appToast } from "@/lib/toast";
+import { CancelBookingDialog } from "@/forms/booking/CancelBookingDialog";
 import { BookingDetailsDialog } from "@/forms/booking/BookingDetailsDialog";
 import { bookingWorkflowPhase, bookingWorkflowTitles } from "./booking-workflow";
 import { BookingWorkflowDialog } from "@/forms/booking/BookingWorkflowDialog";
 import { nextBookingAction, type BookingNextAction } from "./booking-next-action";
 import {
-  cancelBooking,
   getBooking,
   getBookings,
   type BookingRecord,
@@ -53,16 +44,6 @@ import {
   type BookingStatus,
   type PaymentStatus,
 } from "@/services/booking";
-
-const bookingStatusStyle: Record<BookingStatus, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  confirmed: "bg-muted text-primary border-blue-200",
-  rejected: "bg-rose-50 text-rose-600 border-rose-200",
-  ongoing: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  returned: "bg-cyan-50 text-cyan-700 border-cyan-200",
-  completed: "bg-background text-muted-foreground border-border",
-  cancelled: "bg-rose-50 text-rose-600 border-rose-200",
-};
 
 const paymentStatusStyle: Record<PaymentStatus, string> = {
   unpaid: "bg-background text-muted-foreground border-border",
@@ -80,11 +61,13 @@ function peso(value: number) {
   })}`;
 }
 
-export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
+function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
+  const searchParams = useSearchParams();
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [attentionFilter, setAttentionFilter] = useState(searchParams.get("attention") === "all_attention" ? "all_attention" : "all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -97,7 +80,6 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
   const [workflowAction, setWorkflowAction] = useState<BookingNextAction | "reassign-driver" | null>(null);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -117,7 +99,7 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
     let ignore = false;
     let pageAdjusted = false;
 
-    getBookings({ group, page, search, status: statusFilter, paymentStatus: paymentFilter })
+    getBookings({ group, page, search, status: statusFilter, paymentStatus: paymentFilter, attention: attentionFilter })
       .then((result) => {
         if (!ignore) {
           if (page > result.lastPage) {
@@ -146,7 +128,19 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
     return () => {
       ignore = true;
     };
-  }, [group, page, paymentFilter, reloadKey, search, statusFilter]);
+  }, [group, page, paymentFilter, reloadKey, search, statusFilter, attentionFilter]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = Number(params.get("booking"));
+    if (Number.isInteger(id) && id > 0) void getBooking(id).then((record) => { setSelectedBooking(record); setDetailsOpen(true); }).catch(() => appToast.error("Booking could not be opened."));
+  }, []);
+
+  useEffect(() => {
+    if (group !== "booking" || detailsOpen || workflowAction || cancelOpen) return;
+    const timer = window.setInterval(() => setReloadKey((value) => value + 1), 60000);
+    return () => window.clearInterval(timer);
+  }, [group, detailsOpen, workflowAction, cancelOpen]);
 
   const count = (status: BookingStatus) => statusCounts[status] ?? 0;
   const summaryCards = group === "history"
@@ -162,26 +156,6 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
         { label: "Pending", value: count("pending"), icon: Clock, color: "text-warning", background: "bg-warning-surface" },
         { label: "Returned", value: count("returned"), icon: CheckCircle2, color: "text-primary", background: "bg-muted" },
       ];
-
-  const confirmCancel = async () => {
-    if (!selectedBooking) return;
-
-    try {
-      setIsCancelling(true);
-      setError(null);
-      const updatedBooking = await cancelBooking(selectedBooking);
-      setSelectedBooking(updatedBooking);
-      setCancelOpen(false);
-      setIsLoading(true);
-      setReloadKey((current) => current + 1);
-      appToast.success("Booking cancelled successfully.");
-    } catch {
-      setError("Unable to cancel this booking.");
-      appToast.error("The booking could not be cancelled. Please try again.");
-    } finally {
-      setIsCancelling(false);
-    }
-  };
 
   const handleBookingUpdated = useCallback((updatedBooking: BookingRecord) => {
     setSelectedBooking(updatedBooking);
@@ -233,7 +207,7 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
         onClick: () => { void openNext(booking, "reassign-driver"); },
         disabled: loadingActionId === booking.backendId,
       }] : []),
-      ...(["pending", "confirmed"].includes(booking.statusKey) ? [{
+      ...(["pending", "confirmed"].includes(booking.statusKey) && booking.attention?.key !== "not_started" ? [{
         label: "Cancel",
         icon: <XCircle size={13} className="mr-2" />,
         onClick: () => { setSelectedBooking(booking); setCancelOpen(true); },
@@ -245,12 +219,12 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
 
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{group === "history" ? "Booking History" : "Booking Management"}</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">{group === "history" ? "Review completed, cancelled, and rejected bookings." : "Track reservations and payment states from live booking records."}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <ManagementPageHeading
+          title={group === "history" ? "Booking History" : "Booking Management"}
+          description={group === "history" ? "Review completed, cancelled, and rejected bookings." : "Manage reservations, payments, handovers, and returns."}
+        />
       </div>
-
-      {group === "booking" && <DeliveryQuoteRequests />}
 
       {error ? (
         <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[12.5px] font-medium text-rose-700">
@@ -258,7 +232,7 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {summaryCards.map(({ label, value, icon, color, background }) => (
           <KpiCard
             key={label}
@@ -299,6 +273,12 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
                   { value: "returned", label: "Returned" },
                 ]}
               />
+              {group === "booking" ? <FilterSelect value={attentionFilter} onValueChange={(value) => { setIsLoading(true); setError(null); setPage(1); setAttentionFilter(value); }} ariaLabel="Filter bookings requiring action" placeholder="Required Action" className="w-[260px]" options={[
+                { value: "all", label: "All Bookings" }, { value: "all_attention", label: "Bookings Requiring Action" },
+                { value: "overdue_return", label: "Overdue Returns" }, { value: "not_started", label: "Schedule Ended — Not Started" },
+                { value: "return_processing", label: "Return Processing Pending" }, { value: "awaiting_settlement", label: "Awaiting Settlement" },
+                { value: "ready_to_complete", label: "Ready to Complete" },
+              ]} /> : null}
               <FilterSelect
                 value={paymentFilter}
                 onValueChange={(value) => { setIsLoading(true); setError(null); setPage(1); setPaymentFilter(value); }}
@@ -321,7 +301,7 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
       </div>
 
       <div>
-        <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
+        <TableCard>
           {/* Card layout on small screens; the table takes over from md */}
           <div className="grid gap-3 p-4 md:hidden">
             {isLoading ? (
@@ -340,11 +320,9 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
                         {booking.customer?.name || "Customer"}
                       </p>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${bookingStatusStyle[booking.statusKey]}`}>
-                        {booking.adminStatus}
-                      </span>
-                      <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
+                    <div className="flex max-w-[50%] shrink-0 flex-col items-end gap-2">
+                      <BookingStatusDisplay booking={booking} className="items-end text-right" />
+                      <span className={`inline-flex whitespace-nowrap rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
                         {booking.paymentStatus}
                       </span>
                     </div>
@@ -388,13 +366,24 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
             )}
           </div>
 
-          <div className="hidden overflow-x-auto md:block">
-            <Table>
+          <div className="hidden md:block">
+            <Table className="table-fixed [&_td]:whitespace-normal [&_td]:[overflow-wrap:anywhere]">
+              <colgroup>
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+                <col className="w-[14%]" />
+                <col className="w-[11%]" />
+                <col />
+                <col className="w-12" />
+              </colgroup>
               <TableHeader>
                 <TableRow className="border-b border-border bg-background hover:bg-background">
                   {["Booking ID", "Customer", "Vehicle", "Driver", "Pickup", "Status", "Payment", "Total", ""].map((heading) => (
-                    <TableHead key={heading} className="whitespace-nowrap px-4 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">
-                      {heading}
+                    <TableHead key={heading} className="whitespace-normal break-words px-2 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                      {heading || <span className="sr-only">Actions</span>}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -421,31 +410,29 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
                 ) : (
                   bookings.map((booking) => (
                     <TableRow key={booking.backendId} className="border-b border-background transition-colors hover:bg-background">
-                      <TableCell className="px-4 py-3 font-mono text-[12px] font-semibold text-primary">{booking.bookingCode}</TableCell>
-                      <TableCell className="px-4 py-3 text-[12.5px] font-semibold text-foreground">{booking.customer?.name || "Customer"}</TableCell>
-                      <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">
+                      <TableCell className="px-2 py-3 font-mono text-[12px] font-semibold text-primary">{booking.bookingCode}</TableCell>
+                      <TableCell className="px-2 py-3 text-[12.5px] font-semibold text-foreground">{booking.customer?.name || "Customer"}</TableCell>
+                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">
                         {[booking.brand, booking.vehicleName, booking.model]
                           .filter(Boolean)
                           .join(" ") || "Vehicle unavailable"}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">
+                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">
                         {booking.driverOption === "self_drive"
                           ? "Self drive"
                           : booking.assignedDriver?.name || "Not assigned"}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-[12px] text-muted-foreground">{booking.rentalDate || "Not provided"}</TableCell>
-                      <TableCell className="px-4 py-3">
-                        <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${bookingStatusStyle[booking.statusKey]}`}>
-                          {booking.adminStatus}
-                        </span>
+                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">{booking.rentalDate || "Not provided"}</TableCell>
+                      <TableCell className="px-2 py-3">
+                        <BookingStatusDisplay booking={booking} />
                       </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <span className={`rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
+                      <TableCell className="px-2 py-3">
+                        <span className={`inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
                           {booking.paymentStatus}
                         </span>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap px-4 py-3 text-[12px] font-semibold text-foreground">{peso(booking.totalAmount)}</TableCell>
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="px-2 py-3 text-[12px] font-semibold text-foreground">{peso(booking.totalAmount)}</TableCell>
+                      <TableCell className="px-2 py-3">
                         <TableActionMenu
                           label={`Open actions for ${booking.bookingCode}`}
                           items={rowActions(booking)}
@@ -457,20 +444,9 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
               </TableBody>
             </Table>
           </div>
-        </Card>
+        </TableCard>
         {!error && !isLoading ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>{total} result{total === 1 ? "" : "s"}</span>
-            <div className="flex items-center gap-2">
-              <span>Page {page} of {lastPage}</span>
-              <Button variant="outline" size="icon" aria-label="Previous page" disabled={page <= 1} onClick={() => { setIsLoading(true); setError(null); setPage((current) => current - 1); }}>
-                <ChevronLeft size={15} />
-              </Button>
-              <Button variant="outline" size="icon" aria-label="Next page" disabled={page >= lastPage} onClick={() => { setIsLoading(true); setError(null); setPage((current) => current + 1); }}>
-                <ChevronRight size={15} />
-              </Button>
-            </div>
-          </div>
+          <TablePagination total={total} page={page} lastPage={lastPage} onPageChange={(nextPage) => { setIsLoading(true); setError(null); setPage(nextPage); }} />
         ) : null}
       </div>
 
@@ -492,30 +468,11 @@ export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
         onUpdated={handleBookingUpdated}
       /> : null}
 
-      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <AlertDialogContent className="max-w-[400px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-[16px] font-bold text-foreground">Cancel Booking</AlertDialogTitle>
-            <AlertDialogDescription className="text-[13px] text-muted-foreground">
-              Cancel booking <strong>{selectedBooking?.bookingCode}</strong> for{" "}
-              <strong>{selectedBooking?.customer?.name || "this customer"}</strong>?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Back</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isCancelling}
-              onClick={(event) => {
-                event.preventDefault();
-                void confirmCancel();
-              }}
-              className="rounded-xl bg-rose-500 text-white hover:bg-rose-600"
-            >
-              {isCancelling ? "Cancelling..." : "Cancel Booking"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {cancelOpen && selectedBooking ? <CancelBookingDialog key={selectedBooking.backendId} booking={selectedBooking} onClose={() => setCancelOpen(false)} onSaved={(record) => { handleBookingUpdated(record); setCancelOpen(false); }} /> : null}
     </div>
   );
+}
+
+export function Bookings({ group = "booking" }: { group?: BookingGroup }) {
+  return <Suspense fallback={<p role="status" className="p-6 text-sm text-muted-foreground">Loading bookings...</p>}><BookingsContent group={group} /></Suspense>;
 }

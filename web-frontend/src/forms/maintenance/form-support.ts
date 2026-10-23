@@ -1,5 +1,7 @@
 import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
 import { ApiError } from "@/services/http";
+import type { MaintenancePlan } from "@/services/maintenance";
+import { maintenanceDateKey } from "@/services/maintenance/dates";
 import type {
   CancelMaintenanceFormValues,
   CompleteMaintenanceFormValues,
@@ -31,6 +33,46 @@ export const maintenancePlanDefaults: MaintenancePlanFormValues = {
   intervalDays: "",
 };
 
+export function getMaintenancePlanPreview({
+  currentOdometer,
+  editingPlan,
+  intervalKm = "",
+  intervalDays = "",
+  today = new Date(),
+}: {
+  currentOdometer: number | null;
+  editingPlan?: Pick<MaintenancePlan,
+    "lastCompletedOdometer" | "baselineOdometer" | "lastCompletedAt" | "baselineDate">;
+  intervalKm?: string;
+  intervalDays?: string;
+  today?: Date;
+}) {
+  const dateFormatter = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
+  const dateParts = new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(today);
+  const datePart = (type: Intl.DateTimeFormatPartTypes) => dateParts.find((part) => part.type === type)?.value;
+  const todayKey = `${datePart("year")}-${datePart("month")}-${datePart("day")}`;
+  const mileageBaseline = editingPlan?.lastCompletedOdometer ?? editingPlan?.baselineOdometer ?? currentOdometer;
+  const mileage = Number(intervalKm);
+  const nextOdometer = mileageBaseline == null ? NaN : mileageBaseline + mileage;
+  const days = Number(intervalDays);
+  const baseline = editingPlan?.lastCompletedAt
+    ?? `${editingPlan?.baselineDate ?? todayKey}T00:00:00+08:00`;
+  const nextDate = new Date(new Date(baseline).getTime() + days * 86_400_000);
+
+  return {
+    currentDate: dateFormatter.format(today),
+    currentOdometer: currentOdometer == null ? "" : `${currentOdometer.toLocaleString("en-PH")} km`,
+    nextDueOdometer: /^\d+$/.test(intervalKm) && mileage >= 1 && Number.isSafeInteger(nextOdometer)
+      ? `${nextOdometer.toLocaleString("en-PH")} km`
+      : "",
+    nextDueDate: /^\d+$/.test(intervalDays) && days >= 1 && Number.isSafeInteger(days) && Number.isFinite(nextDate.getTime())
+      ? dateFormatter.format(nextDate)
+      : "",
+  };
+}
+
 export const scheduleMaintenanceDefaults: ScheduleMaintenanceFormValues = {
   vehicleId: "",
   planId: "",
@@ -42,6 +84,15 @@ export const scheduleMaintenanceDefaults: ScheduleMaintenanceFormValues = {
   description: "",
   notes: "",
 };
+
+export function getMaintenanceScheduleDateLimits(scheduledStart = "", now = new Date()) {
+  const today = maintenanceDateKey(now);
+
+  return {
+    start: today,
+    end: scheduledStart > today ? scheduledStart : today,
+  };
+}
 
 export const completeMaintenanceDefaults: CompleteMaintenanceFormValues = {
   odometerAtCompletion: "",

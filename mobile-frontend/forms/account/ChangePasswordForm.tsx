@@ -1,8 +1,9 @@
+import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { InputWithLabel } from '@/components/common/InputWithLabel';
 import { ProfileFormSheet } from '@/components/profile';
@@ -72,7 +73,7 @@ export function ChangePasswordForm({ visible, onClose }: { visible: boolean; onC
 
   return (
     <ProfileFormSheet title="Change password" visible={visible} onClose={close}>
-      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <KeyboardFormScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text className="font-sans mb-4 text-body text-secondary-foreground">
           After updating your password, you’ll be signed out on all mobile devices. Sign in again with your
           new password.
@@ -154,7 +155,7 @@ export function ChangePasswordForm({ visible, onClose }: { visible: boolean; onC
           onSubmit={handleSubmit(submit)}
           onCancel={close}
         />
-      </ScrollView>
+      </KeyboardFormScrollView>
     </ProfileFormSheet>
   );
 }

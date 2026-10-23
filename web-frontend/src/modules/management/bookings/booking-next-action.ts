@@ -15,30 +15,30 @@ export type BookingNextAction =
   | "view-setup"
   | "calibration-pending"
   | "start-rental"
+  | "receive-vehicle"
+  | "review-late-charge"
   | "incoming"
   | "review-charges"
-  | "mark-returned"
   | "complete";
 
 export function nextBookingAction(booking: BookingRecord): BookingNextAction | null {
   if (booking.statusKey === "confirmed") {
     if (booking.driverOption === "owners_driver" && !booking.assignedDriver) return "assign-driver";
     if (!booking.rentalProgress?.outgoingFinalized && !booking.telematicsHandover?.eligibility?.testMode) return "outgoing";
-    if (booking.driverOption === "self_drive") {
-      if (booking.telematicsSetupStatus === "ready_for_release") return "start-rental";
-      if (booking.telematicsSetupStatus === "in_progress") {
-        return setupStepsPassed(booking, TELEMATICS_DEVICE_STEPS)
-          ? "calibration-pending" : "view-setup";
-      }
-      if (booking.telematicsSetupStatus === "released") return "view-setup";
-      return "prepare-handover";
+    if (booking.telematicsSetupStatus === "ready_for_release") return "start-rental";
+    if (booking.telematicsSetupStatus === "in_progress") {
+      return setupStepsPassed(booking, TELEMATICS_DEVICE_STEPS)
+        ? "calibration-pending" : "view-setup";
     }
-    return "start-rental";
+    if (booking.telematicsSetupStatus === "released") return "view-setup";
+    return "prepare-handover";
   }
 
   if (booking.statusKey === "ongoing") {
+    if (!booking.lateReturn?.vehicleReceivedAt) return "receive-vehicle";
     if (!booking.rentalProgress?.incomingFinalized) return "incoming";
-    return booking.returnChargesFinalizedAt ? "mark-returned" : "review-charges";
+    if ((booking.lateReturn?.billableHours ?? 0) > 0 && !booking.lateReturn?.reviewedAt) return "review-late-charge";
+    return "review-charges";
   }
 
   if (booking.statusKey === "returned") return "complete";
@@ -48,12 +48,13 @@ export function nextBookingAction(booking: BookingRecord): BookingNextAction | n
 export const bookingActionLabels: Record<BookingNextAction, string> = {
   "assign-driver": "Assign Driver",
   outgoing: "Start Outgoing Inspection",
-  "prepare-handover": "Prepare Handover",
+  "prepare-handover": "Continue Preparation",
   "view-setup": "View Setup Progress",
   "calibration-pending": "Calibration Pending",
   "start-rental": "Start Rental",
+  "receive-vehicle": "Record Vehicle Received",
+  "review-late-charge": "Review Late Return Charge",
   incoming: "Start Incoming Inspection",
   "review-charges": "Review Return Charges",
-  "mark-returned": "Mark Returned",
   complete: "Complete Booking",
 };

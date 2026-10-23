@@ -84,8 +84,9 @@ function readyFoundationSetup(Booking $booking): void
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
     $service->startHandover($booking, vehicleManagerUser());
     $session->refresh();
+    $operator = $booking->rental_type === RentalType::SelfDrive ? $booking->user : $booking->assignedDriver;
     foreach (TelematicsSetupService::requiredSteps() as $type) {
-        $service->recordStep($session, $type, TelematicsSetupStepStatus::Passed);
+        $service->recordStep($session, $type, TelematicsSetupStepStatus::Passed, actor: $operator);
         $session->refresh();
     }
 }
@@ -102,13 +103,18 @@ it('enables one setup session after a finalized self-drive outgoing inspection',
     expect($booking->telematicsSetupSession()->count())->toBe(1);
 });
 
-it('does not require or create telematics setup for an owner-driver rental', function () {
+it('requires the assigned Driver setup before releasing an owner-driver rental', function () {
     $booking = telematicsFoundationBooking(RentalType::OwnersDriver);
     finalizeFoundationOutgoing($booking);
 
+    expect($booking->fresh('telematicsSetupSession')->telematicsSetupSession->status)->toBe(TelematicsSetupStatus::SetupRequired);
+    expect(fn () => app(BookingService::class)->transition($booking, BookingStatus::Ongoing, vehicleManagerUser()))
+        ->toThrow(ValidationException::class);
+    readyFoundationSetup($booking);
     $started = app(BookingService::class)->transition($booking, BookingStatus::Ongoing, vehicleManagerUser());
     expect($started->status)->toBe(BookingStatus::Ongoing)
-        ->and($started->telematicsSetupSession)->toBeNull();
+        ->and($started->fresh('telematicsSetupSession')->telematicsSetupSession->status)->toBe(TelematicsSetupStatus::Released)
+        ->and($started->telematicsSetupSession->steps()->pluck('actor_user_id')->unique()->all())->toBe([$booking->assignedDriver->id]);
 });
 
 it('preserves setup-step retries and becomes ready only when every latest required step passes', function () {
@@ -131,6 +137,27 @@ it('preserves setup-step retries and becomes ready only when every latest requir
 
     expect($session->fresh()->status)->toBe(TelematicsSetupStatus::ReadyForRelease)
         ->and($service->isReady($session->fresh()))->toBeTrue();
+});
+
+it('keeps assigned-driver release blocked when setup attempts belong to the Customer', function () {
+    $booking = telematicsFoundationBooking(RentalType::OwnersDriver);
+    finalizeFoundationOutgoing($booking);
+    $manager = vehicleManagerUser();
+    $service = app(TelematicsSetupService::class);
+    $session = $service->startHandover($booking, $manager);
+
+    foreach (TelematicsSetupService::requiredSteps() as $type) {
+        $service->recordStep($session, $type, TelematicsSetupStepStatus::Passed, actor: $booking->user);
+    }
+    expect($service->isReady($session->fresh()))->toBeFalse();
+    expect(fn () => app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $manager))
+        ->toThrow(ValidationException::class);
+
+    foreach (TelematicsSetupService::requiredSteps() as $type) {
+        $service->recordStep($session, $type, TelematicsSetupStepStatus::Passed, actor: $booking->assignedDriver);
+    }
+    expect($service->isReady($session->fresh()))->toBeTrue();
+    expect(app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $manager)->status)->toBe(BookingStatus::Ongoing);
 });
 
 it('blocks self-drive release before readiness then releases setup and keeps one trip with location history', function () {

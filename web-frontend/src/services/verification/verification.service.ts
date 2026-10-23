@@ -1,3 +1,5 @@
+import { refreshManagementCounts } from "@/services/management/navigation.service";
+import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
 import { apiGet, apiPost, resolveAssetUrl } from "@/services/http";
 import type {
   BackendVerificationRecord,
@@ -87,7 +89,7 @@ export async function getSelfDriveCustomers(params: {
   eligibility?: "all" | "eligible" | "not_eligible";
   page: number;
 }): Promise<SelfDriveCustomerPage> {
-  const query = new URLSearchParams({ page: String(params.page) });
+  const query = new URLSearchParams({ page: String(params.page), per_page: String(TABLE_PAGE_SIZE) });
   if (params.search) query.set("search", params.search);
   if (params.eligibility && params.eligibility !== "all") query.set("eligibility", params.eligibility);
   const response = await apiGet<BackendSelfDriveCustomer[]>(`/admin/self-drive-verification/customers?${query}`);
@@ -115,6 +117,7 @@ export async function getSelfDriveCustomer(id: number): Promise<SelfDriveCustome
 export async function approveVerification(record: VerificationRecord) {
   const response = await apiPost<BackendVerificationRecord>(`/admin/document-verification/${record.backendId}/approve`);
 
+  refreshManagementCounts();
   return toVerificationRecord(response.data);
 }
 
@@ -126,5 +129,6 @@ export async function rejectVerification(record: VerificationRecord, rejectionRe
     },
   );
 
+  refreshManagementCounts();
   return toVerificationRecord(response.data);
 }

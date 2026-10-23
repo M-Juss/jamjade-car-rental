@@ -13,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
+    public function __construct(private readonly RcResearchAccessService $research) {}
+
     public function register(array $data): array
     {
         return DB::transaction(function () use ($data) {
@@ -63,7 +65,12 @@ class AuthService
             throw new AuthenticationException('This account is inactive.');
         }
 
-        if (! $user->hasAnyRole([UserRole::Customer->value, DriverAssignmentService::DRIVER_ROLE])) {
+        if ($user->hasRole(UserRole::Admin->value) && $this->research->enabled()) {
+            return $this->research->createSession($user, $data['device_name'] ?? 'jamjade-mobile');
+        }
+
+        if ($user->hasRole(UserRole::Admin->value)
+            || ! $user->hasAnyRole([UserRole::Customer->value, DriverAssignmentService::DRIVER_ROLE])) {
             throw ValidationException::withMessages([
                 'login' => ['This account does not have mobile customer access.'],
             ]);

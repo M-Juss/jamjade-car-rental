@@ -30,6 +30,17 @@ class BookingInspectionService
         return $this->finalize($booking, VehicleInspectionType::Outgoing, $condition, $operatorSignature, $actor);
     }
 
+    public function finalizeOutgoingAndStartHandover(Booking $booking, array $condition, string $operatorSignature, User $actor): VehicleInspection
+    {
+        if (! app(TelematicsOperatorService::class)->supports($booking)) {
+            throw ValidationException::withMessages(['booking' => ['Telematics handover is unavailable for this rental.']]);
+        }
+        $this->readiness->assertOutgoingAllowed($booking);
+        app(SelfDriveBookingAvailabilityService::class)->assertHandoverAvailable($booking);
+
+        return $this->finalize($booking, VehicleInspectionType::Outgoing, $condition, $operatorSignature, $actor, startHandover: true);
+    }
+
     public function finalizeIncoming(Booking $booking, array $condition, string $operatorSignature, User $actor): VehicleInspection
     {
         $this->readiness->assertIncomingAllowed($booking);
@@ -42,15 +53,27 @@ class BookingInspectionService
         VehicleInspectionType $type,
         array $condition,
         string $operatorSignature,
-        User $actor
+        User $actor,
+        bool $startHandover = false
     ): VehicleInspection {
-        $personnelPath = $this->inspections->storePersonnelSignature($condition['signature_data'], 'condition.signature_data');
-        $operatorPath = $this->inspections->storePersonnelSignature($operatorSignature, 'operator_signature_data');
-
+        $personnelPath = null;
+        $operatorPath = null;
         try {
-            return DB::transaction(function () use ($booking, $type, $condition, $actor, $personnelPath, $operatorPath) {
+            $personnelPath = $this->inspections->storePersonnelSignature($condition['signature_data'], 'condition.signature_data');
+            $operatorPath = $this->inspections->storePersonnelSignature($operatorSignature, 'operator_signature_data');
+
+            return DB::transaction(function () use ($booking, $type, $condition, $actor, $personnelPath, $operatorPath, $startHandover) {
+                VehicleConfigurationService::lock();
+                VehicleConfigurationService::assertChecklistCurrent($condition);
                 $booking = Booking::query()->with(['user', 'assignedDriver', 'assignment'])->lockForUpdate()->findOrFail($booking->id);
+                if ($startHandover && $booking->rental_type === RentalType::SelfDrive) {
+                    app(SelfDriveBookingAvailabilityService::class)->lockCustomer($booking->user_id);
+                }
                 $vehicle = Vehicle::query()->lockForUpdate()->findOrFail($booking->vehicle_id);
+
+                if ($type === VehicleInspectionType::Outgoing) {
+                    $this->readiness->assertOutgoingAllowed($booking);
+                }
 
                 if ($booking->vehicleInspections()->where('type', $type)->exists()) {
                     throw ValidationException::withMessages(['inspection' => ["The {$type->label()} inspection already exists."]]);
@@ -125,10 +148,16 @@ class BookingInspectionService
                     'signature_path' => $operatorPath,
                     'signed_at' => now(),
                 ]);
+                if ($type === VehicleInspectionType::Outgoing) {
+                    $this->readiness->assertOutgoingTimeAllowed($booking);
+                }
                 $inspection->forceFill(['status' => VehicleInspectionStatus::Finalized, 'finalized_at' => now()])->save();
 
                 if ($type === VehicleInspectionType::Outgoing) {
                     $this->telematicsSetup->enableForFinalizedOutgoing($booking);
+                    if ($startHandover) {
+                        $this->telematicsSetup->startHandover($booking, $actor);
+                    }
                 } else {
                     $vehicle->forceFill(['current_condition_inspection_id' => $inspection->id])->save();
                 }
@@ -138,11 +167,14 @@ class BookingInspectionService
                     ->withProperties(['booking_id' => $booking->id, 'based_on_inspection_id' => $source->id])
                     ->log("Booking {$type->label()} inspection finalized.");
 
-                if ($type === VehicleInspectionType::Outgoing && $booking->rental_type === RentalType::SelfDrive) {
-                    $this->notifications->createForUser($operator, 'trip', 'Telematics handover required',
-                        "Jamjade personnel must start telematics handover for booking {$booking->booking_code} before setup can continue.", [
-                            'booking_id' => $booking->id,
-                        ]);
+                if ($type === VehicleInspectionType::Outgoing && app(TelematicsOperatorService::class)->supports($booking)) {
+                    $this->notifications->createForUser($operator, 'trip',
+                        $startHandover ? 'Vehicle setup available' : 'Vehicle setup required',
+                        $startHandover
+                            ? "You can now begin vehicle setup for booking {$booking->booking_code}."
+                            : "Jamjade personnel must start telematics handover for booking {$booking->booking_code} before setup can continue.", [
+                                'booking_id' => $booking->id,
+                            ]);
                 }
 
                 return $inspection->fresh(['items', 'markers', 'signatures.user:id,name', 'creator:id,name', 'booking:id,booking_code', 'basedOnInspection']);

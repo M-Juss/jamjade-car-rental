@@ -44,7 +44,7 @@ export function GeofenceMapEditor({
   const [loading, setLoading] = useState(Boolean(apiKey));
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const error = apiKey ? loadError : "Map preview needs NEXT_PUBLIC_GOOGLE_MAPS_API_KEY configured.";
+  const error = apiKey ? loadError : "Map preview is unavailable.";
 
   useEffect(() => {
     onCircleRef.current = onCircleCenter;
@@ -170,7 +170,7 @@ export function GeofenceMapEditor({
 
   return (
     <div className="relative shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-      <div ref={nodeRef} className="h-[180px] w-full sm:h-[320px] lg:h-[360px]" aria-label={readOnly ? "Geofence boundary map" : "Geofence map editor"} />
+      <div ref={nodeRef} className={`w-full ${readOnly ? "h-[180px] sm:h-[320px] lg:h-[360px]" : "h-[280px] sm:h-[480px] lg:h-[540px]"}`} aria-label={readOnly ? "Geofence boundary map" : "Geofence map editor"} />
       {loading ? <div className="absolute inset-0 flex items-center justify-center bg-surface/90 text-sm text-muted-foreground"><Loader2 className="mr-2 size-4 animate-spin" />Loading map</div> : null}
       {error ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface px-5 text-center text-sm text-muted-foreground"><MapPin className="size-5 text-primary" /><span>{error}</span></div> : null}
     </div>

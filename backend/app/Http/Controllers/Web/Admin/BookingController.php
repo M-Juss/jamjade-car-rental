@@ -7,8 +7,15 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Booking\AssignDriverRequest;
 use App\Http\Requests\Admin\Booking\ListBookingsRequest;
+use App\Http\Requests\Admin\Booking\ReceiveVehicleRequest;
+use App\Http\Requests\Admin\Booking\RecordCancellationRefundRequest;
+use App\Http\Requests\Admin\Booking\RecordNoShowRequest;
+use App\Http\Requests\Admin\Booking\ReturnFollowUpRequest;
+use App\Http\Requests\Admin\Booking\ReviewCancellationRefundRequest;
+use App\Http\Requests\Admin\Booking\ReviewLateChargeRequest;
 use App\Http\Requests\Admin\Booking\StoreAdditionalChargesRequest;
 use App\Http\Requests\Admin\Booking\StoreBookingInspectionRequest;
+use App\Http\Requests\Admin\Booking\UpdateAdditionalChargeRequest;
 use App\Http\Requests\Admin\BookingStatusRequest;
 use App\Http\Resources\AdditionalChargeResource;
 use App\Http\Resources\BookingResource;
@@ -17,8 +24,11 @@ use App\Models\Booking;
 use App\Models\BookingAssignment;
 use App\Models\User;
 use App\Services\AdditionalChargeService;
+use App\Services\BookingAttentionService;
+use App\Services\BookingCancellationService;
 use App\Services\BookingEmailService;
 use App\Services\BookingInspectionService;
+use App\Services\BookingReturnService;
 use App\Services\BookingService;
 use App\Services\DriverAssignmentService;
 use App\Services\RentalReadinessService;
@@ -43,12 +53,13 @@ class BookingController extends Controller
     public function index(ListBookingsRequest $request): JsonResponse
     {
         $bookings = $this->bookingService->paginateForAdmin(
-            $request->safe()->only(['search', 'status', 'payment_status', 'group']),
+            $request->safe()->only(['search', 'status', 'payment_status', 'group', 'attention']),
             $request->integer('per_page', 15)
         );
 
         return $this->paginated('Bookings fetched successfully.', $bookings, BookingResource::class, [
             'status_counts' => $this->bookingService->adminStatusCounts(),
+            'attention_counts' => app(BookingAttentionService::class)->counts(),
         ]);
     }
 
@@ -58,6 +69,27 @@ class BookingController extends Controller
             'Booking fetched successfully.',
             new BookingResource($booking->load($this->detailRelations()))
         );
+    }
+
+    public function receiveVehicle(ReceiveVehicleRequest $request, Booking $booking, BookingReturnService $service): JsonResponse
+    {
+        $booking = $service->receive($booking, $request->user(), $request->validated('vehicle_received_at'));
+
+        return $this->success('Physical receipt recorded.', new BookingResource($booking->load($this->detailRelations())));
+    }
+
+    public function returnFollowUp(ReturnFollowUpRequest $request, Booking $booking, BookingReturnService $service): JsonResponse
+    {
+        $booking = $service->followUp($booking, $request->user(), $request->validated());
+
+        return $this->success('Return follow-up recorded.', new BookingResource($booking->load($this->detailRelations())));
+    }
+
+    public function reviewLateCharge(ReviewLateChargeRequest $request, Booking $booking, BookingReturnService $service): JsonResponse
+    {
+        $booking = $service->review($booking, $request->user(), $request->validated());
+
+        return $this->success('Late return charge reviewed.', new BookingResource($booking->load($this->detailRelations())));
     }
 
     public function drivers(): JsonResponse
@@ -124,6 +156,27 @@ class BookingController extends Controller
         return $this->statusAction($request, $booking, BookingStatus::Cancelled, 'Booking cancelled successfully.');
     }
 
+    public function noShow(RecordNoShowRequest $request, Booking $booking, BookingCancellationService $service): JsonResponse
+    {
+        $booking = $service->noShow($booking, $request->user(), $request->validated('reason'));
+
+        return $this->success('No-show recorded. Rental payments are retained.', new BookingResource($booking->load($this->detailRelations())));
+    }
+
+    public function reviewRefund(ReviewCancellationRefundRequest $request, Booking $booking, BookingCancellationService $service): JsonResponse
+    {
+        $booking = $service->review($booking, $request->user(), $request->validated());
+
+        return $this->success('Refund decision saved.', new BookingResource($booking->load($this->detailRelations())));
+    }
+
+    public function recordRefund(RecordCancellationRefundRequest $request, Booking $booking, BookingCancellationService $service): JsonResponse
+    {
+        $booking = $service->recordRefund($booking, $request->user());
+
+        return $this->success('External refund recorded.', new BookingResource($booking->load($this->detailRelations())));
+    }
+
     public function start(BookingStatusRequest $request, Booking $booking): JsonResponse
     {
         return $this->statusAction($request, $booking, BookingStatus::Ongoing, 'Rental started successfully.');
@@ -144,11 +197,6 @@ class BookingController extends Controller
         return $this->statusAction($request, $booking, BookingStatus::Completed, 'Rental completed successfully.');
     }
 
-    public function returned(BookingStatusRequest $request, Booking $booking): JsonResponse
-    {
-        return $this->statusAction($request, $booking, BookingStatus::Returned, 'Booking marked as returned successfully.');
-    }
-
     public function outgoing(StoreBookingInspectionRequest $request, Booking $booking): JsonResponse
     {
         $inspection = $this->inspectionService->finalizeOutgoing(
@@ -167,6 +215,15 @@ class BookingController extends Controller
         return $this->created('Incoming Inspection finalized successfully.', new VehicleInspectionResource($inspection));
     }
 
+    public function outgoingAndHandover(StoreBookingInspectionRequest $request, Booking $booking): JsonResponse
+    {
+        $inspection = $this->inspectionService->finalizeOutgoingAndStartHandover(
+            $booking, $request->validated('condition'), $request->validated('operator_signature_data'), $request->user()
+        );
+
+        return $this->created('Outgoing Inspection finalized and handover started.', new VehicleInspectionResource($inspection));
+    }
+
     public function charges(StoreAdditionalChargesRequest $request, Booking $booking): JsonResponse
     {
         $charges = $this->additionalChargeService->create($booking, $request->validated('charges'), $request->user());
@@ -174,11 +231,27 @@ class BookingController extends Controller
         return $this->created('Additional charges added successfully.', AdditionalChargeResource::collection(collect($charges)->map->load('responsibleUser')));
     }
 
-    public function finalizeCharges(BookingStatusRequest $request, Booking $booking): JsonResponse
+    public function finalizeReturn(BookingStatusRequest $request, Booking $booking): JsonResponse
     {
-        $booking = $this->additionalChargeService->finalizeReview($booking, $request->user());
+        $booking = $this->bookingService->finalizeReturn(
+            $booking, $request->user(), $request->validated('reason'), $request->validated()
+        );
 
-        return $this->success('Return charges finalized successfully.', new BookingResource($booking->load($this->detailRelations())));
+        return $this->success('Charges finalized and vehicle marked Returned.', new BookingResource($booking->load($this->detailRelations())));
+    }
+
+    public function updateCharge(UpdateAdditionalChargeRequest $request, Booking $booking, int $charge): JsonResponse
+    {
+        $updated = $this->additionalChargeService->update($booking, $charge, $request->validated('charges')[0], $request->user());
+
+        return $this->success('Return charge updated.', new AdditionalChargeResource($updated));
+    }
+
+    public function deleteCharge(BookingStatusRequest $request, Booking $booking, int $charge): JsonResponse
+    {
+        $this->additionalChargeService->delete($booking, $charge, $request->user());
+
+        return $this->success('Return charge deleted.', ['id' => (string) $charge]);
     }
 
     public function readiness(Booking $booking): JsonResponse
@@ -198,6 +271,10 @@ class BookingController extends Controller
                 [],
                 422
             );
+        }
+
+        if (! $booking->successfulCustomerPayments()->exists()) {
+            return $this->error('A receipt requires a recorded completed customer payment.', [], 422);
         }
 
         if (! $this->bookingEmailService->sendBookingConfirmation($booking, force: true)) {

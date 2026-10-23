@@ -35,16 +35,17 @@ class LoginRequest extends BaseFormRequest
     {
         $email = $this->input('email');
         $phoneNumber = $this->input('phone_number');
-        $login = trim((string) $this->input('login'));
+        $login = $this->input('login');
+        $login = is_string($login) ? trim($login) : $login;
 
         $this->merge([
-            'email' => filled($email) ? strtolower(trim((string) $email)) : null,
-            'phone_number' => filled($phoneNumber)
-                ? preg_replace('/[\s()-]+/', '', (string) $phoneNumber)
-                : null,
+            'email' => is_string($email) ? strtolower(trim($email)) : $email,
+            'phone_number' => is_string($phoneNumber)
+                ? preg_replace('/[\s()-]+/', '', $phoneNumber)
+                : $phoneNumber,
             'login' => $login === ''
                 ? null
-                : (str_contains($login, '@') ? strtolower($login) : $login),
+                : (is_string($login) && str_contains($login, '@') ? strtolower($login) : $login),
         ]);
     }
 }

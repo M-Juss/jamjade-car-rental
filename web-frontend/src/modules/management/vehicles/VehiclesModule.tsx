@@ -1,14 +1,18 @@
 "use client";
 
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
+
+import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
+import { TablePagination } from "@/components/common/tables/TablePagination";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
+  Settings2,
   Eye,
   Pencil,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,11 +25,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
+import { VehicleConfigurationDialog } from "./components/VehicleConfigurationDialog";
 import { VehicleFormDialog } from "@/forms/vehicle/details/CreateVehicleDialog";
+import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
 import { appToast } from "@/lib/toast";
 import {
   createVehicle,
@@ -57,7 +64,6 @@ function getVehicleImage(vehicle: VehicleRecord) {
 
 // ─── VEHICLE MANAGEMENT PAGE ──────────────────────────────────────────────────
 
-// TODO: Extract into reusable component: <VehicleTable />
 
 export default function Vehicle() {
   const router = useRouter();
@@ -69,12 +75,13 @@ export default function Vehicle() {
   const [transmissionFilter, setTransmissionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [configurationOpen, setConfigurationOpen] = useState(false);
   const [vehicleFormOpen, setVehicleFormOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const perPage = 6;
+  const perPage = TABLE_PAGE_SIZE;
 
   useEffect(() => {
     let ignore = false;
@@ -125,7 +132,8 @@ export default function Vehicle() {
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const brands = [...new Set(vehicles.map((v) => v.brand))];
   const brandOptions = [
@@ -134,8 +142,7 @@ export default function Vehicle() {
   ];
   const transmissionOptions = [
     { value: "all", label: "All Transmission" },
-    { value: "Automatic", label: "Automatic" },
-    { value: "Manual", label: "Manual" },
+    ...[...new Set(vehicles.map((vehicle) => vehicle.transmission))].map((value) => ({ value, label: value })),
   ];
   const statusOptions = [
     { value: "all", label: "All Status" },
@@ -174,22 +181,19 @@ export default function Vehicle() {
     <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-background min-h-screen">
       {/* ================= HEADER ================= */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            Vehicle Management
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage your entire fleet from one place.
-          </p>
-        </div>
+        <ManagementPageHeading title="Vehicle Management" description="Manage vehicle details, availability, and condition." />
+        <div className="flex w-full gap-2 sm:w-auto">
+        {portal === "admin" ? <Button type="button" variant="outline" className="h-10 flex-1 rounded-xl text-[13px] sm:flex-none" onClick={() => setConfigurationOpen(true)}><Settings2 size={15} />Configure</Button> : null}
         <Button
           onClick={() => setVehicleFormOpen(true)}
-          className="rounded-xl bg-primary hover:bg-primary-hover text-white text-[13px] font-semibold h-10 px-4 shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 w-full sm:w-auto"
+          className="rounded-xl bg-primary hover:bg-primary-hover text-white text-[13px] font-semibold h-10 px-4 shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 flex-1 sm:flex-none"
         >
           <Plus size={15} className="mr-2" />
           Add Vehicle
         </Button>
+        </div>
       </div>
+      {portal === "admin" ? <VehicleConfigurationDialog open={configurationOpen} onOpenChange={setConfigurationOpen} /> : null}
 
       {/* ================= TOOLBAR ================= */}
       <div>
@@ -247,18 +251,27 @@ export default function Vehicle() {
       </div>
 
       {/* ================= VEHICLE TABLE ================= */}
-      {/* TODO: Extract into reusable component: <VehicleTable /> */}
       <div>
         {error && (
           <div className="mb-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[12.5px] font-medium text-rose-700">
             {error}
           </div>
         )}
-        <Card className="rounded-2xl border-0 shadow-[0_2px_12px_rgba(0,0,0,0.05)] bg-white overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px]">
-              <thead>
-                <tr className="border-b border-border bg-background">
+        <TableCard>
+          <div className="min-w-0">
+            <Table>
+              <colgroup>
+                <col style={{ width: "24%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "6%" }} />
+                <col style={{ width: "13%" }} />
+                <col />
+                <col style={{ width: "3rem" }} />
+              </colgroup>
+              <TableHeader>
+                <TableRow className="border-b border-border bg-background">
                   {[
                     "Vehicle",
                     "Brand",
@@ -269,42 +282,44 @@ export default function Vehicle() {
                     "Status",
                     "Actions",
                   ].map((h) => (
-                    <th
+                    <TableHead
                       key={h}
-                      className="text-left text-[10.5px] font-semibold text-subtle-foreground uppercase tracking-wider px-4 py-3 whitespace-nowrap"
+                      className="text-left text-[10.5px] font-semibold text-subtle-foreground uppercase tracking-wider px-4 py-3 whitespace-normal"
                     >
-                      {h}
-                    </th>
+                      {h === "Actions" ? <span className="sr-only">Actions</span> : h}
+                    </TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {isLoading ? (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={8}
                       className="text-center py-12 text-[13px] text-subtle-foreground"
                     >
                       Loading vehicles...
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow><TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">Vehicles could not be loaded.</TableCell></TableRow>
                 ) : paginated.length === 0 ? (
-                  <tr>
-                    <td
+                  <TableRow>
+                    <TableCell
                       colSpan={8}
                       className="text-center py-12 text-[13px] text-subtle-foreground"
                     >
                       No vehicles found.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   paginated.map((v) => (
-                    <tr
+                    <TableRow
                       key={v.id}
                       className="border-b border-background hover:bg-background transition-colors duration-100 group"
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
+                      <TableCell data-label="Vehicle" className="px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
                           <div className="w-9 h-9 rounded-xl bg-background flex items-center justify-center text-xl flex-shrink-0">
                             {getVehicleImage(v) ? (
                               <div
@@ -319,34 +334,34 @@ export default function Vehicle() {
                               "🚗"
                             )}
                           </div>
-                          <span className="text-[12.5px] font-semibold text-foreground whitespace-nowrap">
+                          <span className="text-[12.5px] font-semibold text-foreground whitespace-normal">
                             {v.plateNumber ? `${v.name} ${v.plateNumber}` : v.name}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
+                      </TableCell>
+                      <TableCell data-label="Brand" className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.brand}
-                      </td>
-                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
+                      </TableCell>
+                      <TableCell data-label="Transmission" className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.transmission}
-                      </td>
-                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
+                      </TableCell>
+                      <TableCell data-label="Model" className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.model}
-                      </td>
-                      <td className="px-4 py-3 text-[12px] text-muted-foreground">
+                      </TableCell>
+                      <TableCell data-label="Seats" className="px-4 py-3 text-[12px] text-muted-foreground">
                         {v.seats}
-                      </td>
-                      <td className="px-4 py-3 text-[12.5px] font-semibold text-foreground">
+                      </TableCell>
+                      <TableCell data-label="Price/Day" className="px-4 py-3 text-[12.5px] font-semibold text-foreground">
                         ₱{v.pricePerDay.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell data-label="Status" className="px-4 py-3">
                         <span
                           className={`text-[10.5px] font-semibold px-2.5 py-1 rounded-lg border ${statusStyle[getStatusLabel(v)] ?? statusStyle.Unavailable}`}
                         >
                           {getStatusLabel(v)}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell data-label="Actions" className="px-4 py-3">
                         <TableActionMenu
                           label={`Open actions for ${v.name}`}
                           items={[
@@ -381,52 +396,16 @@ export default function Vehicle() {
                             },
                           ]}
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-t border-border">
-            <p className="text-[11.5px] text-subtle-foreground">
-              Showing {Math.min((page - 1) * perPage + 1, filtered.length)}–
-              {Math.min(page * perPage, filtered.length)} of {filtered.length}{" "}
-              vehicles
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft size={13} />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`w-7 h-7 rounded-lg text-[12px] font-semibold transition-colors ${
-                    p === page
-                      ? "bg-primary text-white shadow-[0_2px_8px_rgba(52,110,246,0.3)]"
-                      : "border border-border text-muted-foreground hover:bg-background"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages || totalPages === 0}
-                className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:bg-background disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight size={13} />
-              </button>
-            </div>
-          </div>
-        </Card>
+        </TableCard>
+        {!isLoading && !error && <TablePagination total={filtered.length} page={currentPage} lastPage={totalPages} onPageChange={setPage} label="Vehicles pagination" />}
       </div>
 
       <AlertDialog

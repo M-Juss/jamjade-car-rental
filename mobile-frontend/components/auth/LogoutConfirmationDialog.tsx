@@ -5,11 +5,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { themeColors } from '@/constants/theme';
 
 type LogoutConfirmationDialogProps = {
-  accountLabel: 'customer' | 'driver';
+  accountLabel: 'customer' | 'driver' | 'admin';
   isLoading: boolean;
   onCancel: () => void;
   onConfirm: () => void;
   visible: boolean;
+  warning?: string;
 };
 
 export function LogoutConfirmationDialog({
@@ -18,6 +19,7 @@ export function LogoutConfirmationDialog({
   onCancel,
   onConfirm,
   visible,
+  warning,
 }: LogoutConfirmationDialogProps) {
   const insets = useSafeAreaInsets();
 
@@ -44,6 +46,7 @@ export function LogoutConfirmationDialog({
               <Text className="font-sans mt-1 text-[13px] font-normal leading-5 text-secondary-foreground">
                 Are you sure you want to end your {accountLabel} session on this device?
               </Text>
+              {warning ? <Text className="font-sans mt-2 text-caption text-secondary-foreground">{warning}</Text> : null}
             </View>
             <Pressable
               accessibilityLabel="Close logout confirmation"

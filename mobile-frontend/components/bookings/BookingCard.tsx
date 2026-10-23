@@ -39,11 +39,12 @@ export function BookingCard({
   onViewDetails: (booking: Booking) => void;
   onAction: (action: BookingAction, booking: Booking) => void;
 }) {
+  const vehicleTitle = [booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(' ');
   const hasTelematics = isTelematicsEnabled(booking);
   const actions = getBookingActions(booking.status, {
     isSelfDrive: booking.driverType === 'Self-Drive',
   }).filter(
-    (action) => action.key !== 'payment_info' && !(hasTelematics && action.key === 'open_telematics'),
+    (action) => action.key !== 'payment_info' && action.key !== 'book_another_vehicle' && !(hasTelematics && action.key === 'open_telematics'),
   );
 
   const handleAction = (action: BookingAction) => {
@@ -60,7 +61,7 @@ export function BookingCard({
       <View className="flex-row items-start gap-3">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`View ${booking.id} details`}
+          accessibilityLabel={`View ${booking.id}, ${vehicleTitle}, ${booking.status} details`}
           onPress={() => onViewDetails(booking)}
           className="min-w-0 flex-1 flex-row items-center gap-3">
           <VehicleImage
@@ -69,15 +70,15 @@ export function BookingCard({
             className="h-20 w-24 overflow-hidden rounded-field bg-background"
           />
           <View className="min-w-0 flex-1">
-            <Text
-              className="font-sans text-[17px] font-semibold leading-[22px] text-foreground"
-              numberOfLines={2}>
-              {booking.vehicleName}
-            </Text>
-            <Text className="font-sans mt-1 text-[12px] text-secondary-foreground">{booking.id}</Text>
-            <View className="mt-2 self-start">
-              <BookingStatusBadge status={booking.status} compact />
+            <View className="flex-row items-center justify-between gap-2">
+              <Text className="font-sans min-w-0 flex-1 text-[17px] font-semibold leading-[22px] text-foreground">
+                {booking.id}
+              </Text>
+              <View className="shrink-0">
+                <BookingStatusBadge status={booking.status} compact />
+              </View>
             </View>
+            <Text className="font-sans mt-1 text-[12px] text-secondary-foreground">{vehicleTitle}</Text>
           </View>
         </Pressable>
       </View>
@@ -101,10 +102,10 @@ export function BookingCard({
           <ActionButton
             icon={Navigation}
             label="Open Telematics"
-            variant="success"
+            variant="primary"
             onPress={() =>
               onAction(
-                { key: 'open_telematics', label: 'Open Telematics', icon: Navigation, variant: 'success' },
+                { key: 'open_telematics', label: 'Open Telematics', icon: Navigation, variant: 'primary' },
                 booking,
               )
             }

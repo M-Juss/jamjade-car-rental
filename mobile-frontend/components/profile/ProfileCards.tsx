@@ -191,28 +191,18 @@ export function ProfileEditButton({
   icon: Icon = Pencil,
   label = 'Edit',
   onPress,
-  tone = 'default',
 }: {
   label?: string;
   icon?: LucideIcon;
   onPress: PressableProps['onPress'];
-  tone?: 'default' | 'success';
 }) {
-  const isSuccess = tone === 'success';
-
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className={cx(
-        'min-h-[40px] flex-row items-center gap-1.5 rounded-full border px-3',
-        isSuccess ? 'border-success-border bg-success-surface' : 'border-border bg-background',
-      )}>
-      <Icon size={14} color={isSuccess ? themeColors.success : profileColors.brand} strokeWidth={2.5} />
-      <Text
-        className={cx('font-sans', 'text-[12px] font-medium', isSuccess ? 'text-success' : 'text-primary')}>
-        {label}
-      </Text>
+      className="min-h-[40px] flex-row items-center gap-1.5 rounded-full border border-border bg-background px-3">
+      <Icon size={14} color={themeColors.primary} strokeWidth={2.5} />
+      <Text className="font-sans text-[12px] font-medium text-primary">{label}</Text>
     </Pressable>
   );
 }

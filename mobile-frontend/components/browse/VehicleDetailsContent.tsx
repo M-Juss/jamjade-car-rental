@@ -4,7 +4,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { themeColors } from '@/constants/theme';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { formatPeso } from '@/lib/browse/pricing';
 import type { Vehicle } from '@/types/browse';
 
@@ -87,7 +86,6 @@ export function VehicleDetailsContent({
                   strokeWidth={2}
                 />
               </Pressable>
-              <LogoutHeaderButton />
             </View>
           </View>
 

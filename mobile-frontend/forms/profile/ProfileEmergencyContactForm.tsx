@@ -1,7 +1,8 @@
+import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { ProfileFormSheet } from '@/components/profile';
 import { FormInput } from '@/components/ui/FormInput';
@@ -94,7 +95,7 @@ export function ProfileEmergencyContactForm({
       overlay={<FormToast message={message} onDismiss={clearToast} title={title} variant={variant} />}
       title="Edit Emergency Contact"
       visible={visible}>
-      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <KeyboardFormScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View className="gap-3 rounded-card border border-border bg-surface p-4 ">
           <Controller
             control={control}
@@ -197,7 +198,7 @@ export function ProfileEmergencyContactForm({
             </Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </KeyboardFormScrollView>
     </ProfileFormSheet>
   );
 }

@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { PropsWithChildren } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { themeColors } from '@/constants/theme';
+import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 
 type AuthMode = 'login' | 'register';
 
@@ -15,23 +16,24 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
 
   return (
     <View className="flex-1 bg-background">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
-        <ScrollView
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+        <KeyboardFormScrollView
+          className="flex-1"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}>
           <View className="w-full max-w-[460px] self-center px-screen">
-            <View className="mb-6 min-h-11 flex-row items-center justify-between gap-3 border-b border-border pb-3">
+            <View className="mb-6 min-h-11 flex-row items-center justify-between gap-3 border-b border-border pb-3 pt-1">
               <View
                 accessible
                 accessibilityLabel="JamJade Car Rental"
                 className="shrink flex-row items-center gap-1">
                 <Image
-                  source={require('@/assets/images/JamJadeLogo-gradient.png')}
+                  source={require('@/assets/images/JamJadeLogo-solid.png')}
                   resizeMode="contain"
                   accessible={false}
                   // Keep the full square asset visible; only its transparent margins extend past the header row.
-                  style={{ height: 56, width: 56, marginVertical: -6, flexShrink: 0 }}
+                  style={{ height: 56, width: 56, marginTop: -2, marginBottom: -6, flexShrink: 0 }}
                 />
                 <View className="shrink">
                   <Text
@@ -70,7 +72,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
               </Pressable>
             </View>
           </View>
-        </ScrollView>
+        </KeyboardFormScrollView>
       </KeyboardAvoidingView>
     </View>
   );

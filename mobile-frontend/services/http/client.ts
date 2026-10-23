@@ -1,5 +1,6 @@
 import { getApiAuthToken } from './auth-token';
 import {
+  API_BASE_URL,
   API_NETWORK_FALLBACK_TIMEOUT_MS,
   buildApiUrls,
 } from './config';
@@ -77,6 +78,10 @@ function getApiErrorMessage(status: number) {
 
 let activeApiBaseUrl: string | null = null;
 
+export function getActiveApiBaseUrl() {
+  return activeApiBaseUrl ?? API_BASE_URL;
+}
+
 function canRetryOnAnotherApi(method: string, allowNetworkFallback?: boolean) {
   return allowNetworkFallback ||
     method === 'GET' ||
@@ -118,10 +123,10 @@ async function fetchWithFallbackTimeout(
   }
 }
 
-export async function apiFetch<TData = unknown>(
+async function requestResponse(
   path: string,
   options: ApiRequestOptions = {},
-): Promise<ApiResponse<TData>> {
+): Promise<Response> {
   const {
     allowNetworkFallback,
     authToken,
@@ -186,10 +191,9 @@ export async function apiFetch<TData = unknown>(
     throw new ApiError('Unable to connect right now. Please try again.', 0);
   }
 
-  const text = await response.text();
-  const payload = text ? tryParseJson(text) : null;
-
   if (!response.ok) {
+    const text = await response.text();
+    const payload = text ? tryParseJson(text) : null;
     const { errors, message } = getErrorPayload(payload);
 
     throw new ApiError(
@@ -199,7 +203,21 @@ export async function apiFetch<TData = unknown>(
     );
   }
 
-  return payload as ApiResponse<TData>;
+  return response;
+}
+
+export async function apiFetch<TData = unknown>(path: string, options: ApiRequestOptions = {}) {
+  const response = await requestResponse(path, options);
+  const text = await response.text();
+  return (text ? tryParseJson(text) : null) as ApiResponse<TData>;
+}
+
+export async function apiDownload(path: string, options: ApiMethodOptions = {}) {
+  const response = await requestResponse(path, { ...options, method: 'GET' });
+  if (!response.headers.get('Content-Type')?.includes('application/pdf')) {
+    throw new ApiError('The receipt PDF could not be downloaded. Please try again.', 502);
+  }
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 export function apiGet<TData = unknown>(path: string, options: ApiMethodOptions = {}) {

@@ -2,6 +2,7 @@ export type ReportRange = "6_months" | "12_months" | "this_year" | "all_time";
 
 export type DashboardSummary = {
   totalRevenue: number;
+  totalRefunded: number;
   totalVehicles: number;
   totalCustomers: number;
   totalBookings: number;
@@ -72,9 +73,13 @@ export type DashboardActivity = {
 export type DashboardResponse = {
   summary: DashboardCalendarSummary;
   events: DashboardCalendarEvent[];
+  canManageBookings: boolean;
+  attentionBookings: Array<{ id: number; bookingCode: string; customerName: string; vehicleName: string; returnAt: string; elapsedMinutes: number; attention: import("@/services/booking").BookingAttention | null; upcomingBookings: Array<{ id: number; bookingCode: string; pickupAt: string }> }>;
 };
 
 export type DashboardCalendarSummary = {
+  overdueReturns: number;
+  bookingsNeedingAttention: number;
   monthRevenue: number;
   confirmedBookings: number;
   activeRentals: number;
@@ -93,6 +98,7 @@ export type DashboardCalendarEvent = {
   end: string;
   status: "confirmed" | "ongoing";
   statusLabel: string;
+  attention?: import("@/services/booking").BookingAttention | null;
   rentalType: string;
   pickupLocation?: string | null;
   returnLocation?: string | null;
@@ -152,6 +158,7 @@ export type RiskReportRow = {
 export type ReportsResponse = {
   range: ReportRange;
   summary: DashboardSummary;
+  refundSummary: { amountReturned: number; netReceipts: number };
   revenueTrend: RevenueTrendPoint[];
   bookingPerformance: BookingPerformancePoint[];
   bookingStatusDistribution: Array<{

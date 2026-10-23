@@ -1,5 +1,4 @@
 import { themeColors } from '@/constants/theme';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { ArrowLeft } from 'lucide-react-native';
@@ -104,7 +103,6 @@ export default function DriverPaymentScreen() {
               <Text className="font-sans text-[24px] font-semibold text-foreground">Driver Balance</Text>
               <Text className="font-sans text-[12px] font-medium text-secondary-foreground">{bookingId}</Text>
             </View>
-            <LogoutHeaderButton />
           </View>
 
           {isLoading ? <ActivityIndicator className="mt-12" color={themeColors.primary} /> : null}

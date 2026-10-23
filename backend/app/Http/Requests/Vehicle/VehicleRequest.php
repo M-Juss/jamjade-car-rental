@@ -3,10 +3,12 @@
 namespace App\Http\Requests\Vehicle;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Services\VehicleConfigurationService;
 use App\Support\VehicleConditionRules;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
 class VehicleRequest extends BaseFormRequest
@@ -22,10 +24,11 @@ class VehicleRequest extends BaseFormRequest
             $this->merge(['status' => 'available']);
         }
 
-        $this->merge([
-            'price_per_day' => $this->input('price_per_day', $this->input('price')),
-            'fuel_type' => $this->input('fuel_type', $this->input('fuel')),
-        ]);
+        foreach (['price_per_day' => 'price', 'fuel_type' => 'fuel'] as $field => $alias) {
+            if ($this->exists($field) || $this->exists($alias)) {
+                $this->merge([$field => $this->input($field, $this->input($alias))]);
+            }
+        }
 
         if (is_string($this->input('plate_number'))) {
             $this->merge([
@@ -94,11 +97,16 @@ class VehicleRequest extends BaseFormRequest
     /** @return array<int, callable> */
     public function after(): array
     {
-        if (! $this->isMethod('post')) {
-            return [];
-        }
-
         return [function (Validator $validator): void {
+            if ($validator->errors()->isEmpty()) {
+                try {
+                    VehicleConfigurationService::validateVehicleOptions($this->all(), $this->route('vehicle'));
+                } catch (ValidationException $exception) {
+                    foreach ($exception->errors() as $field => $messages) {
+                        $validator->errors()->add($field, $messages[0]);
+                    }
+                }
+            }
             foreach (VehicleConditionRules::markerSequenceErrors($this->input('initial_condition.markers', [])) as $message) {
                 $validator->errors()->add('initial_condition.markers', $message);
             }

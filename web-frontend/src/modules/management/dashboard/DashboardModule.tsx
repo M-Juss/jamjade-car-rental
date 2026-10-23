@@ -1,5 +1,9 @@
 "use client";
 
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
+
+import { usePathname } from "next/navigation";
+import { DashboardAttentionPanel } from "./DashboardAttentionPanel";
 import { useEffect, useState, type CSSProperties } from "react";
 import {
   AlertCircle,
@@ -44,7 +48,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -146,6 +149,8 @@ function maximumBookingsOnOneDay(events: RentalCalendarEvent[]) {
 }
 
 export default function Dashboard() {
+  const pathname = usePathname();
+  const bookingPath = pathname.startsWith("/staff") ? "/staff/booking" : "/admin/booking";
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [view, setView] = useState<View>("month");
@@ -198,6 +203,11 @@ export default function Dashboard() {
     };
   }, [currentDate, reloadKey, view]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setReloadKey((value) => value + 1), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   if (!data && isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
@@ -230,7 +240,7 @@ export default function Dashboard() {
 
   const events: RentalCalendarEvent[] = data.events.map((event) => ({
     ...event,
-    title: `${event.bookingCode} - ${event.vehicleName}`,
+    title: event.bookingCode,
     start: new Date(event.start),
     end: new Date(event.end),
   }));
@@ -240,7 +250,7 @@ export default function Dashboard() {
       : 0;
   const kpis = [
     {
-      label: "Month Revenue",
+      label: "Monthly Gross Receipts",
       value: formatPhilippinePeso(data.summary.monthRevenue, true),
       icon: PhilippinePeso,
       iconClassName: "bg-muted text-primary",
@@ -274,14 +284,7 @@ export default function Dashboard() {
         } as CSSProperties
       }
     >
-      <div className="shrink-0">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Dashboard
-        </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Overview of confirmed and active rentals across your fleet.
-        </p>
-      </div>
+      <ManagementPageHeading className="shrink-0" title="Dashboard" description="View rental schedules, fleet totals, and bookings needing attention." />
 
       <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
         {kpis.map(({ label, value, icon, iconClassName }) => (
@@ -295,113 +298,119 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] lg:flex lg:min-h-0 lg:flex-1">
-        <CardContent className="px-5 pb-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-          {error ? (
-            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface px-3 py-2.5 text-[12px] text-destructive">
-              <span>{error}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive"
-                onClick={retry}
-              >
-                Retry
-              </Button>
-            </div>
-          ) : null}
-
-          <div className="mb-4 flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label="Previous period"
-                onClick={() => changeDate(moveDate(currentDate, view, -1))}
-              >
-                <ChevronLeft />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => changeDate(new Date())}
-              >
-                Today
-              </Button>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label="Next period"
-                onClick={() => changeDate(moveDate(currentDate, view, 1))}
-              >
-                <ChevronRight />
-              </Button>
-              <p className="ml-2 text-[13px] font-bold text-foreground">
-                {periodLabel(currentDate, view)}
-              </p>
-            </div>
-            <div className="flex w-full rounded-xl border border-border bg-background p-1 sm:w-auto">
-              {(["month", "week", "day"] as View[]).map((option) => (
+      <div className={`grid min-w-0 gap-6 ${data.canManageBookings ? "xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_20rem]" : ""}`}>
+        <Card className="min-w-0 overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] lg:flex lg:min-h-0 lg:flex-1">
+          <CardContent className="px-5 pb-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+            {error ? (
+              <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface px-3 py-2.5 text-[12px] text-destructive">
+                <span>{error}</span>
                 <Button
-                  key={option}
-                  variant={view === option ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="sm"
-                  className="flex-1 capitalize sm:flex-none"
-                  onClick={() => changeView(option)}
+                  className="text-destructive"
+                  onClick={retry}
                 >
-                  {option}
+                  Retry
                 </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative overflow-x-auto lg:min-h-0 lg:flex-1">
-            {isLoading ? (
-              <div className="absolute inset-x-0 top-0 z-10 flex justify-end p-2 text-primary">
-                <Loader2
-                  className="size-4 animate-spin"
-                  aria-label="Loading rentals"
-                />
               </div>
             ) : null}
-            <div className="dashboard-calendar min-w-[680px] lg:h-full">
-              <Calendar<RentalCalendarEvent>
-                localizer={localizer}
-                events={events}
-                date={currentDate}
-                view={view}
-                toolbar={false}
-                popup
-                popupOffset={{ x: 12, y: 12 }}
-                startAccessor="start"
-                endAccessor="end"
-                onNavigate={changeDate}
-                onView={changeView}
-                onDrillDown={(date) => {
-                  beginLoad();
-                  setCurrentDate(date);
-                  setView("day");
-                }}
-                onSelectEvent={(event) => {
-                  setSelectedEvent(
-                    data.events.find((item) => item.id === event.id) ?? null,
-                  );
-                }}
-                eventPropGetter={(event) => ({
-                  className: `dashboard-calendar-event dashboard-calendar-event--${event.status}`,
-                })}
-                components={{
-                  event: ({ event }) => (
-                    <span className="block truncate font-semibold">
-                      {event.bookingCode} · {event.vehicleName}
-                    </span>
-                  ),
-                }}
-              />
+
+            <div className="mb-4 flex shrink-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Previous period"
+                  onClick={() => changeDate(moveDate(currentDate, view, -1))}
+                >
+                  <ChevronLeft />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => changeDate(new Date())}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Next period"
+                  onClick={() => changeDate(moveDate(currentDate, view, 1))}
+                >
+                  <ChevronRight />
+                </Button>
+                <p className="ml-2 text-[13px] font-bold text-foreground">
+                  {periodLabel(currentDate, view)}
+                </p>
+              </div>
+              <div className="flex w-full rounded-xl border border-border bg-background p-1 sm:w-auto">
+                {(["month", "week", "day"] as View[]).map((option) => (
+                  <Button
+                    key={option}
+                    variant={view === option ? "secondary" : "ghost"}
+                    size="sm"
+                    className="flex-1 capitalize sm:flex-none"
+                    onClick={() => changeView(option)}
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            <div className="relative overflow-x-auto lg:min-h-0 lg:flex-1">
+              {isLoading ? (
+                <div className="absolute inset-x-0 top-0 z-10 flex justify-end p-2 text-primary">
+                  <Loader2
+                    className="size-4 animate-spin"
+                    aria-label="Loading rentals"
+                  />
+                </div>
+              ) : null}
+              <div className="dashboard-calendar min-w-[560px] lg:h-full">
+                <Calendar<RentalCalendarEvent>
+                  localizer={localizer}
+                  events={events}
+                  date={currentDate}
+                  view={view}
+                  toolbar={false}
+                  popup
+                  popupOffset={{ x: 12, y: 12 }}
+                  startAccessor="start"
+                  endAccessor="end"
+                  onNavigate={changeDate}
+                  onView={changeView}
+                  onDrillDown={(date) => {
+                    beginLoad();
+                    setCurrentDate(date);
+                    setView("day");
+                  }}
+                  onSelectEvent={(event) => {
+                    setSelectedEvent(
+                      data.events.find((item) => item.id === event.id) ?? null,
+                    );
+                  }}
+                  eventPropGetter={(event) => ({
+                    className: `dashboard-calendar-event dashboard-calendar-event--${event.status}`,
+                  })}
+                  components={{
+                    event: ({ event }) => (
+                      <span className="block truncate font-semibold">
+                        {event.bookingCode}
+                      </span>
+                    ),
+                  }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {data.canManageBookings && (
+          <DashboardAttentionPanel bookings={data.attentionBookings} total={data.summary.bookingsNeedingAttention} bookingPath={bookingPath} />
+        )}
+      </div>
 
       <Dialog
         open={Boolean(selectedEvent)}
@@ -412,11 +421,8 @@ export default function Dashboard() {
             <div className="flex items-start justify-between gap-4 pr-8">
               <div>
                 <DialogTitle className="text-[15px] font-bold text-foreground">
-                  Rental Details
-                </DialogTitle>
-                <DialogDescription className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">
                   {selectedEvent?.bookingCode}
-                </DialogDescription>
+                </DialogTitle>
               </div>
               {selectedEvent ? (
                 <Badge

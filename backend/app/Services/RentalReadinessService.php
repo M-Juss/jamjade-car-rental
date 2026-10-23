@@ -27,7 +27,7 @@ class RentalReadinessService
     {
         $booking->loadMissing([
             'user.customerProfile', 'user.documents', 'assignedDriver', 'assignment', 'events',
-            'vehicle', 'vehicleInspections', 'telematicsSetupSession.steps',
+            'vehicle', 'returnRecord', 'vehicleInspections', 'telematicsSetupSession.steps',
         ]);
         $outgoing = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized');
         $incoming = $booking->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'incoming' && $inspection->status->value === 'finalized');
@@ -42,17 +42,22 @@ class RentalReadinessService
 
         return [
             'bookingConfirmed' => $booking->status === BookingStatus::Confirmed,
+            'rentalPeriodEligible' => app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking),
+            'outgoingInspectionTimeEligible' => app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking),
+            'customerSelfDriveAvailable' => app(SelfDriveBookingAvailabilityService::class)->canHandover($booking),
             'paymentAcceptedForInspection' => $testMode || in_array($booking->payment_status, [PaymentStatus::Partial, PaymentStatus::Paid], true),
             'fullyPaid' => $testMode || ($booking->payment_status === PaymentStatus::Paid && (float) $booking->remaining_balance <= 0),
             'ageEligible' => $testMode || CustomerAgePolicy::isEligible($booking->user->customerProfile?->birthdate),
             'documentsApproved' => $testMode || $documentsApproved,
             'driverAssigned' => $driverAssigned,
             'driverEligible' => (bool) $driverEligible,
-            'vehicleOperational' => $booking->vehicle?->status === VehicleStatus::Available,
+            'vehicleOperational' => $booking->vehicle?->status === VehicleStatus::Available
+                && ! Booking::where('vehicle_id', $booking->vehicle_id)->whereKeyNot($booking->id)->where('status', 'ongoing')->exists(),
             'outgoingFinalized' => $testMode || $outgoing !== null,
-            'telematicsSetupRequired' => $selfDrive,
-            'telematicsSetupReady' => ! $selfDrive || ($booking->telematicsSetupSession?->status === TelematicsSetupStatus::ReadyForRelease
+            'telematicsSetupRequired' => app(TelematicsOperatorService::class)->supports($booking),
+            'telematicsSetupReady' => ! app(TelematicsOperatorService::class)->supports($booking) || ($booking->telematicsSetupSession?->status === TelematicsSetupStatus::ReadyForRelease
                 && $this->telematicsSetup->isReady($booking->telematicsSetupSession)),
+            'vehicleReceived' => $booking->returnRecord?->vehicle_received_at !== null,
             'incomingFinalized' => $incoming !== null,
             'returnChargesFinalized' => $booking->return_charges_finalized_at !== null,
             'customerBalance' => (float) $booking->remaining_balance,
@@ -65,14 +70,31 @@ class RentalReadinessService
 
     public function assertOutgoingAllowed(Booking $booking): void
     {
+        $this->assertOutgoingTimeAllowed($booking);
         $state = $this->evaluate($booking);
         $required = ['bookingConfirmed', 'paymentAcceptedForInspection', 'ageEligible', 'documentsApproved', 'driverAssigned', 'driverEligible', 'vehicleOperational'];
         $this->assertChecks($state, $required, 'Outgoing Inspection cannot begin until every rental-readiness requirement is met.');
     }
 
+    public function assertOutgoingTimeAllowed(Booking $booking): void
+    {
+        if (! app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking)) {
+            throw ValidationException::withMessages(['booking' => [
+                'Outgoing Inspection is available only during the scheduled rental period.',
+            ]]);
+        }
+    }
+
     public function assertStartAllowed(Booking $booking): void
     {
+        if ($booking->rental_end_at?->lte(now())) {
+            throw ValidationException::withMessages(['booking' => ['The scheduled rental period has ended. Resolve this booking before releasing a vehicle.']]);
+        }
+        if (! app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking)) {
+            throw ValidationException::withMessages(['booking' => ['The reserved rental period has not started yet.']]);
+        }
         $state = $this->evaluate($booking);
+        app(SelfDriveBookingAvailabilityService::class)->assertHandoverAvailable($booking);
         $this->assertChecks($state, [
             'bookingConfirmed', 'fullyPaid', 'ageEligible', 'documentsApproved', 'driverAssigned',
             'driverEligible', 'vehicleOperational', 'outgoingFinalized', 'telematicsSetupReady',
@@ -85,6 +107,9 @@ class RentalReadinessService
         if ($booking->status !== BookingStatus::Ongoing) {
             throw ValidationException::withMessages(['booking' => ['Incoming Inspection is only available for an ongoing rental.']]);
         }
+        if (! $booking->returnRecord?->vehicle_received_at) {
+            throw ValidationException::withMessages(['booking' => ['Record physical vehicle receipt before Incoming Inspection.']]);
+        }
         if (! $this->evaluate($booking)['outgoingFinalized']) {
             throw ValidationException::withMessages(['booking' => ['A finalized Outgoing Inspection is required.']]);
         }
@@ -96,7 +121,7 @@ class RentalReadinessService
     public function assertReturnAllowed(Booking $booking): void
     {
         $state = $this->evaluate($booking);
-        if ($booking->status !== BookingStatus::Ongoing || ! $state['incomingFinalized'] || ! $state['returnChargesFinalized']) {
+        if ($booking->status !== BookingStatus::Ongoing || ! $state['vehicleReceived'] || ! $state['incomingFinalized'] || ! $state['returnChargesFinalized']) {
             throw ValidationException::withMessages(['booking' => ['Finalize Incoming Inspection and return-charge review before marking the booking Returned.']]);
         }
     }
@@ -104,7 +129,7 @@ class RentalReadinessService
     public function assertCompleteAllowed(Booking $booking): void
     {
         $state = $this->evaluate($booking);
-        if ($booking->status !== BookingStatus::Returned || ! $state['incomingFinalized'] || ! $state['returnChargesFinalized']
+        if ($booking->status !== BookingStatus::Returned || ! $state['vehicleReceived'] || ! $state['incomingFinalized'] || ! $state['returnChargesFinalized']
             || $state['customerBalance'] > 0 || ! $state['customerChargesSettled']) {
             throw ValidationException::withMessages(['booking' => ['A Returned booking can be completed only after the customer balance is fully settled.']]);
         }

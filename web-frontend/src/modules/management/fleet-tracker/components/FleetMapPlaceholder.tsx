@@ -28,8 +28,8 @@ export function FleetMapPlaceholder({
   className,
 }: FleetMapPlaceholderProps) {
   return (
-    <div className={`relative min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-slate-100 p-4 ${className ?? ""}`}>
-      <div className="absolute inset-4 rounded-xl border border-dashed border-slate-300 bg-[radial-gradient(#cbd5e122_1px,transparent_1px)] [background-size:18px_18px]" />
+    <div className={`relative min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-background p-4 ${className ?? ""}`}>
+      <div className="absolute inset-4 rounded-xl border border-dashed border-slate-300 bg-surface" />
 
       {showGeofence && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary/40 bg-primary/10" />
@@ -55,7 +55,7 @@ export function FleetMapPlaceholder({
       </div>
 
       <div className="absolute left-7 top-7 z-20 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
-        Google Maps integration placeholder
+        Map preview
       </div>
 
       <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">

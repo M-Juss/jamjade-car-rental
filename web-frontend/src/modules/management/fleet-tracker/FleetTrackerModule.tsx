@@ -1,261 +1,297 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  CircleDot,
-  Clock3,
-  Loader2,
-  RefreshCcw,
-} from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { filterOptions, fleetVehicles, lastSyncedLabel } from "@/modules/management/fleet-tracker/data/mock-fleet-tracker";
+import { TablePagination } from "@/components/common/tables/TablePagination";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
+import { formatReturnDateTime } from "@/services/booking/return-time";
+import type { FleetQuery } from "@/validations/fleet/schemas";
 import { FleetVehicleCard } from "./components/FleetVehicleCard";
-import { FleetDetailTabs } from "./components/FleetDetailTabs";
+import { fleetStatusLabels } from "./fleet-status";
+import { useFleetRentals } from "./useFleetRentals";
 import { FleetGoogleMap } from "./components/google-maps/FleetGoogleMap";
 
-type FilterState = {
-  status: string;
-  geofence: string;
-  alertType: string;
-  vehicleType: string;
-};
-
-const initialFilters: FilterState = {
-  status: "All",
-  geofence: "All",
-  alertType: "All",
-  vehicleType: "All",
-};
-
 export default function FleetTracker() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<FilterState>(initialFilters);
-  const [selectedVehicleId, setSelectedVehicleId] = useState(fleetVehicles[0]?.id ?? "");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showGeofence, setShowGeofence] = useState(true);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-
-  const filteredVehicles = useMemo(() => {
-    return fleetVehicles.filter((vehicle) => {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = [
-        vehicle.bookingId,
-        vehicle.customerName,
-        vehicle.carName,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
-
-      return (
-        matchesSearch &&
-        (filters.status === "All" || vehicle.status === filters.status) &&
-        (filters.geofence === "All" || vehicle.geofenceState === filters.geofence) &&
-        (filters.alertType === "All" || vehicle.alertType === filters.alertType) &&
-        (filters.vehicleType === "All" || vehicle.vehicleType === filters.vehicleType)
-      );
-    });
-  }, [filters, searchQuery]);
-
-  const selectedVehicle = useMemo(() => {
-    return fleetVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? fleetVehicles[0] ?? null;
-  }, [selectedVehicleId]);
-
-  const alertCount = filteredVehicles.filter((vehicle) => vehicle.alertType !== "None").length;
-
-  const onRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 900);
-  };
-
-  const handleVehicleSelect = (id: string) => {
-    setSelectedVehicleId(id);
-    setIsDetailsOpen(true);
-  };
+  const {
+    searchInput,
+    setSearchInput,
+    query,
+    page,
+    loading,
+    error,
+    connection,
+    changeQuery,
+    refresh,
+  } = useFleetRentals();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selectedTrigger = useRef<HTMLElement | null>(null);
+  const selected =
+    !loading && !error
+      ? page?.rentals.find((rental) => rental.id === selectedId)
+      : null;
+  const hasFilters = Boolean(searchInput || query.status || query.rental_type);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background p-4 md:p-5 lg:p-6">
-      <section className="shrink-0 pb-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Fleet Tracker</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">Real-time monitoring of all active rentals</p>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">
-              <CircleDot className="size-3" />
-              Live
-            </span>
-            <span className="inline-flex items-center gap-1"><Clock3 className="size-3" />Last synced: {lastSyncedLabel}</span>
-            <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
-              {isRefreshing ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
-              Refresh
-            </Button>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <ManagementPageHeading
+          title="Fleet Monitoring"
+          description="View ongoing rentals and their tracking status."
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refresh}
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
+          Refresh
+        </Button>
+      </div>
 
-      <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[3fr_1fr]">
-        <Card className="flex min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="shrink-0 px-4 pb-2 pt-4">
-            <CardTitle className="text-sm font-bold text-foreground">Live Map</CardTitle>
-            <CardDescription>Vehicle marker colors reflect real-time status.</CardDescription>
+      <section className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)]">
+        <Card className="order-2 gap-0 rounded-2xl border border-border bg-surface py-0 shadow-none lg:sticky lg:top-4 lg:order-1">
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2 px-4 pb-2 pt-4">
+            <CardTitle className="text-sm font-semibold">Fleet map</CardTitle>
+            <span role="status" className="text-xs text-muted-foreground">
+              {error ? "Updates unavailable" : connection === "connected" ? "Updates connected" : connection === "connecting" ? "Connecting updates" : connection === "offline" ? "Updates reconnecting" : "Automatic updates every 30 seconds"}
+            </span>
           </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 pt-0">
-            <FleetGoogleMap
-              vehicles={filteredVehicles}
-              selectedId={selectedVehicle?.id ?? ""}
-              showGeofence={showGeofence}
-              onSelect={handleVehicleSelect}
-              onToggleGeofence={() => setShowGeofence((prev) => !prev)}
-              className="min-h-0 flex-1"
-            />
-            <div className="shrink-0 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {[
-                ["Active", "bg-emerald-500"],
-                ["Paused", "bg-amber-500"],
-                ["Idle", "bg-slate-500"],
-                ["Geofence Alert", "bg-rose-500"],
-                ["GPS Lost", "bg-violet-500"],
-              ].map(([label, color]) => (
-                <span key={label} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1">
-                  <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-                  {label}
-                </span>
-              ))}
-            </div>
+          <CardContent className="px-4 pb-4 pt-0">
+            {error ? (
+              <div role="status" className="flex h-[360px] items-center justify-center rounded-xl border border-border bg-background p-6 text-center text-sm text-muted-foreground sm:h-[480px]">
+                Locations unavailable
+              </div>
+            ) : (
+              <FleetGoogleMap
+                rentals={loading ? [] : page?.rentals ?? []}
+                loadingRentals={loading}
+                selectedId={selectedId}
+                onSelect={(id, trigger) => {
+                  selectedTrigger.current = trigger;
+                  setSelectedId(id);
+                }}
+              />
+            )}
+            {page && page.lastPage > 1 ? <p className="mt-2 text-xs text-muted-foreground">Locations on page {page.page} of {page.lastPage}</p> : null}
           </CardContent>
         </Card>
 
-        <Card className="flex min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <CardHeader className="shrink-0 space-y-2 border-b border-slate-100 px-3 py-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <CardTitle className="truncate text-sm font-bold text-foreground">Ongoing Booking</CardTitle>
-                <p className="text-[11px] text-muted-foreground">Active rentals now</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <SummaryPill label="Active" value={filteredVehicles.length} />
-                <SummaryPill label="Alerts" value={alertCount} tone="warning" />
-              </div>
+        <Card className="order-1 min-w-0 gap-0 rounded-2xl border border-border bg-surface py-0 shadow-none lg:order-2">
+          <CardHeader className="space-y-3 border-b border-border p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-sm font-semibold">
+                Active rentals
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className="border-border bg-muted text-primary"
+              >
+                {loading || error || !page ? "—" : page.totalOngoing} ongoing
+              </Badge>
             </div>
-
             <SearchInput
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-              placeholder="Booking, customer, vehicle"
-              className="h-8 rounded-lg border-slate-200 text-xs"
+              value={searchInput}
+              onValueChange={setSearchInput}
+              maxLength={160}
+              placeholder="Booking, customer, vehicle, plate"
             />
-
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <FilterSelect
-                prefixLabel="Status"
-                value={filters.status}
-                options={filterOptions.status.map((option) => ({ value: option, label: option }))}
-                placeholder="Status"
-                ariaLabel="Filter fleet by status"
+                prefixLabel="Tracking"
+                value={query.status ?? "all"}
+                ariaLabel="Filter rentals by tracking status"
+                placeholder="All statuses"
                 height="compact"
-                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-              />
-              <FilterSelect
-                prefixLabel="Geofence"
-                value={filters.geofence}
-                options={filterOptions.geofence.map((option) => ({ value: option, label: option }))}
-                placeholder="Zone"
-                ariaLabel="Filter fleet by geofence"
-                height="compact"
-                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, geofence: value }))}
-              />
-              <FilterSelect
-                prefixLabel="Alert"
-                value={filters.alertType}
-                options={filterOptions.alertType.map((option) => ({ value: option, label: option }))}
-                placeholder="Alert"
-                ariaLabel="Filter fleet by alert type"
-                height="compact"
-                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, alertType: value }))}
+                className="min-w-0"
+                options={[
+                  { value: "all", label: "All statuses" },
+                  ...Object.entries(fleetStatusLabels).map(
+                    ([value, label]) => ({ value, label }),
+                  ),
+                ]}
+                onValueChange={(value) =>
+                  changeQuery({
+                    status:
+                      value === "all"
+                        ? undefined
+                        : (value as FleetQuery["status"]),
+                    page: 1,
+                  })
+                }
               />
               <FilterSelect
                 prefixLabel="Type"
-                value={filters.vehicleType}
-                options={filterOptions.vehicleType.map((option) => ({ value: option, label: option }))}
-                placeholder="Type"
-                ariaLabel="Filter fleet by vehicle type"
+                value={query.rental_type ?? "all"}
+                ariaLabel="Filter rentals by type"
+                placeholder="All rentals"
                 height="compact"
-                className="min-w-0 rounded-lg border-slate-200 px-2 text-[11px]"
-                onValueChange={(value) => setFilters((prev) => ({ ...prev, vehicleType: value }))}
+                className="min-w-0"
+                options={[
+                  { value: "all", label: "All rentals" },
+                  { value: "self_drive", label: "Self-Drive" },
+                  { value: "owners_driver", label: "Assigned driver" },
+                ]}
+                onValueChange={(value) =>
+                  changeQuery({
+                    rental_type:
+                      value === "all"
+                        ? undefined
+                        : (value as FleetQuery["rental_type"]),
+                    page: 1,
+                  })
+                }
               />
             </div>
+            {hasFilters ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-self-start"
+                onClick={() => {
+                  setSearchInput("");
+                  changeQuery({
+                    search: "",
+                    status: undefined,
+                    rental_type: undefined,
+                    page: 1,
+                  });
+                }}
+              >
+                Clear filters
+              </Button>
+            ) : null}
           </CardHeader>
-          <CardContent className="min-h-0 flex-1 px-3 pb-3 pt-3">
-            {isRefreshing ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
-                ))}
+          <CardContent className="p-4" aria-busy={loading}>
+            {loading ? (
+              <div
+                role="status"
+                className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground"
+              >
+                <Loader2 className="size-4 animate-spin" />
+                Loading active rentals
+              </div>
+            ) : error ? (
+              <div className="space-y-3 rounded-xl border border-destructive-border bg-destructive-surface p-4">
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+                <Button variant="outline" size="sm" onClick={refresh}>
+                  Try again
+                </Button>
+              </div>
+            ) : !page?.rentals.length ? (
+              <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                {hasFilters
+                  ? "No rentals match these filters."
+                  : "No ongoing rentals."}
               </div>
             ) : (
-              <ScrollArea className="h-full pr-3">
-                <div className="space-y-2">
-                  {/* Extract this into reusable component */}
-                  {filteredVehicles.length ? filteredVehicles.map((vehicle) => (
-                    <FleetVehicleCard
-                      key={vehicle.id}
-                      vehicle={vehicle}
-                      isSelected={selectedVehicle?.id === vehicle.id}
-                      onSelect={handleVehicleSelect}
-                    />
-                  )) : (
-                    <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center">
-                      <p className="text-xs font-medium text-foreground">No vehicles found</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">Try a different search or filter.</p>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+              <div className="space-y-3">
+                {page.rentals.map((rental) => (
+                  <FleetVehicleCard
+                    key={rental.id}
+                    rental={rental}
+                    isSelected={selectedId === rental.id}
+                    onSelect={(id, trigger) => {
+                      selectedTrigger.current = trigger;
+                      setSelectedId(id);
+                    }}
+                  />
+                ))}
+              </div>
             )}
+            {!loading && !error && page ? (
+              <TablePagination
+                total={page.total}
+                page={page.page}
+                lastPage={page.lastPage}
+                label="Active rentals pagination"
+                onPageChange={(next) => {
+                  setSelectedId(null);
+                  changeQuery({ page: next });
+                }}
+              />
+            ) : null}
           </CardContent>
         </Card>
       </section>
 
-      <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+      <Sheet
+        open={Boolean(selected)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      >
         <SheetContent
           side="bottom"
-          className="h-[70dvh] min-h-[70dvh] max-h-[70dvh] gap-0 overflow-hidden rounded-t-2xl border border-slate-200 bg-background"
+          className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-border bg-background"
+          onCloseAutoFocus={(event) => {
+            if (selectedTrigger.current?.isConnected) {
+              event.preventDefault();
+              selectedTrigger.current.focus();
+            }
+          }}
         >
-          {selectedVehicle ? (
+          {selected ? (
             <>
-              <SheetHeader className="shrink-0 border-b border-slate-200 px-6 py-4 md:px-8">
-                <SheetTitle>{selectedVehicle.carName}</SheetTitle>
-                <SheetDescription>Live details and driver behavior for this rental.</SheetDescription>
+              <SheetHeader className="border-b border-border px-6 py-4">
+                <SheetTitle>
+                  {selected.vehicle?.name ?? "Vehicle unavailable"}
+                </SheetTitle>
+                <SheetDescription>{selected.bookingCode}</SheetDescription>
               </SheetHeader>
-              <div className="mx-auto min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden px-6 py-5 md:px-8">
-                <FleetDetailTabs vehicle={selectedVehicle} />
-              </div>
+              <dl className="mx-auto grid w-full max-w-3xl gap-4 px-6 py-5 text-sm sm:grid-cols-2">
+                {[
+                  ["Plate", selected.vehicle?.plateNumber || "Unavailable"],
+                  ["Customer", selected.customerName || "Unavailable"],
+                  [
+                    "Rental type",
+                    selected.rentalType === "self_drive"
+                      ? "Self-Drive"
+                      : "Assigned driver",
+                  ],
+                  ["Tracking", fleetStatusLabels[selected.tracking.status]],
+                  [
+                    "Scheduled start",
+                    formatReturnDateTime(selected.rentalStartAt),
+                  ],
+                  ["Return by", formatReturnDateTime(selected.rentalEndAt)],
+                  [
+                    "Last location update",
+                    selected.tracking.lastLocationAt
+                      ? formatReturnDateTime(
+                          selected.tracking.lastLocationAt,
+                          true,
+                        )
+                      : "No location received",
+                  ],
+                  ...(selected.tracking.location ? [["GPS accuracy", `±${Math.round(selected.tracking.location.accuracy)} m`]] : []),
+                ].map(([label, value]) => (
+                  <div key={label} className="min-w-0 space-y-1">
+                    <dt className="text-xs text-muted-foreground">{label}</dt>
+                    <dd className="break-words font-medium text-foreground">
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </>
           ) : null}
         </SheetContent>
       </Sheet>
-    </div>
-  );
-}
-
-function SummaryPill({ label, value, tone = "default" }: { label: string; value: number; tone?: "default" | "warning" }) {
-  const toneClass = tone === "warning"
-    ? "border-amber-200 bg-amber-50 text-amber-700"
-    : "border-blue-200 bg-muted text-primary";
-
-  return (
-    <div className={`rounded-full border px-2 py-1 text-[10.5px] font-semibold leading-none ${toneClass}`}>
-      {value} {label}
     </div>
   );
 }

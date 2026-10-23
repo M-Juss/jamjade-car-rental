@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
-use App\Enums\RentalType;
 use App\Models\Booking;
 use App\Models\BookingGeofence;
 use App\Models\Geofence;
@@ -50,7 +49,7 @@ class BookingGeofenceService
     public function freezeForRelease(Booking $booking): void
     {
         // Called under the existing Start Rental booking lock and transaction.
-        if ($booking->rental_type !== RentalType::SelfDrive) {
+        if (! app(TelematicsOperatorService::class)->supports($booking)) {
             return;
         }
         $now = now();
@@ -87,9 +86,9 @@ class BookingGeofenceService
 
     private function assertEditable(Booking $booking): void
     {
-        if ($booking->rental_type !== RentalType::SelfDrive || ! in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed], true)
+        if (! app(TelematicsOperatorService::class)->supports($booking) || ! in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed], true)
             || $booking->started_at || $booking->bookingGeofences()->whereNotNull('frozen_at')->exists()) {
-            throw ValidationException::withMessages(['geofence' => ['Custom monitoring zones can only be changed before a self-drive rental is released.']]);
+            throw ValidationException::withMessages(['geofence' => ['Custom monitoring zones can only be changed before the rental is released.']]);
         }
     }
 }

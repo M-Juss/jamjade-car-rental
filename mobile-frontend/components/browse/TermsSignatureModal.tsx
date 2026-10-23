@@ -1,5 +1,6 @@
+import type { LateReturnPolicy } from '@/types/browse';
 import { themeColors } from '@/constants/theme';
-import { CheckCircle2, Eraser, FileSignature, X } from 'lucide-react-native';
+import { Eraser, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Modal,
@@ -25,26 +26,24 @@ type TermsSection = {
   terms: {
     title: string;
     details?: string[];
+    lateReturn?: boolean;
   }[];
 };
 
 const TERMS_SECTIONS: TermsSection[] = [
   {
-    title: 'General Terms and Conditions',
+    title: 'General rental terms',
     terms: [
       {
         title: 'Gasoline must be refilled upon return of the unit to the same level as when it was endorsed.',
       },
       {
         title:
-          'Twenty-four (24) hours is the minimum rental period per day. Excess time will be charged as follows:',
-        details: [
-          'Sedan / Toyota Vios: PHP 200.00 per hour.',
-          'Van / Hiace / Innova / Fortuner: PHP 300.00 per hour.',
-        ],
+          'Twenty-four (24) hours is the minimum rental period per day. Late returns are charged at the agreed hourly rate:',
+        lateReturn: true,
       },
       {
-        title: 'Garage pickup and return are free. Delivery and any staff-approved toll are charged at the accepted quote amount.',
+        title: 'Garage pickup and return are free. Delivery is charged at the accepted quote amount. Actual tolls, if incurred, are billed after the rental.',
       },
       {
         title:
@@ -63,28 +62,17 @@ const TERMS_SECTIONS: TermsSection[] = [
         title:
           'All transactions, including additional charges, must be completed online. All payments must be made payable to Mr. Alvin N. Macalam.',
       },
-      {
-        title:
-          'Cancellation of any vehicle booking or reservation is not allowed due to the possible loss of vehicle availability and profit.',
-      },
-      {
-        title: 'A down payment upon delivery of the unit is acceptable.',
-      },
-      {
-        title:
-          'For down-payment rentals, the remaining balance must be completed within five (5) days from the reservation date or before the scheduled rental date, whichever comes first.',
-      },
+      { title: 'A 50% down payment confirms the reservation. The remaining balance must be successfully paid before the rental start date begins. If the deadline is missed, the booking is cancelled and the down payment is forfeited.' },
+      { title: 'Customers may request cancellation and provide a reason. The owner decides refund eligibility and amount individually, subject to applicable law. Cancellation does not guarantee a refund.' },
+      { title: 'The vehicle is reserved for the agreed rental interval. Pickup may be arranged later within that interval. Late collection does not reduce the price or extend the return deadline.' },
+      { title: 'After the entire reserved period ends without collection or an approved cancellation, staff may record a no-show. All rental payments are non-refundable for a no-show, subject to applicable law.' },
     ],
   },
   {
-    title: 'Terms and Conditions for Self-Drive Renters',
+    title: 'Self-drive rentals',
     terms: [
       {
         title: 'For self-drive renters, all damages will be charged to the renter.',
-      },
-      {
-        title:
-          'A refundable participation fee of PHP 10,000.00 must be paid in advance for any damages incurred in an accident.',
       },
       {
         title:
@@ -103,7 +91,7 @@ const TERMS_SECTIONS: TermsSection[] = [
     ],
   },
   {
-    title: "Terms and Conditions for Renting a Car with Owner's Driver",
+    title: 'Rentals with a driver',
     terms: [
       {
         title:
@@ -112,6 +100,9 @@ const TERMS_SECTIONS: TermsSection[] = [
       },
       {
         title: "The renter is responsible for the driver's accommodations.",
+      },
+      {
+        title: 'The assigned Driver may share the vehicle’s latest location with you and JamJade during the rental after agreeing to location sharing. Sharing starts after staff releases the vehicle and stops when the Driver stops sharing or staff receives the vehicle.',
       },
     ],
   },
@@ -142,11 +133,18 @@ export function TermsSignatureModal({
   onClose,
   onSubmit,
   visible,
+  lateReturnPolicy,
 }: {
+  lateReturnPolicy: LateReturnPolicy;
   visible: boolean;
   onClose: () => void;
   onSubmit: (signature: string) => void;
 }) {
+  const termsSections = TERMS_SECTIONS.map((section) => ({ ...section, terms: section.terms.map((term) => term.lateReturn ? { ...term, details: [
+    `${lateReturnPolicy.seatBracket === 'up_to_5' ? '5 seats or fewer' : '6 seats or more'}: PHP ${lateReturnPolicy.hourlyRate.toFixed(2)} per late hour for this booking.`,
+    'Any late return costs at least one hour. After the first hour, remaining time rounds up only when it exceeds 30 minutes.',
+    'Long delays continue hourly without conversion to a daily charge. Physical receipt stops the late clock; charges are reviewed by staff.',
+  ] } : term) }));
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<'terms' | 'signature'>('terms');
   const [strokes, setStrokes] = useState<SignatureStroke[]>([]);
@@ -214,14 +212,13 @@ export function TermsSignatureModal({
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
       <View className="flex-1 bg-foreground/55">
         <View
-          className="mt-auto max-h-[94%] overflow-hidden rounded-t-sheet bg-background"
+          className="mt-auto max-h-[94%] overflow-hidden rounded-t-sheet bg-surface"
           style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
           <View className="flex-row items-center gap-3 border-b border-border bg-surface px-5 pb-4 pt-5">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
-              <FileSignature size={21} color={themeColors.primary} strokeWidth={2.4} />
-            </View>
             <View className="min-w-0 flex-1">
-              <Text className="font-sans text-[19px] font-semibold text-foreground">
+              <Text
+                accessibilityRole="header"
+                className="font-sans text-[19px] font-semibold text-foreground">
                 {step === 'terms' ? 'Terms and Conditions' : 'Customer Signature'}
               </Text>
               <Text className="font-sans mt-1 text-[12px] font-normal text-secondary-foreground">
@@ -243,30 +240,34 @@ export function TermsSignatureModal({
             <>
               <ScrollView className="px-5" showsVerticalScrollIndicator>
                 <View className="pb-6 pt-5">
-                  {TERMS_SECTIONS.map((section, sectionIndex) => (
-                    <View className={sectionIndex === 0 ? '' : 'mt-5'} key={section.title}>
-                      <View className="mb-3 rounded-[18px] bg-foreground px-4 py-3">
-                        <Text className="font-sans text-[13px] font-semibold leading-5 text-surface">
-                          {section.title}
-                        </Text>
-                      </View>
+                  {termsSections.map((section, sectionIndex) => (
+                    <View
+                      className={sectionIndex === 0 ? '' : 'mt-6 border-t border-border pt-6'}
+                      key={section.title}>
+                      <Text
+                        accessibilityRole="header"
+                        className="font-sans mb-4 text-section font-semibold text-foreground">
+                        {section.title}
+                      </Text>
                       {section.terms.map((term, termIndex) => (
-                        <View
-                          className="mb-3 flex-row items-start gap-3 rounded-[22px] border border-border bg-surface p-4"
-                          key={term.title}>
-                          <View className="h-7 w-7 items-center justify-center rounded-full bg-muted">
-                            <Text className="font-sans text-[11px] font-semibold text-primary">
-                              {termIndex + 1}
-                            </Text>
-                          </View>
+                        <View className="mb-3 flex-row items-start gap-2" key={term.title}>
+                          <Text
+                            accessible={false}
+                            className="font-sans min-w-[24px] text-body leading-6 text-secondary-foreground">
+                            {termIndex + 1}.
+                          </Text>
                           <View className="min-w-0 flex-1">
-                            <Text className="font-sans text-[13px] font-medium leading-5 text-foreground">
+                            <Text className="font-sans text-body leading-6 text-foreground">
                               {term.title}
                             </Text>
                             {term.details?.map((detail) => (
                               <View className="mt-2 flex-row items-start gap-2" key={detail}>
-                                <CheckCircle2 size={14} color={themeColors.success} strokeWidth={2.4} />
-                                <Text className="font-sans min-w-0 flex-1 text-[12px] font-semibold leading-5 text-[#5D6B82]">
+                                <Text
+                                  accessible={false}
+                                  className="font-sans text-body leading-6 text-secondary-foreground">
+                                  –
+                                </Text>
+                                <Text className="font-sans min-w-0 flex-1 text-body leading-6 text-secondary-foreground">
                                   {detail}
                                 </Text>
                               </View>
@@ -289,7 +290,7 @@ export function TermsSignatureModal({
             </>
           ) : (
             <View className="px-5 pb-2 pt-5">
-              <View className="rounded-[24px] border border-border bg-surface p-4">
+              <View>
                 <Text className="font-sans text-[13px] font-semibold text-foreground">
                   Draw your signature below
                 </Text>

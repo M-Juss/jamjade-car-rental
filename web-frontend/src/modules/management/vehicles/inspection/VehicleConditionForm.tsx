@@ -1,9 +1,14 @@
 "use client";
 
 import type { FieldErrors } from "react-hook-form";
+import type { ReactNode } from "react";
 import { Gauge, MessageSquareText, PenLine, Wrench } from "lucide-react";
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { useVehicleOptions } from "../use-vehicle-options";
+import { applyChecklistTemplate } from "@/validations/vehicle/schemas";
 import type { VehicleConditionFormValues } from "@/validations/vehicle/schemas";
 import { ChecklistSection } from "./ChecklistSection";
 import { FuelLevelSelector } from "./FuelLevelSelector";
@@ -18,6 +23,7 @@ type VehicleConditionFormProps = {
   personnelName?: string;
   disabled?: boolean;
   inspectionPurpose?: "initial" | "condition_update" | "outgoing" | "incoming";
+  operatorSignature?: ReactNode;
 };
 
 function SectionHeading({ icon: Icon, title, description }: {
@@ -26,7 +32,7 @@ function SectionHeading({ icon: Icon, title, description }: {
   description?: string;
 }) {
   return (
-    <div className="mb-4 flex items-start gap-3">
+    <div className="mb-2 flex items-start gap-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-primary">
         <Icon size={17} />
       </div>
@@ -45,19 +51,39 @@ export function VehicleConditionForm({
   personnelName,
   disabled,
   inspectionPurpose = "initial",
+  operatorSignature,
 }: VehicleConditionFormProps) {
+  const { data: configuration, error: configurationError, reload } = useVehicleOptions();
+  useEffect(() => {
+    if (configuration && !value.checklist_version) {
+      onChange(applyChecklistTemplate(value, configuration.checklist, configuration.checklist_version));
+    }
+  }, [configuration, value, onChange]);
+  const stale = configuration && value.checklist_version && configuration.checklist_version !== value.checklist_version;
+
   const update = <K extends keyof VehicleConditionFormValues>(
     key: K,
     nextValue: VehicleConditionFormValues[K],
   ) => onChange({ ...value, [key]: nextValue });
 
+  const signatureAcknowledgement = (
+    <p className="text-xs leading-5 text-muted-foreground">
+      By signing, I acknowledge that the mileage, fuel level, checklist responses,
+      vehicle-body issue markers, and comments recorded above are complete and accurate
+      for this {inspectionPurpose === "condition_update" ? "current condition update" : inspectionPurpose === "outgoing" ? "outgoing inspection" : inspectionPurpose === "incoming" ? "incoming inspection" : "initial condition inspection"}.
+    </p>
+  );
+
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-3">
+      {configurationError ? <div role="alert" className="flex items-center justify-between gap-3 text-sm text-destructive">{configurationError}<Button type="button" variant="outline" onClick={reload}>Retry</Button></div> : !configuration ? <p role="status" className="text-sm text-muted-foreground">Loading checklist...</p> : null}
+      {stale || errors?.checklist_version || errors?.checklist?.message ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-destructive">The checklist changed. Reload and review it before signing.
+        <Button type="button" variant="outline" onClick={async () => { const latest = await reload(); if (latest) onChange(applyChecklistTemplate(value, latest.checklist, latest.checklist_version)); }}>Reload checklist</Button>
+      </div> : null}
       <section id="condition-mileage-fuel" tabIndex={-1} className="scroll-mt-4 rounded-2xl border border-border bg-surface p-4 outline-none sm:p-5">
         <SectionHeading
           icon={Gauge}
           title="Mileage & Fuel"
-          description="Record the accepted odometer and fuel readings for this snapshot."
         />
         <div className="grid gap-5">
           <InputWithLabel
@@ -88,10 +114,12 @@ export function VehicleConditionForm({
           description="Check each item that is present or in acceptable condition. Unchecked items are recorded as No."
         />
         <div className="grid gap-6">
-          {Object.keys(value.checklist).map((category) => (
+          {configuration && Object.keys(value.checklist).map((category) => (
             <ChecklistSection
               key={category}
               category={category as keyof typeof value.checklist}
+              items={value.checklist_definition[category as keyof typeof value.checklist]}
+              errors={errors?.checklist?.[category as keyof typeof value.checklist]}
               value={value.checklist[category as keyof typeof value.checklist]}
               disabled={disabled}
               onChange={(key, selected) => update("checklist", {
@@ -113,7 +141,7 @@ export function VehicleConditionForm({
         <SectionHeading
           icon={Gauge}
           title="Vehicle Body Condition"
-          description={`Inspect in this order: ${VEHICLE_PANEL_ORDER.map((panel) => panel[0].toUpperCase() + panel.slice(1)).join(" → ")}. Markers use one global sequence.`}
+          description={`Inspect in order: ${VEHICLE_PANEL_ORDER.map((panel) => panel[0].toUpperCase() + panel.slice(1)).join(" → ")}.`}
         />
         <VehicleBodyInspection
           value={value.markers}
@@ -139,28 +167,29 @@ export function VehicleConditionForm({
         />
       </section>
 
-      <section id="condition-signature" tabIndex={-1} className="scroll-mt-4 rounded-2xl border border-border bg-surface p-4 outline-none sm:p-5">
-        <SectionHeading
-          icon={PenLine}
-          title="Jamjade Personnel Signature"
-          description={personnelName
-            ? `${personnelName} will be recorded as the authenticated signer. The server records the signing time.`
-            : "The authenticated personnel account and server time will be recorded automatically."}
-        />
-        <p className="mb-4 rounded-xl border border-border bg-background px-3 py-2.5 text-xs leading-5 text-muted-foreground">
-          By signing, I acknowledge that the mileage, fuel level, checklist responses,
-          vehicle-body issue markers, and comments recorded above are complete and accurate
-          for this {inspectionPurpose === "condition_update" ? "current condition update" : inspectionPurpose === "outgoing" ? "outgoing inspection" : inspectionPurpose === "incoming" ? "incoming inspection" : "initial condition inspection"}.
-        </p>
-        <SignaturePad
-          value={value.signature_data}
-          disabled={disabled}
-          onChange={(signature) => update("signature_data", signature)}
-        />
-        {errors?.signature_data?.message && (
-          <p className="mt-1.5 text-xs font-medium text-destructive">{errors.signature_data.message}</p>
-        )}
-      </section>
+      <div className={`grid gap-3 ${operatorSignature ? "sm:grid-cols-2" : ""}`}>
+        {operatorSignature ? <div className="sm:col-span-2">
+          {signatureAcknowledgement}
+          {personnelName ? <p className="mt-1 text-xs text-muted-foreground">Personnel: {personnelName}</p> : null}
+        </div> : null}
+        <section id="condition-signature" tabIndex={-1} className="min-w-0 scroll-mt-4 rounded-2xl border border-border bg-surface p-4 outline-none">
+          <SectionHeading
+            icon={PenLine}
+            title="Jamjade Personnel Signature"
+            description={!operatorSignature && personnelName ? `Signing as ${personnelName}` : undefined}
+          />
+          {!operatorSignature ? <div className="mb-3">{signatureAcknowledgement}</div> : null}
+          <SignaturePad
+            value={value.signature_data}
+            disabled={disabled}
+            onChange={(signature) => update("signature_data", signature)}
+          />
+          {errors?.signature_data?.message && (
+            <p className="mt-1.5 text-xs font-medium text-destructive">{errors.signature_data.message}</p>
+          )}
+        </section>
+        {operatorSignature}
+      </div>
     </div>
   );
 }

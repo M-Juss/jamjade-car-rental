@@ -11,7 +11,7 @@ class GeofenceMonitoringService
 {
     public function evaluateLocation(TelematicsTrip $trip, array $data): void
     {
-        // The location ingestion transaction holds the trip lock. Each zone has
+        // Both location ingestion paths hold the trip lock. Each zone has
         // independent membership, including overlapping zones and no-zone trips.
         $capturedAt = CarbonImmutable::parse($data['captured_at']);
         $accuracy = $data['accuracy'] ?? null;
@@ -46,15 +46,24 @@ class GeofenceMonitoringService
             $duration = $state->candidate_started_at->diffInSeconds($capturedAt);
             if ($state->candidate_count >= config('telematics.geofence_confirmation_points') && $duration >= config('telematics.geofence_confirmation_seconds')) {
                 $type = $inside ? TelematicsEventType::GeofenceEnter : TelematicsEventType::GeofenceExit;
-                TelematicsEvent::create([
+                $event = TelematicsEvent::create([
                     'trip_id' => $trip->id, 'event_type' => $type, 'severity' => 'low', 'occurred_at' => $capturedAt,
                     'metadata' => [
                         'source' => 'server', 'booking_geofence_id' => $zone->id, 'zone_name' => $zone->name_snapshot,
                         'scope' => $zone->scope, 'notification_requested' => $inside ? $zone->notify_on_enter : $zone->notify_on_exit,
                     ],
                 ]);
-                // Website activity is persisted independently of notification preference.
-                // No external messages or mobile push are sent by this ingestion path.
+                if ($event->metadata['notification_requested']) {
+                    app(NotificationService::class)->createForTelematicsParticipants(
+                        $trip->booking, $inside ? 'Zone entered' : 'Zone exited',
+                        ($inside ? 'Entered ' : 'Exited ').$zone->name_snapshot.'.', [
+                            'action' => 'view_telematics_activity', 'action_label' => 'View activity',
+                            'event_type' => $type->value, 'event_id' => $event->id,
+                            'booking_geofence_id' => $zone->id, 'zone_name' => $zone->name_snapshot,
+                            'occurred_at' => $capturedAt->toISOString(),
+                        ]);
+                }
+                // Website activity is persisted even when this direction's alert is disabled.
                 $state->fill(['inside' => $inside, 'candidate_inside' => null, 'candidate_count' => 0, 'candidate_started_at' => null]);
             }
             $state->save();

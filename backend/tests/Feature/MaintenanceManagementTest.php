@@ -19,6 +19,7 @@ use App\Services\VehicleInspectionService;
 use App\Support\MaintenanceDueCalculator;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -101,6 +102,52 @@ it('allows Staff with maintenance permission to load module vehicles without veh
     $this->actingAs($coordinator)->getJson('/admin/maintenance/vehicles')
         ->assertOk()->assertJsonPath('data.0.id', (string) $this->vehicle->id);
     $this->actingAs($coordinator)->getJson('/admin/vehicles')->assertForbidden();
+});
+
+it('accepts today for scheduling and rescheduling using the Manila calendar date', function (string $currentTime) {
+    $this->travelTo(Carbon::parse($currentTime));
+    $start = today('Asia/Manila');
+    $end = $start->copy()->endOfDay();
+
+    $created = $this->actingAs($this->actor)->postJson('/admin/maintenance', maintenanceScheduleData($this->vehicle, [
+        'scheduled_start' => $start->toISOString(),
+        'scheduled_end' => $end->toISOString(),
+    ]))->assertCreated();
+    $record = VehicleMaintenanceRecord::findOrFail($created->json('data.id'));
+    expect($record->scheduled_start->equalTo($start))->toBeTrue();
+
+    $this->actingAs($this->actor)->putJson("/admin/maintenance/{$record->id}/reschedule", [
+        'scheduled_start' => $start->toISOString(),
+        'scheduled_end' => $end->toISOString(),
+    ])->assertOk();
+    expect($record->fresh()->scheduled_start->equalTo($start))->toBeTrue();
+    $this->travelBack();
+})->with(['2026-10-18T17:00:00Z', '2026-10-19T04:00:00Z']);
+
+it('rejects dates before today and end times before the start when scheduling or rescheduling', function () {
+    $this->travelTo(Carbon::parse('2026-10-18T17:00:00Z'));
+    $today = today('Asia/Manila');
+    $past = $today->copy()->subDay();
+    $this->actingAs($this->actor)->postJson('/admin/maintenance', maintenanceScheduleData($this->vehicle, [
+        'scheduled_start' => $past->toISOString(),
+        'scheduled_end' => $today->copy()->endOfDay()->toISOString(),
+    ]))->assertUnprocessable()->assertJsonValidationErrors(['scheduled_start']);
+
+    $this->actingAs($this->actor)->postJson('/admin/maintenance', maintenanceScheduleData($this->vehicle, [
+        'scheduled_start' => $today->toISOString(),
+        'scheduled_end' => $past->toISOString(),
+    ]))->assertUnprocessable()->assertJsonValidationErrors(['scheduled_end']);
+
+    $record = app(MaintenanceService::class)->schedule(maintenanceScheduleData($this->vehicle), $this->actor);
+    $this->actingAs($this->actor)->putJson("/admin/maintenance/{$record->id}/reschedule", [
+        'scheduled_start' => $past->toISOString(),
+        'scheduled_end' => $today->copy()->endOfDay()->toISOString(),
+    ])->assertUnprocessable()->assertJsonValidationErrors(['scheduled_start']);
+    $this->actingAs($this->actor)->putJson("/admin/maintenance/{$record->id}/reschedule", [
+        'scheduled_start' => $today->toISOString(),
+        'scheduled_end' => $past->toISOString(),
+    ])->assertUnprocessable()->assertJsonValidationErrors(['scheduled_end']);
+    $this->travelBack();
 });
 
 it('derives due status using the earliest mileage or date trigger', function () {

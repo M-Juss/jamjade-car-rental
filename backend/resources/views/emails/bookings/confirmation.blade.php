@@ -1,40 +1,35 @@
+@php($isRentalInformation = ($confirmation['formatVersion'] ?? 1) >= 3)
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Jamjade Car Rental Booking Confirmation</title>
+    <title>{{ $isRentalInformation ? 'Rental Information and Payment Receipt' : 'Invoice and Payment Receipt' }}</title>
 </head>
-<body style="margin: 0; padding: 24px; background: #F8FAFF; color: #17315F; font-family: Arial, sans-serif;">
-    <table role="presentation" style="width: 100%; max-width: 620px; margin: 0 auto; border-collapse: collapse; background: #FFFFFF;">
-        <tr>
-            <td style="padding: 28px; border: 1px solid #E6EEFF;">
-                <div style="margin-bottom: 18px; color: #346EF6; font-size: 12px; font-weight: 700; letter-spacing: 1px;">
-                    JAMJADE CAR RENTAL
-                </div>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
+    <p style="margin: 0 0 16px;">Dear {{ $confirmation['customer']['name'] }},</p>
 
-                <p style="margin: 0 0 14px;">Hello {{ $confirmation['customer']['name'] }},</p>
+    <p style="margin: 0 0 16px;">Please find attached your {{ $isRentalInformation ? 'rental information' : 'invoice' }}, including the rental agreement, and the receipt for the payment listed below.</p>
 
-                <p style="margin: 0 0 14px; line-height: 1.6;">
-                    Your booking was successful.
-                </p>
+    <p style="margin: 0 0 16px;">
+        Booking reference: <strong>{{ $confirmation['bookingReference'] }}</strong><br>
+        Booking status: <strong>{{ $confirmation['bookingStatusLabel'] }}</strong><br>
+        @unless ($isRentalInformation)
+        Invoice reference: <strong>{{ $confirmation['invoiceReference'] }}</strong><br>
+        @endunless
+        Receipt reference: <strong>{{ $confirmation['receipt']['reference'] }}</strong><br>
+        Payment status as of issue: <strong>{{ $confirmation['paymentStatusLabel'] }}</strong>
+    </p>
 
-                <p style="margin: 0 0 6px; line-height: 1.6;">
-                    Booking reference: <strong>{{ $confirmation['bookingReference'] }}</strong>
-                </p>
+    <p style="margin: 0 0 16px;">
+        Amount received in this payment: <strong>PHP {{ number_format($confirmation['receipt']['amount'], 2) }}</strong><br>
+        Total paid as of issue: <strong>PHP {{ number_format($confirmation['payment']['amountPaid'], 2) }}</strong><br>
+        Remaining balance as of issue: <strong>PHP {{ number_format($confirmation['payment']['remainingBalance'], 2) }}</strong>
+    </p>
 
-                <p style="margin: 0 0 14px; line-height: 1.6;">
-                    Payment status: <strong>{{ $confirmation['paymentStatusLabel'] }}</strong>
-                </p>
+    <p style="margin: 0 0 16px;">Please review both attached PDFs and retain them for your records.</p>
 
-                <p style="margin: 0 0 14px; line-height: 1.6;">
-                    Your official booking confirmation and rental agreement PDF is attached to this email.
-                </p>
+    <p style="margin: 0 0 16px;">Thank you for choosing Jamjade Car Rental.</p>
 
-                <p style="margin: 22px 0 0; color: #6C7A96; line-height: 1.6;">
-                    Thank you for choosing Jamjade Car Rental.
-                </p>
-            </td>
-        </tr>
-    </table>
+    <p style="margin: 0;">Sincerely,<br>Jamjade Car Rental</p>
 </body>
 </html>

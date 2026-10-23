@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Enums\VehicleInspectionStatus;
 use App\Enums\VehicleInspectionType;
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Models\PayPalCheckout;
 use App\Models\User;
 use App\Models\VehicleInspection;
@@ -304,6 +305,11 @@ it('allows an admin to force resend a paid booking confirmation email', function
         'confirmation_email_sent_at' => now()->subHour(),
         'confirmation_email_status' => 'sent',
     ]);
+    Payment::create([
+        'booking_id' => $booking->id, 'user_id' => $customer->id,
+        'provider' => 'manual', 'purpose' => 'full_payment', 'status' => 'completed',
+        'amount' => 3500, 'currency' => 'PHP', 'completed_at' => now(),
+    ]);
 
     $this->actingAs($admin)
         ->postJson("/admin/bookings/{$booking->id}/resend-confirmation-email")
@@ -316,6 +322,28 @@ it('allows an admin to force resend a paid booking confirmation email', function
         'status' => 'queued',
         'sent_at' => null,
     ]);
+});
+
+it('requires a completed customer payment before issuing rental information and a receipt on resend', function () {
+    Mail::fake();
+    $admin = User::factory()->create();
+    $admin->assignRole(UserRole::Admin->value);
+    $booking = Booking::create([
+        'booking_code' => 'BK-NO-PAYMENT',
+        'user_id' => customerUser()->id, 'vehicle_id' => availableVehicle()->id,
+        'rental_type' => RentalType::SelfDrive,
+        'rental_start_at' => now()->addDays(3), 'rental_end_at' => now()->addDays(4),
+        'pickup_location_type' => 'shop', 'pickup_location' => 'Rental office',
+        'return_location' => 'Rental office', 'driver_option' => 'self_drive',
+        'status' => BookingStatus::Confirmed, 'payment_status' => PaymentStatus::Paid,
+        'price_per_day' => 3500, 'duration_days' => 1, 'subtotal' => 3500, 'total_amount' => 3500,
+    ]);
+
+    $this->actingAs($admin)->postJson("/admin/bookings/{$booking->id}/resend-confirmation-email")
+        ->assertUnprocessable()->assertJsonPath('message', 'A receipt requires a recorded completed customer payment.');
+
+    $this->assertDatabaseCount('booking_payment_documents', 0);
+    Mail::assertNothingOutgoing();
 });
 
 it('prevents staff from manually resending booking confirmation emails', function () {

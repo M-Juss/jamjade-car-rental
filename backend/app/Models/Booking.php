@@ -121,6 +121,16 @@ class Booking extends Model
             ->where('rental_end_at', '>=', $start);
     }
 
+    public function cancellation(): HasOne
+    {
+        return $this->hasOne(BookingCancellation::class);
+    }
+
+    public function returnRecord(): HasOne
+    {
+        return $this->hasOne(BookingReturn::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -184,6 +194,11 @@ class Booking extends Model
         return $this->hasMany(TelematicsTrip::class);
     }
 
+    public function telematicsTrip(): HasOne
+    {
+        return $this->hasOne(TelematicsTrip::class);
+    }
+
     public function deliveryQuote(): HasOne
     {
         return $this->hasOne(DeliveryQuote::class);
@@ -214,6 +229,14 @@ class Booking extends Model
         return $this->payments()->where('status', 'completed');
     }
 
+    public function successfulCustomerPayments(): HasMany
+    {
+        return $this->successfulPayments()
+            ->where('user_id', $this->user_id)
+            ->where('currency', 'PHP')->where('amount', '>', 0)
+            ->where(fn (Builder $query) => $query->whereNull('purpose')->orWhere('purpose', '!=', 'driver_outstanding'));
+    }
+
     public function getDriverOptionAttribute(): string
     {
         return $this->rental_type instanceof RentalType
@@ -227,7 +250,7 @@ class Booking extends Model
             return null;
         }
 
-        return $this->rental_start_at->format('H:i');
+        return $this->rental_start_at->copy()->setTimezone('Asia/Manila')->format('H:i');
     }
 
     public function getOutsideManilaFeeAttribute(): string

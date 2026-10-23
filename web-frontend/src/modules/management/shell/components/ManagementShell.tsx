@@ -1,36 +1,15 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import type { ManagementPortal } from "../config/module-registry";
-import { getPendingBookingCount } from "@/services/booking";
+import { useManagementNavigationCounts } from "../use-management-navigation-counts";
 import { ManagementAccessGuard } from "./ManagementAccessGuard";
 import ManagementSidebar from "./ManagementSidebar";
 import ManagementMobileHeader from "./ManagementMobileHeader";
-import { useManagementSession } from "../context/ManagementSessionProvider";
 
 export function ManagementShell({ portal, children }: { portal: ManagementPortal; children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [pendingReservations, setPendingReservations] = useState(0);
-  const { user } = useManagementSession();
-  const canManageBookings = portal === "admin" || user?.permissions?.includes("manage bookings") === true;
-
-  useEffect(() => {
-    if (!canManageBookings) return;
-
-    let active = true;
-
-    getPendingBookingCount()
-      .then((count) => {
-        if (active) setPendingReservations(count);
-      })
-      .catch(() => {
-        if (active) setPendingReservations(0);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [canManageBookings]);
+  const { counts, error } = useManagementNavigationCounts();
 
   return (
     <div
@@ -40,11 +19,12 @@ export function ManagementShell({ portal, children }: { portal: ManagementPortal
       <ManagementSidebar
         collapsed={collapsed}
         onCollapsedChange={setCollapsed}
-        pendingReservations={pendingReservations}
+        counts={counts}
+        countsError={error}
         portal={portal}
       />
       <div className="min-w-0 flex-1 lg:pl-[var(--management-sidebar-width)]">
-        <ManagementMobileHeader pendingReservations={pendingReservations} portal={portal} />
+        <ManagementMobileHeader counts={counts} countsError={error} portal={portal} />
         <main className="bg-background">
           <div className="mx-auto w-full max-w-[1440px]">
             <ManagementAccessGuard portal={portal}>{children}</ManagementAccessGuard>

@@ -11,8 +11,6 @@ import {
   PhilippinePeso,
   Users,
   Settings2,
-  Zap,
-  Check,
   Save,
   X,
   Image as ImageIcon,
@@ -24,8 +22,10 @@ import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/forms/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { VehicleImageGallery } from "@/modules/management/vehicles/components/VehicleImageGallery";
+import { VehicleFeatureSelector } from "@/modules/management/vehicles/components/VehicleFeatureSelector";
 import { getVehicle, updateVehicle } from "@/services/vehicle";
 import { ApiError } from "@/services/http";
+import { useVehicleOptions, vehicleSelectOptions } from "@/modules/management/vehicles/use-vehicle-options";
 import { appToast } from "@/lib/toast";
 import {
   editVehicleFormSchema,
@@ -34,21 +34,6 @@ import {
 import { managementPath } from "@/modules/management/shell/config/module-registry";
 import { useManagementPortal } from "@/modules/management/shell/context/ManagementSessionProvider";
 
-const FEATURES = [
-  "Air Conditioning",
-  "Bluetooth",
-  "Apple CarPlay",
-  "Android Auto",
-  "GPS Navigation",
-  "Reverse Camera",
-  "Parking Sensors",
-  "USB Charging",
-  "Wireless Charging",
-  "Leather Seats",
-  "Cruise Control",
-];
-
-const BRANDS = ["Toyota", "Honda", "Mitsubishi", "Ford", "Hyundai", "Nissan", "Kia", "Mazda", "Suzuki", "Isuzu"];
 
 interface EditVehicleFormProps {
   vehicleId: string;
@@ -56,8 +41,10 @@ interface EditVehicleFormProps {
 
 export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
   const router = useRouter();
+  const { data: configuration, error: configurationError, reload: reloadConfiguration } = useVehicleOptions();
   const portal = useManagementPortal();
   const vehiclePath = managementPath(portal, "vehicles") ?? "/owner/vehicle";
+  const [savedOptions, setSavedOptions] = useState({ brand: "", transmission: "", fuel_type: "", features: [] as string[] });
   const [images, setImages] = useState<string[]>([]);
   const [vehicleName, setVehicleName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +99,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
             fuel_type: vehicle.fuelType,
             features: vehicle.features,
           });
+          setSavedOptions({ brand: vehicle.brand, transmission: vehicle.transmission, fuel_type: vehicle.fuelType, features: vehicle.features });
           setImages(vehicle.images);
           setVehicleName(vehicle.name);
         }
@@ -133,17 +121,6 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
     };
   }, [reset, vehicleId]);
 
-  const toggleFeature = (feature: string) => {
-    const nextFeatures = selectedFeatures.includes(feature)
-      ? selectedFeatures.filter((item) => item !== feature)
-      : [...selectedFeatures, feature];
-
-    setValue("features", nextFeatures, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
-
   const onSubmit = async (values: EditVehicleFormValues) => {
     try {
       await updateVehicle(vehicleId, values);
@@ -151,7 +128,8 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
       router.push(`${vehiclePath}/${vehicleId}`);
     } catch (saveError) {
       if (saveError instanceof ApiError && saveError.errors) {
-        Object.entries(saveError.errors).forEach(([field, messages]) => {
+        Object.entries(saveError.errors).forEach(([serverField, messages]) => {
+          const field = serverField.startsWith("features.") ? "features" : serverField;
           const message = messages[0];
 
           if (field in editVehicleFormSchema.shape && message) {
@@ -169,6 +147,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-background min-h-screen">
+      {configurationError ? <div role="alert" className="flex items-center justify-between gap-3 text-sm text-destructive">{configurationError}<Button type="button" variant="outline" onClick={reloadConfiguration}>Retry</Button></div> : !configuration ? <p role="status" className="text-sm text-muted-foreground">Loading options...</p> : null}
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push(vehiclePath)}
@@ -263,7 +242,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                     id="edit-vehicle-brand"
                     label="Brand"
                     placeholder="Select brand"
-                    options={BRANDS.map((brand) => ({ value: brand, label: brand }))}
+                    options={vehicleSelectOptions([...(configuration?.options.brand ?? []), savedOptions.brand], form.brand)}
                     value={form.brand ?? ""}
                     error={errors.brand?.message}
                     onValueChange={(value) => {
@@ -351,10 +330,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                     id="edit-vehicle-transmission"
                     label="Transmission"
                     placeholder="Select"
-                    options={[
-                      { value: "Automatic", label: "Automatic" },
-                      { value: "Manual", label: "Manual" },
-                    ]}
+                    options={vehicleSelectOptions([...(configuration?.options.transmission ?? []), savedOptions.transmission], form.transmission)}
                     value={form.transmission ?? ""}
                     error={errors.transmission?.message}
                     onValueChange={(value) => {
@@ -373,12 +349,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                     id="edit-vehicle-fuel"
                     label="Fuel Type"
                     placeholder="Select"
-                    options={[
-                      { value: "Gasoline", label: "Gasoline" },
-                      { value: "Diesel", label: "Diesel" },
-                      { value: "Hybrid", label: "Hybrid" },
-                      { value: "Electric", label: "Electric" },
-                    ]}
+                    options={vehicleSelectOptions([...(configuration?.options.fuel_type ?? []), savedOptions.fuel_type], form.fuel_type)}
                     value={form.fuel_type ?? ""}
                     error={errors.fuel_type?.message}
                     onValueChange={(value) => {
@@ -396,49 +367,18 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
 
             <Separator className="bg-border" />
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
-                    <Zap size={12} className="text-primary" />
-                  </div>
-                  <h3 className="text-[12.5px] font-bold text-foreground">Features</h3>
-                </div>
-                <span className="text-[11px] font-semibold text-primary bg-muted px-2.5 py-1 rounded-lg">
-                  {selectedFeatures.length} selected
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {FEATURES.map((feature) => {
-                  const selected = selectedFeatures.includes(feature);
-                  return (
-                    <button
-                      key={feature}
-                      type="button"
-                      onClick={() => toggleFeature(feature)}
-                      className={`relative flex items-center justify-center text-center px-2 py-3 rounded-xl border text-[10.5px] font-semibold leading-tight transition-all duration-150 ${
-                        selected
-                          ? "bg-muted border-primary text-primary"
-                          : "bg-background border-border text-muted-foreground hover:border-border hover:bg-muted"
-                      }`}
-                    >
-                      {selected && (
-                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                          <Check size={9} className="text-white" strokeWidth={3} />
-                        </span>
-                      )}
-                      {feature}
-                    </button>
-                  );
-                })}
-              </div>
-              {errors.features?.message ? (
-                <p className="mt-2 text-[10.5px] font-medium text-destructive">
-                  {errors.features.message}
-                </p>
-              ) : null}
-            </div>
+            <VehicleFeatureSelector
+              key={vehicleId}
+              value={selectedFeatures}
+                    options={[...(configuration?.options.feature ?? []), ...savedOptions.features]}
+              disabled={isSubmitting || !configuration}
+              error={errors.features?.message}
+              onChange={(features) => setValue("features", features, {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              })}
+            />
 
             <Separator className="bg-border" />
 
@@ -447,14 +387,14 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 type="button"
                 variant="outline"
                 onClick={() => router.push(`${vehiclePath}/${vehicleId}`)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !configuration}
                 className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-[13px] font-medium hover:bg-background"
               >
                 <X size={14} className="mr-2" /> Discard
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !configuration}
                 className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-white h-10 text-[13px] font-semibold shadow-[0_4px_14px_rgba(52,110,246,0.28)] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Save size={14} className="mr-2" /> {isSubmitting ? "Saving..." : "Save Changes"}

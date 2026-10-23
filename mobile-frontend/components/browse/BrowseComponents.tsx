@@ -36,6 +36,7 @@ import {
 import { themeColors } from '@/constants/theme';
 import { optionalServices, REQUIRED_DOCUMENTS } from '@/lib/browse/rental-config';
 import { formatPeso } from '@/lib/browse/pricing';
+import { getVehicleImageSource } from '@/lib/browse/vehicle-image-source';
 import type { OptionalService, PriceBreakdown, Vehicle } from '@/types/browse';
 
 export type SortOption = 'lowest_price' | 'highest_price' | 'saved';
@@ -69,6 +70,7 @@ export function VehicleImage({
   uri?: string | null;
 }) {
   const [failedUri, setFailedUri] = useState<string | null>(null);
+  const source = getVehicleImageSource(uri);
 
   if (!uri || failedUri === uri) {
     return (
@@ -84,8 +86,8 @@ export function VehicleImage({
   return (
     <Image
       accessibilityLabel={accessibilityLabel}
-      source={{ uri }}
-      resizeMode={resizeMode}
+      source={source}
+      resizeMode={typeof source === 'number' ? 'contain' : resizeMode}
       onError={() => setFailedUri(uri)}
       className={className}
     />
@@ -277,22 +279,43 @@ export function BookingStepper({ step }: { step: 1 | 2 | 3 }) {
 }
 
 export function SelectedVehicleSummary({ vehicle }: { vehicle: Vehicle }) {
+  const vehicleTitle = [vehicle.brand, vehicle.name, vehicle.model].filter(Boolean).join(' ');
+  const specs = [
+    { icon: Users, value: String(vehicle.seats), accessibilityLabel: `${vehicle.seats} seats` },
+    { icon: Gauge, value: vehicle.transmission, accessibilityLabel: vehicle.transmission },
+    { icon: Fuel, value: vehicle.fuelType, accessibilityLabel: vehicle.fuelType },
+  ];
+
   return (
-    <View className="flex-row gap-3 rounded-card border border-border bg-surface p-3 ">
-      <VehicleImage uri={vehicle.cardImage} className="h-[104px] w-[116px] rounded-[22px]" />
-      <View className="min-w-0 flex-1 justify-between py-1">
-        <View>
-          <Text className="font-sans text-[18px] font-semibold leading-[22px] text-foreground" numberOfLines={2}>
-            {vehicle.name}
-          </Text>
-          <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
-            {vehicle.seats} seats · {vehicle.transmission} · {vehicle.fuelType}
-          </Text>
-        </View>
-        <Text className="font-sans text-[17px] font-semibold text-primary">
-          {formatPeso(vehicle.pricePerDay)}
-          <Text className="text-[11px] font-normal text-secondary-foreground"> / day</Text>
+    <View className="flex-row gap-3 rounded-card border border-border bg-surface p-3">
+      <VehicleImage
+        accessibilityLabel={vehicleTitle}
+        uri={vehicle.cardImage}
+        className="h-[104px] w-[104px] self-center rounded-[22px]"
+      />
+      <View className="min-w-0 flex-1 gap-3 py-1">
+        <Text className="font-sans text-[18px] font-semibold leading-[22px] text-foreground">
+          {vehicleTitle}
         </Text>
+        <View className="gap-2">
+          {specs.map(({ icon: Icon, value, accessibilityLabel }) => (
+            <View key={accessibilityLabel} accessibilityLabel={accessibilityLabel} className="flex-row items-center gap-2">
+              <Icon accessible={false} size={16} color={themeColors.primary} strokeWidth={2.2} />
+              <Text className="font-sans min-w-0 flex-1 text-[12px] font-medium leading-4 text-secondary-foreground">
+                {value}
+              </Text>
+            </View>
+          ))}
+          <View
+            accessibilityLabel={`Price ${formatPeso(vehicle.pricePerDay)} per day`}
+            className="flex-row items-center gap-2 border-t border-border pt-2">
+            <CreditCard accessible={false} size={16} color={themeColors.primary} strokeWidth={2.2} />
+            <Text className="font-sans min-w-0 flex-1 text-[15px] font-semibold leading-5 text-primary">
+              {formatPeso(vehicle.pricePerDay)}
+              <Text className="text-[11px] font-medium text-secondary-foreground"> / day</Text>
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );

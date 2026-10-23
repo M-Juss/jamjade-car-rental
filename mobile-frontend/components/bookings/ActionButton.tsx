@@ -4,7 +4,7 @@ import { Pressable, Text } from 'react-native';
 
 import { cx } from './utils';
 
-export type ActionButtonVariant = 'primary' | 'secondary' | 'soft' | 'success' | 'warning' | 'danger';
+export type ActionButtonVariant = 'primary' | 'secondary' | 'soft' | 'warning' | 'danger';
 
 const variantStyles = {
   primary: {
@@ -21,11 +21,6 @@ const variantStyles = {
     button: 'border-border bg-muted',
     text: 'text-primary',
     icon: themeColors.primary,
-  },
-  success: {
-    button: 'border-success-border bg-success-surface',
-    text: 'text-success',
-    icon: themeColors.success,
   },
   warning: {
     button: 'border-warning-border bg-warning-surface',

@@ -11,13 +11,13 @@ import { MaintenanceStatusBadge } from "./MaintenanceStatusBadge";
 
 function formatDate(value?: string | null) {
   return value
-    ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+    ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(value))
     : "—";
 }
 
 function formatDateOnly(value?: string | null) {
   return value
-    ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(new Date(value))
+    ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" }).format(new Date(value))
     : "—";
 }
 

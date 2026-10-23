@@ -13,7 +13,7 @@ export default function DocumentsRoute() {
       isOnboardingFlow={isOnboardingFlow}
       onBackPress={
         isOnboardingFlow
-          ? () => router.replace('/onboarding/account-ready' as Href)
+          ? () => router.replace('/onboarding/driving-intent' as Href)
           : undefined
       }
     />

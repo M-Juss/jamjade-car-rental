@@ -79,7 +79,7 @@ export default function Home() {
           >
             <div className={sectionHeader}>
               <h2 id="driving-insights-heading" className={sectionHeading}>
-                More insight. Every journey.
+                More insight every journey.
               </h2>
               <p className={sectionSubtext}>
                 AI driving-event classification brings vehicle movement and journey
@@ -160,7 +160,7 @@ export default function Home() {
             <div className="flex flex-col">
               <div className="mb-4 flex items-center gap-2">
                 <Image
-                  src="/JamJadeLogo-gradient.png"
+                  src="/JamJadeLogo-solid.png"
                   alt=""
                   width={48}
                   height={48}

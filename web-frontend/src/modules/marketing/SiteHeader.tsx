@@ -22,14 +22,14 @@ export default function SiteHeader() {
       <div className="mx-auto flex min-h-16 w-full max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-8 lg:px-20">
         <div className="flex min-w-0 items-center gap-2">
           <Image
-            src="/JamJadeLogo-gradient.png"
+            src="/JamJadeLogo-solid.png"
             alt="JamJade Logo"
             width={48}
             height={48}
             sizes="48px"
             className="size-12 shrink-0 object-contain"
           />
-          <p className="truncate bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] bg-clip-text text-sm font-semibold text-transparent sm:text-lg">
+          <p className="truncate text-sm font-semibold text-primary sm:text-lg">
             JAMJADE CAR RENTAL
           </p>
         </div>
@@ -49,7 +49,7 @@ export default function SiteHeader() {
           ))}
           <Link
             href="/login"
-            className="ml-2 inline-flex h-11 items-center rounded-md bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] px-5 text-sm font-semibold text-white transition-all ease-in-out hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="ml-2 inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-semibold text-white transition-all ease-in-out hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             LOGIN
           </Link>
@@ -89,7 +89,7 @@ export default function SiteHeader() {
               <Link
                 href="/login"
                 onClick={() => setMenuOpen(false)}
-                className="flex min-h-11 w-full items-center justify-center rounded-md bg-[linear-gradient(90deg,#004bfa_0%,#346ef6_50%)] px-5 text-sm font-semibold text-white transition-all hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-white transition-all hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 LOGIN
               </Link>

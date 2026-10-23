@@ -8,6 +8,7 @@ export type BookingValidationInput = {
   returnDate: string;
   pickupOption: 'shop' | 'delivery';
   pickupLocation: string;
+  notes?: string | null;
   deliveryTime: string;
   driverOption: 'self_drive' | 'owners_driver';
   ownerDriverCoverage: 'metro_manila' | 'outside_manila';
@@ -24,6 +25,7 @@ export const bookingFormSchema = z
     ownerDriverCoverage: z.enum(['metro_manila', 'outside_manila']),
     deliveryTime: z.string(),
     pickupLocation: z.string(),
+    notes: z.string().trim().max(2000, 'Note must be 2,000 characters or fewer.').nullable().optional(),
     pickupOption: z.enum(['shop', 'delivery']),
     rentalDate: z.string().min(1, { message: 'Rental date is required.' }),
     returnDate: z.string().min(1, { message: 'Return date is required.' }),
@@ -132,3 +134,14 @@ export const bookingFormSchema = z
       });
     }
   });
+
+export const bookingTermsSchema = z.object({
+  signature: z.string().trim().min(1, 'Signature is required.'),
+  lateReturnPolicyVersion: z.string().length(64, 'Reload the vehicle and review the current late return terms.'),
+});
+
+
+export const bookingReviewedPricingSchema = z.object({
+  pricePerDay: z.number().min(0), subtotal: z.number().min(0), deliveryFee: z.number().min(0),
+  deliveryTollFee: z.number().min(0), ownerDriverFee: z.number().min(0), totalAmount: z.number().min(0),
+});

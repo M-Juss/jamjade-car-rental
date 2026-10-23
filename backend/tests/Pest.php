@@ -7,7 +7,9 @@ use App\Models\CustomerDocument;
 use App\Models\DeliveryQuote;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Services\DeliveryQuoteService;
 use App\Services\DriverAssignmentService;
+use App\Services\LateReturnPricingService;
 use App\Support\VehicleInspectionDefinition;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -165,6 +167,7 @@ function vehicleConditionPayload(array $overrides = []): array
         'fuel_level' => 6,
         'comments' => 'Initial inspection completed.',
         'checklist' => $checklist,
+        'checklist_version' => VehicleInspectionDefinition::version(),
         'markers' => [],
         'signature_data' => vehicleSignatureDataUrl(),
     ], $overrides);
@@ -182,7 +185,7 @@ function withTestDeliveryQuote(User $user, array $payload, float $fee = 900, flo
         'user_id' => $user->id, 'vehicle_id' => $vehicle->id, 'rental_start_at' => $start, 'rental_end_at' => $end,
         'owner_driver_coverage' => $payload['owner_driver_coverage'], 'destination_address' => $payload['pickup_location'],
         'destination_point' => ['latitude' => 14.3, 'longitude' => 120.9], 'point_expires_at' => now()->addDays(30),
-        'pricing_snapshot' => ['minimum_fee' => 150, 'included_km' => 1, 'per_km_rate' => 25],
+        'pricing_snapshot' => ['minimum_fee' => 150, 'included_km' => 1, 'per_km_rate' => 25, 'garage_latitude' => 14.3, 'garage_longitude' => 120.9, 'policy_version' => DeliveryQuoteService::POLICY_VERSION],
         'route_fingerprint' => str_repeat('a', 64), 'route_label' => 'Route 1', 'toll_status' => 'toll_free', 'status' => 'ready',
         'price_per_day' => $vehicle->price_per_day, 'duration_days' => $days, 'subtotal' => $vehicle->price_per_day * $days,
         'owner_driver_fee' => ($payload['owner_driver_coverage'] === 'outside_manila' ? 1000 : 700) * $days,
@@ -190,4 +193,9 @@ function withTestDeliveryQuote(User $user, array $payload, float $fee = 900, flo
     ]);
 
     return [...$payload, 'delivery_quote_id' => $quote->id];
+}
+
+function lateReturnPolicyVersion(int $vehicleId): string
+{
+    return app(LateReturnPricingService::class)->policy(Vehicle::findOrFail($vehicleId))['version'];
 }

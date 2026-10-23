@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\VehicleStatus;
 use App\Models\Booking;
+use App\Models\BookingCancellation;
 use App\Models\Payment;
 use App\Models\TelematicsEvent;
 use App\Models\User;
@@ -41,7 +42,7 @@ class ReportService
             ->with([
                 'user:id,name,email,phone_number',
                 'vehicle:id,name,plate_number',
-                'assignedDriver',
+                'assignedDriver', 'returnRecord',
             ])
             ->blockingVehicleDates()
             ->overlappingSchedule($rangeStart, $rangeEnd)
@@ -58,8 +59,36 @@ class ReportService
             })
             ->sum('amount');
 
+        $attention = app(BookingAttentionService::class);
+        $counts = $attention->counts();
+        $attentionBookings = $canManageBookings ? $attention->filter(Booking::query(), 'all_attention')
+            ->with(['vehicle.upcomingConfirmedBookings', 'user:id,name', 'returnRecord'])
+            ->withExists(['additionalCharges as customer_charges_outstanding' => fn ($query) => $query->where('responsibility', 'customer')->outstanding()])
+            ->orderByRaw("case when bookings.status = 'ongoing' and bookings.rental_end_at < ?
+                and not exists (select 1 from booking_returns where booking_returns.booking_id = bookings.id and vehicle_received_at is not null)
+                and exists (select 1 from bookings as upcoming where upcoming.vehicle_id = bookings.vehicle_id
+                    and upcoming.id <> bookings.id and upcoming.status = 'confirmed' and upcoming.deleted_at is null
+                    and upcoming.rental_start_at >= bookings.rental_end_at and upcoming.rental_start_at <= ? and upcoming.rental_end_at >= ?)
+                then 0 else 1 end", [now(), now()->addDay(), now()])
+            ->orderByRaw("case when status = 'ongoing' and rental_end_at < ? then 0 else 1 end", [now()])
+            ->orderBy('rental_end_at')->limit(30)->get() : collect();
+
         return [
+            'canManageBookings' => $canManageBookings,
+            'attentionBookings' => $attentionBookings->map(fn ($booking) => [
+                'id' => $booking->id, 'bookingCode' => $booking->booking_code,
+                'customerName' => $booking->user?->name,
+                'vehicleName' => trim(implode(' ', array_filter([
+                    $booking->vehicle?->brand, $booking->vehicle?->name, $booking->vehicle?->model,
+                ]))).($booking->vehicle?->plate_number ? ' · '.$booking->vehicle->plate_number : ''),
+                'returnAt' => $booking->rental_end_at->toISOString(), 'attention' => $attention->state($booking),
+                'elapsedMinutes' => $booking->status->value === 'ongoing' && ! $booking->returnRecord?->vehicle_received_at
+                    ? (int) max(0, ceil($booking->rental_end_at->diffInMinutes(now(), false))) : 0,
+                'upcomingBookings' => $attention->upcomingBookings($booking),
+            ])->values()->all(),
             'summary' => [
+                'overdueReturns' => $counts['overdue_return'],
+                'bookingsNeedingAttention' => $counts['all_attention'],
                 'monthRevenue' => (float) $monthRevenue,
                 'confirmedBookings' => Booking::where('status', BookingStatus::Confirmed->value)->count(),
                 'activeRentals' => Booking::where('status', BookingStatus::Ongoing->value)->count(),
@@ -94,6 +123,7 @@ class ReportService
             })
             ->latest()
             ->get();
+        $totalRefunded = (float) BookingCancellation::query()->whereNotNull('refunded_at')->when($from, fn ($query) => $query->where('refunded_at', '>=', $from))->sum('refund_amount');
         $events = TelematicsEvent::with(['trip.booking', 'trip.booking.vehicle', 'trip.operator'])
             ->when($from, fn ($query) => $query->where('occurred_at', '>=', $from))
             ->latest('occurred_at')
@@ -139,6 +169,7 @@ class ReportService
                 $vehicles->count(),
                 $customers->count()
             ),
+            'refundSummary' => ['amountReturned' => $totalRefunded, 'netReceipts' => (float) $payments->sum('amount') - $totalRefunded],
             'revenueTrend' => $revenueTrend,
             'bookingPerformance' => $bookingPerformance,
             'bookingStatusDistribution' => $statusDistribution,
@@ -212,6 +243,7 @@ class ReportService
     ): array {
         return [
             'totalRevenue' => (float) $payments->sum('amount'),
+            'totalRefunded' => (float) BookingCancellation::query()->whereNotNull('refunded_at')->sum('refund_amount'),
             'totalVehicles' => $totalVehicles,
             'totalCustomers' => $totalCustomers,
             'totalBookings' => $bookings->count(),
@@ -437,6 +469,7 @@ class ReportService
             'end' => $booking->rental_end_at?->toISOString(),
             'status' => $booking->status->value,
             'statusLabel' => $booking->status->adminLabel(),
+            'attention' => app(BookingAttentionService::class)->state($booking),
             'rentalType' => $booking->rental_type->label(),
             'pickupLocation' => $booking->pickup_location,
             'returnLocation' => $booking->return_location,

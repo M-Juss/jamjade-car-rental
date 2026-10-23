@@ -4,10 +4,12 @@ use App\Enums\BookingStatus;
 use App\Enums\RentalType;
 use App\Enums\TelematicsEventType;
 use App\Models\Booking;
+use App\Models\BookingGeofence;
 use App\Models\Geofence;
 use App\Models\User;
 use App\Services\BookingGeofenceService;
 use App\Services\BookingService;
+use App\Services\GeofenceGeometryService;
 use App\Services\TelematicsService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,6 +38,14 @@ function monitoringAdmin(): User
     $user->assignRole('admin');
 
     return $user;
+}
+
+function monitoringPolygonPoints(int $count): array
+{
+    return array_map(fn (int $index) => [
+        'latitude' => round(14.3 + 0.1 * sin(2 * M_PI * $index / $count), 7),
+        'longitude' => round(120.95 + 0.1 * cos(2 * M_PI * $index / $count), 7),
+    ], range(0, $count - 1));
 }
 
 function releasedMonitoringBooking(): Booking
@@ -100,7 +110,7 @@ it('restricts website mutations to Admin while Staff can read default and bookin
     expect($booking->bookingGeofences()->count())->toBe(0);
 });
 
-it('validates circle polygon and notification contracts and rejects non-self-drive custom zones', function () {
+it('validates circle polygon and notification contracts for both rental types', function (RentalType $type) {
     $admin = monitoringAdmin();
     $this->actingAs($admin)->postJson('/admin/geofences', monitoringZonePayload(['radius_meters' => 0]))->assertUnprocessable();
     $this->postJson('/admin/geofences', monitoringZonePayload(['notify_on_enter' => null]))->assertUnprocessable();
@@ -108,8 +118,72 @@ it('validates circle polygon and notification contracts and rejects non-self-dri
         'geometry_type' => 'polygon', 'center_latitude' => null, 'center_longitude' => null, 'radius_meters' => null,
         'polygon_coordinates' => [['latitude' => 14.2, 'longitude' => 120.9], ['latitude' => 14.4, 'longitude' => 120.9], ['latitude' => 14.3, 'longitude' => 121.1]],
     ]))->assertCreated();
-    $ownerDriver = telematicsFoundationBooking(RentalType::OwnersDriver);
-    $this->postJson("/admin/bookings/{$ownerDriver->id}/monitoring-zones", monitoringZonePayload())->assertUnprocessable();
+    $booking = telematicsFoundationBooking($type);
+    $this->postJson("/admin/bookings/{$booking->id}/monitoring-zones", monitoringZonePayload())->assertCreated();
+    expect($booking->bookingGeofences()->count())->toBe(1)
+        ->and($booking->bookingGeofences()->sole()->frozen_at)->toBeNull();
+})->with([RentalType::SelfDrive, RentalType::OwnersDriver]);
+
+it('creates and updates default and custom polygons above the former point limit without truncation', function () {
+    $admin = monitoringAdmin();
+    $payload = monitoringZonePayload([
+        'geometry_type' => 'polygon', 'center_latitude' => null, 'center_longitude' => null, 'radius_meters' => null,
+        'polygon_coordinates' => monitoringPolygonPoints(301),
+    ]);
+    $created = $this->actingAs($admin)->postJson('/admin/geofences', $payload)->assertCreated()
+        ->assertJsonPath('data.polygonCoordinates', $payload['polygon_coordinates']);
+    $default = Geofence::findOrFail($created->json('data.id'));
+    expect($default->polygon_coordinates)->toBe($payload['polygon_coordinates']);
+
+    $booking = telematicsFoundationBooking();
+    $custom = $this->postJson("/admin/bookings/{$booking->id}/monitoring-zones", $payload)->assertCreated()
+        ->assertJsonPath('data.polygonCoordinates', $payload['polygon_coordinates']);
+
+    $payload['polygon_coordinates'] = monitoringPolygonPoints(1001);
+    $this->putJson("/admin/geofences/{$default->id}", $payload)->assertOk()
+        ->assertJsonPath('data.polygonCoordinates', $payload['polygon_coordinates']);
+    $this->putJson("/admin/bookings/{$booking->id}/monitoring-zones/{$custom->json('data.id')}", $payload)->assertOk()
+        ->assertJsonPath('data.polygonCoordinates', $payload['polygon_coordinates']);
+    expect($default->fresh()->polygon_coordinates)->toBe($payload['polygon_coordinates'])
+        ->and($booking->bookingGeofences()->firstOrFail()->polygon_coordinates)->toBe($payload['polygon_coordinates']);
+});
+
+it('still rejects invalid polygons after removing the point cap', function (string $invalid) {
+    $points = monitoringPolygonPoints(301);
+    $field = 'polygon_coordinates';
+    if ($invalid === 'crossing') {
+        [$points[1], $points[150]] = [$points[150], $points[1]];
+    } elseif ($invalid === 'duplicate') {
+        $points[1] = $points[0];
+    } elseif ($invalid === 'latitude') {
+        $points[150]['latitude'] = 91;
+        $field = 'polygon_coordinates.150.latitude';
+    } elseif ($invalid === 'too few') {
+        $points = array_slice($points, 0, 2);
+    } else {
+        $points = [
+            ['latitude' => 14, 'longitude' => 120],
+            ['latitude' => 15, 'longitude' => 121],
+            ['latitude' => 16, 'longitude' => 122],
+        ];
+    }
+    $payload = monitoringZonePayload([
+        'geometry_type' => 'polygon', 'center_latitude' => null, 'center_longitude' => null, 'radius_meters' => null,
+        'polygon_coordinates' => $points,
+    ]);
+    $this->actingAs(monitoringAdmin())->postJson('/admin/geofences', $payload)->assertUnprocessable()
+        ->assertJsonValidationErrors($field);
+    expect(Geofence::count())->toBe(0);
+})->with(['crossing', 'duplicate', 'latitude', 'too few', 'no area']);
+
+it('evaluates membership and the boundary for polygons with over a thousand points', function () {
+    $points = monitoringPolygonPoints(1001);
+    $zone = new BookingGeofence(['geometry_type' => 'polygon', 'polygon_coordinates' => $points]);
+    $geometry = app(GeofenceGeometryService::class);
+    expect($geometry->evaluate($zone, 14.3, 120.95)['inside'])->toBeTrue()
+        ->and($geometry->evaluate($zone, 14.5, 120.95)['inside'])->toBeFalse();
+    $boundary = $geometry->evaluate($zone, $points[0]['latitude'], $points[0]['longitude']);
+    expect($boundary['inside'])->toBeTrue()->and($boundary['boundary_distance_meters'])->toBe(0.0);
 });
 
 it('records confirmed entry and exit independently for overlapping zones without stopping outside tracking', function () {

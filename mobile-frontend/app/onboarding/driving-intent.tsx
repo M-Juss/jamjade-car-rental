@@ -7,16 +7,12 @@ import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenFrame';
 import { SelectableCard } from '@/components/onboarding/SelectableCard';
 import { BottomActionButton } from '@/components/ui/BottomActionButton';
-import {
-  finalizeCustomerProfileSetup,
-  updateDrivingIntent,
-  updateSelfDriveStatus,
-  useCustomer,
-} from '@/lib/customer/customer-store';
+import { useCustomer } from '@/lib/customer/customer-store';
 import type { DrivingIntent } from '@/types/customer';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { completeProfile } from '@/services/api';
 import { ApiError } from '@/services/http';
+import { useAuth } from '@/providers/AuthProvider';
 
 function toApiDrivingIntent(intent: Exclude<DrivingIntent, null>) {
   return intent.replaceAll('-', '_') as 'self_drive' | 'owner_driver' | 'not_sure';
@@ -24,6 +20,7 @@ function toApiDrivingIntent(intent: Exclude<DrivingIntent, null>) {
 
 export default function DrivingIntentScreen() {
   const router = useRouter();
+  const { refreshProfile } = useAuth();
   const customer = useCustomer();
   const [intent, setIntent] = useState<DrivingIntent>(customer.drivingIntent);
   const [error, setError] = useState('');
@@ -44,15 +41,7 @@ export default function DrivingIntentScreen() {
 
     try {
       await completeProfile({ drivingIntent: toApiDrivingIntent(intent) });
-      updateDrivingIntent(intent);
-      const incompleteStep = finalizeCustomerProfileSetup();
-
-      if (incompleteStep) {
-        router.replace(incompleteStep as Href);
-        return;
-      }
-
-      updateSelfDriveStatus('not-verified');
+      await refreshProfile();
       const nextRoute = (
         intent === 'self-drive' ? '/profile/documents?source=onboarding' : '/onboarding/account-ready'
       ) as Href;

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { PendingCountBadge } from "@/components/common/PendingCountBadge";
+import type { ManagementNavigationCounts } from "@/services/management/navigation.service";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
@@ -32,7 +34,8 @@ import { useManagementSession } from "../context/ManagementSessionProvider";
 interface ManagementSidebarNavProps {
   portal: ManagementPortal;
   collapsed?: boolean;
-  pendingReservations?: number;
+  counts: ManagementNavigationCounts;
+  countsError: boolean;
   onExpandSidebar?: () => void;
   onNavigate?: () => void;
 }
@@ -43,8 +46,11 @@ const directModuleIds = new Set<ManagementModule["id"]>([
   "history",
   "geofences",
   "verification",
+  "fleetTracker",
   "reports",
 ]);
+
+const temporarilyHiddenModuleIds = new Set<ManagementModule["id"]>(["reports"]);
 
 function initials(name?: string) {
   return (name ?? "User")
@@ -66,14 +72,11 @@ function compactTooltip(label: string) {
   );
 }
 
-function badgeLabel(count: number) {
-  return count > 99 ? "99+" : String(count);
-}
-
 function ManagementSidebarNavContent({
   portal,
   collapsed = false,
-  pendingReservations = 0,
+  counts,
+  countsError,
   onExpandSidebar,
   onNavigate,
   pathname,
@@ -86,10 +89,12 @@ function ManagementSidebarNavContent({
   const permissions = useMemo(() => new Set(user?.permissions ?? []), [user?.permissions]);
 
   const visibleModules = useMemo(
-    () => managementModulesForPortal(portal, permissions).flatMap((module) => {
-      const href = managementPath(portal, module.id);
-      return href ? [{ ...module, href }] : [];
-    }),
+    () => managementModulesForPortal(portal, permissions)
+      .filter((module) => !temporarilyHiddenModuleIds.has(module.id))
+      .flatMap((module) => {
+        const href = managementPath(portal, module.id);
+        return href ? [{ ...module, href }] : [];
+      }),
     [permissions, portal],
   );
   const mainItems = visibleModules.filter((module) => directModuleIds.has(module.id));
@@ -126,20 +131,23 @@ function ManagementSidebarNavContent({
   const roleNames = user ? getUserRoleNames(user) : [];
   const isFullAccessManager = roleNames.includes("admin");
   const roleLabel = roleNames.includes("admin") ? "Administrator" : roleNames.includes("staff") ? "Staff" : user?.email;
-  const pendingLabel = pendingReservations > 0 ? `${pendingReservations} pending reservations` : "Reservations";
 
   const renderLink = (module: (typeof visibleModules)[number], nested = false) => {
     const Icon = module.icon;
     const active = pathname === module.href || (module.id !== "dashboard" && pathname.startsWith(`${module.href}/`));
-    const hasPendingReservations = module.id === "bookings" && pendingReservations > 0;
-    const accessibleLabel = hasPendingReservations ? `${module.label}, ${pendingLabel}` : module.label;
+    const hasCounter = module.id === "bookings" || module.id === "verification";
+    const count = module.id === "bookings" ? counts.bookings : counts.verification;
+    const countLabel = module.id === "bookings" ? "bookings awaiting pickup" : "documents pending review";
+    const countDescription = countsError ? "count unavailable" : count === null ? "checking count" : `${count} ${countLabel}`;
+    const accessibleLabel = hasCounter ? `${module.label}, ${countDescription}` : module.label;
 
     return (
       <Link
         key={module.href}
         href={module.href}
         aria-current={active ? "page" : undefined}
-        aria-label={collapsed ? accessibleLabel : undefined}
+        aria-label={accessibleLabel}
+        title={accessibleLabel}
         onClick={onNavigate}
         className={`group relative flex w-full items-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
           nested
@@ -155,18 +163,9 @@ function ManagementSidebarNavContent({
       >
         <span className="relative flex shrink-0">
           <Icon size={18} strokeWidth={active ? 2.25 : 2} aria-hidden="true" />
-          {hasPendingReservations && collapsed ? (
-            <span className="absolute -right-2 -top-2 flex min-w-4 items-center justify-center rounded-full border-2 border-surface bg-warning px-1 text-[9px] font-bold leading-4 text-warning-foreground">
-              {badgeLabel(pendingReservations)}
-            </span>
-          ) : null}
         </span>
-        {!collapsed && <span className="min-w-0 flex-1 truncate">{module.label}</span>}
-        {hasPendingReservations && !collapsed ? (
-          <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-[10px] font-bold leading-5 text-warning-foreground">
-            {badgeLabel(pendingReservations)}
-          </span>
-        ) : null}
+        {!collapsed && <span className={`min-w-0 flex-1 truncate ${hasCounter ? "pr-3" : ""}`}>{module.label}</span>}
+        {hasCounter ? <PendingCountBadge count={count} label={countLabel} error={countsError} className="-right-1 -top-1" /> : null}
         {collapsed ? compactTooltip(accessibleLabel) : null}
       </Link>
     );

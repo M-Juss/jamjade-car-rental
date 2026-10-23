@@ -29,6 +29,7 @@ import {
 } from "@/validations/maintenance/schemas";
 import {
   applyMaintenanceServerErrors,
+  getMaintenancePlanPreview,
   maintenanceCategoryOptions,
   maintenancePlanDefaults,
   maintenanceTriggerOptions,
@@ -74,20 +75,7 @@ export function MaintenancePlanDialog({
   const intervalDays = useWatch({ control: form.control, name: "intervalDays" });
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === vehicleId);
   const currentOdometer = selectedVehicle?.currentOdometer ?? editingPlan?.currentOdometer ?? null;
-  const mileageBaseline = editingPlan?.lastCompletedOdometer
-    ?? editingPlan?.baselineOdometer
-    ?? currentOdometer;
-  const nextDueOdometer = mileageBaseline !== null && mileageBaseline !== undefined && intervalKm
-    ? mileageBaseline + Number(intervalKm)
-    : null;
-  const dateBaseline = editingPlan?.lastCompletedAt?.slice(0, 10)
-    ?? editingPlan?.baselineDate
-    ?? new Date().toISOString().slice(0, 10);
-  const nextDueDate = intervalDays
-    ? new Date(new Date(`${dateBaseline}T12:00:00`).setDate(
-        new Date(`${dateBaseline}T12:00:00`).getDate() + Number(intervalDays),
-      )).toISOString().slice(0, 10)
-    : "";
+  const preview = getMaintenancePlanPreview({ currentOdometer, editingPlan, intervalKm, intervalDays });
   const mileageUnavailable = triggerType !== "date" && Boolean(vehicleId) && currentOdometer === null;
 
   useEffect(() => {
@@ -157,123 +145,186 @@ export function MaintenancePlanDialog({
         />
 
         <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col">
-          <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2">
-            <Controller
-              control={form.control}
-              name="vehicleId"
-              render={({ field }) => (
-                <SelectWithLabel
-                  id="maintenance-plan-vehicle"
-                  label="Vehicle"
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+            <section className="space-y-3" aria-labelledby="maintenance-plan-details-heading">
+              <h2 id="maintenance-plan-details-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                Plan Details
+              </h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Controller
+                  control={form.control}
+                  name="vehicleId"
+                  render={({ field }) => (
+                    <SelectWithLabel
+                      id="maintenance-plan-vehicle"
+                      label="Vehicle"
+                      required
+                      options={vehicles.map((vehicle) => ({ value: vehicle.id, label: vehicle.name }))}
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                      disabled={Boolean(fixedVehicleId)}
+                      error={form.formState.errors.vehicleId?.message}
+                    />
+                  )}
+                />
+                <InputWithLabel
+                  id="maintenance-plan-name"
+                  label="Maintenance Name"
                   required
-                  options={vehicles.map((vehicle) => ({ value: vehicle.id, label: vehicle.name }))}
-                  value={field.value ?? ""}
-                  onValueChange={field.onChange}
-                  disabled={Boolean(fixedVehicleId)}
-                  error={form.formState.errors.vehicleId?.message}
+                  placeholder="Oil Change"
+                  error={form.formState.errors.name?.message}
+                  {...form.register("name")}
                 />
-              )}
-            />
-            <InputWithLabel
-              id="maintenance-plan-name"
-              label="Maintenance Name"
-              required
-              placeholder="Oil Change"
-              error={form.formState.errors.name?.message}
-              {...form.register("name")}
-            />
-            <Controller
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <SelectWithLabel
-                  id="maintenance-plan-category"
-                  label="Category"
-                  required
-                  options={[...maintenanceCategoryOptions]}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  error={form.formState.errors.category?.message}
+                <Controller
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <SelectWithLabel
+                      id="maintenance-plan-category"
+                      label="Category"
+                      required
+                      options={[...maintenanceCategoryOptions]}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      error={form.formState.errors.category?.message}
+                      wrapperClassName="md:col-span-2"
+                    />
+                  )}
                 />
-              )}
-            />
-            <Controller
-              control={form.control}
-              name="triggerType"
-              render={({ field }) => (
-                <SelectWithLabel
-                  id="maintenance-plan-trigger"
-                  label="Trigger"
-                  required
-                  options={[...maintenanceTriggerOptions]}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  error={form.formState.errors.triggerType?.message}
-                />
-              )}
-            />
-            {triggerType !== "date" ? (
-              <>
-                <InputWithLabel
-                  id="maintenance-plan-interval-km"
-                  label="Interval (km)"
-                  required
-                  inputMode="numeric"
-                  error={form.formState.errors.intervalKm?.message}
-                  {...form.register("intervalKm")}
-                />
-                <InputWithLabel
-                  id="maintenance-plan-current-odometer"
-                  label="Current Odometer"
-                  readOnly
-                  value={currentOdometer == null ? "" : `${currentOdometer.toLocaleString()} km`}
-                />
-                <InputWithLabel
-                  id="maintenance-plan-next-odometer"
-                  label="Next Due Odometer"
-                  readOnly
-                  value={nextDueOdometer == null ? "" : `${nextDueOdometer.toLocaleString()} km`}
-                />
-              </>
-            ) : null}
-            {triggerType !== "mileage" ? (
-              <>
-                <InputWithLabel
-                  id="maintenance-plan-interval-days"
-                  label="Interval (days)"
-                  required
-                  inputMode="numeric"
-                  error={form.formState.errors.intervalDays?.message}
-                  {...form.register("intervalDays")}
-                />
-                <InputWithLabel
-                  id="maintenance-plan-current-date"
-                  label="Current Date"
-                  readOnly
-                  value={new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(new Date())}
-                />
-                <InputWithLabel
-                  id="maintenance-plan-next-date"
-                  label="Next Due Date"
-                  readOnly
-                  value={nextDueDate}
-                />
-              </>
-            ) : null}
-            <TextAreaWithLabel
-              id="maintenance-plan-description"
-              label="Description (Optional)"
-              wrapperClassName="sm:col-span-2"
-              error={form.formState.errors.description?.message}
-              {...form.register("description")}
-            />
-            {mileageUnavailable ? (
-              <p className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs text-warning sm:col-span-2">
-                This vehicle has no Current Condition odometer. Set its Current Condition before creating a mileage-based plan.
-              </p>
-            ) : null}
+              </div>
+            </section>
+
+            <section className="space-y-4 border-t border-border pt-5" aria-labelledby="maintenance-plan-schedule-heading">
+              <div>
+                <h2 id="maintenance-plan-schedule-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                  Schedule
+                </h2>
+                <div className="mt-3">
+                  <Controller
+                    control={form.control}
+                    name="triggerType"
+                    render={({ field }) => (
+                      <SelectWithLabel
+                        id="maintenance-plan-trigger"
+                        label="Trigger"
+                        required
+                        options={[...maintenanceTriggerOptions]}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        error={form.formState.errors.triggerType?.message}
+                        wrapperClassName="md:col-span-2"
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+
+              {triggerType !== "date" ? (
+                <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                    Mileage Schedule
+                  </h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Controller
+                      control={form.control}
+                      name="intervalKm"
+                      render={({ field }) => (
+                        <InputWithLabel
+                          {...field}
+                          value={field.value ?? ""}
+                          id="maintenance-plan-interval-km"
+                          label="Interval (km)"
+                          required
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          onChange={(event) => {
+                            if (/^\d*$/.test(event.target.value)) field.onChange(event);
+                          }}
+                          error={form.formState.errors.intervalKm?.message}
+                        />
+                      )}
+                    />
+                    <InputWithLabel
+                      id="maintenance-plan-current-odometer"
+                      label="Current Odometer"
+                      readOnly
+                      value={preview.currentOdometer}
+                    />
+                    <InputWithLabel
+                      id="maintenance-plan-next-odometer"
+                      label="Next Due Odometer"
+                      readOnly
+                      value={preview.nextDueOdometer}
+                      wrapperClassName="md:col-span-2"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {triggerType !== "mileage" ? (
+                <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                    Date Schedule
+                  </h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Controller
+                      control={form.control}
+                      name="intervalDays"
+                      render={({ field }) => (
+                        <InputWithLabel
+                          {...field}
+                          value={field.value ?? ""}
+                          id="maintenance-plan-interval-days"
+                          label="Interval (days)"
+                          required
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          onChange={(event) => {
+                            if (/^\d*$/.test(event.target.value)) field.onChange(event);
+                          }}
+                          error={form.formState.errors.intervalDays?.message}
+                        />
+                      )}
+                    />
+                    <InputWithLabel
+                      id="maintenance-plan-current-date"
+                      label="Current Date"
+                      readOnly
+                      value={preview.currentDate}
+                    />
+                    <InputWithLabel
+                      id="maintenance-plan-next-date"
+                      label="Next Due Date"
+                      readOnly
+                      value={preview.nextDueDate}
+                      wrapperClassName="md:col-span-2"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {mileageUnavailable ? (
+                <p className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs text-warning">
+                  This vehicle has no Current Condition odometer. Set its Current Condition before creating a mileage-based plan.
+                </p>
+              ) : null}
+            </section>
+
+            <section className="space-y-3 border-t border-border pt-5" aria-labelledby="maintenance-plan-notes-heading">
+              <h2 id="maintenance-plan-notes-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                Notes
+              </h2>
+              <TextAreaWithLabel
+                id="maintenance-plan-description"
+                label="Description (Optional)"
+                wrapperClassName="md:col-span-2"
+                error={form.formState.errors.description?.message}
+                {...form.register("description")}
+              />
+            </section>
+
             {form.formState.errors.root?.message ? (
-              <p className="text-[11px] font-medium text-destructive sm:col-span-2">
+              <p className="text-[11px] font-medium text-destructive">
                 {form.formState.errors.root.message}
               </p>
             ) : null}

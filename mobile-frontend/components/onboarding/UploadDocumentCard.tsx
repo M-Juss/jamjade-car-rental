@@ -1,6 +1,6 @@
 import { themeColors } from '@/constants/theme';
 import { FileCheck2, ImagePlus, Trash2, Upload } from 'lucide-react-native';
-import { Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 
 import { pickImageFromDevice, type DocumentImagePickError } from '@/lib/customer/image-picker';
 
@@ -12,6 +12,7 @@ export function UploadDocumentCard({
   disabled = false,
   error,
   helperText,
+  isUploading = false,
   label,
   onChange,
   onPickError,
@@ -23,6 +24,7 @@ export function UploadDocumentCard({
   onChange: (value: string) => void;
   required?: boolean;
   helperText?: string;
+  isUploading?: boolean;
   error?: string;
   disabled?: boolean;
   onPickError?: (error: DocumentImagePickError) => void;
@@ -82,8 +84,17 @@ export function UploadDocumentCard({
           'mt-4 overflow-hidden rounded-[22px] border border-dashed',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-[#BFD1FF] bg-background',
         )}>
-        {hasPreview ? (
-          <Image source={{ uri: value }} resizeMode="cover" className="h-[170px] w-full bg-muted" />
+        {hasPreview && isUploading ? (
+          <View className="h-[170px] w-full items-center justify-center bg-muted">
+            <ActivityIndicator accessibilityLabel={`Uploading ${label}`} color={themeColors.primary} />
+          </View>
+        ) : hasPreview ? (
+          <Image
+            source={{ uri: value }}
+            resizeMethod="resize"
+            resizeMode="cover"
+            className="h-[170px] w-full bg-muted"
+          />
         ) : (
           <View className="min-h-[150px] items-center justify-center px-5 py-6">
             <View className="h-12 w-12 items-center justify-center rounded-full bg-surface">

@@ -141,6 +141,7 @@ export type EmergencyContactPayload = {
 };
 
 export type MobileVehicleRecord = {
+  lateReturnPolicy: import('@/types/browse').LateReturnPolicy;
   id: string;
   name: string;
   brand: string;
@@ -167,6 +168,7 @@ export type MobileVehicleRecord = {
 export type PayPalPaymentOption = 'down_payment' | 'full_payment';
 
 export type PayPalOrderPayload = {
+  notes?: string | null;
   deliveryQuoteId?: string;
   vehicleId: string;
   rentalStartAt: string;
@@ -177,8 +179,10 @@ export type PayPalOrderPayload = {
   driverOption: 'self_drive' | 'owners_driver';
   ownerDriverCoverage?: 'metro_manila' | 'outside_manila';
   paymentOption: PayPalPaymentOption;
+  reviewedPricing: { pricePerDay: number; subtotal: number; deliveryFee: number; deliveryTollFee: number; ownerDriverFee: number; totalAmount: number };
   customerSignature: string;
   termsVersion: string;
+  lateReturnPolicyVersion: string;
   appReturnUrl: string;
   appCancelUrl: string;
 };
@@ -193,14 +197,21 @@ export type PayPalOrderResponse = {
 };
 
 export type MobileBookingRecord = {
+  sharedVehicleLocation?: { latitude: number; longitude: number; accuracy: number; sharedAt: string } | null;
+  notes?: string | null;
+  cancellation?: { kind: 'customer' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
+  lateReturn?: import('@/types/browse').LateReturnDetails;
+  attention?: { key: string; label: string } | null;
   backendId: number;
   id: string;
   bookingCode: string;
   status: 'Pending' | 'Confirmed' | 'Active' | 'Ongoing' | 'Returned' | 'Completed' | 'Rejected' | 'Cancelled';
   vehicleId: string;
   vehicleName: string;
+  vehiclePlateNumber?: string | null;
   brand: string;
   model: string;
+  color: string | null;
   image?: string | null;
   rentalDate: string;
   returnDate: string;
@@ -270,6 +281,37 @@ export type MobileBookingRecord = {
     timestamp: string;
     completed: boolean;
   }[];
+};
+
+export type CustomerReceipt = {
+  id: number;
+  bookingReference: string;
+  receiptReference: string;
+  issuedAt: string;
+  currency: 'PHP';
+  amount: number;
+  purpose: string;
+  paidAt: string | null;
+  method: string | null;
+  transactionReference: string | null;
+  vehicleName: string;
+  rentalType: string;
+  rentalStartAt: string | null;
+  rentalEndAt: string | null;
+  totalPaid: number;
+  remainingBalance: number;
+  bookingTotal: number;
+  agreedRentalTotal: number;
+  additionalCharges: { label: string; amount: number }[];
+  settlementStatus: string;
+  balanceDueAt: string | null;
+  downloadReady: boolean;
+};
+
+export type CustomerReceiptPage = {
+  receipts: CustomerReceipt[];
+  page: number;
+  lastPage: number;
 };
 
 export type MobileNotificationRecord = {

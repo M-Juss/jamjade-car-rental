@@ -5,8 +5,8 @@ import type { GeofenceRecord } from "./types";
 function payload(values: GeofenceTemplateFormValues) {
   return {
     name: values.name.trim(),
-    notify_on_enter: values.notifyOnEnter,
-    notify_on_exit: values.notifyOnExit,
+    notify_on_enter: true,
+    notify_on_exit: true,
     geometry_type: values.geometryType,
     center_latitude: values.geometryType === "circle" ? Number(values.centerLatitude) : null,
     center_longitude: values.geometryType === "circle" ? Number(values.centerLongitude) : null,
@@ -17,7 +17,7 @@ function payload(values: GeofenceTemplateFormValues) {
   };
 }
 
-export async function getGeofences(includeDeleted = true) {
+export async function getGeofences(includeDeleted = false) {
   return (await apiGet<GeofenceRecord[]>(`/admin/geofences${includeDeleted ? "?include_deleted=true" : ""}`)).data;
 }
 

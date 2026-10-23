@@ -1,5 +1,6 @@
+import { ApiError } from '@/services/http';
 import { themeColors } from '@/constants/theme';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
+import { receiptSuccessRoute } from '@/lib/payments/receipt';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRootNavigationState, useRouter, type Href } from 'expo-router';
@@ -169,7 +170,7 @@ function PaymentScreen() {
 
     resetBookingFlow(flowId);
     router.replace(
-      `/browse/success?status=success&source=booking&reference=${encodeURIComponent(capturedBooking.bookingCode)}&paymentStatus=${encodeURIComponent(capturedBooking.paymentStatus)}&remainingBalance=${encodeURIComponent(String(capturedBooking.remainingBalance))}&balanceDueAt=${encodeURIComponent(capturedBooking.balanceDueAt ?? '')}` as Href,
+      receiptSuccessRoute(order.orderId, capturedBooking.bookingCode) as Href,
     );
   };
 
@@ -189,8 +190,12 @@ function PaymentScreen() {
       }
 
       if (!activeOrder && booking.deliveryQuoteId && Date.parse(booking.deliveryQuoteExpiresAt ?? '') <= Date.now()) {
-        throw new Error('Your delivery quote expired. Restart booking to select a new route and quote.');
+        throw new Error('Confirm your delivery location again before payment.');
       }
+
+      if (!booking.priceBreakdown) throw new Error('Review the booking pricing and sign again before payment.');
+
+      if (!booking.lateReturnPolicy && !activeOrder) throw new Error('Review the current late return terms before payment. Restart the booking.');
 
       const { returnUrl, cancelUrl, sessionReturnUrl } = createPayPalCallbackUrls();
       const order =
@@ -202,12 +207,15 @@ function PaymentScreen() {
           rentalEndAt: booking.rentalEndAt,
           pickupLocationType: booking.pickupOption,
           pickupLocation: booking.pickupLocation,
+          notes: booking.notes,
           returnLocation: booking.returnLocation,
           driverOption: booking.driverOption,
           ownerDriverCoverage: booking.ownerDriverCoverage,
           paymentOption: paymentSelection,
+          reviewedPricing: booking.priceBreakdown,
           customerSignature,
           termsVersion: TERMS_VERSION,
+          lateReturnPolicyVersion: booking.lateReturnPolicy?.version ?? '',
           appReturnUrl: returnUrl,
           appCancelUrl: cancelUrl,
         }));
@@ -253,8 +261,11 @@ function PaymentScreen() {
         await abandonPayPalOrder(activeOrder.orderId).catch(() => undefined);
       }
 
+      const retryPath = checkoutError instanceof ApiError && checkoutError.errors?.late_return_policy_version
+        ? `/browse/booking?vehicleId=${encodeURIComponent(booking.vehicleId)}`
+        : `/browse/payment?flow=${flowId ?? ''}&vehicleId=${routeVehicleId ?? ''}`;
       router.replace(
-        `/browse/success?status=failed&message=${encodeURIComponent(message)}${approved && activeOrder ? `&orderId=${encodeURIComponent(activeOrder.orderId)}` : ''}&retryPath=${encodeURIComponent(`/browse/payment?flow=${flowId ?? ''}&vehicleId=${routeVehicleId ?? ''}`)}` as Href,
+        `/browse/success?status=failed&message=${encodeURIComponent(message)}${approved && activeOrder ? `&orderId=${encodeURIComponent(activeOrder.orderId)}` : ''}&retryPath=${encodeURIComponent(retryPath)}` as Href,
       );
     } finally {
       setIsProcessing(false);
@@ -278,11 +289,7 @@ function PaymentScreen() {
             </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-title font-semibold text-foreground">Payment</Text>
-              <Text className="font-sans mt-1 text-[13px] font-normal text-secondary-foreground">
-                Choose your payment amount
-              </Text>
             </View>
-            <LogoutHeaderButton />
           </View>
 
           <View className="mt-5">

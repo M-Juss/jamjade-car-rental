@@ -12,6 +12,10 @@ class TelematicsTrip extends Model
     use HasFactory;
 
     protected $fillable = [
+        'latest_location',
+        'location_consent_at',
+        'location_consent_version',
+        'location_session_hash',
         'booking_id',
         'operator_user_id',
         'status',
@@ -31,9 +35,14 @@ class TelematicsTrip extends Model
         'last_location_at',
     ];
 
+    protected $hidden = ['latest_location', 'location_session_hash'];
+
     protected function casts(): array
     {
         return [
+            'latest_location' => 'encrypted:array',
+            'location_consent_at' => 'datetime',
+            'location_consent_version' => 'integer',
             'started_at' => 'datetime',
             'paused_at' => 'datetime',
             'resumed_at' => 'datetime',

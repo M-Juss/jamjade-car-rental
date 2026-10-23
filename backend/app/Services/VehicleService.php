@@ -42,6 +42,8 @@ class VehicleService
 
         try {
             return DB::transaction(function () use ($data, $user, &$storedImagePaths, $signaturePath) {
+                VehicleConfigurationService::lock();
+                VehicleConfigurationService::validateVehicleOptions($data);
                 $vehicle = Vehicle::create($this->vehiclePayload($data));
                 $this->syncRelations($vehicle, $data, $storedImagePaths);
 
@@ -71,6 +73,9 @@ class VehicleService
     public function update(Vehicle $vehicle, array $data): Vehicle
     {
         return DB::transaction(function () use ($vehicle, $data) {
+            VehicleConfigurationService::lock();
+            $vehicle = Vehicle::query()->lockForUpdate()->findOrFail($vehicle->id);
+            VehicleConfigurationService::validateVehicleOptions($data, $vehicle);
             $vehicle->update($this->vehiclePayload($data));
             $storedImagePaths = [];
             $this->syncRelations($vehicle, $data, $storedImagePaths);

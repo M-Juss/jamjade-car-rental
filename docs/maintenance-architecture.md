@@ -44,6 +44,12 @@ Only one Scheduled or In Progress maintenance record is permitted for the same p
 
 Personnel schedule either a configured plan or one custom maintenance job. Plan scheduling receives its vehicle, name, category, and description from the plan. Custom work supplies those values without creating a plan.
 
+Scheduling and rescheduling accept today or a future date in `Asia/Manila`.
+The web calendar interprets the start of the selected start date and the end of
+the selected end date in `Asia/Manila`, then submits UTC ISO timestamps. A job may start and end
+on the same date; past start dates and end times not after the start remain
+invalid. Availability and conflict checks still apply to the whole selected days.
+
 The maintenance calendar consumes an internal vehicle-availability response that distinguishes booking and maintenance blocks and includes the authoritative Current Condition odometer. A whole calendar date is unavailable when any blocking booking or active maintenance occupies that date. A selected maintenance range cannot cross an unavailable date.
 
 The backend repeats the conflict check using the same rules:

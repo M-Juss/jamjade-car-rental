@@ -1,7 +1,8 @@
+import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { InputWithLabel } from '@/components/common/InputWithLabel';
 import { ProfileFormSheet } from '@/components/profile';
@@ -71,7 +72,7 @@ export function ChangeEmailForm({
 
   return (
     <ProfileFormSheet title="Change email" visible={visible} onClose={close}>
-      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <KeyboardFormScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text className="font-sans mb-4 text-body text-secondary-foreground">
           This is the email you use to sign in. Confirm your current password to change it.
         </Text>
@@ -131,7 +132,7 @@ export function ChangeEmailForm({
           onSubmit={handleSubmit(submit)}
           onCancel={close}
         />
-      </ScrollView>
+      </KeyboardFormScrollView>
     </ProfileFormSheet>
   );
 }

@@ -3,13 +3,17 @@
 namespace App\Http\Resources;
 
 use App\Enums\BookingStatus;
+use App\Enums\RentalType;
 use App\Enums\TelematicsSetupStatus;
 use App\Enums\TelematicsSetupStepStatus;
 use App\Enums\TelematicsSetupStepType;
 use App\Models\Booking;
 use App\Models\TelematicsSetupStep;
+use App\Services\TelematicsCalibrationService;
 use App\Services\TelematicsHandoverEligibilityService;
+use App\Services\TelematicsOperatorService;
 use App\Services\TelematicsSetupService;
+use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +25,7 @@ class TelematicsHandoverResource extends JsonResource
         $this->resource->loadMissing([
             'telematicsSetupSession.steps',
             'telematicsTrips',
+            'vehicle.images',
         ]);
 
         $session = $this->telematicsSetupSession;
@@ -28,18 +33,32 @@ class TelematicsHandoverResource extends JsonResource
             ->sortByDesc('attempt_number')
             ->unique('step_type')
             ->keyBy(fn (TelematicsSetupStep $step) => $step->step_type->value) ?? collect();
-        $hasActiveTrip = $this->telematicsTrips->contains(fn ($trip) => $trip->status !== 'ended');
+        if ($session) {
+            $latestSteps = app(TelematicsCalibrationService::class)->latestSteps($session);
+            if ($this->rental_type === RentalType::OwnersDriver) {
+                $operatorId = app(TelematicsOperatorService::class)->operatorId($this->resource);
+                $latestSteps = $latestSteps->filter(fn (TelematicsSetupStep $step) => (int) $step->actor_user_id === (int) $operatorId);
+            }
+        }
+        $hasTrip = $this->telematicsTrips->isNotEmpty();
         $eligibility = app(TelematicsHandoverEligibilityService::class)->evaluate($this->resource);
 
         return [
             'bookingCode' => $this->booking_code,
             'bookingStatus' => $this->status->value,
             'rentalStartAt' => $this->rental_start_at?->toISOString(),
+            'rentalEndAt' => $this->rental_end_at?->toISOString(),
+            'vehicle' => [
+                'name' => collect([$this->vehicle?->brand, $this->vehicle?->name, $this->vehicle?->model])->filter()->join(' '),
+                'image' => PublicStorageUrl::make($this->vehicle?->images->first()?->image_path),
+                'secondaryImage' => PublicStorageUrl::make($this->vehicle?->images->get(1)?->image_path ?? $this->vehicle?->images->first()?->image_path),
+            ],
             'eligibility' => $eligibility,
+            'calibration' => app(TelematicsCalibrationService::class)->projection($session),
             'setup' => $session ? [
-                'status' => $session->status->value,
+                'status' => $eligibility['setupStatus'],
                 'startedAt' => $session->started_at?->toISOString(),
-                'readyAt' => $session->ready_at?->toISOString(),
+                'readyAt' => $eligibility['setupStatus'] === $session->status->value ? $session->ready_at?->toISOString() : null,
                 'releasedAt' => $session->released_at?->toISOString(),
             ] : null,
             'steps' => collect(TelematicsSetupService::requiredSteps())
@@ -52,6 +71,8 @@ class TelematicsHandoverResource extends JsonResource
                         'status' => $step?->status->value ?? TelematicsSetupStepStatus::Pending->value,
                         'attemptCount' => $session?->steps->filter(
                             fn (TelematicsSetupStep $attempt) => $attempt->step_type === $type
+                                && ($this->rental_type !== RentalType::OwnersDriver
+                                    || (int) $attempt->actor_user_id === (int) app(TelematicsOperatorService::class)->operatorId($this->resource))
                         )->count() ?? 0,
                         'startedAt' => $step?->started_at?->toISOString(),
                         'completedAt' => $step?->completed_at?->toISOString(),
@@ -64,7 +85,7 @@ class TelematicsHandoverResource extends JsonResource
             'canContinueSetup' => $eligibility['canWorkSetup'],
             'canStartTrip' => $session?->status === TelematicsSetupStatus::Released
                 && $this->status === BookingStatus::Ongoing
-                && ! $hasActiveTrip,
+                && ! $hasTrip,
             'tripStatus' => $this->telematicsTrips->sortByDesc('created_at')->first()?->status,
         ];
     }

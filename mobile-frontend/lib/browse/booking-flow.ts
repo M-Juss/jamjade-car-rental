@@ -1,4 +1,5 @@
-import type { BookingFormData } from '@/types/browse';
+import { bookingTermsSchema, bookingReviewedPricingSchema } from '@/validation/booking/schemas';
+import type { BookingFormData, LateReturnPolicy, PriceBreakdown } from '@/types/browse';
 
 type BookingFlowStage = 'review' | 'payment';
 
@@ -34,15 +35,16 @@ export function getBookingFlow(flowId?: string | null) {
   return activeFlow;
 }
 
-export function submitBookingTerms(flowId: string, signature: string) {
+export function submitBookingTerms(flowId: string, signature: string, lateReturnPolicy: LateReturnPolicy, priceBreakdown: PriceBreakdown) {
   const flow = getBookingFlow(flowId);
 
-  if (!flow || flow.stage !== 'review' || !signature.trim()) {
+  if (!flow || flow.stage !== 'review' || !bookingReviewedPricingSchema.safeParse(priceBreakdown).success || !bookingTermsSchema.safeParse({ signature, lateReturnPolicyVersion: lateReturnPolicy.version }).success) {
     return null;
   }
 
   activeFlow = {
     ...flow,
+    booking: { ...flow.booking, lateReturnPolicy, priceBreakdown },
     signature,
     stage: 'payment',
   };

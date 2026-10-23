@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
-use App\Enums\RentalType;
 use App\Enums\TelematicsEventType;
 use App\Enums\TelematicsSetupStatus;
 use App\Models\Booking;
@@ -25,13 +24,14 @@ class TelematicsService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($booking->rental_type !== RentalType::SelfDrive || $booking->user_id !== $user->id) {
-                abort(403, 'Only the renter of a self-drive booking may start this trip.');
+            $booking->load(['assignedDriver', 'assignment']);
+            if (! app(TelematicsOperatorService::class)->isOperator($booking, $user)) {
+                abort(403, 'Only the assigned rental operator may start this trip.');
             }
 
             if ($booking->status !== BookingStatus::Ongoing) {
                 throw ValidationException::withMessages([
-                    'booking_id' => ['Telematics can only start once the booking rental is active.'],
+                    'booking_id' => ['Telematics can only start once the rental is active.'],
                 ]);
             }
             if ($booking->telematicsSetupSession?->status !== TelematicsSetupStatus::Released) {
@@ -227,6 +227,9 @@ class TelematicsService
     {
         if ($trip->operator_user_id !== $user->id) {
             abort(403, 'You can only manage your own telematics trips.');
+        }
+        if ($trip->location_consent_version !== null) {
+            throw ValidationException::withMessages(['trip' => ['Use the location monitoring controls for this trip.']]);
         }
     }
 

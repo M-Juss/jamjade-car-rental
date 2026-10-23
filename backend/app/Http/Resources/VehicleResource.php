@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\LateReturnPricingService;
 use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -37,7 +38,12 @@ class VehicleResource extends JsonResource
             collect()
         );
 
+        $pricing = app(LateReturnPricingService::class);
+        $rates = $request->attributes->get('late_return_rates') ?? $pricing->settings();
+        $request->attributes->set('late_return_rates', $rates);
+
         return [
+            'lateReturnPolicy' => $pricing->policy($this->resource, $rates),
             'id' => (string) $this->id,
             'name' => $this->name,
             'brand' => $this->brand,

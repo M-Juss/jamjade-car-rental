@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { FaGooglePlay, FaApple } from "react-icons/fa";
+import { FaGooglePlay } from "react-icons/fa";
 
 interface DownloadAppModalProps {
   open: boolean;
@@ -20,7 +20,7 @@ export default function DownloadAppModal({
         {/* Header */}
         <div className="flex flex-col items-center pt-9 pb-5 px-8 text-center">
           <Image
-            src="/JamJadeLogo-gradient.png"
+            src="/JamJadeLogo-solid.png"
             alt="JamJade Logo"
             width={82}
             height={82}
@@ -55,23 +55,6 @@ export default function DownloadAppModal({
               </span>
             </div>
           </a>
-
-          {/* App Store */}
-          <a
-            href="#"
-            className="flex items-center justify-center gap-3 bg-white rounded-2xl px-5 py-4 shadow-[0_2px_14px_rgba(0,0,0,0.09)] border border-gray-100 hover:shadow-[0_4px_20px_rgba(0,0,0,0.13)] transition-shadow"
-          >
-            <FaApple size={30} className="text-gray-900 shrink-0" />
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] font-medium uppercase tracking-[0.15em] text-gray-400 leading-none mb-0.5">
-                DOWNLOAD ON THE
-              </span>
-              <span className="text-lg font-semibold text-gray-900 leading-none">
-                App Store
-              </span>
-            </div>
-          </a>
-
         </div>
       </DialogContent>
     </Dialog>

@@ -13,11 +13,12 @@
                     </td>
                 </tr>
             </table>
-            <div class="accent-line"></div>
         </td>
         <td class="document-heading">
             <h1 class="document-title">{{ $documentTitle }}</h1>
-            <div class="document-subtitle">{{ $documentSubtitle }}</div>
+            @if (!empty($documentSubtitle))
+                <div class="document-subtitle">{{ $documentSubtitle }}</div>
+            @endif
             <div class="document-meta">
                 Date issued: <strong>{{ $formatDate($confirmation['issuedAt'], 'F j, Y') }}</strong><br>
                 Booking reference: <strong>{{ $confirmation['bookingReference'] }}</strong>

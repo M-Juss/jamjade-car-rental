@@ -1,9 +1,13 @@
+export type LateReturnPolicy = { seats: number; seatBracket: 'up_to_5' | '6_and_above'; hourlyRate: number; minimumHours: number; roundUpAfterMinutes: number; dailyConversion: boolean; version: string };
+export type LateReturnDetails = { vehicleReceivedAt: string | null; expectedReturnAt: string | null; elapsedMinutes: number; billableHours: number; hourlyRate: number | null; seatBracket: string | null; estimatedAmount: number | null; reviewedAt: string | null; approvedAmount: number | null; requiresManualPricing: boolean; policy: LateReturnPolicy | null };
+
 export type VehicleUnavailableDateRange = {
   startDate: string;
   endDate: string;
 };
 
 export type Vehicle = {
+  lateReturnPolicy: LateReturnPolicy;
   id: string;
   name: string;
   brand: string;
@@ -24,6 +28,7 @@ export type Vehicle = {
 };
 
 export type BookingFormData = {
+  lateReturnPolicy?: LateReturnPolicy;
   deliveryQuoteId?: string;
   deliveryQuoteExpiresAt?: string;
   priceBreakdown?: PriceBreakdown;
@@ -35,6 +40,7 @@ export type BookingFormData = {
   numberOfDays: number;
   pickupOption: 'shop' | 'delivery';
   pickupLocation: string;
+  notes?: string | null;
   deliveryTime?: string;
   returnLocation: string;
   driverOption: 'self_drive' | 'owners_driver';

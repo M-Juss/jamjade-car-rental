@@ -6,15 +6,18 @@ use App\Http\Controllers\Web\Admin\BookingGeofenceController;
 use App\Http\Controllers\Web\Admin\CustomerController;
 use App\Http\Controllers\Web\Admin\DashboardController;
 use App\Http\Controllers\Web\Admin\DeliveryPricingController;
-use App\Http\Controllers\Web\Admin\DeliveryQuoteController;
 use App\Http\Controllers\Web\Admin\DocumentVerificationController;
+use App\Http\Controllers\Web\Admin\FleetBroadcastAuthController;
 use App\Http\Controllers\Web\Admin\FleetTrackerController;
 use App\Http\Controllers\Web\Admin\GeofenceController;
+use App\Http\Controllers\Web\Admin\LateReturnPricingController;
 use App\Http\Controllers\Web\Admin\MaintenanceController;
+use App\Http\Controllers\Web\Admin\ManagementNavigationController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\PersonnelController;
 use App\Http\Controllers\Web\Admin\ReportController;
 use App\Http\Controllers\Web\Admin\SelfDriveVerificationController;
+use App\Http\Controllers\Web\Admin\VehicleConfigurationController;
 use App\Http\Controllers\Web\Admin\VehicleController;
 use App\Http\Controllers\Web\PayPalRedirectController;
 use Illuminate\Support\Facades\Route;
@@ -35,10 +38,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['auth', 'active_admin'])->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+        Route::get('/navigation-counts', ManagementNavigationController::class)->name('navigation-counts');
+        Route::post('/broadcasting/auth', FleetBroadcastAuthController::class)
+            ->middleware('permission:view fleet tracker')->name('fleet.broadcasting.auth');
 
         Route::get('/dashboard', DashboardController::class)
             ->middleware('permission:view dashboard')
             ->name('dashboard');
+
+        Route::get('/vehicle-options', [VehicleConfigurationController::class, 'options'])
+            ->middleware('role_or_permission:admin|manage vehicles|manage bookings|manage maintenance');
+        Route::middleware('role:admin')->prefix('vehicle-configuration')->group(function () {
+            Route::get('/', [VehicleConfigurationController::class, 'index']);
+            Route::post('/', [VehicleConfigurationController::class, 'store']);
+            Route::put('/{option}', [VehicleConfigurationController::class, 'update']);
+            Route::delete('/{option}', [VehicleConfigurationController::class, 'destroy']);
+        });
 
         Route::middleware('permission:manage vehicles')->group(function () {
             Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
@@ -55,6 +70,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::middleware('role_or_permission:admin|manage geofences')->get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
         Route::middleware('role:admin')->group(function () {
+            Route::get('/late-return-pricing', [LateReturnPricingController::class, 'show']);
+            Route::put('/late-return-pricing', [LateReturnPricingController::class, 'update']);
             Route::get('/delivery-pricing', [DeliveryPricingController::class, 'show']);
             Route::put('/delivery-pricing', [DeliveryPricingController::class, 'update']);
             Route::post('/bookings/{booking}/monitoring-zones', [BookingGeofenceController::class, 'store']);
@@ -68,24 +85,29 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         Route::middleware('permission:manage bookings')->group(function () {
-            Route::get('/delivery-quotes/{quote}/route', [DeliveryQuoteController::class, 'route']);
-            Route::get('/delivery-quotes', [DeliveryQuoteController::class, 'index']);
-            Route::post('/delivery-quotes/{quote}/review', [DeliveryQuoteController::class, 'review']);
             Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
             Route::get('/bookings/drivers', [BookingController::class, 'drivers'])->name('bookings.drivers');
             Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
             Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
             Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
             Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
+            Route::post('/bookings/{booking}/no-show', [BookingController::class, 'noShow']);
+            Route::post('/bookings/{booking}/refund-review', [BookingController::class, 'reviewRefund'])->middleware('role:admin');
+            Route::post('/bookings/{booking}/record-refund', [BookingController::class, 'recordRefund'])->middleware('role:admin');
             Route::post('/bookings/{booking}/start', [BookingController::class, 'start'])->name('bookings.start');
             Route::post('/bookings/{booking}/telematics-setup/start', [BookingController::class, 'startTelematicsHandover'])->name('bookings.telematics-setup.start');
-            Route::post('/bookings/{booking}/returned', [BookingController::class, 'returned'])->name('bookings.returned');
+            Route::post('/bookings/{booking}/receive-vehicle', [BookingController::class, 'receiveVehicle']);
+            Route::post('/bookings/{booking}/return-follow-up', [BookingController::class, 'returnFollowUp']);
+            Route::post('/bookings/{booking}/review-late-charge', [BookingController::class, 'reviewLateCharge']);
             Route::post('/bookings/{booking}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
             Route::get('/bookings/{booking}/readiness', [BookingController::class, 'readiness'])->name('bookings.readiness');
             Route::post('/bookings/{booking}/outgoing-inspection', [BookingController::class, 'outgoing'])->name('bookings.outgoing-inspection');
+            Route::post('/bookings/{booking}/outgoing-inspection-handover', [BookingController::class, 'outgoingAndHandover'])->name('bookings.outgoing-inspection-handover');
             Route::post('/bookings/{booking}/incoming-inspection', [BookingController::class, 'incoming'])->name('bookings.incoming-inspection');
             Route::post('/bookings/{booking}/additional-charges', [BookingController::class, 'charges'])->name('bookings.additional-charges');
-            Route::post('/bookings/{booking}/finalize-return-charges', [BookingController::class, 'finalizeCharges'])->name('bookings.finalize-return-charges');
+            Route::put('/bookings/{booking}/additional-charges/{charge}', [BookingController::class, 'updateCharge'])->whereNumber('charge');
+            Route::delete('/bookings/{booking}/additional-charges/{charge}', [BookingController::class, 'deleteCharge'])->whereNumber('charge');
+            Route::post('/bookings/{booking}/finalize-return', [BookingController::class, 'finalizeReturn'])->name('bookings.finalize-return');
             Route::post('/bookings/{booking}/assign-driver', [BookingController::class, 'assignDriver'])->name('bookings.assign-driver');
             Route::post('/bookings/{booking}/resend-confirmation-email', [BookingController::class, 'resendConfirmationEmail'])
                 ->middleware('role:admin')

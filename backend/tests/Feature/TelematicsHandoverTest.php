@@ -27,7 +27,7 @@ function handoverBooking(RentalType $type = RentalType::SelfDrive): Booking
     return telematicsFoundationBooking($type);
 }
 
-it('rejects staff handover for non-self-drive bookings', function () {
+it('requires outgoing inspection before staff starts an assigned-driver handover', function () {
     $booking = handoverBooking(RentalType::OwnersDriver);
 
     expect(fn () => app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser()))
@@ -86,8 +86,8 @@ it('returns a sanitized handover summary only to the owning renter', function ()
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertNotFound();
 });
 
-it('keeps release gated until every latest check passes and preserves owner-driver release', function () {
-    $booking = handoverBooking();
+it('keeps release gated until every latest check from the rental operator passes', function (RentalType $rentalType) {
+    $booking = handoverBooking($rentalType);
     finalizeFoundationOutgoing($booking);
     $service = app(TelematicsSetupService::class);
     $service->startHandover($booking, vehicleManagerUser());
@@ -96,15 +96,11 @@ it('keeps release gated until every latest check passes and preserves owner-driv
         ->toThrow(ValidationException::class);
 
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
+    $operator = $rentalType === RentalType::SelfDrive ? $booking->user : $booking->assignedDriver;
     foreach (TelematicsSetupService::requiredSteps() as $type) {
-        $service->recordStep($session, $type, TelematicsSetupStepStatus::Passed);
+        $service->recordStep($session, $type, TelematicsSetupStepStatus::Passed, actor: $operator);
         $session->refresh();
     }
     $started = app(BookingService::class)->transition($booking, BookingStatus::Ongoing, vehicleManagerUser());
     expect($started->fresh('telematicsSetupSession')->telematicsSetupSession->status)->toBe(TelematicsSetupStatus::Released);
-
-    $ownerDriver = handoverBooking(RentalType::OwnersDriver);
-    finalizeFoundationOutgoing($ownerDriver);
-    expect(app(BookingService::class)->transition($ownerDriver, BookingStatus::Ongoing, vehicleManagerUser())->status->value)
-        ->toBe('ongoing');
-});
+})->with([RentalType::SelfDrive, RentalType::OwnersDriver]);

@@ -10,7 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormDialogContent, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { VehicleConditionSnapshot } from "@/modules/management/vehicles/inspection";
 import { getBooking, type BookingRecord } from "@/services/booking";
+import { CancellationRefundForm, RecordCancellationRefundForm } from "./CancellationRefundForm";
+import { ResolveMissedStartForm } from "./ResolveMissedStartForm";
+import { ReturnFollowUpForm } from "./ReturnFollowUpForm";
+import { LateReturnSummary } from "@/modules/management/bookings/components/LateReturnSummary";
 import { BookingMonitoringZones } from "@/modules/management/bookings/components/BookingMonitoringZones";
+import { ReturnChargeCards, type ReturnChargeActions } from "@/modules/management/bookings/components/ReturnChargeCards";
 import { bookingActionLabels, nextBookingAction, setupStepsPassed, TELEMATICS_CALIBRATION_STEPS, TELEMATICS_DEVICE_STEPS } from "@/modules/management/bookings/booking-next-action";
 import { bookingWorkflowPhase, bookingWorkflowTitles } from "@/modules/management/bookings/booking-workflow";
 
@@ -32,15 +37,12 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return <Card className="gap-0 rounded-2xl border border-border bg-surface py-4 ring-0"><CardContent className="space-y-3"><h2 className="text-sm font-bold text-foreground">{title}</h2>{children}</CardContent></Card>;
 }
 
-export function BookingStageContent({ stage, booking }: { stage: Stage; booking: BookingRecord }) {
+export function BookingStageContent({ stage, booking, chargeActions }: { stage: Stage; booking: BookingRecord; chargeActions?: ReturnChargeActions }) {
   const inspection = stage === "outgoing" || stage === "incoming"
     ? booking.inspections?.find((item) => item.type === stage && item.status === "finalized") : undefined;
 
-  return <div className="space-y-4">
-      {inspection ? <><VehicleConditionSnapshot inspection={inspection} />
-        <Section title="Operator signature"><div className="grid gap-2">{(inspection.signatures ?? []).filter((signature) => signature.signerType !== "personnel").map((signature) =>
-          <Detail key={signature.id} label={signature.signerType === "renter" ? "Renter" : "Assigned Driver"} value={signature.signerName + " · " + formatDate(signature.signedAt)} />
-        )}</div></Section></> : null}
+  return <div className="space-y-3">
+      {inspection ? <VehicleConditionSnapshot inspection={inspection} /> : null}
       {stage === "handover" ? <>
         <Section title="Handover"><div className="grid gap-2 sm:grid-cols-2">
           <Detail label="Status" value={booking.telematicsHandover?.setup?.status?.replaceAll("_", " ") ?? "Waiting for outgoing inspection"} />
@@ -49,23 +51,14 @@ export function BookingStageContent({ stage, booking }: { stage: Stage; booking:
         </div></Section>
       </> : null}
       {stage === "device-setup" || stage === "calibration" ? <Section title={stage === "calibration" ? "Calibration checks" : "Device and location checks"}>
-        {stage === "calibration" ? <p className="text-xs text-muted-foreground">Calibration is currently unavailable in the mobile app. {booking.telematicsHandover?.eligibility?.testMode ? "Local handover test mode relaxes this requirement." : "These checks must pass before rental release."}</p> : null}
+        {stage === "calibration" ? <p className="text-xs text-muted-foreground">Supervise calibration in a controlled area. The renter starts each recording while parked and leaves the mounted phone untouched while moving. {booking.telematicsHandover?.eligibility?.testMode ? "Local handover test mode relaxes this requirement." : "All five checks must pass before rental release."}</p> : null}
         <div className="grid gap-2">{(booking.telematicsHandover?.steps ?? []).filter((step) => (stage === "calibration" ? TELEMATICS_CALIBRATION_STEPS : TELEMATICS_DEVICE_STEPS).includes(step.type)).map((step) =>
           <div key={step.type} className="rounded-xl bg-background px-3 py-2.5 text-xs">
             <div className="flex justify-between gap-3"><span className="font-semibold text-foreground">{step.label}</span><span className="text-muted-foreground">{step.status.replaceAll("_", " ")}</span></div>
             {step.failureReason ? <p className="mt-1 text-destructive">{step.failureReason}</p> : null}
           </div>
         )}</div></Section> : null}
-      {stage === "charges" ? <Section title="Return charge review"><div className="grid gap-2">
-        <p className="text-xs text-muted-foreground">{booking.returnChargesFinalizedAt ? "Finalized · " + formatDate(booking.returnChargesFinalizedAt) : booking.statusKey === "ongoing" && booking.rentalProgress?.incomingFinalized ? "Review open · Charges can still be added." : "Return charges have not been reviewed."}</p>
-        {(booking.additionalCharges ?? []).length ? booking.additionalCharges?.map((charge) =>
-          <div key={charge.id} className="rounded-xl bg-background px-3 py-2.5 text-xs">
-            <div className="flex justify-between gap-3 font-semibold text-foreground"><span>{charge.typeLabel}</span><span>{money(charge.amount)}</span></div>
-            <p className="mt-1 break-words leading-5 text-foreground">{charge.description}</p>
-            <p className="mt-1 text-muted-foreground">{charge.responsibility === "driver" ? "Assigned Driver" : "Customer / Renter"} · {charge.paymentStatus}</p>
-          </div>
-        ) : <p className="text-xs text-muted-foreground">No additional charges were added.</p>}
-      </div></Section> : null}
+      {stage === "charges" ? <ReturnChargeCards booking={booking} actions={chargeActions} /> : null}
     </div>;
 }
 
@@ -85,6 +78,10 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
   const [details, setDetails] = useState<BookingRecord | null>(null);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
+  const [refundAction, setRefundAction] = useState<"review" | "record" | null>(null);
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [followUpBusy, setFollowUpBusy] = useState(false);
   const [stage, setStage] = useState<Stage | null>(null);
   const bookingId = booking.backendId;
 
@@ -105,7 +102,7 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
     return () => { ignore = true; window.clearInterval(interval); };
   }, [bookingId, details?.statusKey, details?.telematicsSetupStatus, open, stage]);
 
-  const close = () => { setStage(null); setDetails(null); setError(false); onOpenChange(false); };
+  const close = () => { setRefundAction(null); setResolveOpen(false); setFollowUpOpen(false); setStage(null); setDetails(null); setError(false); onOpenChange(false); };
   const currentDetails = details?.backendId === bookingId ? details : null;
   const nextAction = currentDetails ? nextBookingAction(currentDetails) : null;
   const steps = currentDetails ? [
@@ -117,11 +114,30 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
       { label: "Calibration", done: setupStepsPassed(currentDetails, TELEMATICS_CALIBRATION_STEPS), stage: "calibration" as Stage },
     ] : []),
     { label: "Active Rental", done: ["ongoing", "returned", "completed"].includes(currentDetails.statusKey) },
+    { label: "Vehicle Received", done: Boolean(currentDetails.lateReturn?.vehicleReceivedAt) },
     { label: "Incoming Inspection", done: Boolean(currentDetails.readiness?.incomingFinalized), stage: "incoming" as Stage },
     { label: "Return Charge Review", done: Boolean(currentDetails.readiness?.returnChargesFinalized), stage: "charges" as Stage },
     { label: "Returned", done: ["returned", "completed"].includes(currentDetails.statusKey) },
     { label: "Completed", done: currentDetails.statusKey === "completed" },
   ] : [];
+
+  if (refundAction && currentDetails) {
+    const RefundForm = refundAction === "review" ? CancellationRefundForm : RecordCancellationRefundForm;
+    return <Dialog open onOpenChange={(value) => { if (!value && !followUpBusy) setRefundAction(null); }}><FormDialogContent>
+      <FormDialogHeader title={refundAction === "review" ? "Review Cancellation Refund" : "Record External Refund"} icon={ReceiptText} onClose={() => { if (!followUpBusy) setRefundAction(null); }} closeLabel="Close refund" />
+      <RefundForm booking={currentDetails} onCancel={() => setRefundAction(null)} onBusyChange={setFollowUpBusy} onSaved={(record) => { setDetails(record); setRefundAction(null); }} />
+    </FormDialogContent></Dialog>;
+  }
+
+  if (resolveOpen && currentDetails) return <Dialog open onOpenChange={(value) => { if (!value && !followUpBusy) setResolveOpen(false); }}><FormDialogContent role="alertdialog" aria-describedby="missed-start-confirmation">
+    <FormDialogHeader title="Resolve Missed Start" icon={ReceiptText} onClose={() => { if (!followUpBusy) setResolveOpen(false); }} closeLabel="Close resolution" />
+    <ResolveMissedStartForm booking={currentDetails} onCancel={() => setResolveOpen(false)} onBusyChange={setFollowUpBusy} onSaved={(record) => { setDetails(record); setResolveOpen(false); }} />
+  </FormDialogContent></Dialog>;
+
+  if (followUpOpen && currentDetails) return <Dialog open onOpenChange={(value) => { if (!value && !followUpBusy) setFollowUpOpen(false); }}><FormDialogContent>
+    <FormDialogHeader title="Return Follow-up" icon={ReceiptText} onClose={() => { if (!followUpBusy) setFollowUpOpen(false); }} closeLabel="Close follow-up" />
+    <ReturnFollowUpForm booking={currentDetails} onCancel={() => setFollowUpOpen(false)} onBusyChange={setFollowUpBusy} onSaved={(record) => { setDetails(record); setFollowUpOpen(false); }} />
+  </FormDialogContent></Dialog>;
 
   return <><Dialog open={open && stage === null} onOpenChange={(next) => { if (!next) close(); }}><FormDialogContent>
     <FormDialogHeader title="View Booking" icon={Car} onClose={close} closeLabel="Close booking details" />
@@ -137,6 +153,9 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
         </div>
         <TabsContent value="overview" className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="space-y-4 p-4 sm:p-6">
           <div className="grid gap-2 sm:grid-cols-2"><Detail label="Customer" value={currentDetails.customer?.name} /><Detail label="Vehicle" value={[currentDetails.brand, currentDetails.vehicleName, currentDetails.model].filter(Boolean).join(" ")} /></div>
+          <LateReturnSummary booking={currentDetails} />
+          {currentDetails.statusKey === "ongoing" && !currentDetails.lateReturn?.vehicleReceivedAt ? <Button type="button" variant="outline" onClick={() => setFollowUpOpen(true)}>Record Return Follow-up</Button> : null}
+          {currentDetails.attention?.key === "not_started" ? <p className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs">The scheduled period ended without release. Check the customer and release records, then resolve the booking with a reason. <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setResolveOpen(true)}>Resolve Missed Start</Button></p> : null}
           {nextAction ? <p className="rounded-xl bg-muted p-3 text-xs text-foreground"><strong>Next step:</strong> {bookingActionLabels[nextAction]}</p> : null}
         <Section title="Rental progress"><div className="grid gap-2">{steps.map((step) =>
           <div key={step.label} className="flex items-center gap-3 rounded-xl bg-background px-3 py-2.5">
@@ -169,14 +188,40 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
         {currentDetails.adminNotes ? <Section title="Staff notes"><p className="whitespace-pre-wrap text-xs text-foreground">{currentDetails.adminNotes}</p></Section> : null}
         </div></TabsContent>
         <TabsContent value="payment" className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="space-y-4 p-4 sm:p-6">
-        <Section title="Payment"><div className="grid gap-2 sm:grid-cols-2">
-          <Detail label="Subtotal" value={money(currentDetails.subtotal)} /><Detail label="Delivery fee" value={money(currentDetails.deliveryFee)} /><Detail label="Delivery toll" value={money(currentDetails.deliveryTollFee)} />
-          <Detail label="Owner driver fee" value={money(currentDetails.ownerDriverFee)} /><Detail label="Outside Manila fee" value={money(currentDetails.outsideManilaFee)} />
-          <Detail label="Toll fee" value={money(currentDetails.tollFee)} /><Detail label="Late fee" value={money(currentDetails.lateFee)} />
-          <Detail label="Add-ons" value={money(currentDetails.addOns)} /><Detail label="Discount" value={money(currentDetails.discount)} />
-          <Detail label="Down payment" value={money(currentDetails.downPayment)} /><Detail label="Total" value={money(currentDetails.totalAmount)} />
-          <Detail label="Remaining balance" value={money(currentDetails.remainingBalance)} />
-        </div></Section>
+        <Section title="Payment">
+          <dl>
+            {[
+              { label: "Subtotal", amount: currentDetails.subtotal },
+              { label: "Delivery fee", amount: currentDetails.deliveryFee },
+              { label: "Delivery toll", amount: currentDetails.deliveryTollFee },
+              { label: "Owner driver fee", amount: currentDetails.ownerDriverFee },
+              { label: "Outside Manila fee", amount: currentDetails.outsideManilaFee },
+              { label: "Toll fee", amount: currentDetails.tollFee },
+              { label: "Late fee", amount: currentDetails.lateFee },
+              { label: "Add-ons", amount: currentDetails.addOns },
+              { label: "Discount", amount: currentDetails.discount },
+              { label: "Total", amount: currentDetails.totalAmount, emphasized: true },
+              { label: "Down payment", amount: currentDetails.downPayment },
+              { label: "Remaining balance", amount: currentDetails.remainingBalance, emphasized: true },
+            ].map(({ label, amount, emphasized }) => (
+              <div key={label} className={`flex items-baseline justify-between gap-4 py-2.5 ${emphasized ? "border-t border-border" : ""}`}>
+                <dt className={`min-w-0 text-xs ${emphasized ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{label}</dt>
+                <dd className="shrink-0 whitespace-nowrap text-right text-[12.5px] font-semibold tabular-nums text-foreground">{money(amount)}</dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
+        {currentDetails.cancellation ? <Section title="Cancellation and refund"><div className="grid gap-2 sm:grid-cols-2">
+          <Detail label="Cancellation type" value={currentDetails.cancellation.kind.replaceAll("_", " ")} />
+          <Detail label="Reason" value={currentDetails.cancellation.reason} />
+          <Detail label="Refund status" value={currentDetails.cancellation.refundStatus.replaceAll("_", " ")} />
+          <Detail label="Approved refund" value={currentDetails.cancellation.refundAmount === null ? "Pending review" : money(currentDetails.cancellation.refundAmount)} />
+          <Detail label="Decision reason" value={currentDetails.cancellation.refundReason} />
+          <Detail label="Money returned" value={formatDate(currentDetails.cancellation.refundedAt)} />
+        </div>
+        {currentDetails.canReviewCancellationRefund && currentDetails.cancellation.refundStatus === "pending_review" ? <Button type="button" onClick={() => setRefundAction("review")}>Review Refund</Button> : null}
+        {currentDetails.canReviewCancellationRefund && currentDetails.cancellation.refundStatus === "approved" ? <Button type="button" onClick={() => setRefundAction("record")}>Record Money Returned</Button> : null}
+        </Section> : null}
         <BookingStageContent stage="charges" booking={currentDetails} />
         </div></TabsContent>
         {currentDetails.driverOption === "self_drive" ? <TabsContent value="documents" className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="space-y-4 p-4 sm:p-6">

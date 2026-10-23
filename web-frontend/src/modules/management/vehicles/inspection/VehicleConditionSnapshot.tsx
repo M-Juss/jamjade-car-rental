@@ -18,12 +18,19 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("en-PH", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Asia/Manila",
   }).format(new Date(value));
 }
 
 export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapshotProps) {
+  const signatures = inspection.signatures ?? [];
+  const signatureGroups = [
+    { title: "Personnel Signature", signatures: signatures.filter((signature) => signature.signerType === "personnel") },
+    ...(signatures.some((signature) => signature.signerType !== "personnel")
+      ? [{ title: "Operator Signature", signatures: signatures.filter((signature) => signature.signerType !== "personnel") }] : []),
+  ];
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -82,7 +89,7 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         {(["exterior", "interior", "equipment"] as const).map((category) => (
           <section key={category} className="rounded-xl border border-border bg-surface p-4">
             <h3 className="text-sm font-bold text-foreground">{VEHICLE_CHECKLIST_CATEGORY_LABELS[category]}</h3>
@@ -106,21 +113,20 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
         <VehicleBodyInspection value={inspection.markers ?? []} mode="readonly" />
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <section className="rounded-xl border border-border bg-surface p-4">
+      <section className="rounded-xl border border-border bg-surface p-4">
           <h3 className="flex items-center gap-2 text-sm font-bold text-foreground"><MessageSquareText size={15} className="text-primary" /> Comments / Other Issues</h3>
-          <p className="mt-3 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{inspection.comments || "No additional comments."}</p>
-        </section>
-        <section className="rounded-xl border border-border bg-surface p-4">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-foreground"><PenLine size={15} className="text-primary" /> Personnel Signature</h3>
-          {(inspection.signatures ?? []).filter((signature) => signature.signerType === "personnel").map((signature) => (
-            <div key={signature.id} className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{inspection.comments || "No additional comments."}</p>
+      </section>
+      <div className={`grid gap-3 ${signatureGroups.length > 1 ? "sm:grid-cols-2" : ""}`}>
+        {signatureGroups.map((group) => <section key={group.title} className="min-w-0 rounded-xl border border-border bg-surface p-4">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-foreground"><PenLine size={15} className="text-primary" /> {group.title}</h3>
+          {group.signatures.map((signature) => (
+            <div key={signature.id} className="mt-2 text-xs text-muted-foreground">
               <p className="font-semibold text-foreground">{signature.signerName}</p>
               <p className="mt-1">Signed {formatDate(signature.signedAt)}</p>
-              <p className="mt-2">Signature asset stored privately.</p>
             </div>
           ))}
-        </section>
+        </section>)}
       </div>
     </div>
   );

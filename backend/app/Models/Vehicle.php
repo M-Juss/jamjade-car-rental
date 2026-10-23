@@ -98,6 +98,12 @@ class Vehicle extends Model
             ->orderBy('rental_start_at');
     }
 
+    public function upcomingConfirmedBookings(): HasMany
+    {
+        return $this->hasMany(Booking::class)->where('status', 'confirmed')
+            ->where('rental_end_at', '>=', now())->orderBy('rental_start_at')->limit(5);
+    }
+
     public function ongoingBookings(): HasMany
     {
         return $this->bookings()

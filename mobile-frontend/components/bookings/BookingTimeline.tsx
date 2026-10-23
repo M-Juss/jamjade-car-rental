@@ -37,15 +37,11 @@ export function BookingTimeline({ items }: { items: BookingTimelineItem[] }) {
                 }>
                 {item.title}
               </Text>
-              <Text
-                className={
-                  'font-sans ' +
-                  (item.completed
-                    ? 'mt-1 text-[13px] font-normal leading-5 text-secondary-foreground'
-                    : 'mt-1 text-[13px] font-normal leading-5 text-secondary-foreground')
-                }>
-                {item.description}
-              </Text>
+              {item.completed && item.description ? (
+                <Text className="font-sans mt-1 text-[13px] font-normal leading-5 text-secondary-foreground">
+                  {item.description}
+                </Text>
+              ) : null}
               <Text
                 className={
                   'font-sans ' +
@@ -53,7 +49,7 @@ export function BookingTimeline({ items }: { items: BookingTimelineItem[] }) {
                     ? 'mt-2 text-[11px] font-semibold text-success'
                     : 'mt-2 text-[11px] font-normal text-secondary-foreground')
                 }>
-                {item.timestamp || 'Upcoming'}
+                {item.completed && item.timestamp ? item.timestamp : 'Upcoming'}
               </Text>
             </View>
           </View>

@@ -1,9 +1,13 @@
 <section class="acknowledgement">
     <h2 class="acknowledgement-title">RENTER ACKNOWLEDGEMENT</h2>
     <p class="acknowledgement-copy">
-        I confirm that the information stated in this booking confirmation is true and correct.
+        @if (($confirmation['formatVersion'] ?? 1) >= 3)
+        This signature records the renter's acceptance of the rental details and Terms and Conditions at booking.
+        @else
+        I confirm that the information stated in this invoice and rental agreement is true and correct.
         I also acknowledge that I have read, understood, and agreed to the Terms and Conditions
         of Jamjade Car Rental.
+        @endif
     </p>
 
     <table class="signature-table">
@@ -26,7 +30,7 @@
             </td>
             <td>
                 <div class="signature-value">
-                    {{ $booking->terms_accepted_at?->format('F j, Y') ?? '&nbsp;' }}
+                    {{ $confirmation['termsAcceptedAt'] ? $formatDate($confirmation['termsAcceptedAt'], 'F j, Y') : ' ' }}
                 </div>
                 <div class="signature-label">Date Signed</div>
             </td>

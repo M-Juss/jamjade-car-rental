@@ -16,7 +16,7 @@ export default function LoginPage() {
       <div className="flex w-full max-w-lg flex-col items-center rounded-md bg-white p-8 shadow-md sm:p-12">
         <div className="mb-2 flex items-center gap-2">
           <Image
-            src="/JamJadeLogo-gradient.png"
+            src="/JamJadeLogo-solid.png"
             alt=""
             width={48}
             height={48}

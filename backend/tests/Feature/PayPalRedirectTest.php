@@ -1,6 +1,32 @@
 <?php
 
 use App\Support\PayPalAppUrl;
+use App\Support\PayPalCallbackUrl;
+use Illuminate\Http\Request;
+
+beforeEach(fn () => config(['services.paypal.callback_origin' => null]));
+
+it('uses the configured public origin for Android return and cancel fallbacks behind the portal proxy', function (string $action) {
+    config(['services.paypal.callback_origin' => 'https://portal.example.test/']);
+    $target = PayPalAppUrl::encode('mobilefrontend://paypal/'.$action);
+    $path = "/paypal/{$action}/{$target}?token=TEST-ORDER";
+    $response = $this->withHeader('User-Agent', 'Mozilla/5.0 (Linux; Android 15)')
+        ->get('http://127.0.0.1:8000'.$path)->assertOk();
+    preg_match('/S\.browser_fallback_url=([^;]+);/', $response->viewData('launchUrl'), $matches);
+    $fallback = rawurldecode($matches[1]);
+    expect($fallback)->toBe('https://portal.example.test'.$path.'&manual_return=1');
+    $this->get($fallback)->assertOk()->assertViewHas('autoRedirect', false);
+})->with(['return', 'cancel']);
+
+it('keeps request origins when no public PayPal origin is configured', function () {
+    expect(PayPalCallbackUrl::to('/paypal/return', Request::create('http://192.168.1.50:8000/api/mobile/paypal/orders')))
+        ->toBe('http://192.168.1.50:8000/paypal/return');
+});
+
+it('rejects malformed public PayPal origins', function (string $origin) {
+    config(['services.paypal.callback_origin' => $origin]);
+    expect(fn () => PayPalCallbackUrl::to('/paypal/return'))->toThrow(RuntimeException::class);
+})->with(['javascript:alert(1)', 'https://portal.example.test/api', 'https://name@portal.example.test', 'https://portal.example.test?query=1', 'https://portal.example.test#fragment']);
 
 it('returns Android payment callbacks through an intent with a browser fallback', function (string $action, string $appPath) {
     $appUrl = 'mobilefrontend://paypal/'.$appPath;

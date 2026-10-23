@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Booking\CancelBookingRequest;
 use App\Http\Requests\Booking\ListCustomerBookingsRequest;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Services\DeliveryQuoteService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,22 +48,19 @@ class BookingController extends Controller
         return $this->success('Booking fetched successfully.', new BookingResource($booking));
     }
 
-    public function cancel(CancelBookingRequest $request, string $booking): JsonResponse
+    public function deliveryEstimate(Request $request, string $booking, DeliveryQuoteService $quotes): JsonResponse
     {
-        $booking = $this->bookingService->cancelByCustomer(
-            $this->findOwnedBooking($request, $booking),
-            $request->user(),
-            $request->validated('reason')
-        );
+        $record = $this->findOwnedBooking($request, $booking);
+        abort_unless($record->deliveryQuote, 404);
 
-        return $this->success('Booking cancelled successfully.', new BookingResource($booking));
+        return $this->success('Current delivery estimate.', $quotes->currentEstimate($record->deliveryQuote));
     }
 
     private function findOwnedBooking(Request $request, string $booking): Booking
     {
         return Booking::query()
             ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'vehicleInspections', 'telematicsTrips',
-                'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession',
+                'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession', 'returnRecord',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser')])
             ->where('user_id', $request->user()->id)
             ->where(fn ($query) => $query->where('booking_code', $booking)->orWhere('id', $booking))

@@ -1,9 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import { ShieldCheck } from 'lucide-react-native';
+import { useCallback } from 'react';
 import { Controller, useForm, type FieldPath } from 'react-hook-form';
-import { View } from 'react-native';
+import { BackHandler, Platform, View } from 'react-native';
 
+import { LogoutConfirmationDialog } from '@/components/auth/LogoutConfirmationDialog';
 import { AvatarUploader } from '@/components/onboarding/AvatarUploader';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenFrame';
@@ -13,6 +16,7 @@ import { DatePickerInput } from '@/components/ui/DatePickerInput';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
+import { useLogoutConfirmation } from '@/hooks/use-logout-confirmation';
 import { basicInfoSchema, sanitizePersonName } from '@/validation';
 import {
   createCustomerProfile,
@@ -24,6 +28,7 @@ import type { BasicCustomerProfileInput } from '@/types/customer';
 import { BOOKING_AGE_REQUIREMENT_MESSAGE, getLatestEligibleBirthdateKey } from '@/utils/calculateAge';
 import { updateProfile } from '@/services/api';
 import { ApiError } from '@/services/http';
+import { useAuth } from '@/providers/AuthProvider';
 
 function getProfileSaveErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
@@ -45,8 +50,16 @@ function getProfileSaveErrorMessage(error: unknown) {
 
 export function BasicInfoForm() {
   const router = useRouter();
+  const { refreshProfile } = useAuth();
   const customer = useCustomer();
   const toast = useFormToast();
+  const {
+    visible: logoutVisible,
+    isLoggingOut,
+    open: openLogout,
+    close: closeLogout,
+    confirm: confirmLogout,
+  } = useLogoutConfirmation();
   const {
     control,
     formState: { errors, isSubmitting },
@@ -73,6 +86,24 @@ export function BasicInfoForm() {
     resolver: zodResolver(basicInfoSchema),
   });
   const form = watch();
+  const backDisabled = isSubmitting || isLoggingOut;
+  const goBack = useCallback(() => {
+    if (backDisabled) return;
+    if (router.canGoBack()) router.back();
+    else openLogout();
+  }, [backDisabled, openLogout, router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android') return;
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        goBack();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [goBack]),
+  );
+
   const initials =
     [form.firstName, form.lastName]
       .filter(Boolean)
@@ -84,6 +115,7 @@ export function BasicInfoForm() {
     try {
       await updateProfile(values);
       createCustomerProfile(values);
+      await refreshProfile();
       router.push('/onboarding/emergency-contact' as Href);
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
@@ -123,7 +155,7 @@ export function BasicInfoForm() {
       <OnboardingScreenFrame
         action={
           <BottomActionButton
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoggingOut || logoutVisible}
             label={isSubmitting ? 'Saving...' : 'Continue'}
             onPress={handleSubmit(onSubmit, () => {
               toast.showToast('Check the highlighted profile fields.');
@@ -131,9 +163,10 @@ export function BasicInfoForm() {
           />
         }>
         <OnboardingHeader
+          backDisabled={backDisabled}
           currentStep={1}
           icon={ShieldCheck}
-          subtitle="This helps Jamjade prepare your account and rental requirements."
+          onBackPress={goBack}
           title="Basic information"
           totalSteps={3}
         />
@@ -239,6 +272,13 @@ export function BasicInfoForm() {
           </View>
         </View>
       </OnboardingScreenFrame>
+      <LogoutConfirmationDialog
+        accountLabel="customer"
+        isLoading={isLoggingOut}
+        onCancel={closeLogout}
+        onConfirm={confirmLogout}
+        visible={logoutVisible}
+      />
       <FormToast
         message={toast.message}
         onDismiss={toast.clearToast}

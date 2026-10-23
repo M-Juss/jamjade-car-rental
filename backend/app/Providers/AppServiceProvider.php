@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Booking;
+use App\Models\TelematicsTrip;
+use App\Observers\FleetMonitoringObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,12 +25,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        require base_path('routes/channels.php');
+        Booking::observe(FleetMonitoringObserver::class);
+        TelematicsTrip::observe(FleetMonitoringObserver::class);
+
         RateLimiter::for('mobile-auth', function (Request $request) {
             $login = $request->input('login')
                 ?: $request->input('email')
                 ?: $request->input('phone_number');
 
-            return Limit::perMinute(5)->by($login ? strtolower((string) $login) : $request->ip());
+            $key = is_string($login) && trim($login) !== '' ? strtolower(trim($login)) : $request->ip();
+
+            return Limit::perMinute(5)->by($key);
         });
 
         RateLimiter::for('mobile-api', function (Request $request) {

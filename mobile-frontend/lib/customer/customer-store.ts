@@ -410,50 +410,6 @@ export function skipEmergencyContact() {
   });
 }
 
-export function updateDrivingIntent(drivingIntent: DrivingIntent) {
-  // TODO: Connect to PATCH /customer/driving-intent when available.
-  updateCustomer((currentCustomer) => {
-    const nextCustomer = {
-      ...currentCustomer,
-      drivingIntent,
-    };
-
-    return {
-      ...nextCustomer,
-      isProfileComplete: isCustomerProfileSetupComplete(nextCustomer),
-    };
-  });
-}
-
-export function finalizeCustomerProfileSetup() {
-  if (!hasCompleteBasicProfile(customer)) {
-    return '/onboarding/basic-info' as const;
-  }
-
-  if (!hasCompleteEmergencyContact(customer) && !customer.emergencyContactSkipped) {
-    return '/onboarding/emergency-contact' as const;
-  }
-
-  if (customer.drivingIntent === null) {
-    return '/onboarding/driving-intent' as const;
-  }
-
-  updateCustomer((currentCustomer) => ({
-    ...currentCustomer,
-    isProfileComplete: true,
-  }));
-
-  return null;
-}
-
-export function updateSelfDriveStatus(selfDriveStatus: SelfDriveStatus) {
-  // TODO: Connect to PATCH /customer/self-drive-status when available.
-  updateCustomer((currentCustomer) => ({
-    ...currentCustomer,
-    selfDriveStatus: currentCustomer.isBelow18 ? 'not-eligible' : selfDriveStatus,
-  }));
-}
-
 export function saveDocumentVerificationDraft(documents: DocumentVerificationInput) {
   // TODO: Connect to PATCH /customer/document-verification/draft when available.
   updateCustomer((currentCustomer) => ({

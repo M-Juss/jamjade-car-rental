@@ -3,11 +3,12 @@
 namespace App\Support;
 
 use App\Enums\VehicleInspectionItemCategory;
+use App\Models\VehicleConfigurationOption;
 
 final class VehicleInspectionDefinition
 {
     /** @return array<string, array<string, string>> */
-    public static function checklist(): array
+    public static function defaults(): array
     {
         return [
             VehicleInspectionItemCategory::Exterior->value => [
@@ -46,6 +47,22 @@ final class VehicleInspectionDefinition
         ];
     }
 
+    /** @return array<string, array<string, string>> */
+    public static function checklist(): array
+    {
+        $checklist = array_fill_keys(self::categoryKeys(), []);
+        foreach (VehicleConfigurationOption::query()->whereIn('section', self::categoryKeys())->where('is_active', true)->orderBy('id')->get() as $option) {
+            $checklist[$option->section][$option->key] = $option->name;
+        }
+
+        return $checklist;
+    }
+
+    public static function version(): string
+    {
+        return hash('sha256', json_encode(self::checklist(), JSON_THROW_ON_ERROR));
+    }
+
     /** @return array<string, string> */
     public static function itemsFor(string $category): array
     {
@@ -55,6 +72,6 @@ final class VehicleInspectionDefinition
     /** @return list<string> */
     public static function categoryKeys(): array
     {
-        return array_keys(self::checklist());
+        return ['exterior', 'interior', 'equipment'];
     }
 }

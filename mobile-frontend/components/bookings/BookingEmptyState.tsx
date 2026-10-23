@@ -26,7 +26,7 @@ export function BookingEmptyState({
         <Pressable
           accessibilityRole="button"
           onPress={onBrowsePress}
-          className="mt-6 min-h-[52px] flex-row items-center justify-center gap-2 rounded-full bg-success px-6">
+          className="mt-6 min-h-[52px] flex-row items-center justify-center gap-2 rounded-full bg-primary px-6">
           <Car size={17} color={themeColors.surface} strokeWidth={2.45} />
           <Text className="font-sans text-[15px] font-semibold text-surface">{buttonLabel}</Text>
         </Pressable>

@@ -6,14 +6,22 @@ function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
-export function CustomerTabHeader({ className, title }: { className?: string; title: string }) {
+export function CustomerTabHeader({
+  className,
+  showLogout = false,
+  title,
+}: {
+  className?: string;
+  showLogout?: boolean;
+  title: string;
+}) {
   return (
-    <View className={cx('min-w-0', className)}>
+    <View className={cx('min-w-0 pt-1', className)}>
       <View className="flex-row items-center gap-2.5">
         <Image
-          source={require('@/assets/images/JamJadeLogo-gradient.png')}
+          source={require('@/assets/images/JamJadeLogo-solid.png')}
           accessibilityLabel="JamJade Car Rental"
-          style={{ height: 40, width: 40 }}
+          style={{ height: 56, width: 56, marginTop: -2, marginBottom: -6, flexShrink: 0 }}
           resizeMode="contain"
         />
         <Text
@@ -21,7 +29,7 @@ export function CustomerTabHeader({ className, title }: { className?: string; ti
           numberOfLines={1}>
           {title}
         </Text>
-        <LogoutHeaderButton />
+        {showLogout ? <LogoutHeaderButton /> : null}
       </View>
     </View>
   );

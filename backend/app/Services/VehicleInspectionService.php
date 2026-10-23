@@ -68,6 +68,7 @@ class VehicleInspectionService
         string $signaturePath,
         bool $legacySetup = false
     ): VehicleInspection {
+        VehicleConfigurationService::assertChecklistCurrent($condition, 'initial_condition');
         if ($vehicle->current_condition_inspection_id !== null || $vehicle->inspections()->where('type', VehicleInspectionType::Initial)->exists()) {
             throw ValidationException::withMessages([
                 'condition' => ['The initial vehicle condition has already been configured.'],
@@ -156,6 +157,8 @@ class VehicleInspectionService
 
         try {
             return DB::transaction(function () use ($vehicle, $condition, $user, $signaturePath) {
+                VehicleConfigurationService::lock();
+                VehicleConfigurationService::assertChecklistCurrent($condition);
                 $lockedVehicle = Vehicle::query()->lockForUpdate()->findOrFail($vehicle->id);
 
                 return $this->createInitial($lockedVehicle, $condition, $user, $signaturePath, true);
@@ -179,6 +182,8 @@ class VehicleInspectionService
 
         try {
             return DB::transaction(function () use ($vehicle, $condition, $reason, $notes, $user, $signaturePath, $afterFinalized) {
+                VehicleConfigurationService::lock();
+                VehicleConfigurationService::assertChecklistCurrent($condition);
                 $lockedVehicle = Vehicle::query()->lockForUpdate()->findOrFail($vehicle->id);
 
                 if ($lockedVehicle->bookings()->where('status', BookingStatus::Ongoing)->exists()) {
@@ -216,16 +221,6 @@ class VehicleInspectionService
                     'based_on_inspection_id' => $current->id,
                     'created_by' => $user->id,
                 ]);
-
-                foreach ($current->items as $item) {
-                    $inspection->items()->create([
-                        'category' => $item->category,
-                        'item_key' => $item->item_key,
-                        'item_label' => $item->item_label,
-                        'value' => $item->value,
-                        'notes' => $item->notes,
-                    ]);
-                }
 
                 foreach ($current->markers as $marker) {
                     $inspection->markers()->create([

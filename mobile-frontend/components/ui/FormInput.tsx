@@ -2,6 +2,7 @@ import { themeColors } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { forwardRef, type ComponentProps } from 'react';
 import { Text, TextInput, type TextInputProps, View } from 'react-native';
+import { KeyboardAwareField } from '@/components/common/KeyboardFormScrollView';
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -23,7 +24,7 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
     { label, icon, error, helperText, required = false, editable = true, multiline = false, ...props },
     ref,
   ) => (
-    <View className="gap-1.5">
+    <KeyboardAwareField className="gap-1.5">
       <Text className="font-sans text-caption font-medium text-foreground">
         {label}
         {required ? <Text className="text-destructive"> *</Text> : null}
@@ -55,8 +56,8 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
           {...props}
         />
       </View>
-      <View className={error || helperText ? 'px-1' : 'hidden'}>
-        {error || helperText ? (
+      {error || helperText ? (
+        <View className="px-1">
           <Text
             className={cx(
               'font-sans',
@@ -65,9 +66,9 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
             )}>
             {error || helperText}
           </Text>
-        ) : null}
-      </View>
-    </View>
+        </View>
+      ) : null}
+    </KeyboardAwareField>
   ),
 );
 

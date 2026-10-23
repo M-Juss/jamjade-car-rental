@@ -137,6 +137,7 @@ it('blocks minors from owner-driver bookings through standard and PayPal checkou
         'owner_driver_coverage' => 'metro_manila',
         'customer_signature' => 'Young Customer',
         'terms_version' => '2026-07-29',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ];
 
     $this->postJson('/api/mobile/bookings', [
@@ -182,6 +183,7 @@ it('fails closed when a customer without a birthdate attempts to book', function
         'payment_method' => 'GCash',
         'customer_signature' => 'Profile Incomplete',
         'terms_version' => '2026-07-29',
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
     ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('booking')

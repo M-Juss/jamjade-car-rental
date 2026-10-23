@@ -115,6 +115,8 @@ export function InitialConditionDialog({
                 personnelName={personnelName}
                 disabled={isSubmitting}
                 onChange={(nextCondition) => {
+                  setValue("checklist_definition", nextCondition.checklist_definition);
+                  setValue("checklist_version", nextCondition.checklist_version);
                   setValue("odometer", nextCondition.odometer, { shouldDirty: true, shouldValidate: validationAttempted });
                   setValue("fuel_level", nextCondition.fuel_level, { shouldDirty: true, shouldValidate: validationAttempted });
                   setValue("comments", nextCondition.comments, { shouldDirty: true, shouldValidate: validationAttempted });

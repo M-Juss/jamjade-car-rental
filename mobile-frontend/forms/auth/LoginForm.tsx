@@ -1,14 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Controller, type FieldErrors, useForm } from 'react-hook-form';
+import { type FieldErrors, useForm } from 'react-hook-form';
 import { Text, View } from 'react-native';
 import { z } from 'zod';
 
-import { AuthScreenFrame, AuthSubmitButton, InputWithLabel } from '@/components/common';
+import { AuthScreenFrame, AuthSubmitButton } from '@/components/common';
+import { CredentialsFields } from '@/forms/auth/CredentialsFields';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { loginSchema } from '@/validation';
 import { useAuth } from '@/providers/AuthProvider';
-import type { MobileUser } from '@/services/api';
 import { ApiError } from '@/services/http';
 
 function withLoginFailedPrefix(message: string) {
@@ -43,19 +43,6 @@ function getValidationErrorMessage(errors: FieldErrors<LoginFormValues>) {
   return message ? withLoginFailedPrefix(message) : 'Login failed. Please check your login details.';
 }
 
-function needsBasicProfileSetup(user: MobileUser) {
-  const profile = user.profile;
-  const contactNumber = user.phoneNumber ?? profile?.phoneNumber;
-
-  return !(
-    profile?.firstName?.trim() &&
-    profile.lastName?.trim() &&
-    contactNumber?.trim() &&
-    profile.birthdate &&
-    profile.address?.trim()
-  );
-}
-
 export function LoginForm() {
   const router = useRouter();
   const { passwordChanged } = useLocalSearchParams<{ passwordChanged?: string }>();
@@ -65,6 +52,7 @@ export function LoginForm() {
     control,
     formState: { isSubmitting },
     handleSubmit,
+    setError,
   } = useForm<LoginFormValues>({
     defaultValues: {
       email: '',
@@ -75,16 +63,24 @@ export function LoginForm() {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      const user = await signIn({
+      await signIn({
         email: values.email,
         password: values.password,
       });
-      if (user.roles?.includes('driver')) {
-        router.replace('/(driver)/services');
-        return;
-      }
-      router.replace(needsBasicProfileSetup(user) ? '/onboarding/basic-info' : '/(tabs)');
+      router.replace('/');
     } catch (error) {
+      if (error instanceof ApiError && error.status === 422) {
+        let mapped = false;
+        for (const field of ['email', 'password'] as const) {
+          const message = error.errors?.[field]?.[0]
+            ?? (field === 'email' ? error.errors?.login?.[0] : undefined);
+          if (message) {
+            setError(field, { type: 'server', message });
+            mapped = true;
+          }
+        }
+        if (mapped) return;
+      }
       toast.showToast(getLoginErrorMessage(error));
     }
   };
@@ -104,49 +100,7 @@ export function LoginForm() {
                 </Text>
               </View>
             ) : null}
-            <Controller
-              control={control}
-              name="email"
-              render={({ field, fieldState }) => (
-                <InputWithLabel
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  autoCorrect={false}
-                  error={fieldState.error?.message}
-                  icon="mail-outline"
-                  keyboardType="email-address"
-                  label="Email address"
-                  onBlur={field.onBlur}
-                  onChangeText={field.onChange}
-                  placeholder="you@example.com"
-                  required
-                  textContentType="emailAddress"
-                  value={field.value}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="password"
-              render={({ field, fieldState }) => (
-                <InputWithLabel
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  error={fieldState.error?.message}
-                  icon="lock-outline"
-                  label="Password"
-                  onBlur={field.onBlur}
-                  onChangeText={field.onChange}
-                  placeholder="Enter password"
-                  required
-                  secureTextEntry
-                  showPasswordToggle
-                  textContentType="password"
-                  value={field.value}
-                />
-              )}
-            />
+            <CredentialsFields control={control} />
 
             <AuthSubmitButton
               disabled={isSubmitting}

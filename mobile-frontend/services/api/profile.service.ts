@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPut } from '@/services/http';
+import { mapCustomerProfile, mapUserProfile } from './profile-mapping';
 
 import type {
   EmergencyContactPayload,
@@ -11,7 +12,11 @@ import type {
 export async function getProfile() {
   const response = await apiGet<MobileProfileOverview>('/mobile/profile');
 
-  return response.data;
+  return {
+    ...response.data,
+    profile: mapCustomerProfile(response.data.profile),
+    user: mapUserProfile(response.data.user),
+  };
 }
 
 function isLocalFileUri(value?: string) {
@@ -82,7 +87,7 @@ export async function updateProfile(payload: ProfileUpdatePayload) {
     ? await apiPost<MobileCustomerProfile>('/mobile/profile', body)
     : await apiPut<MobileCustomerProfile>('/mobile/profile', body);
 
-  return response.data;
+  return mapCustomerProfile(response.data);
 }
 
 export async function completeProfile(payload: ProfileCompletionPayload) {
@@ -90,7 +95,7 @@ export async function completeProfile(payload: ProfileCompletionPayload) {
     driving_intent: payload.drivingIntent,
   });
 
-  return response.data;
+  return mapCustomerProfile(response.data);
 }
 
 export async function saveEmergencyContact(payload: EmergencyContactPayload) {

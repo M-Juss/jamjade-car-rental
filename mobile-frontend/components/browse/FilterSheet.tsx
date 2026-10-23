@@ -16,13 +16,13 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareField, KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 
 import { themeColors } from '@/constants/theme';
 import type { Vehicle } from '@/types/browse';
@@ -137,7 +137,7 @@ export function FilterSheet({
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 justify-end">
         <Pressable
           accessibilityRole="button"
@@ -171,10 +171,10 @@ export function FilterSheet({
               <X size={22} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
           </View>
-          <ScrollView
+          <KeyboardFormScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
             className="shrink"
             contentContainerClassName="gap-4 pb-2">
             <View>
@@ -226,7 +226,7 @@ export function FilterSheet({
                   { label: 'Minimum', value: minPrice, setter: setMinPrice, placeholder: 'No minimum' },
                   { label: 'Maximum', value: maxPrice, setter: setMaxPrice, placeholder: 'No maximum' },
                 ].map(({ label, value, setter, placeholder }) => (
-                  <View key={label} className="min-w-0 flex-1">
+                  <KeyboardAwareField key={label} className="min-w-0 flex-1">
                     <Text className="font-sans mb-2 text-[13px] font-medium text-foreground">{label}</Text>
                     <TextInput
                       accessibilityLabel={`${label} daily price in pesos`}
@@ -240,7 +240,7 @@ export function FilterSheet({
                       placeholderTextColor={themeColors.subtleForeground}
                       className="font-sans min-h-11 rounded-xl border border-border bg-surface px-3 text-[14px] text-foreground"
                     />
-                  </View>
+                  </KeyboardAwareField>
                 ))}
               </View>
               {priceError && (
@@ -333,7 +333,7 @@ export function FilterSheet({
                 ))}
               </View>
               </View>
-          </ScrollView>
+          </KeyboardFormScrollView>
           <View className="gap-2 border-t border-border pt-3">
             <Pressable
               accessibilityRole="button"

@@ -3,9 +3,15 @@
 namespace App\Http\Resources;
 
 use App\Enums\BookingStatus;
+use App\Enums\RentalType;
 use App\Models\CustomerDocument;
+use App\Services\BookingAttentionService;
 use App\Services\BookingGeofenceService;
+use App\Services\BookingReturnService;
+use App\Services\LocationMonitoringService;
 use App\Services\RentalReadinessService;
+use App\Services\TelematicsCalibrationService;
+use App\Services\TelematicsOperatorService;
 use App\Support\PublicStorageUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -17,16 +23,17 @@ class BookingResource extends JsonResource
     {
         // Booking details are normalized into focused child tables. Load them once
         // so the existing API response remains stable without N+1 accessor queries.
-        $this->resource->loadMissing(['assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession']);
+        $this->resource->loadMissing(['assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'telematicsSetupSession', 'cancellation']);
 
         if ($this->relationLoaded('additionalCharges')) {
             $this->additionalCharges->loadMissing('payments');
         }
 
         $isManagement = (bool) $request->user()?->can('manage bookings');
+        $telematicsSupported = app(TelematicsOperatorService::class)->supports($this->resource);
         $hasMonitoringDetails = $isManagement && $this->relationLoaded('bookingGeofences')
-            && $this->rental_type->value === 'self_drive';
-        $isDriverView = $request->user()?->id === $this->assigned_driver_id
+            && $telematicsSupported;
+        $isDriverView = (int) $request->user()?->id === (int) $this->assignment?->driver_id
             && $request->user()?->id !== $this->user_id;
         $vehicle = $this->whenLoaded('vehicle');
         $payments = $this->whenLoaded('payments', fn () => $this->payments, collect());
@@ -36,6 +43,18 @@ class BookingResource extends JsonResource
 
         return [
             'backendId' => $this->id,
+            'canReviewCancellationRefund' => $isManagement && ($request->user()?->hasRole('admin') ?? false),
+            'cancellation' => $this->when(! $isDriverView, fn () => $this->cancellation ? [
+                'kind' => $this->cancellation->kind,
+                'reason' => $this->cancellation->reason,
+                'refundAmount' => $this->cancellation->refund_amount === null ? null : (float) $this->cancellation->refund_amount,
+                'refundStatus' => $this->cancellation->refunded_at ? 'refunded'
+                    : ($this->cancellation->reviewed_at ? ((float) $this->cancellation->refund_amount > 0 ? 'approved' : 'declined')
+                        : (in_array($this->cancellation->kind, ['no_show', 'payment_deadline'], true) ? 'not_eligible' : 'pending_review')),
+                'refundReason' => $this->cancellation->refund_reason,
+                'reviewedAt' => $this->cancellation->reviewed_at?->toISOString(),
+                'refundedAt' => $this->cancellation->refunded_at?->toISOString(),
+            ] : null),
             'id' => $this->booking_code,
             'bookingCode' => $this->booking_code,
             'status' => $this->status->mobileLabel(),
@@ -43,11 +62,13 @@ class BookingResource extends JsonResource
             'adminStatus' => $this->status->adminLabel(),
             'vehicleId' => (string) $this->vehicle_id,
             'vehicleName' => $this->vehicle?->name,
+            'vehiclePlateNumber' => $this->when($isManagement || $isDriverView, fn () => $this->vehicle?->plate_number),
             'brand' => $this->vehicle?->brand,
             'model' => $this->vehicle?->model,
+            'color' => $this->vehicle?->color,
             'image' => PublicStorageUrl::make($image),
-            'rentalDate' => $this->rental_start_at?->format('F j, Y - g:i A'),
-            'returnDate' => $this->rental_end_at?->format('F j, Y - g:i A'),
+            'rentalDate' => $this->rental_start_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A'),
+            'returnDate' => $this->rental_end_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A'),
             'rentalStartAt' => $this->rental_start_at?->toISOString(),
             'rentalEndAt' => $this->rental_end_at?->toISOString(),
             'duration' => $this->duration_days,
@@ -72,20 +93,32 @@ class BookingResource extends JsonResource
                 'name' => $this->assignedDriver->name,
                 'phoneNumber' => $this->assignedDriver->phone_number,
             ] : null,
-            'driverAssignedAt' => $this->driver_assigned_at?->toISOString(),
-            'telematicsSetupStatus' => $this->telematicsSetupSession?->status?->value,
+            'driverAssignedAt' => $this->assignment?->assigned_at?->toISOString(),
+            'telematicsSetupStatus' => app(TelematicsCalibrationService::class)->effectiveStatus($this->telematicsSetupSession)?->value,
             'telematicsHandover' => $this->when(
-                $isManagement && $this->rental_type->value === 'self_drive',
+                $isManagement && $telematicsSupported,
                 fn () => new TelematicsHandoverResource($this->resource)
             ),
             'monitoringZones' => $this->when($hasMonitoringDetails,
                 fn () => BookingGeofenceResource::collection(app(BookingGeofenceService::class)->zonesFor($this->resource))),
             'canManageMonitoringZones' => $isManagement && ($request->user()?->hasRole('admin') ?? false)
-                && $this->rental_type->value === 'self_drive' && in_array($this->status->value, ['pending', 'confirmed'], true) && ! $this->started_at,
+                && $telematicsSupported && in_array($this->status->value, ['pending', 'confirmed'], true) && ! $this->started_at,
             'geofenceActivity' => $this->when($hasMonitoringDetails, fn () => $this->telematicsEvents()->whereIn('event_type', ['geofence_enter', 'geofence_exit'])->orderByDesc('occurred_at')->limit(30)->get()->map(fn ($event) => [
                 'id' => (string) $event->id, 'type' => $event->event_type->value, 'zoneName' => $event->metadata['zone_name'] ?? 'Monitoring zone',
                 'notificationRequested' => $event->metadata['notification_requested'] ?? false, 'occurredAt' => $event->occurred_at?->toISOString(),
             ])),
+            'lateReturn' => $this->when(! $isDriverView, function () use ($isManagement) {
+                $details = app(BookingReturnService::class)->estimate($this->resource);
+                if (! $isManagement) {
+                    // Responsible charges already have their own owner-scoped resource.
+                    $details['approvedAmount'] = null;
+                }
+
+                return $details;
+            }),
+            'attention' => app(BookingAttentionService::class)->state($this->resource),
+            'returnFollowUps' => $this->when($isManagement, fn () => $this->events->where('event_type', 'return_follow_up')->sortByDesc('created_at')->take(20)->map(fn ($event) => ['note' => $event->reason, 'recordedAt' => $event->created_at->toISOString()])->values()),
+            'upcomingBookings' => $this->when($isManagement && $this->relationLoaded('vehicleInspections'), fn () => app(BookingAttentionService::class)->upcomingBookings($this->resource)),
             'returnedAt' => $this->returned_at?->toISOString(),
             'completedAt' => $this->completed_at?->toISOString(),
             'returnChargesFinalizedAt' => $this->return_charges_finalized_at?->toISOString(),
@@ -120,8 +153,8 @@ class BookingResource extends JsonResource
             'paymentStatusKey' => $isDriverView ? null : $this->payment_status->value,
             'paymentMethod' => $isDriverView ? 'N/A' : ($latestPayment?->payment_method ?? 'N/A'),
             'transactionId' => $isDriverView ? 'N/A' : ($latestPayment?->transaction_id ?? 'N/A'),
-            'paidAt' => $isDriverView ? 'N/A' : ($latestPayment?->paid_at?->format('F j, Y - g:i A') ?? 'N/A'),
-            'createdAt' => $this->created_at?->format('F j, Y - g:i A'),
+            'paidAt' => $isDriverView ? 'N/A' : ($latestPayment?->paid_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? 'N/A'),
+            'createdAt' => $this->created_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A'),
             'notes' => $this->notes,
             'adminNotes' => $this->when($isManagement, $this->admin_notes),
             'documents' => $isDriverView ? [] : $this->documentSummary(),
@@ -163,12 +196,21 @@ class BookingResource extends JsonResource
                     ? $this->vehicleInspections->contains(fn ($inspection) => $inspection->type->value === 'incoming' && $inspection->status->value === 'finalized')
                     : (bool) ($this->incoming_finalized ?? false),
             ],
-            'customer' => $this->whenLoaded('user', function () use ($isManagement, $request) {
+            'sharedVehicleLocation' => $this->when(
+                $this->rental_type === RentalType::OwnersDriver
+                    && (int) $request->user()?->id === (int) $this->user_id
+                    && $this->relationLoaded('telematicsTrips')
+                    && $this->relationLoaded('telematicsSetupSession')
+                    && $this->relationLoaded('returnRecord'),
+                fn () => app(LocationMonitoringService::class)
+                    ->sharedVehicleLocationForCustomer($this->resource, $request->user())
+            ),
+            'customer' => $this->whenLoaded('user', function () use ($isManagement, $isDriverView, $request) {
                 if ($isManagement || $request->user()?->id === $this->user_id) {
                     return new UserResource($this->user);
                 }
 
-                if ($request->user()?->id === $this->assigned_driver_id) {
+                if ($isDriverView) {
                     return [
                         'name' => $this->user->name,
                         'phoneNumber' => $this->user->phone_number,
@@ -204,31 +246,31 @@ class BookingResource extends JsonResource
             [
                 'title' => 'Booking Submitted',
                 'description' => 'Your booking request has been submitted.',
-                'timestamp' => $this->created_at?->format('F j, Y - g:i A') ?? '',
+                'timestamp' => $this->created_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
                 'completed' => true,
             ],
             [
                 'title' => 'Booking Confirmed',
                 'description' => 'Your booking has been confirmed.',
-                'timestamp' => $this->confirmed_at?->format('F j, Y - g:i A') ?? '',
+                'timestamp' => $this->confirmed_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
                 'completed' => in_array($this->status, [BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Returned, BookingStatus::Completed], true),
             ],
             [
                 'title' => 'Rental Active',
                 'description' => 'Your rental is currently active.',
-                'timestamp' => $this->started_at?->format('F j, Y - g:i A') ?? '',
+                'timestamp' => $this->started_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
                 'completed' => in_array($this->status, [BookingStatus::Ongoing, BookingStatus::Returned, BookingStatus::Completed], true),
             ],
             [
                 'title' => 'Vehicle Returned',
                 'description' => 'The vehicle return and Incoming Inspection are complete.',
-                'timestamp' => $this->returned_at?->format('F j, Y - g:i A') ?? '',
+                'timestamp' => $this->returned_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
                 'completed' => in_array($this->status, [BookingStatus::Returned, BookingStatus::Completed], true),
             ],
             [
                 'title' => 'Completed',
                 'description' => 'Your rental has been completed.',
-                'timestamp' => $this->completed_at?->format('F j, Y - g:i A') ?? '',
+                'timestamp' => $this->completed_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
                 'completed' => $this->status === BookingStatus::Completed,
             ],
         ];
@@ -239,7 +281,7 @@ class BookingResource extends JsonResource
                 [
                     'title' => 'Booking Rejected',
                     'description' => $this->admin_notes ?: 'Your booking was rejected.',
-                    'timestamp' => $this->rejected_at?->format('F j, Y - g:i A') ?? '',
+                    'timestamp' => $this->rejected_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
                     'completed' => true,
                 ],
             ];
@@ -249,7 +291,7 @@ class BookingResource extends JsonResource
             $items[] = [
                 'title' => 'Booking Cancelled',
                 'description' => $this->admin_notes ?: 'This booking was cancelled.',
-                'timestamp' => $this->cancelled_at?->format('F j, Y - g:i A') ?? '',
+                'timestamp' => $this->cancelled_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
                 'completed' => true,
             ];
         }

@@ -3,12 +3,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarClock } from "lucide-react";
 import { useCallback, useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/forms/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { Button } from "@/components/ui/button";
+import { MaintenanceScheduleDateField } from "./MaintenanceScheduleDateField";
 import { Dialog } from "@/components/ui/dialog";
 import { appToast } from "@/lib/toast";
 import { scheduleMaintenance, type MaintenancePlan } from "@/services/maintenance";
@@ -19,6 +20,7 @@ import {
 } from "@/validations/maintenance/schemas";
 import {
   applyMaintenanceServerErrors,
+  getMaintenanceScheduleDateLimits,
   maintenanceCategoryOptions,
   scheduleMaintenanceDefaults,
 } from "../form-support";
@@ -31,7 +33,6 @@ const serverFieldMap = {
   scheduled_start: "scheduledStart",
   scheduled_end: "scheduledEnd",
   service_provider: "serviceProvider",
-  description: "description",
   notes: "notes",
 } as const;
 
@@ -69,6 +70,8 @@ export function ScheduleMaintenanceDialog({
     defaultValues: defaults(),
   });
   const isPlanSchedule = Boolean(initialPlan);
+  const scheduledStart = useWatch({ control: form.control, name: "scheduledStart" });
+  const dateLimits = getMaintenanceScheduleDateLimits(scheduledStart);
 
   useEffect(() => {
     if (open) form.reset(defaults());
@@ -109,118 +112,136 @@ export function ScheduleMaintenanceDialog({
           noValidate
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2">
-            {isPlanSchedule ? (
-              <>
-                <InputWithLabel
-                  id="maintenance-schedule-plan-vehicle"
-                  label="Vehicle"
-                  readOnly
-                  value={initialPlan?.vehicle?.name ?? ""}
-                />
-                <InputWithLabel
-                  id="maintenance-schedule-plan-category"
-                  label="Category"
-                  readOnly
-                  value={initialPlan?.categoryLabel ?? ""}
-                />
-                <InputWithLabel
-                  id="maintenance-schedule-plan-name"
-                  label="Maintenance Name"
-                  readOnly
-                  wrapperClassName="sm:col-span-2"
-                  value={initialPlan?.name ?? ""}
-                />
-                <div className="grid w-full gap-1.5 sm:col-span-2">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-subtle-foreground">Description</p>
-                  <p className="min-h-20 whitespace-pre-wrap rounded-xl border border-border bg-background px-3 py-2.5 text-[12.5px] text-foreground">
-                    {initialPlan?.description || ""}
-                  </p>
+          <div className="grid flex-1 gap-6 overflow-y-auto px-6 py-5 md:grid-cols-2">
+            <section className="space-y-3 md:col-span-2" aria-labelledby="maintenance-schedule-details-heading">
+              <h2 id="maintenance-schedule-details-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                Maintenance Details
+              </h2>
+              {isPlanSchedule ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <InputWithLabel
+                    id="maintenance-schedule-plan-vehicle"
+                    label="Vehicle"
+                    readOnly
+                    value={initialPlan?.vehicle?.name ?? ""}
+                  />
+                  <InputWithLabel
+                    id="maintenance-schedule-plan-category"
+                    label="Category"
+                    readOnly
+                    value={initialPlan?.categoryLabel ?? ""}
+                  />
+                  <InputWithLabel
+                    id="maintenance-schedule-plan-name"
+                    label="Maintenance Name"
+                    readOnly
+                    wrapperClassName="md:col-span-2"
+                    value={initialPlan?.name ?? ""}
+                  />
                 </div>
-              </>
-            ) : (
-              <>
-                <Controller
-                  control={form.control}
-                  name="vehicleId"
-                  render={({ field }) => (
-                    <SelectWithLabel
-                      id="maintenance-schedule-vehicle"
-                      label="Vehicle"
-                      required
-                      options={vehicles.map((vehicle) => ({ value: vehicle.id, label: vehicle.name }))}
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                      disabled={Boolean(fixedVehicleId)}
-                      error={form.formState.errors.vehicleId?.message}
-                    />
-                  )}
-                />
-                <Controller
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <SelectWithLabel
-                      id="maintenance-schedule-category"
-                      label="Category"
-                      required
-                      options={[...maintenanceCategoryOptions]}
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                      error={form.formState.errors.category?.message}
-                    />
-                  )}
-                />
-                <InputWithLabel
-                  id="maintenance-schedule-title"
-                  label="Maintenance Name"
-                  required
-                  wrapperClassName="sm:col-span-2"
-                  error={form.formState.errors.title?.message}
-                  {...form.register("title")}
-                />
-                <TextAreaWithLabel
-                  id="maintenance-schedule-description"
-                  label="Description (Optional)"
-                  wrapperClassName="sm:col-span-2"
-                  error={form.formState.errors.description?.message}
-                  {...form.register("description")}
-                />
-              </>
-            )}
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Controller
+                    control={form.control}
+                    name="vehicleId"
+                    render={({ field }) => (
+                      <SelectWithLabel
+                        id="maintenance-schedule-vehicle"
+                        label="Vehicle"
+                        required
+                        options={vehicles.map((vehicle) => ({ value: vehicle.id, label: vehicle.name }))}
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                        disabled={Boolean(fixedVehicleId)}
+                        error={form.formState.errors.vehicleId?.message}
+                      />
+                    )}
+                  />
+                  <Controller
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <SelectWithLabel
+                        id="maintenance-schedule-category"
+                        label="Category"
+                        required
+                        options={[...maintenanceCategoryOptions]}
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                        error={form.formState.errors.category?.message}
+                      />
+                    )}
+                  />
+                  <InputWithLabel
+                    id="maintenance-schedule-title"
+                    label="Maintenance Name"
+                    required
+                    wrapperClassName="md:col-span-2"
+                    error={form.formState.errors.title?.message}
+                    {...form.register("title")}
+                  />
+                </div>
+              )}
+            </section>
 
-            <InputWithLabel
-              id="maintenance-schedule-start"
-              label="Start Date"
-              required
-              type="date"
-              error={form.formState.errors.scheduledStart?.message}
-              {...form.register("scheduledStart")}
-            />
-            <InputWithLabel
-              id="maintenance-schedule-end"
-              label="Expected End Date"
-              required
-              type="date"
-              error={form.formState.errors.scheduledEnd?.message}
-              {...form.register("scheduledEnd")}
-            />
-            <InputWithLabel
-              id="maintenance-schedule-provider"
-              label="Service Provider (Optional)"
-              wrapperClassName="sm:col-span-2"
-              error={form.formState.errors.serviceProvider?.message}
-              {...form.register("serviceProvider")}
-            />
-            <TextAreaWithLabel
-              id="maintenance-schedule-notes"
-              label="Internal Notes (Optional)"
-              wrapperClassName="sm:col-span-2"
-              error={form.formState.errors.notes?.message}
-              {...form.register("notes")}
-            />
+            <section className="space-y-3 border-t border-border pt-5 md:col-span-2" aria-labelledby="maintenance-schedule-dates-heading">
+              <h2 id="maintenance-schedule-dates-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                Schedule
+              </h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Controller
+                  control={form.control}
+                  name="scheduledStart"
+                  render={({ field, fieldState }) => (
+                    <MaintenanceScheduleDateField
+                      {...field}
+                      id="maintenance-schedule-start"
+                      label="Start Date"
+                      required
+                      min={dateLimits.start}
+                      error={fieldState.error?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  control={form.control}
+                  name="scheduledEnd"
+                  render={({ field, fieldState }) => (
+                    <MaintenanceScheduleDateField
+                      {...field}
+                      id="maintenance-schedule-end"
+                      label="Expected End Date"
+                      required
+                      min={dateLimits.end}
+                      error={fieldState.error?.message}
+                    />
+                  )}
+                />
+              </div>
+            </section>
+
+            <section className="space-y-3 border-t border-border pt-5 md:col-span-2" aria-labelledby="maintenance-schedule-notes-heading">
+              <h2 id="maintenance-schedule-notes-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                Notes
+              </h2>
+              <InputWithLabel
+                id="maintenance-schedule-provider"
+                label="Service Provider (Optional)"
+                wrapperClassName="md:col-span-2"
+                error={form.formState.errors.serviceProvider?.message}
+                {...form.register("serviceProvider")}
+              />
+              <TextAreaWithLabel
+                id="maintenance-schedule-notes"
+                label="Internal Notes (Optional)"
+                wrapperClassName="md:col-span-2"
+                error={form.formState.errors.notes?.message}
+                {...form.register("notes")}
+              />
+            </section>
+
             {form.formState.errors.root?.message ? (
-              <p className="text-[11px] font-medium text-destructive sm:col-span-2">{form.formState.errors.root.message}</p>
+              <p className="text-[11px] font-medium text-destructive md:col-span-2">{form.formState.errors.root.message}</p>
             ) : null}
           </div>
           <FormDialogFooter>

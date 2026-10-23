@@ -88,7 +88,7 @@ it('queues the confirmation email when an uploaded payment completes the booking
     );
 });
 
-it('does not queue a confirmation email for a partial uploaded payment', function () {
+it('sends a payment receipt even when an uploaded payment leaves a balance', function () {
     Mail::fake();
     Storage::fake('local');
 
@@ -101,7 +101,10 @@ it('does not queue a confirmation email for a partial uploaded payment', functio
     ]);
 
     expect($booking->fresh()->payment_status)->toBe(PaymentStatus::Partial)
-        ->and($booking->fresh()->confirmation_email_status)->toBeNull();
+        ->and($booking->fresh()->confirmation_email_status)->toBe('queued');
 
-    Mail::assertNothingSent();
+    Mail::assertSent(BookingConfirmationMail::class, fn (BookingConfirmationMail $mail) => $mail->document->context['receipt']['amount'] === 500
+        && $mail->document->context['payment']['amountPaid'] === 2000
+        && $mail->document->context['payment']['remainingBalance'] === 1500
+        && count($mail->attachments()) === 2);
 });

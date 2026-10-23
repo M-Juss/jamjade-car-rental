@@ -41,6 +41,7 @@ function mapVehicle(record: MobileVehicleRecord): Vehicle {
     : imageUrls;
 
   return {
+    lateReturnPolicy: record.lateReturnPolicy,
     id: String(record.id),
     name: record.name,
     brand: record.brand,

@@ -4,13 +4,16 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 import '../global.css';
 import '@/services/telematics/background-location';
 
 import { fontFamilies, mobileFontAssets } from '@/constants/fonts';
 import { themeColors } from '@/constants/theme';
-import { AuthProvider } from '@/providers/AuthProvider';
+import { AuthProvider, useAuth } from '@/providers/AuthProvider';
+import { isResearchAdmin } from '@/lib/auth/mobile-access';
+import { useLocationMonitoringLifecycle } from '@/hooks/telematics/useLocationMonitoring';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -36,6 +39,46 @@ const JamJadeNavigationTheme = {
   },
 };
 
+function RootNavigator() {
+  const { status, user, onboardingRoute } = useAuth();
+  useLocationMonitoringLifecycle(status === 'authenticated' ? user?.id ?? null : null);
+  const researchAdmin = status === 'authenticated' && isResearchAdmin(user);
+
+  if (status === 'loading') {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator color={themeColors.primary} size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)" />
+      <Stack.Protected guard={researchAdmin}>
+        <Stack.Screen name="rc-research" />
+      </Stack.Protected>
+      <Stack.Protected guard={!researchAdmin}>
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(driver)" />
+        <Stack.Screen name="driver-payment" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'authenticated' && user?.roles?.includes('driver') === true}>
+        <Stack.Screen name="driver-telematics" />
+      </Stack.Protected>
+      <Stack.Protected guard={!researchAdmin && (status !== 'authenticated' || onboardingRoute === null)}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="vehicles" />
+        <Stack.Screen name="browse" />
+        <Stack.Screen name="bookings" />
+        <Stack.Screen name="telematics" />
+        <Stack.Screen name="profile" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(mobileFontAssets);
 
@@ -52,18 +95,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ThemeProvider value={JamJadeNavigationTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(driver)" options={{ headerShown: false }} />
-          <Stack.Screen name="vehicles" options={{ headerShown: false }} />
-          <Stack.Screen name="browse" options={{ headerShown: false }} />
-          <Stack.Screen name="bookings" options={{ headerShown: false }} />
-          <Stack.Screen name="profile" options={{ headerShown: false }} />
-          <Stack.Screen name="driver-payment" options={{ headerShown: false }} />
-        </Stack>
+        <RootNavigator />
         <StatusBar />
       </ThemeProvider>
     </AuthProvider>

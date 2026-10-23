@@ -62,12 +62,15 @@ it('renders the booking confirmation as exactly two A4 pages', function () {
 
     $pdf = app(BookingConfirmationPdfService::class)->make($booking);
     $output = $pdf->output();
-    $html = view('pdf.bookings.successful-booking', [
+    $html = view('pdf.bookings.rental-information', [
         'booking' => $booking,
         'confirmation' => app(BookingConfirmationViewData::class)->make($booking),
     ])->render();
 
     expect($output)->toStartWith('%PDF-')
+        ->toContain('/BaseFont /NotoSans-Regular')
+        ->toContain('/BaseFont /NotoSans-Bold')
+        ->toContain('/FontFile2')
         ->and(strlen($output))->toBeGreaterThan(10_000)
         ->and($pdf->getDomPDF()->getCanvas()->get_page_count())->toBe(2)
         ->and($html)->toContain('Confirmed')
@@ -89,8 +92,19 @@ it('renders the booking confirmation as exactly two A4 pages', function () {
         ->and($html)->toContain("Terms and Conditions for Renting a Car with Owner's Driver")
         ->and($html)->toContain('Telematics must be active while the vehicle is in motion')
         ->and($html)->not->toContain('Official Receipt')
+        ->and($html)->not->toContain('Rental Confirmation')
+        ->and($html)->not->toContain('accent-line')
+        ->and($pdf->download(app(BookingConfirmationPdfService::class)->filename($booking))->headers->get('Content-Disposition'))
+        ->toContain('BK-PDF-001 | Confirmed | Rental Information.pdf')
         ->and($html)->not->toContain('Jamjade Representative Confirmation');
 });
+
+it('names the confirmation using the booking reference and displayed status', function (BookingStatus $status) {
+    $booking = new Booking(['booking_code' => 'BK-20957', 'status' => $status]);
+
+    expect(app(BookingConfirmationPdfService::class)->filename($booking))
+        ->toBe('BK-20957 | '.$status->mobileLabel().' | Rental Information.pdf');
+})->with(BookingStatus::cases());
 
 it('derives paid status and balance from recorded payments', function () {
     $user = customerUser();
@@ -167,7 +181,7 @@ it('shows the assigned driver name and contact number in the confirmation', func
         'terms_accepted_at' => now(),
     ]);
 
-    $html = view('pdf.bookings.successful-booking', [
+    $html = view('pdf.bookings.rental-information', [
         'booking' => $booking,
         'confirmation' => app(BookingConfirmationViewData::class)->make($booking),
     ])->render();
@@ -206,7 +220,7 @@ it('hides driver information fields for self-drive bookings', function () {
         'terms_accepted_at' => now(),
     ]);
 
-    $html = view('pdf.bookings.successful-booking', [
+    $html = view('pdf.bookings.rental-information', [
         'booking' => $booking,
         'confirmation' => app(BookingConfirmationViewData::class)->make($booking),
     ])->render();

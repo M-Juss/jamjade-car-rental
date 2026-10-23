@@ -1,7 +1,8 @@
+import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { Controller, useForm, type FieldPath } from 'react-hook-form';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { AvatarUploader } from '@/components/onboarding/AvatarUploader';
 import { ProfileAddressFields, ProfileFormSheet } from '@/components/profile';
@@ -126,7 +127,7 @@ export function ProfilePersonalInformationForm({
       overlay={<FormToast message={message} onDismiss={clearToast} title={title} variant={variant} />}
       title="Edit Personal Information"
       visible={visible}>
-      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <KeyboardFormScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <AvatarUploader
           imageUri={form.profilePicture}
           initials={initials}
@@ -244,7 +245,7 @@ export function ProfilePersonalInformationForm({
             </Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </KeyboardFormScrollView>
     </ProfileFormSheet>
   );
 }

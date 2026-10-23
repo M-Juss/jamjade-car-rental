@@ -1,5 +1,5 @@
+import type { LateReturnPolicy } from '@/types/browse';
 import { themeColors } from '@/constants/theme';
-import { LogoutHeaderButton } from '@/components/auth/LogoutHeaderButton';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRootNavigationState, useRouter, type Href } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
@@ -53,6 +53,7 @@ function CheckoutScreen() {
   const selectedVehicleId = booking?.vehicleId ?? routeVehicleId;
   const { vehicle, isLoading, error, reload } = useVehicle(selectedVehicleId);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [termsPolicy, setTermsPolicy] = useState<LateReturnPolicy | null>(null);
 
   const restartBooking = useCallback(() => {
     resetBookingFlow(flowId);
@@ -123,7 +124,7 @@ function CheckoutScreen() {
     );
   }
 
-  if (!vehicle || !breakdown) {
+  if (!vehicle || !vehicle.lateReturnPolicy || !breakdown) {
     return (
       <ErrorState
         actionLabel={error ? 'Try Again' : 'Restart Booking'}
@@ -138,7 +139,7 @@ function CheckoutScreen() {
     booking.ownerDriverCoverage === 'outside_manila' ? 'Outside Manila' : 'Within Metro Manila';
 
   const handleSubmitSignature = (signature: string) => {
-    const nextFlow = submitBookingTerms(flowId, signature);
+    const nextFlow = submitBookingTerms(flowId, signature, termsPolicy ?? vehicle.lateReturnPolicy, breakdown);
 
     if (!nextFlow) {
       restartBooking();
@@ -165,11 +166,7 @@ function CheckoutScreen() {
             </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-title font-semibold text-foreground">Review Booking</Text>
-              <Text className="font-sans mt-1 text-[13px] font-normal text-secondary-foreground">
-                Confirm details and sign the rental terms
-              </Text>
             </View>
-            <LogoutHeaderButton />
           </View>
 
           <View className="mt-5">
@@ -189,6 +186,7 @@ function CheckoutScreen() {
               value={booking.pickupOption === 'shop' ? 'Shop Pickup' : 'Delivery'}
             />
             <DetailRow label="Pickup location" value={booking.pickupLocation} />
+            {booking.notes ? <DetailRow label="Note" value={booking.notes} /> : null}
             {booking.deliveryTime ? (
               <>
                 <DetailRow label="Pickup time" value={formatDeliveryTime(booking.deliveryTime)} />
@@ -216,7 +214,7 @@ function CheckoutScreen() {
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setIsTermsOpen(true)}
+              onPress={() => { setTermsPolicy(vehicle.lateReturnPolicy); setIsTermsOpen(true); }}
               className="mt-4 min-h-[54px] items-center justify-center rounded-full bg-primary">
               <Text className="font-sans text-[14px] font-semibold text-surface">
                 Read Terms and Conditions
@@ -227,6 +225,7 @@ function CheckoutScreen() {
       </ScrollView>
 
       <TermsSignatureModal
+        lateReturnPolicy={termsPolicy ?? vehicle.lateReturnPolicy}
         onClose={() => setIsTermsOpen(false)}
         onSubmit={handleSubmitSignature}
         visible={isTermsOpen}

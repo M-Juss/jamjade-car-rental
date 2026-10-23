@@ -18,7 +18,7 @@ class DriverBookingController extends Controller
         abort_unless($request->user()->hasRole('driver'), 403);
         $bookings = Booking::query()
             ->with([
-                'vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'vehicleInspections', 'telematicsTrips',
+                'vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'vehicleInspections', 'telematicsTrips',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser'),
             ])
             ->whereHas('assignment', fn ($query) => $query->where('driver_id', $request->user()->id))
@@ -31,7 +31,7 @@ class DriverBookingController extends Controller
     {
         abort_unless($request->user()->hasRole('driver'), 403);
         $record = Booking::query()
-            ->with(['vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'vehicleInspections', 'telematicsTrips',
+            ->with(['vehicle.images', 'vehicle.features', 'user', 'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'vehicleInspections', 'telematicsTrips',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser')])
             ->whereHas('assignment', fn ($query) => $query->where('driver_id', $request->user()->id))
             ->where(fn ($query) => $query->where('booking_code', $booking)->orWhere('id', $booking))

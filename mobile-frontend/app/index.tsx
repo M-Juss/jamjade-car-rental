@@ -1,17 +1,19 @@
 import { Redirect, Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Image, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { mobileLayout } from '@/constants/layout';
+import { themeColors } from '@/constants/theme';
 import { useAuth } from '@/providers/AuthProvider';
+import { getMobileHome } from '@/lib/auth/mobile-access';
 
 const welcomeTextScaleLimit = 1.3;
 
 export default function LandingScreen() {
   const router = useRouter();
-  const { status, user } = useAuth();
+  const { status, user, onboardingRoute } = useAuth();
   const insets = useSafeAreaInsets();
   const { fontScale, height, width } = useWindowDimensions();
   const [artworkSize, setArtworkSize] = useState({ width: 0, height: 0 });
@@ -39,8 +41,16 @@ export default function LandingScreen() {
     artworkSize.height - artworkHeight * 0.74,
   );
 
+  if (status === 'loading') {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator color={themeColors.primary} size="large" />
+      </View>
+    );
+  }
+
   if (status === 'authenticated') {
-    return <Redirect href={user?.roles?.includes('driver') ? '/(driver)/services' : '/(tabs)'} />;
+    return <Redirect href={getMobileHome(user, onboardingRoute)} />;
   }
 
   return (

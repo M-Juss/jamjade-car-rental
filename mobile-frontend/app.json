@@ -44,9 +44,18 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": "JamJade needs photo library access so you can upload clear document images.",
+          "savePhotosPermission": "JamJade saves payment receipts to your photo library when you choose Save receipt.",
+          "granularPermissions": [],
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "image": "./assets/images/JamJadeLogo-gradient.png",
+          "image": "./assets/images/JamJadeLogo-solid.png",
           "imageWidth": 260,
           "resizeMode": "contain",
           "backgroundColor": "#F8FAFF",

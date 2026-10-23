@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { mapUserProfile } from './profile-mapping';
 
 import {
   apiGet,
@@ -28,7 +29,7 @@ export async function login(payload: MobileLoginPayload) {
 
   await persistApiAuthToken(response.data.token);
 
-  return response.data;
+  return { ...response.data, user: mapUserProfile(response.data.user) };
 }
 
 export async function register(payload: MobileRegisterPayload) {
@@ -42,13 +43,13 @@ export async function register(payload: MobileRegisterPayload) {
 
   await persistApiAuthToken(response.data.token);
 
-  return response.data;
+  return { ...response.data, user: mapUserProfile(response.data.user) };
 }
 
 export async function getCurrentUser() {
   const response = await apiGet<MobileCurrentUserResponse>('/mobile/me');
 
-  return response.data.user;
+  return mapUserProfile(response.data.user);
 }
 
 export function restoreSession() {

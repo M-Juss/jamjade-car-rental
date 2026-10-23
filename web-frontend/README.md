@@ -22,10 +22,9 @@ Install dependencies from this directory:
 npm install
 ```
 
-There is currently no tracked `web-frontend/.env.example`. Create the ignored
-`.env.local` file locally with placeholder or environment-specific values for
-the names consumed by `src/services/http/config.ts`, `next.config.ts`, and the
-map components:
+Copy `.env.example` to the ignored `.env.local` and configure the values
+consumed by `src/services/http/config.ts`, `next.config.ts`, maps and Fleet
+Monitoring:
 
 ```dotenv
 NEXT_PUBLIC_BACKEND_API=http://localhost:8000
@@ -35,11 +34,49 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_browser_restricted_maps_key
 ```
 
 The web client uses the local API when the browser is on a loopback address and
-the tunnel URL for a non-loopback browser. Backend web routes are under `/admin`
+the tunnel URL for a non-loopback browser. Set
+`NEXT_PUBLIC_BACKEND_API_TUNNEL=same-origin` when Next.js proxies Laravel through
+the website's own origin; this supports multiple public website links without
+cross-origin session cookies. Backend web routes are under `/admin`
 and use the stateful Laravel session/cookie/CSRF flow; do not append `/api` to
 the web API base URL. The browser Maps key is public application configuration,
 but should still be restricted by origin and enabled APIs. Never commit real
 keys, session values, or user data.
+
+## Share the website through ngrok
+
+Keep Laravel running on port 8000 and Next.js on port 3000. Start the website
+tunnel with `ngrok http 3000` (replace an existing port-8000 tunnel rather than
+starting a competing endpoint for the same domain). Set
+`NEXT_PUBLIC_BACKEND_API_TUNNEL=same-origin`, and keep
+`BACKEND_URL=http://127.0.0.1:8000`. Restart Next.js after changing
+its environment file.
+
+In Laravel's ignored `.env`, append the public hostname without `https://` to
+`SANCTUM_STATEFUL_DOMAINS`, preserving local entries. Append the full public
+origin to `CORS_ALLOWED_ORIGINS`, keep `SESSION_DOMAIN=null`, and set
+`APP_DEBUG=false` while sharing publicly. Run `php artisan config:clear` from
+`backend/` afterward. Add the public origin to the browser Maps key's allowed
+referrers if the key is restricted to localhost.
+
+The proxy forwards management requests carrying the existing
+`X-Requested-With: XMLHttpRequest` header before resolving portal pages, so API
+requests and pages such as `/admin/personnel` can share a path. Mobile `/api/*`,
+public `/storage/*`, and `/paypal/*` callbacks are also forwarded to Laravel.
+An existing mobile tunnel URL can stay unchanged when the same public domain
+is moved from port 8000 to port 3000. Keep Expo and Laravel's LAN binding running;
+the mobile app's environment and bearer-token authentication do not change.
+
+Both applications use the same database. Keep the computer, Laravel, Next.js,
+and ngrok running while the URL is shared. Management pages still require an
+authorized Admin or Staff login. If the public domain changes, update both
+clients' tunnel settings and Laravel's allowed domains/origins.
+
+Use the same ngrok origin for mobile `EXPO_PUBLIC_BACKEND_TUNNEL_API` (with
+`/api` appended) and Laravel `PAYPAL_CALLBACK_ORIGIN` (without a path). Keep
+these values synchronized with Laravel's allowed domains/origins when the ngrok
+domain changes. Existing PayPal orders retain the return URLs sent when they
+were created.
 
 ## Run and build
 
@@ -59,8 +96,9 @@ npm run start
 npm run branding:sync
 ```
 
-`branding:sync` copies the website logo exports used by the mobile and backend
-assets. Native icon/splash consumers need a rebuild after an asset change.
+`branding:sync` uses `public/JamJadeLogo-solid.png` as the shared logo source, applies
+the solid primary color from `src/app/globals.css` while preserving transparency,
+and exports matching website, mobile, and backend branding assets. Native icon/splash consumers need a rebuild after an asset change.
 
 ## Authentication and portal boundaries
 
@@ -96,11 +134,11 @@ own workflow rules.
 
 ## Delivery, geofences, and verification
 
-Delivery pricing is admin-only: the garage point, minimum fee, included distance,
-and per-kilometre rate are maintained in Management → Delivery Pricing. Staff
-with `manage bookings` can review a customer-selected route when it needs toll
-review, approve a toll amount, or reject with a note. Quote expiry, route
-revalidation, and booking consistency remain Laravel rules. See
+Delivery pricing is admin-only. Pricing Settings edits the minimum fee, included
+distance and per-kilometre rate while preserving the backend garage point.
+Laravel automatically selects one driving estimate. There is no Toll Reviews
+queue; actual tolls use existing Additional Charges after Incoming Inspection.
+Accepted historical amounts stay fixed. See
 [`docs/delivery-pricing.md`](../docs/delivery-pricing.md).
 
 The geofence library's active circles/polygons and optional booking-specific
@@ -144,3 +182,14 @@ Useful domain references:
 - [`docs/geofence-monitoring.md`](../docs/geofence-monitoring.md)
 - [`docs/vehicle-condition-architecture.md`](../docs/vehicle-condition-architecture.md)
 - [`docs/maintenance-architecture.md`](../docs/maintenance-architecture.md)
+
+## Fleet Monitoring realtime connection
+
+Fleet Monitoring uses the shared Google Maps loader, latest-only authorized
+reads and Laravel Echo/Reverb notifications. Configure the public Reverb values
+in `.env.example` to match Laravel; never expose `REVERB_APP_SECRET`. Run the
+Reverb server and its dedicated queue worker as described in
+[the map and realtime guide](../docs/fleet-monitoring-realtime.md). HTTPS/tunnel
+websites require a reachable TLS WebSocket endpoint; loopback setup is for the
+local Mac website. The view reconciles current state every 30 seconds when
+visible and retains manual Refresh if realtime transport is unavailable.

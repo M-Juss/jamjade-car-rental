@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MaintenanceModule } from "@/modules/management/maintenance/MaintenanceModule";
+import { VehicleMaintenanceHistory } from "@/modules/management/maintenance/VehicleMaintenanceHistory";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   CalendarClock,
@@ -228,7 +228,7 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
         </Link>
       </nav>
 
-      {section === "maintenance" && <MaintenanceModule fixedVehicleId={vehicleId} compact />}
+      {section === "maintenance" && vehicleId && <VehicleMaintenanceHistory key={vehicleId} vehicleId={vehicleId} />}
 
       {section !== "maintenance" && <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
@@ -281,8 +281,7 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
               ) : (
                 <div className="rounded-2xl border border-dashed border-border bg-background p-8 text-center">
                   <ClipboardCheck className="mx-auto text-primary" size={28} />
-                  <h2 className="mt-3 text-sm font-bold text-foreground">Initial vehicle condition has not been configured yet.</h2>
-                  <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">Create and sign the initial snapshot without recreating or editing the vehicle.</p>
+                  <h2 className="mt-3 text-sm font-bold text-foreground">No initial condition recorded.</h2>
                   <Button className="mt-4" onClick={() => setSetupOpen(true)}>Set Initial Condition</Button>
                 </div>
               )}
@@ -306,7 +305,7 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-border bg-background p-4 text-center">
-                    <p className="text-xs leading-5 text-muted-foreground">No initial condition snapshot has been configured.</p>
+                    <p className="text-xs leading-5 text-muted-foreground">No initial condition recorded.</p>
                     <Link href={`${vehiclePath}/${vehicleId}/condition`} className="mt-3 inline-flex rounded-xl bg-primary px-3 py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90">Set Initial Condition</Link>
                   </div>
                 )}

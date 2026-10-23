@@ -1,5 +1,11 @@
 "use client";
 
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
+
+import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
+import { TablePagination } from "@/components/common/tables/TablePagination";
+import { useTablePagination } from "@/components/common/tables/useTablePagination";
+
 import { getUserRoleNames } from "@/services/auth";
 import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -12,7 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { appToast } from "@/lib/toast";
 import { deleteGeofence, getGeofences, setGeofenceActive, type GeofenceRecord } from "@/services/geofence";
 import { GeofenceTemplateDialog } from "@/forms/geofence/GeofenceTemplateDialog";
@@ -22,8 +28,8 @@ type Filter = "all" | "active" | "inactive";
 
 function GeofenceShape({ record }: { record: GeofenceRecord }) {
   return record.geometryType === "circle"
-    ? <span className="inline-flex items-center gap-1.5"><Circle className="size-3.5" />Circle · {record.radiusMeters?.toLocaleString()} m</span>
-    : <span className="inline-flex items-center gap-1.5"><Fence className="size-3.5" />Polygon · {record.polygonCoordinates?.length ?? 0} points</span>;
+    ? <span className="inline-flex max-w-full items-center gap-1.5"><Circle className="size-3.5 shrink-0" />Circle · {record.radiusMeters?.toLocaleString()} m</span>
+    : <span className="inline-flex max-w-full items-center gap-1.5"><Fence className="size-3.5 shrink-0" />Polygon · {record.polygonCoordinates?.length ?? 0} points</span>;
 }
 
 function primaryCoordinates(record: GeofenceRecord) {
@@ -52,7 +58,7 @@ export function GeofenceLibraryModule() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      setRecords(await getGeofences(true));
+      setRecords(await getGeofences());
     } catch {
       setError("Monitoring zones could not be loaded. Check your access and try again.");
     } finally {
@@ -70,12 +76,15 @@ export function GeofenceLibraryModule() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return records.filter((record) => {
+      if (record.isDeleted) return false;
       const statusMatches = filter === "all"
         || (filter === "active" && record.isActive && !record.isDeleted)
         || (filter === "inactive" && !record.isActive && !record.isDeleted);
       return statusMatches && `${record.name} ${record.geometryType} ${record.createdBy?.name ?? ""}`.toLowerCase().includes(query);
     });
   }, [filter, records, search]);
+
+  const pagination = useTablePagination(filtered, `${search}|${filter}`);
 
   const activeCount = records.filter((record) => record.isActive && !record.isDeleted).length;
   const circleCount = records.filter((record) => record.geometryType === "circle" && !record.isDeleted).length;
@@ -99,11 +108,12 @@ export function GeofenceLibraryModule() {
     try {
       setIsDeleting(true);
       await deleteGeofence(deleteTarget.id);
-      appToast.success("Geofence moved to deleted zones.");
+      setRecords((current) => current.filter((record) => record.id !== deleteTarget.id));
+      appToast.success("Geofence deleted successfully.");
       setDeleteTarget(null);
       await load();
     } catch {
-      appToast.error("The monitoring zone could not be archived. Please try again.");
+      appToast.error("The geofence could not be deleted. Please try again.");
       await load();
     } finally {
       setIsDeleting(false);
@@ -116,10 +126,10 @@ export function GeofenceLibraryModule() {
   return (
     <section className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Geofence Library</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">Active default zones apply automatically to self-drive rentals at release. Changes affect future rentals.</p>
-        </div>
+        <ManagementPageHeading
+          title="Geofence Library"
+          description="Manage default monitoring zones for self-drive rentals."
+        />
         {canManage ? <Button type="button" onClick={openCreate}><Plus />Create Default Zone</Button> : null}
       </div>
 
@@ -143,17 +153,25 @@ export function GeofenceLibraryModule() {
       </Card>
 
       {loading ? <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 size-4 animate-spin" />Loading geofences</div> : (
-        <Card className="overflow-hidden rounded-2xl border-0 bg-surface shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-          <div className="overflow-x-auto">
+        <TableCard>
+          <div className="min-w-0">
             <Table>
+              <colgroup>
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "13%" }} />
+                <col />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "3rem" }} />
+              </colgroup>
               <TableHeader><TableRow className="border-b border-border bg-background hover:bg-background">
-                {["Name", "Shape", "Latitude", "Longitude", "Created By", "Status", "Action"].map((label) => <TableHead key={label} className="whitespace-nowrap px-4 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{label}</TableHead>)}
+                {["Name", "Shape", "Latitude", "Longitude", "Created By", "Status", "Action"].map((label) => <TableHead key={label} className="whitespace-normal px-4 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{label === "Action" || label === "Actions" ? <span className="sr-only">Actions</span> : label}</TableHead>)}
               </TableRow></TableHeader>
               <TableBody>
-                {filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="py-12 text-center text-[12px] text-muted-foreground">{records.length ? "No monitoring zones match this view." : "No default zones configured. Rentals can proceed without geofence alerts."}</TableCell></TableRow> : filtered.map((record) => {
-                  const deleted = record.isDeleted;
+                {filtered.length === 0 ? <TableRow><TableCell colSpan={7} className="py-12 text-center text-[12px] text-muted-foreground">{records.length ? "No monitoring zones match this view." : "No default zones configured. Rentals can proceed without geofence alerts."}</TableCell></TableRow> : pagination.rows.map((record) => {
                   const coordinates = primaryCoordinates(record);
-                  const actions: TableActionMenuItem[] = deleted || !canManage ? [
+                  const actions: TableActionMenuItem[] = !canManage ? [
                     { label: "View Geofence", icon: <Eye size={13} className="mr-2" />, onClick: () => setViewing(record) },
                   ] : [
                     { label: "View Geofence", icon: <Eye size={13} className="mr-2" />, onClick: () => setViewing(record) },
@@ -162,32 +180,33 @@ export function GeofenceLibraryModule() {
                     { label: "Delete", icon: <Trash2 size={13} className="mr-2" />, onClick: () => setDeleteTarget(record), separatorBefore: true, variant: "danger" },
                   ];
                   return <TableRow key={record.id} className="border-b border-background hover:bg-background">
-                    <TableCell className="px-4 py-3"><p className="text-[12.5px] font-semibold text-foreground">{record.name}</p></TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-[12px] text-muted-foreground"><GeofenceShape record={record} /></TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-[12px] text-muted-foreground">
+                    <TableCell data-label="Name" className="px-4 py-3"><p className="text-[12.5px] font-semibold text-foreground">{record.name}</p></TableCell>
+                    <TableCell data-label="Shape" className="whitespace-normal px-4 py-3 text-[12px] text-muted-foreground"><GeofenceShape record={record} /></TableCell>
+                    <TableCell data-label="Latitude" className="whitespace-normal px-4 py-3 text-[12px] text-muted-foreground">
                       {coordinates?.latitude?.toFixed(5) ?? "—"}
                       {record.geometryType === "polygon" && coordinates ? <p className="mt-0.5 text-[10.5px] text-muted-foreground">First point</p> : null}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-[12px] text-muted-foreground">
+                    <TableCell data-label="Longitude" className="whitespace-normal px-4 py-3 text-[12px] text-muted-foreground">
                       {coordinates?.longitude?.toFixed(5) ?? "—"}
                       {record.geometryType === "polygon" && coordinates ? <p className="mt-0.5 text-[10.5px] text-muted-foreground">First point</p> : null}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-[12px] text-muted-foreground">{record.createdBy?.name ?? "—"}</TableCell>
-                    <TableCell className="px-4 py-3"><Badge variant={deleted ? "outline" : record.isActive ? "default" : "secondary"}>{deleted ? "Deleted" : record.isActive ? "Active" : "Inactive"}</Badge></TableCell>
-                    <TableCell className="px-4 py-3"><TableActionMenu label={`Open actions for ${record.name}`} items={actions} /></TableCell>
+                    <TableCell data-label="Created By" className="whitespace-normal px-4 py-3 text-[12px] text-muted-foreground">{record.createdBy?.name ?? "—"}</TableCell>
+                    <TableCell data-label="Status" className="px-4 py-3"><Badge variant={record.isActive ? "default" : "secondary"}>{record.isActive ? "Active" : "Inactive"}</Badge></TableCell>
+                    <TableCell data-label="Actions" className="px-4 py-3"><TableActionMenu label={`Open actions for ${record.name}`} items={actions} /></TableCell>
                   </TableRow>;
                 })}
               </TableBody>
             </Table>
           </div>
-        </Card>
+        </TableCard>
       )}
+      {!loading && !error && <TablePagination {...pagination} label="Monitoring zones pagination" />}
 
       {canManage ? <GeofenceTemplateDialog key={editing?.id ?? "new"} open={dialogOpen} onOpenChange={setDialogOpen} record={editing} onSaved={() => void load()} /> : null}
       <GeofenceDetailsDialog key={viewing?.id ?? "view"} record={viewing} onClose={() => setViewing(null)} />
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open && !isDeleting) setDeleteTarget(null); }}>
         <AlertDialogContent className="max-w-[430px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
-          <AlertDialogHeader><AlertDialogTitle>Move Geofence to Deleted?</AlertDialogTitle><AlertDialogDescription>“{deleteTarget?.name}” will be soft-deleted and removed from the active library. Its stored record remains available for system history. Released rentals keep their saved zones and history.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Delete Geofence?</AlertDialogTitle><AlertDialogDescription>“{deleteTarget?.name}” will be removed from the library. Released rentals keep their saved zones and history.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel disabled={isDeleting}>Keep Template</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={isDeleting || Boolean(deleteTarget?.isDeleted)} onClick={(event) => { event.preventDefault(); void confirmDelete(); }}>{isDeleting ? "Deleting..." : "Delete"}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

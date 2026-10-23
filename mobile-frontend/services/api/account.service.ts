@@ -1,4 +1,5 @@
 import { apiPut } from '@/services/http';
+import { mapUserProfile } from './profile-mapping';
 import type { ChangeAccountPasswordInput, UpdateAccountEmailInput } from '@/validation/account/schemas';
 
 import type { MobileUser } from './types';
@@ -8,7 +9,7 @@ export async function updateAccountEmail(values: UpdateAccountEmailInput) {
     email: values.email,
     current_password: values.currentPassword,
   });
-  return response.data;
+  return mapUserProfile(response.data);
 }
 
 export async function changeAccountPassword(values: ChangeAccountPasswordInput) {

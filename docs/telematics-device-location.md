@@ -2,14 +2,14 @@
 
 ## Phase 3 boundary
 
-Phase 3 is a consent-led, pre-release readiness workflow for a renter's own Self Drive booking. The read model may describe an ongoing booking, but setup mutations are accepted only for the owning confirmed booking while its handover is `in_progress`. It implements only:
+Phase 3 is a consent-led, pre-release readiness workflow for both rental types. The owning Customer operates Self Drive; the currently assigned Driver operates With Assigned Driver. Setup mutations are accepted only for that current operator on a confirmed booking while handover is `in_progress`. Self Drive also requires approved Customer documents. It implements only:
 
 - device capability checks for accelerometer, gyroscope, and location services;
 - motion, foreground-location, and background-location permission readiness;
 - one explicit foreground GPS fix for setup quality;
 - renter confirmation that the phone is safely mounted.
 
-It does not subscribe to motion sensors, call `startLocationUpdatesAsync`, collect location in the background, persist a mobile location cache, upload telemetry, create a trip, perform calibration, or score driving. The background task is globally defined but deliberately inert; it cannot execute tracking work because no location updates are registered.
+The six readiness checks do not subscribe to motion sensors, call `startLocationUpdatesAsync`, collect location in the background, persist a mobile location cache, upload telemetry, create a trip, perform calibration, or score driving. The subsequent, separately consented [calibration stage](telematics-calibration.md) now subscribes to DeviceMotion only for bounded foreground captures. The background task is globally defined but deliberately inert; it cannot execute tracking work because no location updates are registered.
 
 ## Native dependencies and build context
 
@@ -28,15 +28,15 @@ For an EAS build, use the configured `development` profile through the team's au
 
 ## Permission and readiness sequence
 
-The screen explains each purpose before the renter selects **Check setup**. That single action runs the available checks in this order, showing each server-confirmed result and stopping at the first failure in standard mode:
+Before each initial or repeated **Check setup** run, the app opens a disclosure dialog explaining sensor availability, motion/location permissions (including background access and possible Settings navigation), the one GPS reading sent for quality validation and manual mount confirmation. An information icon appears beside its heading. When calibration has passing results, a warning beside Continue explains that rechecking resets calibration progress. Closing the dialog or selecting **Not now** starts no checks. **Continue** dismisses the dialog and starts the existing server-rechecked sequence; iOS waits for native modal dismissal before permission work. The dialog scrolls within safe-area bounds on small screens, while its actions remain visible. Continuing runs the available checks in this order, showing each server-confirmed result and stopping at the first failure in standard mode:
 
 1. Check device capabilities without subscribing to sensors.
 2. Request motion access where the platform exposes it. A denial or unavailable result fails only that step and provides retry/settings recovery.
 3. Request foreground location. A denial prevents later GPS operations.
-4. Request background location only after foreground access is granted. Android may route the renter to system settings. The app checks TaskManager availability and that the globally defined inert task exists, but does not register it for updates.
+4. Request background location only after foreground access is granted. Android may route the operator to system settings. The app checks TaskManager availability and that the globally defined inert task exists, but does not register it for updates.
 5. Obtain one fresh foreground location fix only after location services and foreground access are confirmed.
 6. Submit that fix for server-side GPS quality evaluation.
-7. Ask the renter to explicitly confirm a secure phone mount. This is a manual attestation, not holder detection or sensor-based mounting verification. Choosing **Not yet** submits `confirmed: false`; dismissing the confirmation submits no mount evidence.
+7. Ask the rental operator to explicitly confirm a secure phone mount. This is a manual attestation, not holder detection or sensor-based mounting verification. Choosing **Not yet** submits `confirmed: false`; dismissing the confirmation submits no mount evidence.
 
 Running **Check setup** again performs fresh checks from the beginning; already granted OS permissions do not imply a new permission grant. Leaving the tab stops further checks and submissions once any pending native operation returns. Local handover test mode may continue past real device failures as documented in the handover guide, but never invents evidence or a passed result.
 
@@ -52,6 +52,19 @@ Monitoring zones are managed exclusively through the website. Admin controls def
 
 ## Server contract and recovery
 
-`POST /mobile/bookings/{booking}/telematics-setup/steps/{step}/attempt` is restricted to the owning renter's eligible Self Drive booking and an `in_progress` setup session. It accepts typed evidence for only the six Phase 3 steps. `status` is prohibited in both the request and evidence; Laravel produces the recorded pass/fail result and appends retry history. Standard mode enforces dependencies in order, so callers cannot skip earlier checks; local/testing handover mode deliberately removes that prerequisite gate for flow testing.
+Phase 5 foreground sharing is separately consented after staff release; it
+does not start from these readiness checks. It uses only a foreground Location
+watch and encrypted latest-only updates, without background registration or
+motion subscriptions. See [foreground sharing](telematics-foreground-location.md)
+for permission reuse, stop/resume, quality, API and physical-test contracts.
 
-Failure is recoverable: the app shows the server reason or local permission/location failure, offers device Settings, and allows a new attempt. Business activity logs record the step and server result only—never raw coordinates or sensor payloads. In standard mode, the final calibration steps remain pending in this phase, therefore session status stays `in_progress` and Start Rental remains blocked. Local/testing handover mode may project release readiness from a real passing phone-mount attempt as documented in [the handover guide](telematics-handover-lifecycle.md); it still records no fabricated evidence.
+`POST /mobile/bookings/{booking}/telematics-setup/steps/{step}/attempt` is restricted to the owning Customer's Self Drive booking or the currently assigned Driver's With Assigned Driver booking, and an `in_progress` setup session. For device readiness it accepts typed evidence for the six Phase 3 steps; the five calibration types additionally use the strict consented summary contract described in the calibration guide. `status` is prohibited in both the request and evidence; Laravel produces the recorded pass/fail result and appends retry history. Standard mode enforces dependencies in order, so callers cannot skip earlier checks; local/testing handover mode deliberately removes that prerequisite gate for Self Drive flow testing.
+
+Failure is recoverable: the app shows the server reason or local permission/location failure, offers device Settings, and allows a new attempt. Business activity logs record the step and server result only—never raw coordinates or sensor payloads. Passing the six device checks alone leaves standard setup `in_progress`; the five subsequent calibration checks must also pass before Start Rental becomes eligible. Local/testing handover mode may project release readiness from a real passing phone-mount attempt as documented in [the handover guide](telematics-handover-lifecycle.md); it still records no fabricated evidence.
+
+Policy update — 2026-10-16: standard handover and mobile setup mutations now require current server time inside `[rental_start_at, rental_end_at)`, allowing collection on later booked days. This replaces the earlier same-calendar-date rule. Other payment, inspection, document and real-readiness requirements remain unchanged.
+
+Background rental collection follow-up — 2026-10-18: explicit post-release
+background GPS uses its own native task. The setup readiness task remains inert
+and setup still never starts active collection. See
+[background sharing](telematics-background-sharing.md).

@@ -14,7 +14,7 @@ class PaymentDeadlineService
 
     public function process(?CarbonInterface $now = null): array
     {
-        $now ??= now();
+        $now = ($now ?? now())->copy()->utc();
         $reminded = 0;
         $cancelled = 0;
 
@@ -34,7 +34,7 @@ class PaymentDeadlineService
                     sprintf(
                         'Pay PHP %s by %s to keep booking %s active.',
                         number_format((float) $booking->remaining_balance, 2),
-                        $booking->balance_due_at->format('F j, Y - g:i A'),
+                        $booking->balance_due_at->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A'),
                         $booking->booking_code
                     ),
                     [
@@ -75,6 +75,8 @@ class PaymentDeadlineService
                         'status' => BookingStatus::Cancelled,
                         'admin_notes' => $reason,
                     ])->save();
+
+                    app(BookingCancellationService::class)->record($booking, 'payment_deadline', $reason, null);
 
                     $booking->events()->create([
                         'event_type' => 'status_changed',

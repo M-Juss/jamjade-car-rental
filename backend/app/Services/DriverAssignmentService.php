@@ -63,7 +63,7 @@ class DriverAssignmentService
             return null;
         }
 
-        if ($booking->assigned_driver_id !== null) {
+        if ($booking->assignment()->exists()) {
             return $booking->assignedDriver;
         }
 
@@ -132,6 +132,16 @@ class DriverAssignmentService
     private function persistAssignment(Booking $booking, User $driver, ?User $actor = null): void
     {
         DB::transaction(function () use ($booking, $driver, $actor) {
+            // Match telematics setup/release lock order so assignment changes cannot
+            // race with evidence being recorded by the current operator.
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->rental_type !== RentalType::OwnersDriver
+                || ! in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed], true)) {
+                throw ValidationException::withMessages([
+                    'driver_id' => ['Drivers can only be assigned to With Assigned Driver bookings before the rental starts.'],
+                ]);
+            }
+
             // Serialize assignment writes with personnel deactivation and conversion.
             $driver = User::query()->lockForUpdate()->findOrFail($driver->id);
             $roles = $driver->roles()->lockForUpdate()->pluck('name');
@@ -140,14 +150,26 @@ class DriverAssignmentService
                     'driver_id' => ['The selected account is not an active Driver.'],
                 ]);
             }
+            if (! $this->isAvailableFor($driver, $booking)) {
+                throw ValidationException::withMessages([
+                    'driver_id' => ['This driver is already assigned to an overlapping booking.'],
+                ]);
+            }
+            if ($this->hasOutstandingBalance($driver)) {
+                throw ValidationException::withMessages([
+                    'driver_id' => ['This driver has an outstanding Driver-responsible balance and cannot receive a new assignment.'],
+                ]);
+            }
 
-            $previousDriver = $booking->assignedDriver;
+            $previousDriver = $booking->assignedDriver()->first();
             $booking->assignment()->updateOrCreate([], [
                 'driver_id' => $driver->id,
                 'assigned_at' => now(),
             ]);
             $booking->unsetRelation('assignment');
             $booking->unsetRelation('assignedDriver');
+            $booking->load(['assignment', 'assignedDriver']);
+            app(TelematicsSetupService::class)->refreshAfterOperatorChange($booking);
 
             if ($previousDriver && $previousDriver->id !== $driver->id) {
                 $this->notifications->createForUser($previousDriver, 'booking', 'Service assignment changed',

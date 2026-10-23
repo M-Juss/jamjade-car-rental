@@ -27,9 +27,13 @@ class DeliveryQuoteController extends Controller
         return $this->success('Resolved address.', $s->place($r->validated('place_id'), $r->validated('session_token')));
     }
 
-    public function routes(DeliveryRoutesRequest $r, DeliveryQuoteService $s)
+    public function store(DeliveryRoutesRequest $r, DeliveryQuoteService $s)
     {
-        return $this->success('Delivery route offers.', collect($s->routes($r->user(), $r->validated()))->map(fn ($item) => array_merge(['quote' => (new DeliveryQuoteResource($item['quote']))->resolve($r)], array_diff_key($item, ['quote' => true]))));
+        $result = $s->confirm($r->user(), $r->validated());
+
+        return $this->success('Delivery location confirmed.', [
+            ...$result, 'quote' => (new DeliveryQuoteResource($result['quote']))->resolve($r),
+        ]);
     }
 
     public function index(Request $r)
@@ -44,10 +48,10 @@ class DeliveryQuoteController extends Controller
         return $this->success('Delivery quote.', new DeliveryQuoteResource($quote));
     }
 
-    public function select(Request $r, DeliveryQuote $quote, DeliveryQuoteService $s)
+    public function estimate(Request $r, DeliveryQuote $quote, DeliveryQuoteService $s)
     {
-        Gate::authorize('select', $quote);
+        abort_unless($quote->user_id === $r->user()->id, 404);
 
-        return $this->success('Route selected.', new DeliveryQuoteResource($s->select($quote, $r->user())));
+        return $this->success('Current delivery estimate.', $s->currentEstimate($quote));
     }
 }

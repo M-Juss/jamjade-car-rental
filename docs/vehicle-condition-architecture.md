@@ -70,7 +70,7 @@ An `ongoing` booking is the authoritative active-rental blocker. The admin vehic
 
 ## Checklist definitions
 
-Backend checklist keys and labels are centralized in `App\Support\VehicleInspectionDefinition`. The admin web contract is centralized in `src/components/vehicle-inspection/definitions.ts`. Stored item labels are snapshot data and must not be rewritten if display wording changes later.
+Backend checklist keys and labels are read from the shared configuration library through VehicleInspectionDefinition. The web loads those definitions from /admin/vehicle-options; only category labels and body-panel/issue enums remain fixed locally. Every new inspection submission includes checklist_version, and stale or incomplete templates are rejected again inside the persistence transaction. Stored item labels are snapshot data and must not be rewritten if library wording changes later. See [vehicle configuration](vehicle-configuration.md) for option lifecycle and baseline handling.
 
 ## Body marker coordinate system
 
@@ -115,10 +115,15 @@ The existing `POST /admin/vehicles` contract now requires `initial_condition`. I
 
 ## Booking inspection rules
 
+- Outgoing finalization uses the shared rental-time rule for both rental types: `[rental_start_at, rental_end_at)` normally, plus early arrival on the same rental start date in Asia/Manila when a local/testing timing flag is enabled. Future dates and exact/elapsed return deadlines remain blocked. The service rechecks under the booking lock and before saving the finalized snapshot; rejection rolls back the snapshot and removes newly stored signatures. Existing finalized snapshots are preserved.
 - Outgoing copies the vehicle's finalized Current Condition and references it through `based_on_inspection_id`; finalizing Outgoing does not move the Current pointer.
 - Incoming copies the booking's finalized Outgoing snapshot. Finalizing Incoming atomically moves the vehicle's Current pointer to the new immutable Incoming snapshot.
 - Self Drive requires authenticated Jamjade personnel plus the customer signature captured on the personnel device.
 - Admin's Driver requires authenticated authorized Jamjade personnel plus the assigned Driver; the Customer does not sign these inspections.
 - Booking signatures belong to booking inspection snapshots, never to `vehicles`.
+- Self-drive **Finalize Inspection & Start Handover** commits the immutable inspection and the existing staff handover transition together. Failure rolls both back and removes new signature files; no phone checks are fabricated and Start Rental remains separate. Existing signed inspections can continue to Setup without replacement.
+- Booking forms place one shared acknowledgement above the personnel/operator signature cards. Both cards keep the existing heading and SignaturePad treatment without internal descriptions; phones stack the cards. Standalone single-signature forms keep their existing acknowledgement placement.
 - Inspection evidence never automatically assigns financial responsibility. Authorized personnel create separate customer- or Driver-responsible charges after Incoming finalization.
 - The complete lifecycle and readiness gates are documented in `docs/booking-rental-lifecycle.md`.
+
+Signature layout verification — 2026-10-18: reused VehicleConditionForm and SignaturePad; browser checks at desktop and 390 px verified equal card/pad dimensions, shared acknowledgement placement, capture/clear, required-field errors, Laravel-style `422`, server failure and successful submission using synthetic data. Lint, TypeScript, production build and diff checks passed. StoreBookingInspectionRequest/VehicleConditionRules were compared with bookingInspectionSchema/vehicleConditionSchema and the service mapping; fields and validation are unchanged, with no new differences introduced.

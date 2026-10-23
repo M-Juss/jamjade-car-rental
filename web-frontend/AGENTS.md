@@ -6,6 +6,8 @@ This file applies to all work inside `web-frontend/` and adds to the repository-
 
 The existing JamJade web application is the primary design and interaction reference. Treat its established components, layouts, styles, and behavior as product requirements, not as optional inspiration.
 
+The root guide's **Interface And User-Facing Copy** rules apply within the existing JamJade identity. Keep established layouts, typography, component shapes, card treatments, icons, and interactions. The requested refinement targets gradients and unnecessary copy, reminders, and explanations; it does not authorize a generic minimal redesign or removal of established visual treatments. Do not reintroduce gradients or verbose page descriptions. Reuse shared components and preserve domain behavior while refining the affected presentation within scope.
+
 ## Core Consistency Contract
 
 - Before creating or changing any user interface, inspect the closest existing implementation in the application.
@@ -47,6 +49,7 @@ Prefer a current, working, accessible implementation over an older inconsistent 
 Start discovery in these locations, then inspect the closest feature-specific implementation:
 
 - Theme, semantic colors, radii, and global typography: `src/app/globals.css` and `src/app/layout.tsx`
+- Management submodule page titles and concise purpose descriptions: `src/modules/management/shell/components/ManagementPageHeading.tsx`. Use this shared heading for each full management page; keep feature controls in the surrounding responsive header and embedded section headings local.
 - Base UI primitives: `src/components/ui/`
 - Labeled form controls: `src/components/common/forms/InputWithLabel.tsx`, `SelectWithLabel.tsx`, and `TextAreaWithLabel.tsx`
 - Management filters and searches: `src/components/common/forms/FilterSelect.tsx` and `SearchInput.tsx`
@@ -62,13 +65,16 @@ This list is a discovery map, not permission to copy blindly. The closest equiva
 
 ## Current Feature Boundaries
 
+- Vehicle choice lists and inspection definitions come from the Laravel configuration library. Read `../docs/vehicle-configuration.md` before changing Configure, vehicle option selection, or checklist templates. Do not restore form-local option management or duplicate the backend checklist in TypeScript.
+
 Keep these ownership and authorization boundaries aligned with the current routes and services:
 
 - The booking surface is composed by `src/modules/management/bookings/BookingsModule.tsx`. Data and mutations belong to `src/services/booking/`; action sequencing belongs to `booking-next-action.ts` and `booking-workflow.ts`; form bodies and workflow dialogs belong to `src/forms/booking/`; booking-specific display pieces belong beside the module under `src/modules/management/bookings/components/`. Keep route files under `src/app/admin/booking/` and `src/app/staff/booking/` as composition and access boundaries.
-- Delivery pricing is admin-only. `DeliveryPricingModule`, `src/forms/delivery/DeliveryPricingForm.tsx`, and the pricing methods in `src/services/delivery/delivery.service.ts` edit the garage point, minimum fee, included distance, and per-kilometre rate. Delivery quote and toll review is a booking operation: `DeliveryQuoteRequests` and `DeliveryQuoteReviewForm` are available to admin or staff users with `manage bookings`; review can approve with a staff-entered toll amount or reject with a note. The backend remains authoritative for quote expiry, route revalidation, and booking consistency. See `../docs/delivery-pricing.md`.
+- The admin pricing page is labeled Pricing Settings and shows Late Return Rates and Delivery Pricing together without tabs. Garage address and coordinates are not shown or submitted by this screen. Late-return prices, rate snapshots, receipt/review, and attention states are documented in `../docs/late-return-workflow.md`; follow its contract before changing this flow.
+- Delivery pricing is admin-only. `DeliveryPricingModule`, `src/forms/delivery/DeliveryPricingForm.tsx`, and `src/services/delivery/delivery.service.ts` edit only minimum fee, included distance and per-kilometre rate, preserving the backend garage point. Laravel automatically chooses one driving estimate; there is no Toll Reviews queue. Actual tolls use the existing Additional Charges flow after Incoming Inspection. Preserve historical accepted delivery/toll amounts. See `../docs/delivery-pricing.md`.
 - Geofence library mutations and booking monitoring-zone mutations are admin-only even though staff may have read or operational booking access. A booking may carry multiple default or custom monitoring circles/polygons before release. `Start Rental` freezes all booking zones and alert settings into the release snapshot; do not read editable defaults for a released rental, and do not make zone configuration or containment a setup or release gate. See `../docs/geofence-monitoring.md`.
 - Verification presents the current two requirements: `Driver's License` and UI `Proof of Address`. The API/storage key for the second is `proof_of_billing`; this is a naming boundary, not a third document. Passport is a legacy record that may remain readable but must not be offered for new uploads. Keep document labels and mapping in `src/services/verification/` synchronized with the mobile definitions and Laravel document contract.
-- Delivery route previews and geofence editors use `src/lib/google-maps.ts` as the shared `@googlemaps/js-api-loader` singleton. New map consumers must call `loadGoogleMaps` and use `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; do not add another `setOptions`/loader instance. The existing fleet map has local loader setup, so treat its convergence as scoped technical debt when that feature is changed.
+- Geofence editors use `src/lib/google-maps.ts` as the shared `@googlemaps/js-api-loader` singleton. New map consumers must call `loadGoogleMaps` and use `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; do not add another `setOptions`/loader instance. Fleet Monitoring now uses the same loader and advanced markers; preserve that singleton integration.
 
 For role and domain decisions, inspect `../docs/user-roles-and-access.md`, `../docs/booking-rental-lifecycle.md`, `../docs/delivery-pricing.md`, `../docs/geofence-monitoring.md`, `../docs/vehicle-condition-architecture.md`, and `../docs/maintenance-architecture.md` before changing a related feature.
 
@@ -144,6 +150,7 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 ### Tables And Data Lists
 
 - Use the table primitives from `src/components/ui/table.tsx` and the closest management table as the composition reference.
+- Display at most 10 records per management table page. Reuse `TABLE_PAGE_SIZE` from `src/lib/table-pagination.ts` for client pagination and server-paginated web requests; additional records belong on subsequent pages.
 - Match container card treatment, header height and typography, row density, cell padding, hover behavior, status badges, action placement, horizontal overflow, pagination, and empty/loading/error states.
 - Use `TableActionMenu` for equivalent row actions. Do not introduce a different action-menu style for a new table.
 - Preserve the responsive strategy of the closest table. A table must remain usable on small screens rather than relying on desktop width.
@@ -167,10 +174,15 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 - Match the closest page's established type role for page titles, descriptions, section titles, labels, body text, metadata, and values.
 - Do not create a new arbitrary font size, weight, line height, capitalization, or tracking treatment when an equivalent text role exists nearby.
 - Follow the application's concise administrative copy style and terminology. Reuse existing labels for the same concepts.
+- Preserve existing public landing, login/sign-in, and registration headings and descriptions unless the user explicitly requests copy changes there. Apply the concise-copy cleanup to management and authenticated operational screens; the solid-branding and timezone display rules still apply throughout.
+- Use a title and one concise purpose description for each full management module, followed by its data, controls, and actions. Do not add reminder panels, additional subtitles, extra labels, or tooltips for every new feature. Place necessary guidance beside the relevant control or state.
+- Every full management module must pass a short description to `ManagementPageHeading` explaining its general purpose or main capabilities. Use one direct sentence, usually 6–12 words. Keep rules, reminders, and action-specific instructions beside the relevant content instead of using them as the module description. The shared prop remains optional for other heading uses; do not render empty descriptions.
+- Place necessary instructions in the form body beside the relevant fields or actions, following the existing dialog-header restriction. Keep consent, consequences, validation, and action-specific outcome feedback clear.
 
 ### Color, Borders, Radius, And Shadows
 
 - Use semantic theme classes backed by `src/app/globals.css`, including `background`, `surface`, `foreground`, `muted`, `border`, `primary`, `success`, `warning`, and `destructive` roles.
+- Use solid `primary` for blue branding and primary actions. Replace gradient treatments within the affected scope and preserve established non-gradient component styling; do not add new decorative glows. Follow the root presentation rules and use the existing branding sync script when updating shared artwork.
 - Reuse the closest semantic status treatment for statuses with the same meaning.
 - Do not add raw color values or one-off shadows when an existing token or exact established pattern fits.
 - Do not create slightly different versions of an existing radius, border, or shadow. Exact consistency is preferred over visual approximation.
@@ -179,6 +191,7 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 ### Layout, Responsiveness, And Motion
 
 - Match the nearest page shell's content width, padding, section spacing, grid breakpoints, and stacking behavior.
+- Keep titles, page actions, filters, records, and pagination in predictable positions. Remove redundant introductions and nested containers before reducing text size or control height; use cards only for meaningful groups and preserve responsive access to all actions.
 - Build mobile-first and verify small, medium, and large layouts relevant to the changed component.
 - Reuse existing motion timing and movement for equivalent content. Do not add animation to a component type that is otherwise static.
 - Preserve visible focus, keyboard operation, touch target size, labels, contrast, reduced-motion expectations, and semantic HTML.

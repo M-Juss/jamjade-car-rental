@@ -12,14 +12,4 @@ class DeliveryQuotePolicy
     {
         return $user->id === $quote->user_id || $user->can('manage bookings') ? Response::allow() : Response::denyAsNotFound();
     }
-
-    public function select(User $user, DeliveryQuote $quote): Response
-    {
-        return $user->hasRole('customer') && $user->id === $quote->user_id ? Response::allow() : Response::denyAsNotFound();
-    }
-
-    public function review(User $user, DeliveryQuote $quote): bool
-    {
-        return $user->can('manage bookings');
-    }
 }

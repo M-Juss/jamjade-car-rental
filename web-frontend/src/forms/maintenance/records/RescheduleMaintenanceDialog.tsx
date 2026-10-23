@@ -3,31 +3,26 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarRange } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
-import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
+import { MaintenanceScheduleDateField } from "./MaintenanceScheduleDateField";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { appToast } from "@/lib/toast";
 import { rescheduleMaintenance, type MaintenanceRecord } from "@/services/maintenance";
+import { maintenanceDateKey } from "@/services/maintenance/dates";
 import type { VehicleRecord } from "@/services/vehicle";
 import {
   createRescheduleMaintenanceSchema,
   type RescheduleMaintenanceFormValues,
 } from "@/validations/maintenance/schemas";
-import { applyMaintenanceServerErrors, rescheduleMaintenanceDefaults } from "../form-support";
+import { applyMaintenanceServerErrors, getMaintenanceScheduleDateLimits, rescheduleMaintenanceDefaults } from "../form-support";
 
 const serverFieldMap = {
   scheduled_start: "scheduledStart",
   scheduled_end: "scheduledEnd",
   status: "scheduledStart",
 } as const;
-
-function localDateKey(value: string) {
-  const date = new Date(value);
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
-}
 
 export function RescheduleMaintenanceDialog({
   record,
@@ -42,18 +37,20 @@ export function RescheduleMaintenanceDialog({
 }) {
   const ranges = useMemo(() => (vehicle?.unavailableDateRanges ?? []).filter((range) => !(
     range.source === "maintenance"
-    && range.startDate === (record ? localDateKey(record.scheduledStart) : undefined)
-    && range.endDate === (record ? localDateKey(record.scheduledEnd) : undefined)
+    && range.startDate === (record ? maintenanceDateKey(record.scheduledStart) : undefined)
+    && range.endDate === (record ? maintenanceDateKey(record.scheduledEnd) : undefined)
   )), [record, vehicle]);
   const schema = useMemo(() => createRescheduleMaintenanceSchema(ranges), [ranges]);
   const form = useForm<RescheduleMaintenanceFormValues>({
     resolver: zodResolver(schema),
     defaultValues: rescheduleMaintenanceDefaults,
   });
+  const scheduledStart = useWatch({ control: form.control, name: "scheduledStart" });
+  const dateLimits = getMaintenanceScheduleDateLimits(scheduledStart);
   useEffect(() => {
     if (record) form.reset({
-      scheduledStart: localDateKey(record.scheduledStart),
-      scheduledEnd: localDateKey(record.scheduledEnd),
+      scheduledStart: maintenanceDateKey(record.scheduledStart),
+      scheduledEnd: maintenanceDateKey(record.scheduledEnd),
     });
   }, [form, record]);
 
@@ -85,8 +82,20 @@ export function RescheduleMaintenanceDialog({
               <p className="text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{record.vehicle?.name}</p>
               <p className="mt-1 text-sm font-bold text-foreground">{record.title}</p>
             </div>
-            <InputWithLabel id="maintenance-reschedule-start" label="Start Date" required type="date" error={form.formState.errors.scheduledStart?.message} {...form.register("scheduledStart")} />
-            <InputWithLabel id="maintenance-reschedule-end" label="Expected End Date" required type="date" error={form.formState.errors.scheduledEnd?.message} {...form.register("scheduledEnd")} />
+            <Controller
+              control={form.control}
+              name="scheduledStart"
+              render={({ field, fieldState }) => (
+                <MaintenanceScheduleDateField {...field} id="maintenance-reschedule-start" label="Start Date" required min={dateLimits.start} error={fieldState.error?.message} />
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="scheduledEnd"
+              render={({ field, fieldState }) => (
+                <MaintenanceScheduleDateField {...field} id="maintenance-reschedule-end" label="Expected End Date" required min={dateLimits.end} error={fieldState.error?.message} />
+              )}
+            />
             {form.formState.errors.root?.message ? <p className="text-[11px] font-medium text-destructive sm:col-span-2">{form.formState.errors.root.message}</p> : null}
           </div>
           <FormDialogFooter>

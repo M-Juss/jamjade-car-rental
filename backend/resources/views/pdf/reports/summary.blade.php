@@ -24,7 +24,7 @@
 
     <table class="summary">
         <tr>
-            <td>Total Revenue<strong>PHP {{ number_format($report['summary']['totalRevenue'], 2) }}</strong></td>
+            <td>Gross Receipts<strong>PHP {{ number_format($report['summary']['totalRevenue'], 2) }}</strong></td>
             <td>Total Bookings<strong>{{ number_format($report['summary']['totalBookings']) }}</strong></td>
             <td>Completed Rentals<strong>{{ number_format($report['summary']['completedBookings']) }}</strong></td>
         </tr>
@@ -35,6 +35,7 @@
         </tr>
     </table>
 
+    <p>Refunds returned: PHP {{ number_format($report['refundSummary']['amountReturned'], 2) }} · Net receipts: PHP {{ number_format($report['refundSummary']['netReceipts'], 2) }}</p>
     <h2>Recent Booking Records</h2>
     <table class="data">
         <thead>

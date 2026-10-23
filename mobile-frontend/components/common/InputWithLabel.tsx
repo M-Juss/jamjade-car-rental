@@ -3,6 +3,7 @@ import { forwardRef, useState, type ComponentProps } from 'react';
 import { Pressable, Text, TextInput, type TextInputProps, View } from 'react-native';
 
 import { themeColors } from '@/constants/theme';
+import { KeyboardAwareField } from '@/components/common/KeyboardFormScrollView';
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -48,7 +49,7 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
     const hasMessage = Boolean(error || helperText);
 
     return (
-      <View className={cx('relative w-full gap-1.5', 'mb-0', wrapperClassName)}>
+      <KeyboardAwareField className={cx('relative w-full gap-1.5', 'mb-0', wrapperClassName)}>
         <Text className="font-sans text-caption font-medium text-foreground">
           {label}
           {required && <Text className="text-destructive"> *</Text>}
@@ -94,8 +95,8 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
           )}
         </View>
 
-        <View className={hasMessage ? 'px-1' : 'hidden'}>
-          {hasMessage ? (
+        {hasMessage ? (
+          <View className="px-1">
             <Text
               className={cx(
                 'font-sans',
@@ -104,9 +105,9 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
               )}>
               {error || helperText}
             </Text>
-          ) : null}
-        </View>
-      </View>
+          </View>
+        ) : null}
+      </KeyboardAwareField>
     );
   },
 );

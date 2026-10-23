@@ -1,11 +1,13 @@
 import { z } from "zod/v3";
-import { VEHICLE_CHECKLIST } from "@/modules/management/vehicles/inspection/definitions";
+import type { ChecklistDefinition } from "@/services/vehicle/configuration.service";
 import { VEHICLE_ISSUE_TYPES, VEHICLE_PANEL_ORDER } from "@/modules/management/vehicles/inspection/types";
 
 const REQUIRED_MESSAGE = "This field is required.";
 const IMAGE_SIZE_LIMIT = 5 * 1024 * 1024;
 
 const requiredText = z.string().trim().min(1, REQUIRED_MESSAGE);
+
+const vehicleFeatureTextSchema = requiredText.max(120, "Maximum 120 characters only.");
 
 const positiveNumberText = requiredText.refine((value) => {
   const numberValue = Number(value);
@@ -46,23 +48,13 @@ const vehicleDetailsSchema = z.object({
   color: requiredText.max(80, "Maximum 80 characters only."),
   transmission: requiredText.max(40, "Maximum 40 characters only."),
   fuel_type: requiredText.max(40, "Maximum 40 characters only."),
-  features: z.array(requiredText.max(120))
+  features: z.array(vehicleFeatureTextSchema)
     .min(1, "Select at least one feature.")
     .refine(
       (features) => features.every((feature) => feature.toLowerCase() !== "dashcam"),
       "Dashcam is no longer offered.",
     ),
 });
-
-const checklistValue = z.boolean();
-
-function checklistCategorySchema(items: Record<string, string>) {
-  return z.object(
-    Object.fromEntries(
-      Object.keys(items).map((key) => [key, checklistValue]),
-    ) as Record<string, typeof checklistValue>,
-  );
-}
 
 export const vehicleBodyMarkerSchema = z.object({
   id: z.string().optional(),
@@ -84,15 +76,25 @@ export const vehicleConditionSchema = z.object({
     .nullable()
     .refine((value): boolean => value !== null, "Select the fuel level."),
   comments: z.string().trim().max(3000, "Maximum 3000 characters only."),
+  checklist_definition: z.object({ exterior: z.record(z.string()), interior: z.record(z.string()), equipment: z.record(z.string()) }),
+  checklist_version: z.string().regex(/^[a-f0-9]{64}$/, "Load the checklist before saving."),
   checklist: z.object({
-    exterior: checklistCategorySchema(VEHICLE_CHECKLIST.exterior),
-    interior: checklistCategorySchema(VEHICLE_CHECKLIST.interior),
-    equipment: checklistCategorySchema(VEHICLE_CHECKLIST.equipment),
+    exterior: z.record(z.boolean().nullable().refine((value): boolean => value !== null, "Review this item.")),
+    interior: z.record(z.boolean().nullable().refine((value): boolean => value !== null, "Review this item.")),
+    equipment: z.record(z.boolean().nullable().refine((value): boolean => value !== null, "Review this item.")),
   }),
   markers: z.array(vehicleBodyMarkerSchema),
   signature_data: requiredText
     .max(1_400_000, "Signature is too large.")
     .regex(/^data:image\/png;base64,/, "Please provide a valid signature."),
+}).superRefine((value, context) => {
+  for (const category of ["exterior", "interior", "equipment"] as const) {
+    const keys = Object.keys(value.checklist_definition[category]);
+    const answers = Object.keys(value.checklist[category]);
+    if (!keys.length || keys.length !== answers.length || keys.some((key) => !answers.includes(key))) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "Load and review the complete checklist.", path: ["checklist"] });
+    }
+  }
 });
 
 export const VEHICLE_CONDITION_UPDATE_REASONS = [
@@ -172,13 +174,33 @@ export function createVehicleConditionDefaults(): VehicleConditionFormValues {
     odometer: "",
     fuel_level: null,
     comments: "",
-    checklist: Object.fromEntries(
-      Object.entries(VEHICLE_CHECKLIST).map(([category, items]) => [
-        category,
-        Object.fromEntries(Object.keys(items).map((key) => [key, false])),
-      ]),
-    ) as VehicleConditionFormValues["checklist"],
+    checklist_version: "",
+    checklist_definition: { exterior: {}, interior: {}, equipment: {} },
+    checklist: { exterior: {}, interior: {}, equipment: {} },
     markers: [],
     signature_data: "",
+  };
+}
+
+
+export function applyChecklistTemplate(
+  value: VehicleConditionFormValues,
+  definition: ChecklistDefinition,
+  version: string,
+): VehicleConditionFormValues {
+  const isNewInitial = !value.checklist_version && Object.values(value.checklist).every((items) => Object.keys(items).length === 0);
+  return {
+    ...value,
+    checklist_definition: definition,
+    checklist_version: version,
+    signature_data: "",
+    checklist: Object.fromEntries(Object.entries(definition).map(([category, items]) => [
+      category, Object.fromEntries(Object.keys(items).map((key) => [
+        key, isNewInitial ? false
+          : value.checklist_definition[category as keyof typeof value.checklist_definition]?.[key] === items[key]
+            ? value.checklist[category as keyof typeof value.checklist]?.[key] ?? null
+            : null,
+      ])),
+    ])) as VehicleConditionFormValues["checklist"],
   };
 }

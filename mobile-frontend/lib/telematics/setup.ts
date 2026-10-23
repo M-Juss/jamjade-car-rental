@@ -7,7 +7,7 @@ export const DEVICE_SETUP_STEPS = {
   location_permission: { guidance: 'Allow location access to check this phone’s setup when you request a check.', requires: ['device_check', 'motion_permission'] },
   background_location: { guidance: 'Verify background permission readiness. Android may open Settings. This does not start tracking.', requires: ['location_permission'] },
   gps_check: { guidance: 'While stationary in an open area, request one fresh GPS fix. Exact setup coordinates are not retained.', requires: ['background_location'] },
-  phone_mount: { guidance: 'Park safely and secure the phone upright in the vehicle mount, with the screen facing the driver.', requires: ['gps_check'] },
+  phone_mount: { guidance: 'Park safely and secure the phone in a fixed vehicle mount.', requires: ['gps_check'] },
 } as const;
 
 export type DeviceSetupStep = keyof typeof DEVICE_SETUP_STEPS;
@@ -25,6 +25,71 @@ export function isDeviceSetupStep(step: string): step is DeviceSetupStep {
   return Object.prototype.hasOwnProperty.call(DEVICE_SETUP_STEPS, step);
 }
 
+export function deviceSetupProgress(handover: MobileTelematicsHandover) {
+  const passed = SETUP_CHECK_ORDER.filter((type) =>
+    handover.steps.some((step) => step.type === type && step.status === 'passed'),
+  );
+  return {
+    passedCount: passed.length,
+    total: SETUP_CHECK_ORDER.length,
+    nextStep: SETUP_CHECK_ORDER.find((type) => !passed.includes(type)),
+  };
+}
+
+export function telematicsStage(handover: MobileTelematicsHandover) {
+  if (handover.eligibility.state === 'released') return 'released';
+  if (handover.setup?.status === 'ready_for_release' && ['handover_preparation', 'handover_in_progress'].includes(handover.eligibility.state)) return 'awaiting_release';
+  if (!handover.eligibility.canWorkSetup) return 'waiting';
+  return deviceSetupProgress(handover).nextStep ? 'device_setup' : 'calibration';
+}
+
+const CALIBRATION_CHECK_ORDER = [
+  'stationary_calibration', 'forward_calibration', 'braking_calibration',
+  'left_turn_calibration', 'right_turn_calibration',
+] as const;
+
+export type SetupOverviewStage = {
+  passedCount: number;
+  total: number;
+  status: 'locked' | 'available' | 'in_progress' | 'failed' | 'completed';
+  canOpen: boolean;
+};
+
+export type TelematicsSetupView = 'overview' | 'device_setup' | 'calibration' | 'rental';
+
+export function setupOverview(handover: MobileTelematicsHandover) {
+  const stage = telematicsStage(handover);
+  const canWork = handover.eligibility.canWorkSetup && ['device_setup', 'calibration'].includes(stage);
+  const progress = (types: readonly string[], canOpen: boolean): SetupOverviewStage => {
+    const steps = types.map((type) => handover.steps.find((step) => step.type === type));
+    const passedCount = steps.filter((step) => step?.status === 'passed').length;
+    return {
+      passedCount,
+      total: types.length,
+      canOpen,
+      status: passedCount === types.length ? 'completed' : !canOpen ? 'locked'
+        : steps.some((step) => step?.status === 'failed') ? 'failed'
+          : steps.some((step) => (step?.attemptCount ?? 0) > 0) ? 'in_progress' : 'available',
+    };
+  };
+  const device = progress(SETUP_CHECK_ORDER, canWork);
+  const calibration = progress(CALIBRATION_CHECK_ORDER, canWork && device.passedCount === device.total
+    && handover.calibration.nextStep !== null && handover.calibration.context !== null);
+  return {
+    device,
+    calibration,
+    release: stage === 'released' ? 'released' as const : stage === 'awaiting_release' ? 'awaiting_staff' as const : 'locked' as const,
+  };
+}
+
+export function resolveSetupView(handover: MobileTelematicsHandover, requested: TelematicsSetupView): TelematicsSetupView {
+  const overview = setupOverview(handover);
+  if (requested === 'device_setup' && overview.device.canOpen) return requested;
+  if (requested === 'calibration' && overview.calibration.canOpen) return requested;
+  if (requested === 'rental' && overview.release === 'released') return requested;
+  return 'overview';
+}
+
 // This filters navigation choices only. Each selected booking is authorized and
 // evaluated again by the handover endpoint; booking state never unlocks checks.
 export function canSelectTelematicsBooking(booking: Pick<Booking, 'driverType' | 'status'>) {
@@ -39,19 +104,21 @@ export function missingSetupPrerequisite(handover: MobileTelematicsHandover, ste
 }
 
 export function handoverStatusCopy(handover: MobileTelematicsHandover) {
-  if (handover.setup?.status === 'ready_for_release') {
-    return { title: 'Ready for staff release', description: 'Your setup is ready. JamJade staff must use Start Rental to release the vehicle.' };
+  if (telematicsStage(handover) === 'awaiting_release') {
+    return { title: 'Ready for staff release', description: 'Wait for staff to release the vehicle.' };
   }
   const scheduledDate = handover.rentalStartAt
-    ? new Date(handover.rentalStartAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium' })
-    : 'your scheduled rental date';
+    ? new Date(handover.rentalStartAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })
+    : 'your reserved rental period';
   return {
-    verification_required: { title: 'Documents need approval', description: 'Submit your required self-drive documents and wait for JamJade to approve them.' },
-    waiting_for_confirmation: { title: 'Waiting for confirmation', description: 'JamJade must confirm your booking before vehicle handover.' },
-    rental_scheduled: { title: 'Rental scheduled', description: `Staff can begin handover on ${scheduledDate} (Philippine time), once the other requirements are complete.` },
-    inspection_required: { title: 'Waiting for outgoing inspection', description: 'JamJade staff must finalize the outgoing vehicle inspection and required signatures.' },
+    verification_required: { title: 'Documents need approval', description: 'Submit your required documents for approval.' },
+    other_rental_active: { title: 'Another self-drive rental is active', description: 'Ask staff to resolve your other rental or handover before continuing.' },
+    waiting_for_confirmation: { title: 'Waiting for confirmation', description: 'Your booking must be confirmed before handover.' },
+    rental_scheduled: { title: 'Rental scheduled', description: `Handover is available from ${scheduledDate} until the agreed rental end.` },
+    inspection_required: { title: 'Waiting for outgoing inspection', description: 'Staff must complete the inspection and signatures.' },
     handover_preparation: { title: 'Preparing your handover', description: 'Wait for staff to start your handover.' },
-    handover_in_progress: { title: 'Complete your setup checks', description: handover.eligibility.testMode ? 'Local test handover is active. Checks retain their real results; phone-mount confirmation allows staff to test release.' : 'Staff started your handover. Complete the device checks below while safely parked.' },
-    released: { title: 'Rental released', description: 'JamJade has started this rental. Your setup results are now read-only.' },
+    handover_in_progress: { title: 'Complete your setup checks', description: handover.eligibility.testMode ? 'Local test handover is active. Checks retain their real results; phone-mount confirmation allows staff to test release.' : 'Complete the checks below while safely parked.' },
+    released: { title: 'Rental released', description: 'Setup results are read-only after release.' },
+    rental_ended: { title: 'Rental ended', description: 'This rental has ended. Setup results are read-only.' },
   }[handover.eligibility.state];
 }

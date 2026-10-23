@@ -14,7 +14,7 @@ class RescheduleMaintenanceRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'scheduled_start' => ['required', 'date', 'after_or_equal:now'],
+            'scheduled_start' => ['required', 'date', 'after_or_equal:'.today('Asia/Manila')->toIso8601String()],
             'scheduled_end' => ['required', 'date', 'after:scheduled_start'],
         ];
     }

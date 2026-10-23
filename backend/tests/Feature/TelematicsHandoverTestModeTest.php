@@ -8,6 +8,7 @@ use App\Services\BookingService;
 use App\Services\RentalReadinessService;
 use App\Services\TelematicsHandoverEligibilityService;
 use App\Services\TelematicsSetupService;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +22,10 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     Storage::fake('local');
     config(['telematics.handover_test_mode' => true]);
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-16T00:30:00+08:00')->utc());
 });
+
+afterEach(fn () => CarbonImmutable::setTestNow());
 
 it('ignores the test flag outside local and testing environments', function (string $environment) {
     app()->instance('env', $environment);
@@ -37,14 +41,15 @@ it('tests handover and release without fabricating readiness evidence', function
     $booking->user->documents()->delete();
     $booking->payments()->delete();
     $booking->update([
-        'rental_start_at' => now()->addDays(3), 'rental_end_at' => now()->addDays(5),
+        'rental_start_at' => CarbonImmutable::parse('2026-10-16T14:00:00+08:00')->utc(),
+        'rental_end_at' => CarbonImmutable::parse('2026-10-17T14:00:00+08:00')->utc(),
         'payment_status' => PaymentStatus::Unpaid, 'remaining_balance' => 7000,
     ]);
     $manager = vehicleManagerUser();
     $this->actingAs($manager)->postJson("/admin/bookings/{$booking->id}/telematics-setup/start")
         ->assertOk()->assertJsonPath('data.telematicsHandover.eligibility.testMode', true)
         ->assertJsonPath('data.telematicsHandover.eligibility.documentsVerified', false)
-        ->assertJsonPath('data.telematicsHandover.eligibility.rentalPeriodEligible', false)
+        ->assertJsonPath('data.telematicsHandover.eligibility.rentalPeriodEligible', true)
         ->assertJsonPath('data.telematicsHandover.setup.status', 'in_progress')
         ->assertJsonPath('data.telematicsHandover.eligibility.canWorkSetup', true);
     expect(Activity::query()->where('event', 'telematics_handover_started')->first()->properties['test_mode'])->toBeTrue();
@@ -65,8 +70,62 @@ it('tests handover and release without fabricating readiness evidence', function
         ->and($booking->user->documents()->count())->toBe(0)
         ->and($booking->vehicleInspections()->count())->toBe(0)
         ->and($booking->bookingGeofences()->exists())->toBeFalse()
-        ->and($booking->telematicsTrips()->count())->toBe(0);
+        ->and($booking->telematicsTrips()->count())->toBe(0)
+        ->and($started->rental_start_at->toISOString())->toBe('2026-10-16T06:00:00.000000Z')
+        ->and($started->rental_end_at->toISOString())->toBe('2026-10-17T06:00:00.000000Z');
     $this->postJson("{$url}/phone_mount/attempt", ['evidence' => ['confirmed' => true, 'checked_at' => now()->toISOString()]])->assertUnprocessable();
+});
+
+it('blocks future-date and expired handover setup and release even in test mode', function (string $start, string $end) {
+    $booking = telematicsFoundationBooking();
+    $booking->update([
+        'rental_start_at' => CarbonImmutable::parse($start)->utc(),
+        'rental_end_at' => CarbonImmutable::parse($end)->utc(),
+    ]);
+    $eligibility = app(TelematicsHandoverEligibilityService::class);
+    $state = $eligibility->evaluate($booking);
+    expect(app(RentalReadinessService::class)->evaluate($booking)['rentalPeriodEligible'])->toBeFalse()
+        ->and($state['rentalPeriodEligible'])->toBeFalse()
+        ->and($state['canStartHandover'])->toBeFalse()
+        ->and($state['canWorkSetup'])->toBeFalse()
+        ->and($state['state'])->toBe('rental_scheduled');
+    expect(fn () => app(TelematicsSetupService::class)->startHandover($booking, vehicleManagerUser()))->toThrow(ValidationException::class);
+    expect(fn () => $eligibility->assertCanWorkSetup($booking))->toThrow(ValidationException::class);
+    expect(fn () => app(RentalReadinessService::class)->assertStartAllowed($booking))->toThrow(ValidationException::class);
+})->with([
+    'tomorrow in Manila' => ['2026-10-17T00:00:00+08:00', '2026-10-18T00:00:00+08:00'],
+    'exact return deadline' => ['2026-10-15T00:30:00+08:00', '2026-10-16T00:30:00+08:00'],
+]);
+
+it('keeps later booked days available and disables early starts outside test mode', function () {
+    $booking = telematicsFoundationBooking();
+    $booking->update(['rental_start_at' => now()->subDay(), 'rental_end_at' => now()->addDay()]);
+    $eligibility = app(TelematicsHandoverEligibilityService::class);
+    expect($eligibility->evaluate($booking)['canStartHandover'])->toBeTrue();
+    $booking->update(['rental_start_at' => CarbonImmutable::parse('2026-10-16T14:00:00+08:00')->utc()]);
+    expect(app(RentalReadinessService::class)->evaluate($booking)['rentalPeriodEligible'])->toBeTrue();
+    config(['telematics.handover_test_mode' => false]);
+    expect($eligibility->evaluate($booking)['rentalPeriodEligible'])->toBeFalse();
+    expect(fn () => app(RentalReadinessService::class)->assertStartAllowed($booking))->toThrow(ValidationException::class);
+    app()->instance('env', 'production');
+    config(['telematics.handover_test_mode' => true]);
+    expect($eligibility->evaluate($booking)['rentalPeriodEligible'])->toBeFalse();
+    expect(fn () => app(RentalReadinessService::class)->assertStartAllowed($booking))->toThrow(ValidationException::class);
+});
+
+it('rechecks the return deadline for mobile attempts and staff release after test handover starts', function () {
+    $booking = telematicsFoundationBooking();
+    $service = app(TelematicsSetupService::class);
+    $service->startHandover($booking, vehicleManagerUser());
+    $service->recordMobileAttempt($booking, 'phone_mount', ['confirmed' => true, 'checked_at' => now()->toISOString()], $booking->user);
+    CarbonImmutable::setTestNow(CarbonImmutable::instance($booking->rental_end_at));
+    Sanctum::actingAs($booking->user);
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/phone_mount/attempt", [
+        'evidence' => ['confirmed' => true, 'checked_at' => now()->toISOString()],
+    ])->assertUnprocessable();
+    expect(fn () => app(BookingService::class)->transition($booking, BookingStatus::Ongoing, vehicleManagerUser()))->toThrow(ValidationException::class);
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed)
+        ->and($booking->telematicsSetupSession->steps()->where('step_type', 'phone_mount')->count())->toBe(1);
 });
 
 it('permits retries before release and revokes readiness after a failed mount retry', function () {

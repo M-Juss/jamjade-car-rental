@@ -128,11 +128,11 @@
 
 @media (min-width: 1024px) {
   .dashboard-page {
-    height: calc(100dvh + var(--dashboard-calendar-extra-height, 0px));
+    min-height: calc(100dvh + var(--dashboard-calendar-extra-height, 0px));
   }
 
   .dashboard-calendar .rbc-calendar {
-    height: 100%;
+    height: calc(540px + var(--dashboard-calendar-extra-height, 0px));
   }
 }
 
@@ -194,6 +194,10 @@
   font-size: 9.5px;
 }
 
+.dashboard-calendar .rbc-event-label {
+  display: none;
+}
+
 .dashboard-calendar .rbc-event.dashboard-calendar-event--confirmed {
   background: var(--primary);
   color: var(--primary-foreground);
@@ -226,4 +230,80 @@
   .dashboard-calendar .rbc-calendar {
     height: 600px;
   }
+}
+
+/* Management tables share bounded columns, wrapping, and labeled phone rows. */
+.management-table {
+  table-layout: fixed;
+}
+.management-table th,
+.management-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding: 0.75rem 0.5rem;
+}
+.management-table th {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--subtle-foreground);
+}
+.management-table thead tr {
+  background: var(--background);
+}
+.management-table tbody tr {
+  border-color: var(--background);
+}
+.management-table tbody tr:hover {
+  background: var(--background);
+}
+.management-table [data-slot="badge"] {
+  height: auto;
+  min-height: 1.5rem;
+  max-width: 100%;
+  border-radius: var(--radius-lg);
+  padding: 0.25rem 0.625rem;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (width < 48rem) {
+  .management-table colgroup { display: none; }
+  .management-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .management-table,
+  .management-table tbody { display: block; }
+  .management-table tbody { padding: 1rem; }
+  .management-table tbody tr {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--background);
+    padding: 0.75rem;
+  }
+  .management-table tbody tr + tr { margin-top: 0.75rem; }
+  .management-table tbody tr:last-child { border-bottom-width: 1px; }
+  .management-table td { display: block; padding: 0.375rem 0; }
+  .management-table td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .management-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted-foreground);
+    font-size: 11px;
+    font-weight: 400;
+  }
+  .management-table td > * { min-width: 0; }
 }

@@ -98,11 +98,13 @@ export function useFormToast() {
 export function FormToast({
   message,
   onDismiss,
+  safeAreaTopHandled = false,
   title,
   variant = 'error',
 }: {
   message: string;
   onDismiss: () => void;
+  safeAreaTopHandled?: boolean;
   title?: string;
   variant?: FormToastVariant;
 }) {
@@ -119,7 +121,7 @@ export function FormToast({
     <View
       pointerEvents="box-none"
       className="absolute left-0 right-0 z-50 px-5"
-      style={{ top: Math.max(insets.top + 10, 22) }}>
+      style={{ top: safeAreaTopHandled ? 10 : Math.max(insets.top + 10, 22) }}>
       <View
         className="flex-row items-center gap-3 rounded-[18px] border px-4 py-3.5 "
         style={{

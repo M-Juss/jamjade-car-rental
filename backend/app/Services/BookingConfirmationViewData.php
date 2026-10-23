@@ -2,27 +2,27 @@
 
 namespace App\Services;
 
-use App\Enums\PaymentStatus;
+use App\Enums\AdditionalChargeResponsibility;
 use App\Models\Booking;
+use App\Models\Payment;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
 use JsonException;
 
 class BookingConfirmationViewData
 {
-    public function make(Booking $booking, ?CarbonInterface $issuedAt = null): array
+    public function make(Booking $booking, ?CarbonInterface $issuedAt = null, ?Payment $payment = null): array
     {
-        $booking->loadMissing(['user.customerProfile', 'vehicle', 'payments', 'assignedDriver', 'terms']);
+        $booking->loadMissing(['user.customerProfile', 'vehicle', 'assignedDriver', 'terms', 'deliveryQuote']);
 
-        $payments = $booking->payments->sortByDesc(
-            fn ($payment) => $payment->paid_at ?? $payment->created_at
-        );
-        $latestPayment = $payments->first();
+        $latestPayment = $payment ?? $booking->successfulCustomerPayments()->orderByDesc('completed_at')->orderByDesc('id')->first();
         $totalAmount = (float) $booking->total_amount;
-        $amountPaid = (float) $payments->sum(fn ($payment) => (float) $payment->amount);
-        $isFullyPaid = $booking->payment_status === PaymentStatus::Paid
-            || ($totalAmount > 0 && $amountPaid >= $totalAmount);
-        $remainingBalance = $isFullyPaid ? 0 : max($totalAmount - $amountPaid, 0);
+        $totalCents = (int) round($totalAmount * 100);
+        $paidCents = (int) round((float) $booking->successfulCustomerPayments()->sum('amount') * 100);
+        $amountPaid = (float) ($paidCents / 100);
+        $isFullyPaid = $totalCents > 0 && $paidCents >= $totalCents;
+        $remainingCents = max($totalCents - $paidCents, 0);
+        $remainingBalance = $remainingCents === 0 ? 0 : (float) ($remainingCents / 100);
         $profile = $booking->user?->customerProfile;
         $profileName = trim(implode(' ', array_filter([
             $profile?->first_name,
@@ -32,9 +32,36 @@ class BookingConfirmationViewData
             ? $profileName
             : ($booking->user?->name ?: 'Renter');
         $signature = $this->signature($booking->customer_signature);
+        $items = [['label' => 'Rental Subtotal', 'amount' => (float) $booking->subtotal]];
+        foreach ([
+            'add_ons_total' => 'Add-ons', 'delivery_fee' => 'Delivery Fee',
+            'delivery_toll_fee' => 'Delivery Toll', 'owner_driver_fee' => "Owner's Driver Fee",
+        ] as $field => $label) {
+            if ((float) $booking->{$field} > 0) {
+                $items[] = ['label' => $label, 'amount' => (float) $booking->{$field}];
+            }
+        }
+        $charges = $booking->additionalCharges()->without('payments')
+            ->where('responsibility', AdditionalChargeResponsibility::Customer->value)
+            ->where('responsible_user_id', $booking->user_id)->orderBy('id')->get();
+        foreach ($charges as $charge) {
+            $items[] = ['label' => $charge->type->label().': '.$charge->description, 'amount' => (float) $charge->amount];
+        }
+        if ((float) $booking->discount_total > 0) {
+            $items[] = ['label' => 'Discount', 'amount' => -(float) $booking->discount_total];
+        }
+        $paymentLabel = $isFullyPaid ? 'Fully Paid' : ($amountPaid > 0 ? 'Partially Paid' : 'Unpaid');
 
         return [
-            'issuedAt' => $issuedAt ?? now(),
+            'agreementVersion' => $booking->terms_version,
+            'additionalChargeItems' => $charges->map(fn ($charge) => ['label' => $charge->type->label().': '.$charge->description, 'amount' => (float) $charge->amount])->all(),
+            'lateReturnPolicy' => $booking->terms?->late_return_policy,
+            'issuedAt' => ($issuedAt ?? now())->toISOString(),
+            'balanceDueAt' => $remainingBalance > 0 ? $booking->balance_due_at?->toISOString() : null,
+            'createdAt' => $booking->created_at?->toISOString(),
+            'termsAcceptedAt' => $booking->terms_accepted_at?->toISOString(),
+            'formatVersion' => 3,
+            'currentDeliveryTerms' => $booking->deliveryQuote !== null || $booking->terms_version >= '2026-10-12',
             'bookingReference' => $booking->booking_code ?: (string) $booking->id,
             'bookingStatusLabel' => $booking->status?->mobileLabel()
                 ?? Str::headline((string) $booking->status),
@@ -43,7 +70,7 @@ class BookingConfirmationViewData
                 'pending' => 'status-warning',
                 default => 'status-neutral',
             },
-            'paymentStatusLabel' => $isFullyPaid ? 'Fully Paid' : 'Down Payment',
+            'paymentStatusLabel' => $paymentLabel,
             'paymentStatusClass' => $isFullyPaid ? 'status-success' : 'status-warning',
             'customer' => [
                 'name' => $customerName,
@@ -55,6 +82,16 @@ class BookingConfirmationViewData
                 'name' => $booking->assignedDriver->name,
                 'phone' => $booking->assignedDriver->phone_number,
             ] : null,
+            'rental' => [
+                'startAt' => $booking->rental_start_at?->toISOString(),
+                'endAt' => $booking->rental_end_at?->toISOString(),
+                'days' => (int) $booking->duration_days,
+                'pickupType' => $booking->pickup_location_type,
+                'pickupLocation' => $booking->pickup_location,
+                'returnLocation' => $booking->return_location,
+                'driverOption' => $booking->rental_type?->label(),
+                'coverage' => $booking->owner_driver_coverage,
+            ],
             'vehicle' => [
                 'name' => $booking->vehicle?->name,
                 'brand' => $booking->vehicle?->brand,
@@ -68,10 +105,26 @@ class BookingConfirmationViewData
                 'totalAmount' => $totalAmount,
                 'amountPaid' => $amountPaid,
                 'remainingBalance' => $remainingBalance,
+                'pricePerDay' => (float) $booking->price_per_day,
+                'items' => $items,
                 'method' => $latestPayment?->payment_method,
                 'transactionId' => $latestPayment?->transaction_id,
-                'paidAt' => $latestPayment?->paid_at,
+                'paidAt' => $latestPayment?->paid_at?->toISOString(),
             ],
+            'receipt' => $latestPayment ? [
+                'reference' => 'RCP-'.str_pad((string) $latestPayment->id, 5, '0', STR_PAD_LEFT),
+                'amount' => (float) $latestPayment->amount,
+                'paidAt' => $latestPayment->paid_at?->toISOString(),
+                'method' => $latestPayment->payment_method,
+                'transactionId' => $latestPayment->transaction_id,
+                'purpose' => match ($latestPayment->purpose) {
+                    'down_payment' => 'Down Payment',
+                    'full_payment' => 'Full Payment',
+                    'remaining_balance' => 'Remaining Balance',
+                    'customer_outstanding' => 'Customer Additional Charges',
+                    default => 'Booking Payment',
+                },
+            ] : null,
             'signatureImage' => $signature['image'],
             'signatureText' => $signature['text'],
         ];

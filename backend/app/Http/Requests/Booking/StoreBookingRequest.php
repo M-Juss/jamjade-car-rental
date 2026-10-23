@@ -59,6 +59,14 @@ class StoreBookingRequest extends BaseFormRequest
             'notes' => ['nullable', 'string', 'max:2000'],
             'customer_signature' => ['required', 'string', 'max:500'],
             'terms_version' => ['required', 'string', 'max:40'],
+            'reviewed_pricing' => ['required_if:terms_version,2026-10-15-v2,2026-10-17-v3,2026-10-19-v4', 'array:price_per_day,subtotal,delivery_fee,delivery_toll_fee,owner_driver_fee,total_amount'],
+            'reviewed_pricing.price_per_day' => ['required_with:reviewed_pricing', 'numeric', 'min:0'],
+            'reviewed_pricing.subtotal' => ['required_with:reviewed_pricing', 'numeric', 'min:0'],
+            'reviewed_pricing.delivery_fee' => ['required_with:reviewed_pricing', 'numeric', 'min:0'],
+            'reviewed_pricing.delivery_toll_fee' => ['required_with:reviewed_pricing', 'numeric', 'min:0'],
+            'reviewed_pricing.owner_driver_fee' => ['required_with:reviewed_pricing', 'numeric', 'min:0'],
+            'reviewed_pricing.total_amount' => ['required_with:reviewed_pricing', 'numeric', 'min:0'],
+            'late_return_policy_version' => ['required', 'string', 'size:64'],
         ];
     }
 }

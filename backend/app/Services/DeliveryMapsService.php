@@ -55,14 +55,14 @@ class DeliveryMapsService
     {
         $r = $this->request('https://routes.googleapis.com/directions/v2:computeRoutes', [
             'origin' => ['location' => ['latLng' => $origin]], 'destination' => ['location' => ['latLng' => $destination]],
-            'travelMode' => 'DRIVE', 'routingPreference' => 'TRAFFIC_UNAWARE', 'computeAlternativeRoutes' => true, 'extraComputations' => ['TOLLS'],
-        ], 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.travelAdvisory.tollInfo');
+            'travelMode' => 'DRIVE', 'routingPreference' => 'TRAFFIC_AWARE', 'computeAlternativeRoutes' => true,
+        ], 'routes.distanceMeters,routes.duration');
         $routes = $r['routes'] ?? [];
-        if (! $routes || count($routes) > 10) {
+        if (! is_array($routes) || ! $routes || count($routes) > 10) {
             throw ValidationException::withMessages(['destination' => ['No available driving route was found. Choose another location.']]);
         }
         foreach ($routes as $route) {
-            if (! isset($route['distanceMeters'],$route['duration']) || $route['distanceMeters'] < 0) {
+            if (! is_array($route) || ! isset($route['distanceMeters'], $route['duration']) || ! is_int($route['distanceMeters']) || $route['distanceMeters'] < 0 || ! is_string($route['duration']) || ! preg_match('/^\d+(?:\.\d+)?s$/', $route['duration']) || ! is_finite((float) rtrim($route['duration'], 's'))) {
                 throw ValidationException::withMessages(['destination' => ['The route response was incomplete. Try again.']]);
             }
         }

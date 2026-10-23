@@ -54,6 +54,7 @@ export default function ProfileScreen() {
   const [isEmergencyEditorOpen, setIsEmergencyEditorOpen] = useState(false);
   const [isEmailEditorOpen, setIsEmailEditorOpen] = useState(false);
   const [isPasswordEditorOpen, setIsPasswordEditorOpen] = useState(false);
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const toast = useFormToast();
   const fullName = getCustomerFullName(customer) || 'New Customer';
   const initials = getCustomerInitials(customer);
@@ -79,15 +80,17 @@ export default function ProfileScreen() {
         <View
           className="w-full max-w-[560px] self-center px-screen"
           style={{ paddingBottom: floatingTabBarContentPadding + insets.bottom, paddingTop: insets.top + 10 }}>
-          <CustomerTabHeader title="Profile" />
+          <CustomerTabHeader title="Profile" showLogout />
 
           <View className="mt-3 overflow-hidden rounded-card border border-border bg-surface p-card">
             <View className="flex-row items-center gap-3">
               <View className="h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-field border border-border bg-muted">
-                {customer.profilePicture ? (
+                {customer.profilePicture && customer.profilePicture !== failedPhoto ? (
                   <Image
                     accessibilityLabel="Profile photo"
                     source={{ uri: customer.profilePicture }}
+                    onError={() => setFailedPhoto(customer.profilePicture)}
+                    resizeMethod="resize"
                     resizeMode="cover"
                     style={{ height: '100%', width: '100%' }}
                   />
@@ -136,8 +139,8 @@ export default function ProfileScreen() {
               />
               <ProfileInfoRow
                 icon={Cake}
-                label="Birthdate and Age"
-                value={`${customer.birthdate ? formatDisplayDate(customer.birthdate) : 'Not provided'} | ${valueOrMissing(customer.age)} years old`}
+                label="Birthdate"
+                value={customer.birthdate ? formatDisplayDate(customer.birthdate) : 'Not provided'}
               />
               <ProfileInfoRow icon={MapPin} isLast label="Address" value={valueOrMissing(customer.address)} />
             </ProfileSectionCard>
@@ -171,7 +174,6 @@ export default function ProfileScreen() {
                     icon={requiredDocumentsVerified ? CheckCircle2 : ShieldCheck}
                     label={requiredDocumentsVerified ? 'Verified' : 'Verify'}
                     onPress={() => router.push('/profile/documents' as Href)}
-                    tone={requiredDocumentsVerified ? 'success' : 'default'}
                   />
                 ) : null
               }

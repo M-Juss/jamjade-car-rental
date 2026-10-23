@@ -15,7 +15,26 @@ export type PaymentStatus =
   | "failed"
   | "refunded";
 
+export type BookingAttention = { key: "overdue_return" | "not_started" | "return_processing" | "awaiting_settlement" | "ready_to_complete"; label: string };
+export type LateReturnPolicy = { seats: number; seatBracket: "up_to_5" | "6_and_above"; hourlyRate: number; minimumHours: number; roundUpAfterMinutes: number; dailyConversion: boolean; version: string };
+export type LateReturnDetails = {
+  vehicleReceivedAt: string | null; expectedReturnAt: string | null; elapsedMinutes: number;
+  billableHours: number; hourlyRate: number | null; seatBracket: string | null; estimatedAmount: number | null;
+  requiresManualPricing: boolean; reviewedAt: string | null; approvedAmount: number | null; policy: LateReturnPolicy | null;
+};
+export type BookingCancellation = {
+  kind: "customer" | "management" | "payment_deadline" | "no_show";
+  reason: string; refundAmount: number | null;
+  refundStatus: "pending_review" | "approved" | "declined" | "refunded" | "not_eligible";
+  refundReason: string | null; reviewedAt: string | null; refundedAt: string | null;
+};
 export type BookingRecord = {
+  cancellation?: BookingCancellation | null;
+  canReviewCancellationRefund?: boolean;
+  attention?: BookingAttention | null;
+  lateReturn?: LateReturnDetails;
+  returnFollowUps?: Array<{ note: string; recordedAt: string }>;
+  upcomingBookings?: Array<{ id: number; bookingCode: string; pickupAt: string }>;
   backendId: number;
   id: string;
   bookingCode: string;
@@ -23,8 +42,10 @@ export type BookingRecord = {
   adminStatus: string;
   vehicleId: string;
   vehicleName?: string | null;
+  vehiclePlateNumber?: string | null;
   brand?: string | null;
   model?: string | null;
+  color?: string | null;
   transmission?: string | null;
   fuelType?: string | null;
   seats?: number | null;
@@ -101,14 +122,21 @@ export type BookingRecord = {
 };
 
 export type TelematicsHandover = {
+  calibration: {
+    profile: { id: "standard" | "rc_demo" | "legacy"; revision: number | null; fingerprint: string | null };
+  };
   bookingCode: string;
   bookingStatus: BookingStatus;
   eligibility?: {
     testMode: boolean;
+    supportedRental: boolean;
+    operatorAssigned: boolean;
+    operatorEligible: boolean;
     canStartHandover: boolean;
     documentsVerified: boolean;
     rentalPeriodEligible: boolean;
     outgoingInspectionComplete: boolean;
+    customerSelfDriveAvailable: boolean;
   };
   setup: {
     status: "locked" | "setup_required" | "in_progress" | "ready_for_release" | "released";
@@ -132,7 +160,11 @@ export type TelematicsHandover = {
 };
 
 export type BookingReadiness = {
+  vehicleReceived: boolean;
   bookingConfirmed: boolean;
+  rentalPeriodEligible: boolean;
+  outgoingInspectionTimeEligible: boolean;
+  customerSelfDriveAvailable: boolean;
   paymentAcceptedForInspection: boolean;
   fullyPaid: boolean;
   ageEligible: boolean;

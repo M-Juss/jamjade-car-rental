@@ -12,6 +12,11 @@ final class VehicleConditionRules
     public static function rules(string $prefix = 'initial_condition'): array
     {
         $rules = [
+            "{$prefix}.checklist_version" => ['required', 'string', function ($attribute, $value, $fail) {
+                if ($value !== VehicleInspectionDefinition::version()) {
+                    $fail('The checklist changed. Reload it and review the items before signing again.');
+                }
+            }],
             $prefix => ['required', 'array'],
             "{$prefix}.odometer" => ['required', 'integer', 'min:0'],
             "{$prefix}.fuel_level" => ['required', 'integer', 'between:0,8'],

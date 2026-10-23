@@ -72,7 +72,7 @@ export function VerificationDocumentSidePreview({
           height={640}
           unoptimized
           onError={() => setImageError(true)}
-          className="h-auto w-full object-cover"
+          className="h-64 w-full object-contain p-3 sm:h-72"
         />
       ) : (
         <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">

@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Circle, Fence, Minus, Trash2 } from "lucide-react";
 import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { appToast } from "@/lib/toast";
@@ -15,12 +14,10 @@ import { createGeofence, updateGeofence, saveBookingMonitoringZone } from "@/ser
 import { geofenceTemplateSchema, type GeofenceTemplateFormValues } from "@/validations/geofence/schemas";
 import { GeofenceMapEditor } from "@/modules/management/geofences/components/GeofenceMapEditor";
 
-type ZoneEditorRecord = Pick<GeofenceRecord, "id" | "name" | "geometryType" | "centerLatitude" | "centerLongitude" | "radiusMeters" | "polygonCoordinates" | "notifyOnEnter" | "notifyOnExit">;
+type ZoneEditorRecord = Pick<GeofenceRecord, "id" | "name" | "geometryType" | "centerLatitude" | "centerLongitude" | "radiusMeters" | "polygonCoordinates">;
 
 const defaults: GeofenceTemplateFormValues = {
   name: "",
-  notifyOnEnter: true,
-  notifyOnExit: true,
   geometryType: "circle",
   centerLatitude: "14.5995",
   centerLongitude: "120.9842",
@@ -31,8 +28,6 @@ const defaults: GeofenceTemplateFormValues = {
 function formValues(record?: ZoneEditorRecord): GeofenceTemplateFormValues {
   return record ? {
     name: record.name,
-    notifyOnEnter: record.notifyOnEnter,
-    notifyOnExit: record.notifyOnExit,
     geometryType: record.geometryType,
     centerLatitude: record.centerLatitude?.toString() ?? "",
     centerLongitude: record.centerLongitude?.toString() ?? "",
@@ -92,8 +87,6 @@ export function GeofenceTemplateDialog({
     } catch (error) {
       const fieldMap: Record<string, keyof GeofenceTemplateFormValues> = {
         name: "name",
-        notify_on_enter: "notifyOnEnter",
-        notify_on_exit: "notifyOnExit",
         geometry_type: "geometryType",
         center_latitude: "centerLatitude",
         center_longitude: "centerLongitude",
@@ -150,11 +143,6 @@ export function GeofenceTemplateDialog({
                 </div>
               </fieldset>
             </div>
-            <fieldset className="shrink-0 space-y-2">
-              <legend className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Website alerts</legend>
-              <div className="flex flex-wrap gap-4">{(["notifyOnEnter", "notifyOnExit"] as const).map((name) => <Controller key={name} control={form.control} name={name} render={({ field }) => <label className="flex items-center gap-2 text-xs text-foreground"><Checkbox ref={field.ref} checked={field.value} onBlur={field.onBlur} onCheckedChange={(checked) => field.onChange(checked === true)} />{name === "notifyOnEnter" ? "Alert on entry" : "Alert on exit"}</label>} />)}</div>
-              <p className="text-xs text-muted-foreground">Confirmed crossings are always recorded. Selected crossings also appear as website alerts.</p>
-            </fieldset>
             <GeofenceMapEditor
               geometryType={geometryType}
               center={center}
@@ -183,7 +171,7 @@ export function GeofenceTemplateDialog({
                 <InputWithLabel id="geofence-radius" label="Radius (meters)" required type="number" min="0" max="100000" step="any" error={form.formState.errors.radiusMeters?.message} {...form.register("radiusMeters")} />
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col gap-2">
+              <div className="flex shrink-0 flex-col gap-2">
                 <div className="flex shrink-0 items-center justify-between gap-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Boundary Points ({fields.length})</p>
                   <div className="flex gap-2">
@@ -191,7 +179,7 @@ export function GeofenceTemplateDialog({
                     <Button type="button" size="sm" variant="outline" disabled={!fields.length} onClick={() => replace([])}><Trash2 className="size-3.5" />Clear</Button>
                   </div>
                 </div>
-                <div className="max-h-[240px] min-h-16 space-y-2 overflow-y-auto overscroll-contain pr-1">
+                <div className="max-h-16 space-y-3 overflow-y-auto overscroll-contain pr-1">
                   {fields.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">Click the map to add the first boundary point.</p>
                   ) : null}

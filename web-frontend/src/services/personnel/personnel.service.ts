@@ -1,3 +1,4 @@
+import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
 import { apiGet, apiPost, apiPut } from "@/services/http";
 import type { PersonnelAccountFormValues } from "@/validations/personnel/schemas";
 import type { PersonnelFilter, PersonnelResponse, PersonnelUser } from "./types";
@@ -12,6 +13,7 @@ export async function getPersonnel(params: {
     role: params.role,
     status: params.status,
     page: String(params.page),
+    per_page: String(TABLE_PAGE_SIZE),
   });
   if (params.search) query.set("search", params.search);
   const response = await apiGet<PersonnelResponse>(`/admin/personnel?${query}`);

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,6 @@ const fields = [
   ["minimum_fee", "Minimum delivery fee (PHP)"],
   ["included_km", "Included distance (km)"],
   ["per_km_rate", "Additional price per km (PHP)"],
-  ["garage_address", "Garage address"],
-  ["garage_latitude", "Garage latitude"],
-  ["garage_longitude", "Garage longitude"],
 ] as const;
 export function DeliveryPricingForm() {
   const form = useForm<DeliveryPricingValues>({
@@ -30,28 +27,21 @@ export function DeliveryPricingForm() {
       minimum_fee: "150",
       included_km: "1",
       per_km_rate: "25",
-      garage_address: "Jamjade Garage",
-      garage_latitude: "",
-      garage_longitude: "",
     },
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
-  const values = useWatch({ control: form.control });
   useEffect(() => {
     let active = true;
     getDeliveryPricing()
       .then((settings) => {
         if (active) {
-          form.reset(
-            Object.fromEntries(
-              Object.entries(settings).map(([key, value]) => [
-                key,
-                value == null ? "" : String(value),
-              ]),
-            ) as DeliveryPricingValues,
-          );
+          form.reset({
+            minimum_fee: String(settings.minimum_fee),
+            included_km: String(settings.included_km),
+            per_km_rate: String(settings.per_km_rate),
+          });
           setError(null);
         }
       })
@@ -118,7 +108,7 @@ export function DeliveryPricingForm() {
           )}
           className="space-y-5"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             {fields.map(([name, label]) => (
               <InputWithLabel
                 key={name}
@@ -126,26 +116,13 @@ export function DeliveryPricingForm() {
                 label={label}
                 required
                 disabled={form.formState.isSubmitting}
-                type={name === "garage_address" ? "text" : "number"}
+                type="number"
                 step="any"
                 error={form.formState.errors[name]?.message}
                 {...form.register(name)}
               />
             ))}
           </div>
-          <p className="text-sm text-muted-foreground">
-            Fee = minimum + distance beyond included kilometres × rate, rounded
-            to the nearest peso. No service distance limit is set. A 5 km route
-            currently costs PHP{" "}
-            {Number.isFinite(Number(values.minimum_fee))
-              ? Math.round(
-                  Number(values.minimum_fee) +
-                    Math.max(0, 5 - Number(values.included_km)) *
-                      Number(values.per_km_rate),
-                )
-              : "—"}
-            . Valid quotes and accepted bookings keep their saved amounts.
-          </p>
           {form.formState.errors.root && (
             <p role="alert" className="text-sm text-destructive">
               {form.formState.errors.root.message}

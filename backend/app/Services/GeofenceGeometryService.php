@@ -28,7 +28,7 @@ class GeofenceGeometryService
         }
 
         $values = Validator::make($definition, [
-            'polygon_coordinates' => ['required', 'array', 'min:3', 'max:100'],
+            'polygon_coordinates' => ['required', 'array', 'min:3'],
             'polygon_coordinates.*.latitude' => ['required', 'numeric', 'between:-90,90'],
             'polygon_coordinates.*.longitude' => ['required', 'numeric', 'between:-180,180'],
         ])->validate();
@@ -36,8 +36,8 @@ class GeofenceGeometryService
         if (count($points) > 3 && $this->samePoint($points[0], $points[count($points) - 1])) {
             array_pop($points);
         }
-        if (count($points) < 3 || count($points) > 100) {
-            throw ValidationException::withMessages(['polygon_coordinates' => ['A polygon needs 3 to 100 unique boundary points.']]);
+        if (count($points) < 3) {
+            throw ValidationException::withMessages(['polygon_coordinates' => ['A polygon needs at least 3 unique boundary points.']]);
         }
 
         foreach ($points as $index => $point) {

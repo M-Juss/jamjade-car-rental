@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
+
+import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
+import { TablePagination } from "@/components/common/tables/TablePagination";
+import { useTablePagination } from "@/components/common/tables/useTablePagination";
+
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   BarChart3,
@@ -8,12 +14,9 @@ import {
   Car,
   CheckCircle2,
   Clock3,
-  Download,
   Loader2,
   PhilippinePeso,
-  XCircle,
 } from "lucide-react";
-import { appToast } from "@/lib/toast";
 import {
   Area,
   AreaChart,
@@ -34,12 +37,9 @@ import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
-import { SearchInput } from "@/components/common/forms/SearchInput";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -47,7 +47,6 @@ import {
 import { GENERIC_ERROR_MESSAGE } from "@/services/http";
 import { formatPhilippinePeso } from "@/lib/formatters/currency";
 import {
-  downloadReport,
   getReports,
   type ReportRange,
   type ReportsResponse,
@@ -99,10 +98,8 @@ function EmptyState({ message }: { message: string }) {
 export function ReportsAnalytics() {
   const [data, setData] = useState<ReportsResponse | null>(null);
   const [range, setRange] = useState<ReportRange>("12_months");
-  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [downloading, setDownloading] = useState<"pdf" | "excel" | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -133,51 +130,11 @@ export function ReportsAnalytics() {
     };
   }, [range]);
 
-  const query = search.trim().toLowerCase();
-  const filteredRevenueRows = useMemo(
-    () => (data?.revenueTransactions ?? []).filter((row) =>
-      `${row.bookingId} ${row.customer} ${row.vehicle} ${row.paymentMethod}`.toLowerCase().includes(query)
-    ),
-    [data, query],
-  );
-  const filteredBookingRows = useMemo(
-    () => (data?.bookings ?? []).filter((row) =>
-      `${row.bookingId} ${row.customer} ${row.vehicle} ${row.status} ${row.monitoringZones?.map((zone) => zone.name).join(" ") ?? ""}`.toLowerCase().includes(query)
-    ),
-    [data, query],
-  );
-  const filteredFleetRows = useMemo(
-    () => (data?.fleet ?? []).filter((row) =>
-      `${row.vehicle} ${row.model ?? ""} ${row.maintenanceStatus}`.toLowerCase().includes(query)
-    ),
-    [data, query],
-  );
-  const filteredCustomerRows = useMemo(
-    () => (data?.customers ?? []).filter((row) =>
-      `${row.name} ${row.email}`.toLowerCase().includes(query)
-    ),
-    [data, query],
-  );
-  const filteredRiskRows = useMemo(
-    () => (data?.riskEvents ?? []).filter((row) =>
-      `${row.eventId} ${row.bookingId} ${row.customer} ${row.vehicle} ${row.eventType}`.toLowerCase().includes(query)
-    ),
-    [data, query],
-  );
-
-  const handleDownload = async (format: "pdf" | "excel") => {
-    setDownloading(format);
-
-    try {
-      await downloadReport(format, range);
-    } catch {
-      appToast.error(
-        `The ${format === "pdf" ? "PDF" : "Excel"} report could not be downloaded. Please try again.`,
-      );
-    } finally {
-      setDownloading(null);
-    }
-  };
+  const revenuePagination = useTablePagination(data?.revenueTransactions ?? [], range);
+  const bookingPagination = useTablePagination(data?.bookings ?? [], range);
+  const fleetPagination = useTablePagination(data?.fleet ?? [], range);
+  const customerPagination = useTablePagination(data?.customers ?? [], range);
+  const riskPagination = useTablePagination(data?.riskEvents ?? [], range);
 
   if (!data && isLoading) {
     return (
@@ -217,26 +174,29 @@ export function ReportsAnalytics() {
   }
 
   const kpis = [
-    { label: "Total Revenue", value: formatPhilippinePeso(data.summary.totalRevenue, true), icon: PhilippinePeso, bg: "bg-muted", color: "text-primary" },
+    { label: "Gross Receipts", value: formatPhilippinePeso(data.summary.totalRevenue, true), icon: PhilippinePeso, bg: "bg-muted", color: "text-primary" },
+    { label: "Refunds Returned", value: formatPhilippinePeso(data.refundSummary.amountReturned, true), icon: PhilippinePeso, bg: "bg-muted", color: "text-primary" },
+    { label: "Net Receipts", value: formatPhilippinePeso(data.refundSummary.netReceipts, true), icon: PhilippinePeso, bg: "bg-muted", color: "text-primary" },
     { label: "Total Bookings", value: data.summary.totalBookings.toLocaleString(), icon: BookOpen, bg: "bg-emerald-50", color: "text-emerald-600" },
     { label: "Completed Rentals", value: data.summary.completedBookings.toLocaleString(), icon: CheckCircle2, bg: "bg-slate-50", color: "text-slate-600" },
     { label: "Active Rentals", value: data.summary.activeRentals.toLocaleString(), icon: Car, bg: "bg-blue-50", color: "text-blue-600" },
-    { label: "Cancelled Bookings", value: data.summary.cancelledBookings.toLocaleString(), icon: XCircle, bg: "bg-rose-50", color: "text-rose-500" },
-    { label: "Average Duration", value: `${data.summary.averageBookingDuration} days`, icon: Clock3, bg: "bg-violet-50", color: "text-violet-600" },
   ];
+  const revenueBreakdown = data.revenueBreakdown
+    .filter((item) => item.label !== "Delivery Tolls")
+    .map((item) => item.label === "Delivery Fees" ? {
+      label: "Delivery Charges",
+      value: item.value + (data.revenueBreakdown.find((row) => row.label === "Delivery Tolls")?.value ?? 0),
+    } : item)
+    .slice(0, 4);
   const revenueBreakdownIcons = [PhilippinePeso, Car, BarChart3, AlertCircle];
   const fleetHighlightIcons = [BarChart3, Clock3, AlertCircle, Car];
 
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Reports & Analytics</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Live revenue, booking, fleet, customer, and telematics reporting.
-          </p>
-        </div>
+        <ManagementPageHeading title="Reports & Analytics" description="Review revenue, bookings, and fleet performance." />
         <div className="flex flex-col gap-2 sm:flex-row">
+          {isLoading ? <span role="status" className="flex items-center text-primary"><Loader2 className="size-4 animate-spin" /><span className="sr-only">Updating reports</span></span> : null}
           <FilterSelect
             value={range}
             onValueChange={(value: ReportRange) => {
@@ -254,24 +214,6 @@ export function ReportsAnalytics() {
               { value: "all_time", label: "All time" },
             ]}
           />
-          <Button
-            variant="outline"
-            disabled={downloading !== null}
-            onClick={() => void handleDownload("excel")}
-            className="h-10 rounded-xl border-border text-[13px] text-muted-foreground"
-          >
-            {downloading === "excel" ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Download size={14} className="mr-2" />}
-            Export CSV
-          </Button>
-          <Button
-            variant="outline"
-            disabled={downloading !== null}
-            onClick={() => void handleDownload("pdf")}
-            className="h-10 rounded-xl border-border text-[13px] text-muted-foreground"
-          >
-            {downloading === "pdf" ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Download size={14} className="mr-2" />}
-            Export PDF
-          </Button>
         </div>
       </div>
 
@@ -293,18 +235,6 @@ export function ReportsAnalytics() {
           />
         ))}
       </div>
-
-      <SearchInput
-        value={search}
-        onValueChange={setSearch}
-        placeholder="Search report records..."
-        className="h-10 bg-white pl-9"
-        endAdornment={
-          isLoading ? (
-            <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-primary" />
-          ) : null
-        }
-      />
 
       <Tabs defaultValue="overview" className="space-y-4">
         <div>
@@ -415,17 +345,11 @@ export function ReportsAnalytics() {
               <CardContent className="pt-0">
                 <ChartContainer config={chartConfig} className="h-[260px] w-full">
                   <AreaChart data={data.revenueTrend} margin={{ left: -16, right: 8 }}>
-                    <defs>
-                      <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#346EF6" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#346EF6" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" />
                     <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} tickFormatter={(value) => formatPhilippinePeso(Number(value), true)} />
                     <ChartTooltip content={<ChartTooltipContent />} formatter={(value) => [formatPhilippinePeso(Number(value ?? 0)), "Revenue"]} />
-                    <Area type="monotone" dataKey="revenue" stroke="#346EF6" fill="url(#revenueFill)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="revenue" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.12} strokeWidth={2} />
                   </AreaChart>
                 </ChartContainer>
               </CardContent>
@@ -448,7 +372,7 @@ export function ReportsAnalytics() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {data.revenueBreakdown.map((item, index) => {
+            {revenueBreakdown.map((item, index) => {
               const Icon = revenueBreakdownIcons[index] ?? PhilippinePeso;
 
               return (
@@ -463,38 +387,51 @@ export function ReportsAnalytics() {
             })}
           </div>
 
-          <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardHeader className="pb-2"><CardTitle className="text-[14px]">Revenue Transactions</CardTitle></CardHeader>
-            <CardContent className="px-0 pb-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-background">
-                      {["Booking ID", "Customer", "Vehicle", "Rental Type", "Payment Method", "Amount", "Paid Date", "Status"].map((heading) => (
-                        <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRevenueRows.length === 0 ? (
-                      <TableRow><TableCell colSpan={8}><EmptyState message="No revenue transactions found." /></TableCell></TableRow>
-                    ) : filteredRevenueRows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="px-4 py-3 font-mono text-[12px] text-primary">{row.bookingId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.customer}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.rentalType}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.paymentMethod}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.amount)}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.paidDate ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
+          <div>
+            <TableCard>
+              <CardHeader className="pb-2"><CardTitle className="text-[14px]">Revenue Transactions</CardTitle></CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="min-w-0">
+                  <Table>
+                    <colgroup>
+                      <col style={{ width: "11%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "17%" }} />
+                      <col style={{ width: "11%" }} />
+                      <col style={{ width: "12%" }} />
+                      <col style={{ width: "12%" }} />
+                      <col style={{ width: "12%" }} />
+                      <col />
+                    </colgroup>
+                    <TableHeader>
+                      <TableRow className="bg-background">
+                        {["Booking ID", "Customer", "Vehicle", "Rental Type", "Payment Method", "Amount", "Paid Date", "Status"].map((heading) => (
+                          <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
+                        ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {revenuePagination.total === 0 ? (
+                        <TableRow><TableCell colSpan={8}><EmptyState message="No revenue transactions found." /></TableCell></TableRow>
+                      ) : revenuePagination.rows.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell data-label="Booking ID" className="px-4 py-3 font-mono text-[12px] text-primary">{row.bookingId}</TableCell>
+                          <TableCell data-label="Customer" className="px-4 py-3 text-[12px] font-medium text-foreground">{row.customer}</TableCell>
+                          <TableCell data-label="Vehicle" className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
+                          <TableCell data-label="Rental Type" className="px-4 py-3 text-[12px] text-muted-foreground">{row.rentalType}</TableCell>
+                          <TableCell data-label="Payment Method" className="px-4 py-3 text-[12px] text-muted-foreground">{row.paymentMethod}</TableCell>
+                          <TableCell data-label="Amount" className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.amount)}</TableCell>
+                          <TableCell data-label="Paid Date" className="px-4 py-3 text-[12px] text-muted-foreground">{row.paidDate ?? "N/A"}</TableCell>
+                          <TableCell data-label="Status" className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </TableCard>
+            <TablePagination {...revenuePagination} label="Revenue report pagination" disabled={isLoading} />
+          </div>
         </TabsContent>
 
         <TabsContent value="bookings" className="space-y-4">
@@ -533,43 +470,56 @@ export function ReportsAnalytics() {
             </Card>
           </div>
 
-          <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardHeader className="pb-2"><CardTitle className="text-[14px]">Booking Records</CardTitle></CardHeader>
-            <CardContent className="px-0 pb-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-background">
-                      {["Booking ID", "Customer", "Vehicle", "Rental Date", "Return Date", "Monitoring Zones", "Total Cost", "Status"].map((heading) => (
-                        <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredBookingRows.length === 0 ? (
-                      <TableRow><TableCell colSpan={8}><EmptyState message="No booking records found." /></TableCell></TableRow>
-                    ) : filteredBookingRows.map((row) => (
-                      <TableRow key={row.internalId}>
-                        <TableCell className="px-4 py-3 font-mono text-[12px] text-primary">{row.bookingId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.customer}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.rentalDate ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.returnDate ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.monitoringZones?.length ? row.monitoringZones.map((zone, index) => <span key={index} className="block font-medium text-foreground">{zone.name}</span>) : "—"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.totalCost)}</TableCell>
-                        <TableCell className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
+          <div>
+            <TableCard>
+              <CardHeader className="pb-2"><CardTitle className="text-[14px]">Booking Records</CardTitle></CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="min-w-0">
+                  <Table>
+                    <colgroup>
+                      <col style={{ width: "11%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "16%" }} />
+                      <col style={{ width: "13%" }} />
+                      <col style={{ width: "13%" }} />
+                      <col />
+                      <col style={{ width: "12%" }} />
+                      <col style={{ width: "10%" }} />
+                    </colgroup>
+                    <TableHeader>
+                      <TableRow className="bg-background">
+                        {["Booking ID", "Customer", "Vehicle", "Rental Date", "Return Date", "Monitoring Zones", "Total Cost", "Status"].map((heading) => (
+                          <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
+                        ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {bookingPagination.total === 0 ? (
+                        <TableRow><TableCell colSpan={8}><EmptyState message="No booking records found." /></TableCell></TableRow>
+                      ) : bookingPagination.rows.map((row) => (
+                        <TableRow key={row.internalId}>
+                          <TableCell data-label="Booking ID" className="px-4 py-3 font-mono text-[12px] text-primary">{row.bookingId}</TableCell>
+                          <TableCell data-label="Customer" className="px-4 py-3 text-[12px] font-medium text-foreground">{row.customer}</TableCell>
+                          <TableCell data-label="Vehicle" className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
+                          <TableCell data-label="Rental Date" className="px-4 py-3 text-[12px] text-muted-foreground">{row.rentalDate ?? "N/A"}</TableCell>
+                          <TableCell data-label="Return Date" className="px-4 py-3 text-[12px] text-muted-foreground">{row.returnDate ?? "N/A"}</TableCell>
+                          <TableCell data-label="Monitoring Zones" className="px-4 py-3 text-[12px] text-muted-foreground">{row.monitoringZones?.length ? row.monitoringZones.map((zone, index) => <span key={index} className="block font-medium text-foreground">{zone.name}</span>) : "—"}</TableCell>
+                          <TableCell data-label="Total Cost" className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.totalCost)}</TableCell>
+                          <TableCell data-label="Status" className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </TableCard>
+            <TablePagination {...bookingPagination} label="Booking report pagination" disabled={isLoading} />
+          </div>
         </TabsContent>
 
         <TabsContent value="fleet" className="space-y-4">
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {data.fleetHighlights.map((item, index) => {
+            {data.fleetHighlights.slice(0, 4).map((item, index) => {
               const Icon = fleetHighlightIcons[index] ?? Car;
 
               return (
@@ -585,37 +535,49 @@ export function ReportsAnalytics() {
             })}
           </div>
 
-          <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardHeader className="pb-2"><CardTitle className="text-[14px]">Fleet Performance Table</CardTitle></CardHeader>
-            <CardContent className="px-0 pb-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-background">
-                      {["Vehicle", "Model", "Total Bookings", "Received Revenue", "Utilization", "Maintenance", "Incidents"].map((heading) => (
-                        <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredFleetRows.length === 0 ? (
-                      <TableRow><TableCell colSpan={7}><EmptyState message="No fleet records found." /></TableCell></TableRow>
-                    ) : filteredFleetRows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.model ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.totalBookings}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.revenue)}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.utilization}%</TableCell>
-                        <TableCell className="px-4 py-3"><Badge className={`border ${maintenanceBadge(row.maintenanceStatus)}`}>{row.maintenanceStatus}</Badge></TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.incidents}</TableCell>
+          <div>
+            <TableCard>
+              <CardHeader className="pb-2"><CardTitle className="text-[14px]">Fleet Performance Table</CardTitle></CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="min-w-0">
+                  <Table>
+                    <colgroup>
+                      <col style={{ width: "22%" }} />
+                      <col />
+                      <col style={{ width: "12%" }} />
+                      <col style={{ width: "16%" }} />
+                      <col style={{ width: "12%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "10%" }} />
+                    </colgroup>
+                    <TableHeader>
+                      <TableRow className="bg-background">
+                        {["Vehicle", "Model", "Total Bookings", "Received Revenue", "Utilization", "Maintenance", "Incidents"].map((heading) => (
+                          <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
+                        ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {fleetPagination.total === 0 ? (
+                        <TableRow><TableCell colSpan={7}><EmptyState message="No fleet records found." /></TableCell></TableRow>
+                      ) : fleetPagination.rows.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell data-label="Vehicle" className="px-4 py-3 text-[12px] font-medium text-foreground">{row.vehicle}</TableCell>
+                          <TableCell data-label="Model" className="px-4 py-3 text-[12px] text-muted-foreground">{row.model ?? "N/A"}</TableCell>
+                          <TableCell data-label="Total Bookings" className="px-4 py-3 text-[12px] text-muted-foreground">{row.totalBookings}</TableCell>
+                          <TableCell data-label="Received Revenue" className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.revenue)}</TableCell>
+                          <TableCell data-label="Utilization" className="px-4 py-3 text-[12px] text-muted-foreground">{row.utilization}%</TableCell>
+                          <TableCell data-label="Maintenance" className="px-4 py-3"><Badge className={`border ${maintenanceBadge(row.maintenanceStatus)}`}>{row.maintenanceStatus}</Badge></TableCell>
+                          <TableCell data-label="Incidents" className="px-4 py-3 text-[12px] text-muted-foreground">{row.incidents}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </TableCard>
+            <TablePagination {...fleetPagination} label="Fleet report pagination" disabled={isLoading} />
+          </div>
         </TabsContent>
 
         <TabsContent value="customers" className="space-y-4">
@@ -656,37 +618,49 @@ export function ReportsAnalytics() {
             </Card>
           </div>
 
-          <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardHeader className="pb-2"><CardTitle className="text-[14px]">Customer Insights Table</CardTitle></CardHeader>
-            <CardContent className="px-0 pb-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-background">
-                      {["Customer", "Email", "Total Bookings", "Completed", "Cancelled / Rejected", "Total Spent", "Last Booking"].map((heading) => (
-                        <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCustomerRows.length === 0 ? (
-                      <TableRow><TableCell colSpan={7}><EmptyState message="No customer records found." /></TableCell></TableRow>
-                    ) : filteredCustomerRows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="px-4 py-3 text-[12px] font-medium text-foreground">{row.name}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.email}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.totalBookings}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-emerald-700">{row.completedBookings}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-rose-600">{row.cancelledBookings}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.totalSpent)}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.lastBookingDate}</TableCell>
+          <div>
+            <TableCard>
+              <CardHeader className="pb-2"><CardTitle className="text-[14px]">Customer Insights Table</CardTitle></CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="min-w-0">
+                  <Table>
+                    <colgroup>
+                      <col style={{ width: "18%" }} />
+                      <col />
+                      <col style={{ width: "11%" }} />
+                      <col style={{ width: "11%" }} />
+                      <col style={{ width: "13%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "13%" }} />
+                    </colgroup>
+                    <TableHeader>
+                      <TableRow className="bg-background">
+                        {["Customer", "Email", "Total Bookings", "Completed", "Cancelled / Rejected", "Total Spent", "Last Booking"].map((heading) => (
+                          <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
+                        ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {customerPagination.total === 0 ? (
+                        <TableRow><TableCell colSpan={7}><EmptyState message="No customer records found." /></TableCell></TableRow>
+                      ) : customerPagination.rows.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell data-label="Customer" className="px-4 py-3 text-[12px] font-medium text-foreground">{row.name}</TableCell>
+                          <TableCell data-label="Email" className="px-4 py-3 text-[12px] text-muted-foreground">{row.email}</TableCell>
+                          <TableCell data-label="Total Bookings" className="px-4 py-3 text-[12px] text-muted-foreground">{row.totalBookings}</TableCell>
+                          <TableCell data-label="Completed" className="px-4 py-3 text-[12px] text-emerald-700">{row.completedBookings}</TableCell>
+                          <TableCell data-label="Cancelled / Rejected" className="px-4 py-3 text-[12px] text-rose-600">{row.cancelledBookings}</TableCell>
+                          <TableCell data-label="Total Spent" className="px-4 py-3 text-[12px] font-semibold text-foreground">{formatPhilippinePeso(row.totalSpent)}</TableCell>
+                          <TableCell data-label="Last Booking" className="px-4 py-3 text-[12px] text-muted-foreground">{row.lastBookingDate}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </TableCard>
+            <TablePagination {...customerPagination} label="Customer report pagination" disabled={isLoading} />
+          </div>
         </TabsContent>
 
         <TabsContent value="risk" className="space-y-4">
@@ -728,38 +702,51 @@ export function ReportsAnalytics() {
             </Card>
           </div>
 
-          <Card className="overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-            <CardHeader className="pb-2"><CardTitle className="text-[14px]">Risk & Telematics Events</CardTitle></CardHeader>
-            <CardContent className="px-0 pb-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-background">
-                      {["Event ID", "Booking ID", "Vehicle", "Customer", "Event Type", "Location", "Time Stamp", "Severity"].map((heading) => (
-                        <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRiskRows.length === 0 ? (
-                      <TableRow><TableCell colSpan={8}><EmptyState message="No risk events found." /></TableCell></TableRow>
-                    ) : filteredRiskRows.map((row) => (
-                      <TableRow key={row.eventId}>
-                        <TableCell className="px-4 py-3 font-mono text-[12px] text-primary">{row.eventId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.bookingId}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.customer}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-foreground">{row.eventType}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.location}</TableCell>
-                        <TableCell className="px-4 py-3 text-[12px] text-muted-foreground">{row.timestamp ?? "N/A"}</TableCell>
-                        <TableCell className="px-4 py-3"><Badge className={`border ${severityBadge(row.severity)}`}>{row.severity}</Badge></TableCell>
+          <div>
+            <TableCard>
+              <CardHeader className="pb-2"><CardTitle className="text-[14px]">Risk & Telematics Events</CardTitle></CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="min-w-0">
+                  <Table>
+                    <colgroup>
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "10%" }} />
+                      <col style={{ width: "16%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "13%" }} />
+                      <col />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "10%" }} />
+                    </colgroup>
+                    <TableHeader>
+                      <TableRow className="bg-background">
+                        {["Event ID", "Booking ID", "Vehicle", "Customer", "Event Type", "Location", "Time Stamp", "Severity"].map((heading) => (
+                          <TableHead key={heading} className="px-4 py-3 text-[10.5px]">{heading}</TableHead>
+                        ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {riskPagination.total === 0 ? (
+                        <TableRow><TableCell colSpan={8}><EmptyState message="No risk events found." /></TableCell></TableRow>
+                      ) : riskPagination.rows.map((row) => (
+                        <TableRow key={row.eventId}>
+                          <TableCell data-label="Event ID" className="px-4 py-3 font-mono text-[12px] text-primary">{row.eventId}</TableCell>
+                          <TableCell data-label="Booking ID" className="px-4 py-3 text-[12px] text-muted-foreground">{row.bookingId}</TableCell>
+                          <TableCell data-label="Vehicle" className="px-4 py-3 text-[12px] text-muted-foreground">{row.vehicle}</TableCell>
+                          <TableCell data-label="Customer" className="px-4 py-3 text-[12px] text-muted-foreground">{row.customer}</TableCell>
+                          <TableCell data-label="Event Type" className="px-4 py-3 text-[12px] text-foreground">{row.eventType}</TableCell>
+                          <TableCell data-label="Location" className="px-4 py-3 text-[12px] text-muted-foreground">{row.location}</TableCell>
+                          <TableCell data-label="Time Stamp" className="px-4 py-3 text-[12px] text-muted-foreground">{row.timestamp ?? "N/A"}</TableCell>
+                          <TableCell data-label="Severity" className="px-4 py-3"><Badge className={`border ${severityBadge(row.severity)}`}>{row.severity}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </TableCard>
+            <TablePagination {...riskPagination} label="Risk report pagination" disabled={isLoading} />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

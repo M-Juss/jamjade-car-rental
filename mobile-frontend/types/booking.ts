@@ -29,18 +29,26 @@ export type BookingTimelineItem = {
 };
 
 export type Booking = {
+  sharedVehicleLocation?: { latitude: number; longitude: number; accuracy: number; sharedAt: string } | null;
+  cancellation?: { kind: 'customer' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
+  lateReturn?: import('@/types/browse').LateReturnDetails;
+  attention?: { key: string; label: string } | null;
   id: string;
   backendId: number;
   vehicleName: string;
+  vehiclePlateNumber?: string | null;
   brand: string;
   model: string;
+  color: string | null;
   image: string;
   status: BookingStatus;
   rentalDate: string;
   returnDate: string;
+  rentalEndAt?: string | null;
   duration: number;
   pickupType: 'Delivery' | 'Shop Pickup';
   pickupLocation: string;
+  notes?: string | null;
   deliveryTime?: string | null;
   returnLocation: string;
   driverType: DriverType;

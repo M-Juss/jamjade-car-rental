@@ -2,9 +2,11 @@ import type { OptionalService } from '@/types/browse';
 
 export const SHOP_LOCATION = 'Jamjade Rent A Car Services';
 
+export const SHOP_MAPS_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${SHOP_LOCATION}, 9R8H+P3X, Sahud-Ulan, Tanza, Cavite`)}`;
+
 export const JAMJADE_GARAGE = 'Jamjade Garage';
 
-export const TERMS_VERSION = '2026-10-12';
+export const TERMS_VERSION = '2026-10-19-v4';
 
 export const REQUIRED_DOCUMENTS = [
   "Driver's License",

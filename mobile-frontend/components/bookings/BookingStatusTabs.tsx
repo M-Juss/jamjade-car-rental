@@ -27,7 +27,7 @@ export function BookingStatusTabs({
             onPress={() => onStatusChange(status)}
             className={cx(
               'min-h-[42px] items-center justify-center rounded-full border px-4',
-              isSelected ? 'border-success bg-success' : 'border-[#E5E7EB] bg-[#F3F4F6]',
+              isSelected ? 'border-primary bg-primary' : 'border-[#E5E7EB] bg-[#F3F4F6]',
             )}>
             <Text
               className={cx(

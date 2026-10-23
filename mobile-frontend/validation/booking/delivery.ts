@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { toBookingTimestamp } from '@/lib/browse/booking-time';
 export const deliveryRoutesSchema = z
   .object({
     vehicleId: z
@@ -10,12 +11,12 @@ export const deliveryRoutesSchema = z
     rentalStartAt: z
       .string()
       .refine(
-        (v) => Number.isFinite(Date.parse(v)) && Date.parse(v) > Date.now(),
+        (v) => Number.isFinite(Date.parse(toBookingTimestamp(v))) && Date.parse(toBookingTimestamp(v)) > Date.now(),
         'Choose a future pickup date and time.',
       ),
     rentalEndAt: z
       .string()
-      .refine((v) => Number.isFinite(Date.parse(v)), 'Choose a return date.'),
+      .refine((v) => Number.isFinite(Date.parse(toBookingTimestamp(v))), 'Choose a return date.'),
     ownerDriverCoverage: z.enum(['metro_manila', 'outside_manila']),
     address: z.string().trim().min(1, 'Choose an address.').max(255),
     placeId: z.string().max(255).nullable(),
@@ -25,7 +26,7 @@ export const deliveryRoutesSchema = z
       .boolean()
       .refine((v) => v, 'Confirm the delivery map point.'),
   })
-  .refine((v) => Date.parse(v.rentalEndAt) > Date.parse(v.rentalStartAt), {
+  .refine((v) => Date.parse(toBookingTimestamp(v.rentalEndAt)) > Date.parse(toBookingTimestamp(v.rentalStartAt)), {
     path: ['rentalEndAt'],
     message: 'Return must be after pickup.',
   });

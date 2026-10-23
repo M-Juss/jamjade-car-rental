@@ -25,7 +25,9 @@ function getRuntimeApiBaseUrl() {
   const browserHostname = window.location.hostname;
 
   if (TUNNEL_API_BASE_URL && !isLoopbackHost(browserHostname)) {
-    return TUNNEL_API_BASE_URL;
+    return TUNNEL_API_BASE_URL === "same-origin"
+      ? window.location.origin
+      : TUNNEL_API_BASE_URL;
   }
 
   try {

@@ -8,13 +8,17 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentService
 {
     public function record(Booking $booking, User $user, array $data, ?UploadedFile $proof = null): Payment
     {
         return DB::transaction(function () use ($booking, $user, $data, $proof) {
-            $wasPaid = $booking->payment_status === PaymentStatus::Paid;
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->status->isTerminal()) {
+                throw ValidationException::withMessages(['booking' => ['This booking no longer accepts payment.']]);
+            }
             $proofPath = $proof?->store('payment-proofs', 'public');
             $amount = (float) $data['amount'];
 
@@ -41,19 +45,10 @@ class PaymentService
             $booking->update([
                 'payment_status' => $paymentStatus,
                 'remaining_balance' => max((float) $booking->total_amount - $paidAmount, 0),
+                'balance_due_at' => $paymentStatus === PaymentStatus::Paid ? null : $booking->balance_due_at,
             ]);
 
-            if ($paymentStatus === PaymentStatus::Paid && ! $wasPaid) {
-                $bookingId = $booking->id;
-
-                DB::afterCommit(function () use ($bookingId) {
-                    $booking = Booking::query()->find($bookingId);
-
-                    if ($booking) {
-                        app(BookingEmailService::class)->sendBookingConfirmation($booking);
-                    }
-                });
-            }
+            app(BookingEmailService::class)->queueForPayment($payment);
 
             activity()
                 ->causedBy($user)
