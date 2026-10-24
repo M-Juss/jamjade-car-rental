@@ -11,7 +11,7 @@ export type BackgroundAccess = {
 
 // Permission preparation only. Never obtains a fix or registers a location task.
 export async function readRentalBackgroundAccess(): Promise<BackgroundAccess> {
-  if ((Platform.OS !== 'android' && Platform.OS !== 'ios')
+  if (Platform.OS !== 'android'
     || Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
     return { status: 'unavailable', canAskAgain: false };
   }

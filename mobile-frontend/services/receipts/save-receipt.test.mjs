@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { ReceiptSaveUnavailableError } from './errors.ts';
 
-function harness({ missing, granted = true, canAskAgain = true, grantOnRequest = true, captureFailure, copyFailure, saveFailure, targetReady = true, platform = 'android' } = {}) {
+function harness({ missing, granted = true, canAskAgain = true, grantOnRequest = true, captureFailure, copyFailure, saveFailure, targetReady = true } = {}) {
   const calls = [];
   const source = readFileSync(new URL('./save-receipt.ts', import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, {
@@ -33,7 +33,6 @@ function harness({ missing, granted = true, canAskAgain = true, grantOnRequest =
       if (name === 'expo') return { requireOptionalNativeModule: (module) => module === missing ? null : {} };
       if (name === 'react-native') return {
         TurboModuleRegistry: { get: (module) => module === missing ? null : {} },
-        Platform: { OS: platform }, PixelRatio: { get: () => 3 },
       };
       if (name === './errors') return { ReceiptSaveUnavailableError };
       if (name === '@/lib/payments/receipt') return { receiptFilename: () => 'test-receipt.jpg' };
@@ -46,8 +45,8 @@ function harness({ missing, granted = true, canAskAgain = true, grantOnRequest =
             assert.equal(options.format, 'jpg');
             assert.equal(options.result, 'tmpfile');
             assert.equal(options.quality, 0.95);
-            assert.equal(options.width, platform === 'ios' ? 360 : 1080);
-            assert.equal(options.height, platform === 'ios' ? 540 : 1620);
+            assert.equal(options.width, 1080);
+            assert.equal(options.height, 1620);
             calls.push('capture receipt JPEG');
             if (captureFailure) throw captureFailure;
             return 'file:///capture.jpg';
@@ -124,12 +123,6 @@ test('an unmounted receipt never starts capture or saves to the gallery', async 
   await assert.rejects(save, /not ready/);
   assert.equal(calls.includes('capture receipt JPEG'), false);
   assert.equal(calls.includes('save to gallery'), false);
-});
-
-test('iOS scales capture points by device density to preserve the JPEG pixel dimensions', async () => {
-  const { save, calls } = harness({ platform: 'ios' });
-  await save();
-  assert.equal(calls.includes('save to gallery'), true);
 });
 
 test('capture failures do not create or save a receipt file', async () => {

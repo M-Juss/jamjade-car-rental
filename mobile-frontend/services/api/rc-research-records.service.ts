@@ -6,7 +6,7 @@ import { apiDelete, apiGet, apiPost } from '@/services/http';
 import type { RcSessionSetupInput, RcTrialReviewInput } from '@/validation/research/rc-research';
 
 export async function createRcResearchSession(values: RcSessionSetupInput) {
-  if (Platform.OS !== 'android' && Platform.OS !== 'ios') throw new Error('Research sessions require the Android or iOS app.');
+  if (Platform.OS !== 'android') throw new Error('Research sessions require the Android app.');
   const { movement: _movement, intensity: _intensity, ...details } = values;
   const response = await apiPost<RcResearchSession>('/mobile/rc-research/sessions', {
     ...details, platform: Platform.OS, app_version: Constants.expoConfig?.version ?? 'unknown',

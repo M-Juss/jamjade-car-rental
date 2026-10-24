@@ -1,4 +1,8 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # RC Research data contract and collection protocol
+
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](../../android-only-mobile.md).
 
 Status — 2026-10-18: the mobile Admin RC Research workflow and isolated
 Laravel session/trial storage are implemented in code for local/testing RC mode.
@@ -350,8 +354,8 @@ those device checks.
 
 - [RC access and demonstration boundary](telematics-rc-demonstration.md)
 - [Telematics architecture](telematics-architecture.md)
-- [Research capture service](../mobile-frontend/services/telematics/rc-research-capture.ts), [API mapping](../mobile-frontend/services/api/rc-research-records.service.ts) and [Laravel storage service](../backend/app/Services/RcResearchService.php): implemented collector and storage contracts.
-- [Existing capture abstraction](../mobile-frontend/services/telematics/calibration-capture.ts) and [axis adapter](../mobile-frontend/lib/telematics/calibration.ts): summary-only calibration precedents, not a research recorder.
+- [Research capture service](../../../mobile-frontend/services/telematics/rc-research-capture.ts), [API mapping](../../../mobile-frontend/services/api/rc-research-records.service.ts) and [Laravel storage service](../../../backend/app/Services/RcResearchService.php): implemented collector and storage contracts.
+- [Existing capture abstraction](../../../mobile-frontend/services/telematics/calibration-capture.ts) and [axis adapter](../../../mobile-frontend/lib/telematics/calibration.ts): summary-only calibration precedents, not a research recorder.
 - [Expo SDK 54 DeviceMotion source](https://github.com/expo/expo/blob/sdk-54/packages/expo-sensors/src/DeviceMotion.ts): versioned API reference; SDK 54 documentation URLs redirected to latest when checked, so installed 15.0.8 types/native source were also inspected.
 - [Expo SDK 54 FileSystem documentation source](https://github.com/expo/expo/blob/sdk-54/docs/pages/versions/v54.0.0/sdk/filesystem.mdx): local files; secure retention remains application work.
 - [RandomForestClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html), [DummyClassifier](https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html), [grouped stratification](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html) and [evaluation metrics](https://scikit-learn.org/stable/modules/model_evaluation.html): official training/evaluation capabilities; this project's model choices and pilot settings are proposals.

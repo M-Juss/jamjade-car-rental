@@ -79,7 +79,6 @@ await sharp(monochrome, { raw: monoInfo }).png()
   .toFile(path.join(mobile, 'android-icon-monochrome.png'));
 
 const favicon = await canvas(64, 52, '#FFFFFF', 8);
-await fs.writeFile(path.join(mobile, 'favicon.png'), favicon);
 await fs.writeFile(path.join(root, 'web-frontend/src/app/icon.png'), favicon);
 await sharp(icon).resize(180, 180).png()
   .toFile(path.join(root, 'web-frontend/src/app/apple-icon.png'));

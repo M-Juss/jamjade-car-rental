@@ -1,5 +1,5 @@
 import { Info, MapPin, ShieldCheck, Smartphone, X } from 'lucide-react-native';
-import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton } from '@/components/bookings';
@@ -7,7 +7,7 @@ import { themeColors } from '@/constants/theme';
 import { LocationSharingConsentForm } from '@/forms/telematics/LocationSharingConsentForm';
 import type { LocationConsentInput, LocationMonitoringPolicy } from '@/validation/telematics/location-monitoring';
 
-export function DeviceSetupDisclosureDialog({ visible, resetsCalibration, monitoringPolicy, rememberedConsent, isDriver = false, onCancel, onContinue, onDismiss }: {
+export function DeviceSetupDisclosureDialog({ visible, resetsCalibration, monitoringPolicy, rememberedConsent, isDriver = false, onCancel, onContinue }: {
   visible: boolean;
   resetsCalibration: boolean;
   onCancel: () => void;
@@ -15,11 +15,10 @@ export function DeviceSetupDisclosureDialog({ visible, resetsCalibration, monito
   rememberedConsent?: LocationConsentInput | null;
   isDriver?: boolean;
   onContinue: (consent: LocationConsentInput | null) => void;
-  onDismiss: () => void;
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={onCancel} onDismiss={onDismiss}>
+    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={onCancel}>
       <View className="flex-1 justify-center bg-foreground/35" style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16, paddingLeft: Math.max(20, insets.left), paddingRight: Math.max(20, insets.right) }}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close device setup disclosure" onPress={onCancel} className="absolute inset-0" />
         <View accessibilityViewIsModal className="max-h-full w-full max-w-[560px] self-center rounded-card border border-border bg-surface">
@@ -43,7 +42,7 @@ export function DeviceSetupDisclosureDialog({ visible, resetsCalibration, monito
               <Text className="font-sans text-body font-semibold text-foreground">Prepare rental GPS</Text>
               <Text className="font-sans text-body leading-6 text-secondary-foreground">{rememberedConsent ? `Your ${rememberedConsent.sharing_mode === 'foreground_background' ? 'background GPS' : 'app-open GPS'} choice is saved for this rental.` : 'Agree below to start GPS monitoring automatically after staff release this rental.'} Keep Telematics open until monitoring starts. These setup checks do not start rental monitoring.</Text>
               <Text className="font-sans text-body leading-6 text-secondary-foreground">{isDriver ? 'JamJade staff and the booking Customer can see the vehicle’s latest location.' : 'Authorized JamJade staff can see your latest location.'} No route history or rental motion readings are saved. The last point is cleared when staff receive the vehicle, or within {monitoringPolicy.retentionHours + 1} hours of its last update.</Text>
-              <Text className="font-sans text-body leading-6 text-secondary-foreground">{rememberedConsent?.sharing_mode === 'foreground' ? 'App-open GPS stops when minimized.' : 'Background GPS uses battery and continues when minimized or locked.'} {Platform.OS === 'ios' ? 'Allow Always location access; iOS shows a location indicator.' : 'Allow all the time location access; Android shows a notification.'} Closing the app may stop either mode. You can stop monitoring at any time; resuming after an interruption is manual.</Text>
+              <Text className="font-sans text-body leading-6 text-secondary-foreground">{rememberedConsent?.sharing_mode === 'foreground' ? 'App-open GPS stops when minimized.' : 'Background GPS uses battery and continues when minimized or locked.'} Allow all the time access; Android shows a notification. Closing the app may stop either mode. You can stop monitoring at any time; resuming after an interruption is manual.</Text>
             </View> : null}
             <View className="flex-row items-start gap-3">
               <MapPin size={21} color={themeColors.primary} />

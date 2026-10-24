@@ -1,7 +1,6 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Keyboard, Platform, StyleSheet } from 'react-native';
+import { Animated, Easing, Keyboard, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { mobileLayout } from '@/constants/layout';
@@ -39,11 +38,11 @@ export function FloatingBottomTabBar({
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      'keyboardDidShow',
       () => setIsKeyboardVisible(true),
     );
     const hideSubscription = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      'keyboardDidHide',
       () => setIsKeyboardVisible(false),
     );
 
@@ -117,7 +116,6 @@ export function FloatingBottomTabBar({
             : (tab.disabledAccessibilityLabel ?? options?.tabBarAccessibilityLabel ?? tab.label),
           onPress: () => {
             if (isDisabled) { onDisabledTabPress?.(tab); return; }
-            if (Platform.OS === 'ios') void Haptics.selectionAsync();
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
           },

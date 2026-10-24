@@ -1,6 +1,6 @@
 import { MapPin, RefreshCcw } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, Linking, Platform, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Linking, Text, View } from 'react-native';
 
 import { ActionButton, InfoRow, SectionCard } from '@/components/bookings';
 import { LocationSharingDisclosureDialog } from './LocationSharingDisclosureDialog';
@@ -60,10 +60,10 @@ export function RentalLocationMonitoring({ bookingCode }: { bookingCode: string 
       {sharing?.needsSettings ? <ActionButton label="Open device settings" onPress={() => void Linking.openSettings().catch(() => Alert.alert('Settings unavailable', 'Open device Settings to allow location access.'))} /> : null}
     </View>
     {!active && snapshot?.canMonitor ? <RentalBackgroundLocationAccess key={bookingCode} ensureAvailable={async () => Boolean((await refresh())?.canMonitor)} /> : null}
-    {disclosure ? <LocationSharingDisclosureDialog visible={visible} policy={disclosure} onCancel={() => { pendingConsent.current = null; setVisible(false); }} onDismiss={beginPending} onAgree={(consent) => {
+    {disclosure ? <LocationSharingDisclosureDialog visible={visible} policy={disclosure} onCancel={() => { pendingConsent.current = null; setVisible(false); }} onAgree={(consent) => {
       pendingConsent.current = consent;
       setVisible(false);
-      if (Platform.OS !== 'ios') setTimeout(beginPending, 0);
+      setTimeout(beginPending, 0);
     }} /> : null}
   </SectionCard>;
 }

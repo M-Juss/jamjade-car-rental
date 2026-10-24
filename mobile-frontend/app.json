@@ -8,10 +8,6 @@
     "scheme": "mobilefrontend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.jamjadecarrental"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
@@ -29,16 +25,11 @@
       ],
       "package": "com.anonymous.jamjadecarrental"
     },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
       "expo-router",
       [
         "expo-image-picker",
         {
-          "photosPermission": "JamJade needs photo library access so you can upload clear document images.",
           "cameraPermission": false,
           "microphonePermission": false
         }
@@ -46,8 +37,6 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "JamJade needs photo library access so you can upload clear document images.",
-          "savePhotosPermission": "JamJade saves payment receipts to your photo library when you choose Save receipt.",
           "granularPermissions": [],
           "isAccessMediaLocationEnabled": false
         }
@@ -68,17 +57,8 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "JamJade uses your location to verify self-drive setup and support an active rental after you consent.",
-          "locationAlwaysAndWhenInUsePermission": "JamJade uses your location during an authorized active self-drive rental after you consent.",
-          "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
-        }
-      ],
-      [
-        "expo-sensors",
-        {
-          "motionPermission": "JamJade uses motion access to verify device readiness for self-drive setup."
         }
       ],
       [
@@ -97,6 +77,9 @@
       "eas": {
         "projectId": "baddcc70-6975-4b90-8346-19debcc18d60"
       }
-    }
+    },
+    "platforms": [
+      "android"
+    ]
   }
 }

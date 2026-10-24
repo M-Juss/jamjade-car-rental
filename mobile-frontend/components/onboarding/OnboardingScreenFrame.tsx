@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { View, } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 
@@ -8,7 +8,7 @@ export function OnboardingScreenFrame({ action, children }: { children: ReactNod
 
   return (
     <View className="flex-1 bg-background">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+      <View className="flex-1">
         <KeyboardFormScrollView
           className="flex-1"
           contentContainerStyle={{
@@ -20,7 +20,7 @@ export function OnboardingScreenFrame({ action, children }: { children: ReactNod
           <View className="w-full max-w-[460px] self-center px-5">{children}</View>
         </KeyboardFormScrollView>
         {action}
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

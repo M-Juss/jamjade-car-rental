@@ -10,7 +10,7 @@ let collecting = false;
 
 export async function captureRcResearch(protocol: RcProtocol, cancel: AbortSignal, stop: AbortSignal,
   onReading: (reading: RcLiveReading) => void): Promise<RcCaptureResult> {
-  if (Platform.OS !== 'android' && Platform.OS !== 'ios') throw new RcResearchCaptureError('Motion recording requires the Android or iOS app.');
+  if (Platform.OS !== 'android') throw new RcResearchCaptureError('Motion recording requires the Android app.');
   if (collecting) throw new RcResearchCaptureError('Another motion recording is already running.');
   if (protocol.version !== 1 || protocol.recording_mode !== 'manual' || protocol.requested_interval_ms !== 20)
     throw new RcResearchCaptureError('Refresh the research session before recording.');
@@ -95,7 +95,7 @@ export async function captureRcResearch(protocol: RcProtocol, cancel: AbortSigna
           const last = samples.at(-1);
           if (last && acceleration.timestamp <= last.acceleration_timestamp_s) return;
           if (samples.length >= protocol.max_samples) { finish(new RcResearchCaptureError('The recording reached its data limit. Start a shorter trial.')); return; }
-          const axes = rotationAxes(rotation, Platform.OS);
+          const axes = rotationAxes(rotation);
           const sample: RcSample = { elapsed_ms: arrival - started, acceleration_timestamp_s: acceleration.timestamp,
             gravity_timestamp_s: including.timestamp, rotation_timestamp_s: rotation.timestamp,
             linear_x: acceleration.x, linear_y: acceleration.y, linear_z: acceleration.z,

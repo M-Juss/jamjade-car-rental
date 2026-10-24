@@ -648,13 +648,21 @@ erDiagram
 
 ## Implemented database architecture
 
-The physical schema and Laravel services support customer verification, vehicles, booking/payment/charge records, driver assignment, condition inspections, maintenance, circle and polygon templates, multiple default/custom monitoring zones, release-time zone freezing, pre-release setup attempts, per-zone monitoring state, delivery quote snapshots, and the trip/location/event data structure. The mobile application currently performs six real setup-readiness checks and no geofence gate. Trip APIs and storage exist, but the current mobile flow does not start an active trip or stream location. Reports are computed from existing business records rather than a report table.
+The physical schema and Laravel services support customer verification, vehicles, booking/payment/charge records, driver assignment, condition inspections, maintenance, circle and polygon templates, multiple default/custom monitoring zones, release-time zone freezing, pre-release setup attempts, per-zone monitoring state, delivery quote snapshots, and the trip/location/event data structure. Telematics capability clarification (2026-10-24): six readiness checks and five bounded calibration exercises are implemented, without a geofence release gate. The current consented mobile collector can start/reuse a released rental trip and overwrite its encrypted latest GPS point, including explicit background sharing. It does not append route history. Reports are computed from existing business records rather than a report table. See the [central baseline](telematics-master-plan.md#current-implementation-baseline); dated schema counts above retain their original provenance.
 
 ## Planned or not yet operational
 
-The five calibration step types now have consented foreground captures and server-evaluated summary evidence in the existing `telematics_setup_steps`; physical calibration validation remains a separate evidence gate. No raw sensor stream tables were added. See [calibration](telematics-calibration.md). Background active-trip GPS streaming, an offline telemetry queue, driver scoring, and AI/ML classification are not present as working database domains. Monitoring zones are implemented for circle/polygon defaults and custom booking zones; expressway/corridor zones remain outside the current schema. No AI-specific tables were found. The possible future Python ML service is an external processing boundary; no classification table or flow is implied by this ERD.
+Calibration submits summary evidence in `telematics_setup_steps`; isolated RC
+Research uses session/trial metadata and encrypted private sample files. Neither
+creates raw-sample MySQL tables. Physical moving-calibration validation remains
+pending. Default/custom frozen zones and latest-GPS crossing evaluation are
+implemented; expressway/corridor zones remain outside the current schema.
 
-The proposed future ML path is mobile sensor capture → Laravel → MySQL telemetry → Python feature extraction/classification → Laravel → significant event or analytics. It is a plan, not an implemented relationship in these diagrams.
+Native durable motion recording, a web research inspector, processing/export,
+ML classification, behavior scoring and trip reports are target work described
+only in the [central telematics guide](telematics-master-plan.md#target-pipeline).
+Do not infer those domains or an implemented Python service from these diagrams,
+and do not use this ERD as an alternative pipeline plan.
 
 ## Infrastructure outside the business diagrams
 

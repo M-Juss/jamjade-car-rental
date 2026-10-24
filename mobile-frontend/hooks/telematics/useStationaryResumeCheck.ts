@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState } from 'react-native';
 
 import type { CalibrationLiveState } from '@/lib/telematics/calibration';
 import type { StationaryResumeSettings } from '@/lib/telematics/stationary-resume';
@@ -75,7 +75,7 @@ export function useStationaryResumeCheck(bookingCode: string, userId: number | u
       if (current()) { controller.current = null; setBusy(false); }
     }
   };
-  const onDismiss = () => {
+  const finishResume = () => {
     const start = pendingResume.current;
     pendingResume.current = null;
     if (!opened.current) { setLive(null); setSettings(null); setError(null); }
@@ -94,7 +94,7 @@ export function useStationaryResumeCheck(bookingCode: string, userId: number | u
     opened.current = false;
     setVisible(false);
     // Wait for the native modal to dismiss before GPS permissions or another disclosure.
-    if (Platform.OS !== 'ios') setTimeout(onDismiss, 0);
+    setTimeout(finishResume, 0);
   };
-  return { visible, busy, live, settings, error, needsSettings, open, run, close, resume, onDismiss };
+  return { visible, busy, live, settings, error, needsSettings, open, run, close, resume };
 }

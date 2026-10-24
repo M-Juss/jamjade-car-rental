@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
-  Platform,
   ScrollView,
   View,
   type KeyboardEvent,
@@ -61,9 +60,6 @@ export function KeyboardFormScrollView({
             fieldHeight,
             viewportTop,
             viewportHeight,
-            // Android's resized viewport is already above the keyboard, including
-            // dialog windows whose origin can differ from screen coordinates.
-            keyboardTop: Platform.OS === 'ios' ? Keyboard.metrics()?.screenY : undefined,
             scrollOffset: scrollOffset.current,
             clearance: fieldClearance,
           });
@@ -93,17 +89,10 @@ export function KeyboardFormScrollView({
       setKeyboardSpace(0);
       refresh();
     };
-    const updateKeyboardFrame = () => {
-      setKeyboardSpace(Math.max(0, Keyboard.metrics()?.height ?? 0));
-      refresh();
-    };
     const subscriptions = [
       Keyboard.addListener('keyboardDidShow', showKeyboard),
       Keyboard.addListener('keyboardDidHide', hideKeyboard),
     ];
-    if (Platform.OS === 'ios') {
-      subscriptions.push(Keyboard.addListener('keyboardDidChangeFrame', updateKeyboardFrame));
-    }
     return () => {
       subscriptions.forEach((subscription) => subscription.remove());
       if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -115,7 +104,7 @@ export function KeyboardFormScrollView({
     <FieldScrollContext.Provider value={context}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+        keyboardDismissMode="none"
         automaticallyAdjustKeyboardInsets={false}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}

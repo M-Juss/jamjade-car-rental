@@ -152,12 +152,10 @@ records may remain visible for legacy customers, but new uploads must not add a
 passport option. Keep the mapping in `src/services/verification/` aligned with
 the Laravel and mobile contracts.
 
-Delivery route previews and geofence map editors use the shared
+Delivery route previews, geofence editors and Fleet Monitoring use the shared
 `src/lib/google-maps.ts` loader. New map consumers should call its
 `loadGoogleMaps` singleton with `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` rather than
-adding a component-level loader. The existing fleet map still has local loader
-setup; avoid adding another copy and converge it only within a scoped fleet-map
-change.
+adding a component-level loader. Keep the existing singleton integration.
 
 The marketing `DrivingInsights` content is presentation copy and does not prove
 that a backend classifier or AI model is available. Treat the capstone's AI
@@ -189,7 +187,7 @@ Fleet Monitoring uses the shared Google Maps loader, latest-only authorized
 reads and Laravel Echo/Reverb notifications. Configure the public Reverb values
 in `.env.example` to match Laravel; never expose `REVERB_APP_SECRET`. Run the
 Reverb server and its dedicated queue worker as described in
-[the map and realtime guide](../docs/fleet-monitoring-realtime.md). HTTPS/tunnel
+[the central fleet-monitoring section](../docs/telematics-master-plan.md#existing-fleet-monitoring). HTTPS/tunnel
 websites require a reachable TLS WebSocket endpoint; loopback setup is for the
 local Mac website. The view reconciles current state every 30 seconds when
 visible and retains manual Refresh if realtime transport is unavailable.

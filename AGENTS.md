@@ -8,11 +8,11 @@ The repository contains three independent codebases:
 
 - `backend/`: Laravel API and shared backend for both frontends.
 - `web-frontend/`: Next.js website for administrators and staff.
-- `mobile-frontend/`: Expo and React Native application for customers and assigned Drivers.
+- `mobile-frontend/`: Android-only Expo and React Native application for customers and assigned Drivers.
 
 The applications share one repository but are not one package-manager workspace. Run commands from the application directory they belong to, and do not assume dependencies, types, or runtime code are shared between applications.
 
-Read `docs/README.md` for the documentation map, then `docs/project-status-and-roadmap.md` for current project decisions, phase status, and the capstone's AI classification goal. Use the domain guides below for detailed contracts and inspect code before assuming a documented feature is operational.
+Read `docs/README.md` for the documentation map, then `docs/project-status-and-roadmap.md` for current project decisions, phase status, and the capstone's AI classification goal. Use the domain guides below for detailed contracts and inspect code before assuming a documented feature is operational. For telematics and RC research, `docs/telematics-master-plan.md` is the single active guide; archived guides are historical only.
 
 ## Product Architecture
 
@@ -124,8 +124,8 @@ Laravel Form Requests are the authoritative source of truth for accepted request
 
 - Use Expo Router and the existing route-group conventions. Route files should remain small when a reusable screen module owns substantial presentation or behavior.
 - Consult the exact Expo SDK documentation required by `mobile-frontend/AGENTS.md` before changing Expo configuration or native-facing APIs.
-- Support both Android and iOS. Do not design or verify for only one platform.
-- Use `react-native-safe-area-context` insets or safe-area components for status bars, display cutouts, the iOS home indicator, and Android system navigation.
+- Support Android only. iOS and mobile-browser support were retired on 2026-10-24; do not reintroduce their configuration, runtime branches or dependencies. The separate Next.js website remains supported.
+- Use `react-native-safe-area-context` insets or safe-area components for status bars, display cutouts, and Android system navigation.
 - Do not use fixed top or bottom padding as a substitute for safe-area insets. Apply insets at the screen or navigation boundary and avoid double-padding nested content.
 - Keep Android edge-to-edge behavior in mind when building full-screen layouts, modals, sheets, keyboards, and bottom actions.
 - Use responsive measurements, flexible layout, sensible maximum widths, and scrolling where needed. Do not assume one phone size; consider small phones, large phones, and supported tablet layouts.
@@ -208,7 +208,7 @@ Verification must match the application and behavior changed. Start with focused
 - Run `npx tsc --noEmit` until a dedicated type-check script is added.
 - Run Expo dependency/configuration diagnostics when dependencies, Expo configuration, or native-facing packages change.
 - The mobile test foundation is not configured yet. Establish the Expo-compatible Jest setup and React Native Testing Library in a dedicated task; after that, add and run targeted tests for changed behavior.
-- Smoke-test affected user flows on both iOS and Android when the change is platform-sensitive. State clearly when a device, simulator, build, permission, or external service prevents a check.
+- Smoke-test affected user flows on Android when the change is platform-sensitive. State clearly when a device, simulator, build, permission, or external service prevents a check.
 
 ### General Verification
 
@@ -232,16 +232,16 @@ Video recording, sending/uploads, auditing, and dashcam offerings are outside pr
 - Never start hidden or unexpected telemetry collection. Review applicable privacy and data-protection requirements before active-trip monitoring is released.
 - Keep raw high-volume telemetry out of ordinary request and UI paths. Plan ingestion, aggregation, retention, and access separately before implementation.
 
-### Established telematics data boundary
+### Telematics and RC research boundary
 
-- Telematics applies to Self Drive and With Assigned Driver. The owning Customer operates Self Drive; the current assigned Driver operates With Assigned Driver. One booking has at most one post-release `telematics_trip`; pauses and resumes stay within that trip.
-- Pre-release readiness belongs to `telematics_setup_sessions` and retryable `telematics_setup_steps`, never to `booking_assignments`. The existing authorized Start Rental action remains the final release action.
-- Default monitoring circles/polygons belong to `geofences`. Optional custom booking zones may be edited before release. At Start Rental copy active defaults into `booking_geofences` and freeze every booking zone; never read released rental geometry or alert preferences dynamically from editable defaults. Zone configuration and containment never gate setup or release. Read `docs/geofence-monitoring.md` before changing this behavior.
-- `telematics_location_points` is high-volume route history. `telematics_trips` current-location fields are intentional latest-state cache. `telematics_events` contains significant occurrences only.
-- Do not add raw accelerometer or gyroscope sample tables, encode streams in JSON, or introduce driver-behavior/AI classifications without a separately approved design.
-- Read `docs/telematics-architecture.md` before changing telematics data, client behavior, or release logic; read `docs/telematics-handover-lifecycle.md` before changing handover endpoints or staff operations; read `docs/telematics-device-location.md` before changing native setup checks, permissions, GPS policy, or geofence evaluation.
-- Handover is staff-controlled: only `setup_required -> in_progress` may start it, and the existing authorized Start Rental action is the only `ready_for_release -> released` release path. Mobile device setup submits typed real readiness evidence through its native abstraction; Laravel determines outcomes. Calibration uses only the separately documented bounded, consented foreground capture and summary contract. Released-rental location sharing follows the current foreground/background consent guides; setup and calibration must not start rental GPS, write route history, upload raw motion, or create trips.
-- Telematics navigation is not telematics eligibility. Keep Customer and Driver entry points server-gated through the authoritative handover eligibility read model; only the owning Customer's Self Drive booking or the authenticated Driver's currently assigned With Assigned Driver booking may be selected. Setup mutations additionally require the applicable operator, `confirmed`, server time within the reserved `[rental_start_at, rental_end_at)` interval, and `in_progress` handover; verified Customer documents are required for Self Drive. Reassignment requires fresh setup attempts by the newly assigned Driver.
+- Read `docs/telematics-master-plan.md` before changing telematics, native motion, RC research, calibration, GPS, fleet alerts, AI, scoring or report flows. It separates implemented behavior, agreed targets, experimental settings and verification. Do not use `docs/archive/` as current coding instructions or restore retired platforms from historical text.
+- Telematics applies to Self Drive and With Assigned Driver. The owning Customer operates Self Drive; the current assigned Driver operates With Assigned Driver. A booking has at most one post-release trip; pauses/resumes stay in that trip.
+- Pre-release readiness belongs to setup sessions and retryable steps, never booking assignments. Laravel owns eligibility and outcomes. Staff starts handover and the existing authorized Start Rental action remains the only release action. Preserve server-time, operator, document, payment and inspection requirements; reassignment requires fresh setup by the new Driver.
+- Monitoring zones are frozen at release; configuration and containment never gate setup/release. Read `docs/geofence-monitoring.md` for geometry, snapshots and crossing contracts.
+- Current calibration is bounded foreground capture with summary-only evidence. Current released monitoring is consented latest GPS, including explicit background mode. Neither is an implemented continuous motion/AI recorder. Setup/calibration must not start rental GPS or create trips.
+- Current RC research uses separate Admin/owner-bound metadata and encrypted private sample files. The agreed native recorder, durable drafts, web inspector, preprocessing/export, ML events and behavior score are target work, not existing functionality. Do not treat older blanket planning exclusions as a reason to block this agreed direction.
+- Keep original research streams in a dedicated versioned file/ingestion boundary, not setup evidence, ordinary event metadata, raw-sample database tables, logs or public assets. Location-history tables are distinct from latest-state caches and significant events. Do not silently mix Expo v1 measurements with direct Android sensor conventions.
+- Preserve existing booking/authentication behavior and historical data. Extend every affected Form Request, Resource, frontend schema/service/type, native adapter and test when contracts change. RC validation does not establish real-car accuracy; observer annotations are not live direction inputs.
 
 ## Vehicle Condition Snapshots
 

@@ -1,5 +1,5 @@
 import { requireOptionalNativeModule } from 'expo';
-import { PixelRatio, Platform, TurboModuleRegistry } from 'react-native';
+import { TurboModuleRegistry } from 'react-native';
 import type { CustomerReceipt } from '@/services/api/types';
 import { receiptFilename } from '@/lib/payments/receipt';
 import { ReceiptSaveUnavailableError } from './errors';
@@ -24,13 +24,11 @@ export async function saveReceiptJpeg(receipt: CustomerReceipt, target: ReceiptI
     throw new ReceiptSaveUnavailableError(permission.canAskAgain ? 'permission_denied' : 'permission_blocked');
   }
   const directory = new Directory(Paths.cache, `receipt-${receipt.id}-${Date.now()}`);
-  // iOS capture dimensions are points; Android accepts physical pixels.
-  const scale = Platform.OS === 'ios' ? PixelRatio.get() : 1;
   let captured: string | undefined;
   try {
     captured = await captureRef(target.view, {
       format: 'jpg', quality: 0.95, result: 'tmpfile',
-      width: 1080 / scale, height: Math.round(1080 * target.height / target.width) / scale,
+      width: 1080, height: Math.round(1080 * target.height / target.width),
     });
     directory.create({ intermediates: true, idempotent: true });
     const file = new File(directory, receiptFilename(receipt));

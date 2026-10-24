@@ -4,7 +4,7 @@ import { useRouter, type Href } from 'expo-router';
 import { ShieldCheck } from 'lucide-react-native';
 import { useCallback } from 'react';
 import { Controller, useForm, type FieldPath } from 'react-hook-form';
-import { BackHandler, Platform, View } from 'react-native';
+import { BackHandler, View } from 'react-native';
 
 import { LogoutConfirmationDialog } from '@/components/auth/LogoutConfirmationDialog';
 import { AvatarUploader } from '@/components/onboarding/AvatarUploader';
@@ -95,7 +95,6 @@ export function BasicInfoForm() {
 
   useFocusEffect(
     useCallback(() => {
-      if (Platform.OS !== 'android') return;
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
         goBack();
         return true;

@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 
 import { fontFamilies } from './fonts';
 
@@ -47,26 +46,9 @@ export const Colors = {
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    sans: fontFamilies.regular,
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: fontFamilies.regular,
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: fontFamilies.regular,
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+export const Fonts = {
+  sans: fontFamilies.regular,
+  serif: 'serif',
+  rounded: 'normal',
+  mono: 'monospace',
+};

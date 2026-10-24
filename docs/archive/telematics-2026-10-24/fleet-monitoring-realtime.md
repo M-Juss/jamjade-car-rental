@@ -1,3 +1,5 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # Fleet Monitoring map and realtime updates
 
 ## Implemented increment — 2026-10-18

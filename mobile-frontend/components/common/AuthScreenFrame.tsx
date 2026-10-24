@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import type { PropsWithChildren } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { themeColors } from '@/constants/theme';
@@ -16,7 +16,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
 
   return (
     <View className="flex-1 bg-background">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
+      <View className="flex-1">
         <KeyboardFormScrollView
           className="flex-1"
           keyboardShouldPersistTaps="handled"
@@ -73,7 +73,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
             </View>
           </View>
         </KeyboardFormScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

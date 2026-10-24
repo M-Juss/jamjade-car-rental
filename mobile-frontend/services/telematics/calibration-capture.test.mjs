@@ -57,6 +57,15 @@ function captureHarness({ available = true, granted = true, platform = 'android'
 }
 const settle = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
 
+test('unsupported runtimes cannot subscribe to calibration motion', async () => {
+  for (const platform of ['ios', 'web']) {
+    const harness = captureHarness({ platform });
+    await assert.rejects(harness.capture(6, null, new AbortController().signal), /Android/);
+    assert.equal(harness.active, false);
+    assert.equal(harness.timers, 0);
+  }
+});
+
 const forwardLimits = { acceleration: 0.5, durationMs: 250, coherence: 0.7, samples: 5 };
 function movementOptions(step) {
   return { forwardLimits, completion: { step,
@@ -65,7 +74,7 @@ function movementOptions(step) {
   } };
 }
 
-for (const platform of ['android', 'ios']) for (const accelerationOnly of [false, true]) {
+for (const platform of ['android']) for (const accelerationOnly of [false, true]) {
   test(`${platform}: Forward capture accepts acceleration-only setting ${accelerationOnly}`, async () => {
     const harness = captureHarness({ platform });
     const options = movementOptions('forward_calibration');
@@ -95,7 +104,7 @@ test('invalid movement settings fail before any motion subscription', async () =
   }
 });
 
-for (const platform of ['android', 'ios']) for (const peak of [2.99, 3, 3.02]) {
+for (const platform of ['android']) for (const peak of [2.99, 3, 3.02]) {
   test(`${platform}: Forward retains one ${peak} acceleration peak through later fluctuations`, async () => {
     const harness = captureHarness({ platform });
     const options = movementOptions('forward_calibration');
@@ -124,7 +133,7 @@ for (const platform of ['android', 'ios']) for (const peak of [2.99, 3, 3.02]) {
   });
 }
 
-for (const platform of ['android', 'ios']) for (const step of ['forward_calibration', 'braking_calibration', 'left_turn_calibration', 'right_turn_calibration']) {
+for (const platform of ['android']) for (const step of ['forward_calibration', 'braking_calibration', 'left_turn_calibration', 'right_turn_calibration']) {
   test(`${platform}: ${step} finishes on valid evidence before the maximum recording time`, async () => {
     const harness = captureHarness({ platform });
     const reference = { down: [0, -1, 0], forward: step === 'forward_calibration' ? null : [0, 0, -1] };
@@ -171,7 +180,7 @@ test('a gap or changed mount prevents early completion despite later qualifying 
   }
 });
 
-for (const platform of ['android', 'ios']) test(`${platform}: fresh startup provides a full capture and throttled aggregate feedback`, async () => {
+for (const platform of ['android']) test(`${platform}: fresh startup provides a full capture and throttled aggregate feedback`, async () => {
   const harness = captureHarness({ platform });
   let ready = 0; const readings = [];
   const result = harness.capture(3, null, new AbortController().signal, { onReady() { ready++; }, onReading(value) { readings.push(value); } });
@@ -245,7 +254,7 @@ test('missing motion permission never subscribes or invents evidence', async () 
 });
 
 
-for (const platform of ['android', 'ios']) test(`${platform}: parked measurement includes fluctuations without censoring or resetting the window`, async () => {
+for (const platform of ['android']) test(`${platform}: parked measurement includes fluctuations without censoring or resetting the window`, async () => {
   const harness = captureHarness({ platform });
   const readings = [];
   const result = harness.capture(3, null, new AbortController().signal, { onReading(value) { readings.push(value); } });
@@ -277,7 +286,7 @@ test('parked bias and variation remain separate bounded statistics', async () =>
   assert.equal(summary.samples, undefined);
 });
 
-for (const platform of ['android', 'ios']) test(`${platform}: Forward live feedback uses the horizontal plane and retains the learned window after stopping`, async () => {
+for (const platform of ['android']) test(`${platform}: Forward live feedback uses the horizontal plane and retains the learned window after stopping`, async () => {
   const harness = captureHarness({ platform });
   const readings = [];
   const result = harness.capture(3, { down: [0, -1, 0], forward: null }, new AbortController().signal, { onReading(value) { readings.push(value); } });
@@ -311,7 +320,7 @@ test('Forward learner uses the server threshold instead of its default floor', a
   }
 });
 
-for (const platform of ['android', 'ios']) test(`${platform}: noisy Forward candidates reset live progress before a clean movement is retained`, async () => {
+for (const platform of ['android']) test(`${platform}: noisy Forward candidates reset live progress before a clean movement is retained`, async () => {
   const harness = captureHarness({ platform });
   const readings = [];
   const result = harness.capture(3, { down: [0, -1, 0], forward: null }, new AbortController().signal, { onReading(value) { readings.push(value); } });
@@ -339,7 +348,7 @@ test('invalid server window settings fail before any motion subscription', async
   }
 });
 
-for (const platform of ['android', 'ios']) test(`${platform}: short mounted recordings expose real braking and separate turn totals without new payload fields`, async () => {
+for (const platform of ['android']) test(`${platform}: short mounted recordings expose real braking and separate turn totals without new payload fields`, async () => {
   const harness = captureHarness({ platform });
   const readings = [];
   const result = harness.capture(3, { down: [0, -1, 0], forward: [0, 0, -1] }, new AbortController().signal,

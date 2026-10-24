@@ -1,12 +1,10 @@
-import { Platform, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 type Point = { latitude: number; longitude: number };
 
 export function DeliveryPointMap({ point, onReady, unavailableMessage = 'The delivery map is unavailable. Use View Delivery Point to open Google Maps.' }: { point: Point; onReady?: () => void; unavailableMessage?: string }) {
-  const configured = Platform.OS === 'ios'
-    ? Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY)
-    : Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY);
+  const configured = Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY);
 
   if (!configured) return (
     <Text accessibilityRole="alert" className="font-sans text-caption text-destructive">

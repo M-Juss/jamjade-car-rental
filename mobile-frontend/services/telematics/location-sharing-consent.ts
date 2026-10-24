@@ -1,5 +1,4 @@
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
 import type { LocationConsentInput } from '@/validation/telematics/location-monitoring';
 
@@ -17,14 +16,13 @@ function legacyConsentKey(scope: LocationSharingConsentScope, version: number) {
 }
 
 async function readChoice(key: string): Promise<SavedChoice | null> {
-  const raw = Platform.OS === 'web' ? window.localStorage.getItem(key) : await SecureStore.getItemAsync(key);
+  const raw = await SecureStore.getItemAsync(key);
   return raw ? JSON.parse(raw) as SavedChoice : null;
 }
 
 async function writeChoice(key: string, choice: SavedChoice) {
   const value = JSON.stringify(choice);
-  if (Platform.OS === 'web') window.localStorage.setItem(key, value);
-  else await SecureStore.setItemAsync(key, value);
+  await SecureStore.setItemAsync(key, value);
 }
 
 function isValidChoice(choice: SavedChoice | null, version: number): choice is SavedChoice {

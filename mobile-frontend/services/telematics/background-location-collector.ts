@@ -29,7 +29,7 @@ async function stopNative() {
 }
 
 // The session and token remain in memory. A cold/headless restart cannot resume consent.
-if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(RENTAL_LOCATION_TASK)) {
+if (Platform.OS === 'android' && !TaskManager.isTaskDefined(RENTAL_LOCATION_TASK)) {
   TaskManager.defineTask<{ locations: Location.LocationObject[] }>(RENTAL_LOCATION_TASK, async ({ data, error }) => {
     const current = receiver;
     if (!current) { await serial(async () => { if (!receiver) await stopNative(); }).catch(() => {}); return; }
@@ -53,6 +53,7 @@ export async function prepareBackgroundCollection(isCurrent: () => boolean) {
 }
 
 export async function watchBackgroundLocation(interval: number, reading: Receiver['reading'], error: Receiver['error']) {
+  if (Platform.OS !== 'android') throw new LocationMonitoringIssue('Location sharing requires the Android app.');
   const id = ++generation;
   await serial(async () => {
     if (generation !== id) return;
@@ -66,9 +67,6 @@ export async function watchBackgroundLocation(interval: number, reading: Receive
         distanceInterval: 0,
         deferredUpdatesInterval: interval * 1000,
         deferredUpdatesDistance: 0,
-        showsBackgroundLocationIndicator: true,
-        pausesUpdatesAutomatically: false,
-        activityType: Location.ActivityType.AutomotiveNavigation,
         foregroundService: {
           notificationTitle: 'JamJade location sharing',
           notificationBody: 'Sharing your latest rental location. Open Telematics to stop.',
@@ -92,6 +90,6 @@ export async function watchBackgroundLocation(interval: number, reading: Receive
 export function stopBackgroundCollection() {
   receiver = null;
   generation++;
-  if (Platform.OS === 'web') return Promise.resolve();
+  if (Platform.OS !== 'android') return Promise.resolve();
   return serial(stopNative);
 }

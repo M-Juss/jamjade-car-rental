@@ -7,15 +7,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   Text,
-  useWindowDimensions,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 
 import {
@@ -218,7 +216,6 @@ function SelectableCard({
 }
 
 export function BookingForm() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const resolvedVehicleId = firstParam(vehicleId);
@@ -475,9 +472,7 @@ export function BookingForm() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        <View
           className="flex-1">
           <KeyboardFormScrollView
             className="flex-1"
@@ -680,7 +675,7 @@ export function BookingForm() {
               ) : null}
             </View>
           </KeyboardFormScrollView>
-        </KeyboardAvoidingView>
+        </View>
         <FormToast
           message={toast.message}
           onDismiss={toast.clearToast}

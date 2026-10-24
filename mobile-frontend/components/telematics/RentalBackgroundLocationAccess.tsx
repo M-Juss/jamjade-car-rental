@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Linking, Platform, Text, View } from 'react-native';
+import { Alert, AppState, Linking, Text, View } from 'react-native';
 
 import { ActionButton, InfoRow } from '@/components/bookings';
 import { useBackgroundLocationAccess } from '@/hooks/telematics/useBackgroundLocationAccess';
@@ -37,16 +37,16 @@ export function RentalBackgroundLocationAccess({ ensureAvailable }: { ensureAvai
     <InfoRow label="Background access" value={label} />
     {error ? <Text accessibilityLiveRegion="polite" className="font-sans text-caption leading-5 text-destructive">{error}</Text> : null}
     {access?.status === 'ready' ? null
-      : access?.status === 'unavailable' ? <Text className="font-sans text-caption leading-5 text-secondary-foreground">Background access requires an Android or iOS development build with location support.</Text>
+      : access?.status === 'unavailable' ? <Text className="font-sans text-caption leading-5 text-secondary-foreground">Background access requires an Android development build with location support.</Text>
         : <ActionButton label={busy ? 'Checking background access…' : needsSettings ? 'Open device settings' : 'Prepare background access'} disabled={busy} onPress={() => {
           action.current = needsSettings ? 'settings' : 'permissions';
           setVisible(true);
         }} />}
-    {needsSettings ? <Text className="font-sans text-caption leading-5 text-secondary-foreground">{access?.status === 'services_disabled' ? 'Enable location services in device Settings.' : Platform.OS === 'ios' ? 'Choose Always for location access in device Settings.' : 'Choose Allow all the time for location access in device Settings.'}</Text> : null}
-    <BackgroundLocationDisclosureDialog visible={visible} onCancel={() => { pending.current = false; setVisible(false); }} onDismiss={begin} onContinue={() => {
+    {needsSettings ? <Text className="font-sans text-caption leading-5 text-secondary-foreground">{access?.status === 'services_disabled' ? 'Enable location services in device Settings.' : 'Choose Allow all the time for location access in device Settings.'}</Text> : null}
+    <BackgroundLocationDisclosureDialog visible={visible} onCancel={() => { pending.current = false; setVisible(false); }} onContinue={() => {
       pending.current = true;
       setVisible(false);
-      if (Platform.OS !== 'ios') setTimeout(begin, 0);
+      setTimeout(begin, 0);
     }} />
   </View>;
 }

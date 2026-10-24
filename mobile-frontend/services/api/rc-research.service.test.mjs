@@ -11,13 +11,14 @@ function serviceWith(filename, http, platform = 'android') {
   vm.runInNewContext(compiled, { exports, require: (name) => {
     if (name === 'react-native') return { Platform: { OS: platform } };
     if (name === '@/services/http') return http;
+    if (name === './profile-mapping') return serviceWith('./profile-mapping.ts', http, platform);
     throw new Error(`Unexpected import: ${name}`);
   } });
   return exports;
 }
 
-test('Admin uses the regular login endpoint and existing secure token abstraction on both platforms', async () => {
-  for (const platform of ['android', 'ios']) {
+test('Admin uses the regular login endpoint and existing secure token abstraction on Android', async () => {
+  for (const platform of ['android']) {
     let saved = false;
     const api = serviceWith('./auth.service.ts', {
       apiPost: async (path, payload, options) => {

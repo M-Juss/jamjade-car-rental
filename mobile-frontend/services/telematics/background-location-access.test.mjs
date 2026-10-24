@@ -36,7 +36,7 @@ function native(platform = 'android', options = {}) {
   return { ...exports, calls, state };
 }
 
-for (const platform of ['android', 'ios']) {
+for (const platform of ['android']) {
   test(`${platform}: checking access is read-only and granted permissions do not prompt again`, async () => {
     const api = native(platform, { foreground: true, background: true });
     assert.equal((await api.readRentalBackgroundAccess()).status, 'ready');
@@ -68,7 +68,7 @@ for (const platform of ['android', 'ios']) {
 }
 
 test('unsupported platforms and Expo Go never invoke permission APIs', async () => {
-  for (const api of [native('web'), native('android', { environment: 'storeClient' }), native('ios', { environment: 'storeClient' })]) {
+  for (const api of [native('web'), native('ios'), native('android', { environment: 'storeClient' })]) {
     assert.equal((await api.prepareRentalBackgroundAccess(() => true)).status, 'unavailable');
     assert.deepEqual(api.calls, []);
   }

@@ -1,14 +1,20 @@
 # JamJade Mobile Agent Guide
 
 This guide applies to `mobile-frontend/` together with the repository-root
-`AGENTS.md`. The app is an Expo SDK 54 customer application with a small
+`AGENTS.md`. The app is an Android-only Expo SDK 54 customer application with a small
 assigned-Driver surface that talks to the Laravel API. Read the exact
 [Expo SDK 54 documentation](https://docs.expo.dev/versions/v54.0.0/) before
 writing any code. For Expo configuration or native-facing APIs, consult the
 same exact versioned documentation before making the change.
-For telematics work, also read `../docs/telematics-architecture.md`,
-`../docs/telematics-handover-lifecycle.md`, and
-`../docs/telematics-device-location.md` before writing code.
+For telematics and RC research, read `../docs/telematics-master-plan.md` before
+writing code. It is the single active domain guide; archived documents are
+historical evidence, not coding instructions.
+
+iOS and mobile-browser targets are retired. Keep the separate Next.js website and shared Laravel contracts intact. Do not remove historical platform values from API read types or stored research records. See `../docs/android-only-mobile.md` for the scope and verification gates.
+
+Expo SDK 54 native generation can recreate an iOS launch script even with
+`--platform android`. Run `npm pkg delete scripts.ios scripts.web` afterward;
+review package changes and preserve `platforms: ["android"]`.
 
 ## Architecture And Ownership
 
@@ -69,92 +75,50 @@ the root guide before changing a cross-application contract.
   references may appear in the allowlisted callback URL because the payment
   screen validates the pending checkout with Laravel before capture.
 
-## Phase 3 Telematics Setup
+## Telematics And RC Research
 
-Telematics setup is a readiness workflow for Self Drive and With Assigned Driver handover. The owning Customer operates Self Drive; the currently assigned Driver operates With Assigned Driver. Device readiness remains separate from the subsequent, explicitly consented calibration stage. Released-rental GPS collection is a distinct, consented flow described in the foreground/background sharing guides; setup and calibration do not start rental GPS collection.
-The six mobile checks run in this order:
+The central guide owns exact current boundaries and the agreed target pipeline.
+Keep the native abstraction behind `services/telematics/` and any Android-only
+local module; presentation components must not own sensors or network calls.
 
-1. `device_check`
-2. `motion_permission`
-3. `location_permission`
-4. `background_location`
-5. `gps_check`
-6. `phone_mount`
-
-`services/telematics/` is the only native abstraction for these checks:
-
-- `device-readiness.ts` checks accelerometer, gyroscope, and location-service
-  availability.
-- `motion-readiness.ts` and `location-readiness.ts` request/check permission
-  state; `background-location.ts` checks background readiness and defines an
-  inert task without registering updates.
-- `location-readiness.ts` obtains one fresh GPS fix for setup. Setup coordinates
-  are typed evidence for Laravel evaluation and are not route history.
-- `network-readiness.ts` prevents a check from starting while offline.
-- `setup-readiness.ts` maps each check to typed native evidence, and
-  `setup-workflow.ts` re-reads server state before every step and submits the
-  evidence through `services/api/telematics.service.ts`.
-
-The server response from `/mobile/telematics/setup` or
-`/mobile/bookings/{booking}/telematics-setup` is the eligibility authority.
-Render the returned state and `eligibility.canWorkSetup`; do not unlock a screen
-or checks from cached profile, booking, or document state. The booking selector
-is only a navigation filter. In standard mode, Laravel rechecks ownership,
-the applicable rental type and current operator assignment, verified Customer documents for Self Drive, confirmation, server time within the reserved
-`[rental_start_at, rental_end_at)` interval, and the staff-started `in_progress` handover on every setup
-mutation. Local/testing handover test mode intentionally relaxes the business
-gates described in `../docs/telematics-handover-lifecycle.md`, while still
-requiring real evidence where the native check is available and never allowing
-the client to bypass ownership or the no-tracking setup boundary.
-
-The existing staff `Start Rental` action is the only release action. A mobile
-setup screen must not simulate results, subscribe to sensors, start active
-location updates, upload active-trip telemetry or create trips. The approved Phase 4 calibration
-exception uses only bounded, explicitly consented foreground DeviceMotion
-captures through `services/telematics/calibration-capture.ts`; read
-`../docs/telematics-calibration.md` before changing that flow.
-Read `../docs/telematics-architecture.md`,
-`../docs/telematics-handover-lifecycle.md`, and
-`../docs/telematics-device-location.md` before changing this area.
+- Current Self Drive and With Assigned Driver setup remains server-gated through
+  the handover read model. Preserve the six readiness checks, five consented
+  foreground calibration exercises, attempt history, operator/assignment checks,
+  server-time gates, and Staff Start Rental authority. Research trials do not
+  require customer bookings or rental-release exceptions.
+- Current calibration submits bounded summaries only. Current post-release GPS
+  uses a separately consented app-wide foreground or explicit background collector;
+  the readiness task stays inert. Prepared one-use startup and local Stationary
+  resume checks do not imply cold start or automatic recovery after Stop/runtime loss.
+- Current Admin RC Research is foreground/memory-only, with reviewed uploads to
+  private encrypted files. The native Kotlin recorder, durable drafts, web waveform
+  inspector, preprocessing/export, AI events, report and score are agreed targets
+  still requiring implementation; do not claim they already work.
+- Implement native collection/storage/processing independently of screen JS when
+  adding lock-screen recording. Preserve explicit consent, visible recording state,
+  stop/recovery, account cleanup, and protocol/source/unit provenance. Do not
+  reinterpret existing Expo readings as direct Android measurements.
+- Automatic direction handling is required in operation. Observer direction and
+  maneuver annotations are for training/evaluation only. Do not require a live
+  Forward/Reverse selector or label uncertain data normal to hide failures.
+- Preserve current Customer/Driver bearer-token and restricted Admin research-token
+  scopes. Raw data stays out of setup evidence, ordinary logs and public storage.
+  Update Laravel contracts and matching Zod/types/services together.
+- Consult the central guide's verification section and exact SDK 54 docs before
+  native changes. A build/export or synthetic sensor test is not physical RC,
+  background reliability or model-accuracy evidence.
 
 ## Native Configuration And Builds
 
-Approved 2026-10-19 exception: `../docs/telematics-mobile-dashboard.md` permits an explicit, one-use GPS preparation during device setup. The dedicated Telematics screen may consume it only while foregrounded/focused after fresh server-confirmed release and monitoring eligibility, then use the existing native collector. The accepted sharing mode may be stored securely per Customer and consent version; do not persist GPS data, session tokens or the one-use preparation instruction. It does not collect before release, start on a cold runtime, or automatically resume after Stop/interruption. Retain account/booking/handover/profile/version binding, visible cancellation, current permission checks and explicit recovery. This supersedes only the separate post-release sharing-action restriction in the older paragraphs below.
-
-Approved 2026-10-19 resume exception: the same dashboard guide permits one explicitly started, bounded foreground Stationary motion check before resuming an existing released trip. Reuse the native capture abstraction and projected Stationary settings; abort on cancellation, navigation, backgrounding or account change. The local pass is short-lived and single-use, and GPS still requires fresh server eligibility and native permissions. Never submit this check as setup evidence, modify released calibration, persist/upload motion or a new baseline, or claim to prove a secure mount. Continuous rental monitoring remains GPS only.
-
-The approved Phase 5 released-rental flow is documented in
-`../docs/telematics-foreground-location.md`. It uses a separately consented
-app-wide foreground Location watch, an in-memory session and encrypted
-latest-only backend updates. Do not start it from setup/calibration, persist a
-route queue, add motion/classification, register background work or resume it
-automatically. Stop on non-active AppState and sign-out/account change. Future
-background collection and route/dataset work need separate approved increments.
-
-The approved background permission preparation increment is documented in
-`../docs/telematics-background-permissions.md`. It reads/reuses native access and
-requests permission only after its disclosure and eligibility read. It does not
-register background updates, persist GPS or session data, or change foreground
-pause/resume; actual background collection remains a separate increment.
-
-The approved background-sharing follow-up is documented in
-`../docs/telematics-background-sharing.md` and supersedes the foreground-only
-collection restriction above for explicit foreground_background consent only.
-Use the separate native rental task, current consent mode/version, visible
-notification/indicator and in-memory receiver. Do not persist collection tokens
-or auto-resume after runtime loss. Preserve foreground-only mode, setup task
-isolation, latest-only uploads and cleanup on stop, sign-out and eligibility loss.
-
 - `app.json` owns the Expo Router, image picker, splash, SecureStore, location,
-  sensors, and development-client plugins, along with Android edge-to-edge and
-  permission declarations. `app.config.ts` injects the Android and iOS Google
-  Maps SDK keys from `EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY` and
-  `EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY`. These are client configuration values,
-  not server secrets; restrict them to the app identifiers and build signing
-  configuration.
+  media-library and development-client plugins, along with Android edge-to-edge and
+  permission declarations. `app.config.ts` injects the Android Google Maps SDK
+  key from `EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY`. This is public client
+  configuration; restrict it to the Android package and signing SHA-1. Motion
+  sensor support remains installed; its former iOS permission plugin is removed.
 - `.env.example` documents the supported public variables: optional
   `EXPO_PUBLIC_BACKEND_API`, `EXPO_PUBLIC_BACKEND_TUNNEL_API`, fallback timeout,
-  and the two Maps SDK keys. Never commit `.env.local`, tokens, or unrestricted
+  and the Android Maps SDK key. Never commit `.env.local`, tokens, or unrestricted
   provider keys. LAN development derives the backend host from Expo; tunnel and
   installed builds need a reachable API URL ending in `/api`.
 - The `development` EAS profile uses a development client and internal
@@ -215,10 +179,12 @@ From `mobile-frontend/`, use the installed scripts and Expo tooling:
 npm run lint
 npx tsc --noEmit
 npx expo-doctor
+node --test $(rg --files lib services components -g '*.test.mjs')
+npx expo export --platform android
 npm start
 ```
 
-Run the focused flow on both iOS and Android when a change touches native
+Run the focused flow on Android when a change touches native
 permissions, maps, callbacks, safe areas, or edge-to-edge behavior. The mobile
 test foundation is not configured yet; establish it in a dedicated task before
 adding Jest or React Native Testing Library tests. Do not run dependency or

@@ -1,4 +1,8 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # Foreground latest-location sharing
+
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](../../android-only-mobile.md).
 
 With Assigned Driver adaptation — 2026-10-19: the same released-rental sharing
 contract now applies to both rental types. The owning Customer operates Self
@@ -8,7 +12,7 @@ the latest location on With Assigned Driver rentals. The mobile disclosure names
 these recipients and the Driver gives separate in-app GPS consent. Physical
 Android/iOS checks with Driver accounts remain pending.
 
-Geofence follow-up — 2026-10-19: consent version 3 now evaluates frozen booking zones from accepted latest-GPS fixes and saves named Customer in-app entry/exit alerts. This supersedes earlier exclusions of geofence evaluation below. Latest-only coordinate storage, native collection modes and route-history exclusion are preserved; each sharing start establishes a fresh membership baseline. See [geofence monitoring](geofence-monitoring.md). Physical Android/iOS crossing checks remain pending.
+Geofence follow-up — 2026-10-19: consent version 3 now evaluates frozen booking zones from accepted latest-GPS fixes and saves named Customer in-app entry/exit alerts. This supersedes earlier exclusions of geofence evaluation below. Latest-only coordinate storage, native collection modes and route-history exclusion are preserved; each sharing start establishes a fresh membership baseline. See [geofence monitoring](../../geofence-monitoring.md). Physical Android/iOS crossing checks remain pending.
 
 Prepared-start follow-up — 2026-10-19: [Mobile Telematics drawer](telematics-mobile-dashboard.md) allows explicit agreement during device setup to prepare one start after staff release. It supersedes the separate post-release sharing-button requirement for that one foreground, server-rechecked transition. Stop/interruption/runtime-loss recovery stays explicit, and existing latest-only storage and background-mode boundaries remain. The pause request now accepts optional `reason: manual | interrupted` for in-app activity.
 

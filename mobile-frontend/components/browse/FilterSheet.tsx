@@ -12,9 +12,7 @@ import {
 import { useEffect, useState } from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   Text,
   TextInput,
@@ -136,8 +134,7 @@ export function FilterSheet({
 
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <View
         className="flex-1 justify-end">
         <Pressable
           accessibilityRole="button"
@@ -174,7 +171,7 @@ export function FilterSheet({
           <KeyboardFormScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
+            keyboardDismissMode="none"
             className="shrink"
             contentContainerClassName="gap-4 pb-2">
             <View>
@@ -349,7 +346,7 @@ export function FilterSheet({
             </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

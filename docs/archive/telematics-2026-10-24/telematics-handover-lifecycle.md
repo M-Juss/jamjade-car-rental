@@ -1,4 +1,8 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # Telematics handover lifecycle
+
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](../../android-only-mobile.md).
 
 Current mobile presentation and prepared-start exception — 2026-10-19: see [Mobile Telematics drawer](telematics-mobile-dashboard.md). The selected rental now opens outside bottom navigation, with three drawer tabs and setup/calibration dialogs. An explicit one-use agreement during setup may start GPS after a fresh staff-release/monitoring-eligibility read; it never collects rental GPS before release or automatically resumes after Stop/runtime loss. Explicit owning Returned/Completed setup reads are now read-only `rental_ended` history; setup mutations still require Confirmed/Ongoing. Earlier UI descriptions below are historical.
 

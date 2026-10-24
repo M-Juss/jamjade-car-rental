@@ -1,23 +1,13 @@
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
 import { clearApiAuthToken, setApiAuthToken } from './auth-token';
 
 const AUTH_TOKEN_KEY = 'jamjade.mobile.auth_token';
 
-function getWebStorage() {
-  return typeof window !== 'undefined' ? window.localStorage : null;
-}
-
 export async function persistApiAuthToken(token: string) {
   setApiAuthToken(token);
 
   try {
-    if (Platform.OS === 'web') {
-      getWebStorage()?.setItem(AUTH_TOKEN_KEY, token);
-      return;
-    }
-
     await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
   } catch {
     // Keep the in-memory token so a successful login or registration is not
@@ -26,9 +16,7 @@ export async function persistApiAuthToken(token: string) {
 }
 
 export async function restoreApiAuthToken() {
-  const token = Platform.OS === 'web'
-    ? getWebStorage()?.getItem(AUTH_TOKEN_KEY) ?? null
-    : await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+  const token = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
 
   setApiAuthToken(token);
 
@@ -37,11 +25,6 @@ export async function restoreApiAuthToken() {
 
 export async function removeApiAuthToken() {
   clearApiAuthToken();
-
-  if (Platform.OS === 'web') {
-    getWebStorage()?.removeItem(AUTH_TOKEN_KEY);
-    return;
-  }
 
   await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
 }

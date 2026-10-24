@@ -1,4 +1,8 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # Telematics calibration: computation and sensor fusion
+
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](../../android-only-mobile.md).
 
 Code reconciliation: **2026-10-18, calibration protocol 3**. This is the current
 mathematical reference for pre-release calibration. The [calibration workflow
@@ -300,7 +304,7 @@ absolute heading, full three-dimensional attitude integration or drift correctio
 ## Server thresholds and consistency checks
 
 The following are current **provisional development defaults**, sourced from
-[`backend/config/telematics.php`](../backend/config/telematics.php). They were
+[`backend/config/telematics.php`](../../../backend/config/telematics.php). They were
 not established by an automotive standard, a validated device dataset or the
 papers discussed during development. Physical evidence must justify revisions.
 
@@ -381,14 +385,14 @@ tables, stream JSON, calibration GPS route points or classifier outputs.
 
 | Concern | Source |
 | --- | --- |
-| Native sampling, units boundary, lifecycle cleanup | [calibration-capture.ts](../mobile-frontend/services/telematics/calibration-capture.ts) |
-| Projection, statistics, Forward learner and feedback decisions | [calibration.ts](../mobile-frontend/lib/telematics/calibration.ts) |
-| Fresh settings, consent validation, API sequencing | [calibration-workflow.ts](../mobile-frontend/services/telematics/calibration-workflow.ts) |
-| Accepted server evidence shape | [StoreSetupAttemptRequest.php](../backend/app/Http/Requests/Telematics/StoreSetupAttemptRequest.php) |
-| Mirrored mobile evidence schema | [calibration.ts](../mobile-frontend/validation/telematics/calibration.ts) |
-| Derived limits, context, ordering, acceptance and saved reference | [TelematicsCalibrationService.php](../backend/app/Services/TelematicsCalibrationService.php) |
-| Engineering defaults | [telematics.php](../backend/config/telematics.php) |
-| Synthetic regression cases | [Mobile computation tests](../mobile-frontend/lib/telematics/calibration.test.mjs), [backend calibration tests](../backend/tests/Feature/TelematicsCalibrationTest.php) |
+| Native sampling, units boundary, lifecycle cleanup | [calibration-capture.ts](../../../mobile-frontend/services/telematics/calibration-capture.ts) |
+| Projection, statistics, Forward learner and feedback decisions | [calibration.ts](../../../mobile-frontend/lib/telematics/calibration.ts) |
+| Fresh settings, consent validation, API sequencing | [calibration-workflow.ts](../../../mobile-frontend/services/telematics/calibration-workflow.ts) |
+| Accepted server evidence shape | [StoreSetupAttemptRequest.php](../../../backend/app/Http/Requests/Telematics/StoreSetupAttemptRequest.php) |
+| Mirrored mobile evidence schema | [calibration.ts](../../../mobile-frontend/validation/telematics/calibration.ts) |
+| Derived limits, context, ordering, acceptance and saved reference | [TelematicsCalibrationService.php](../../../backend/app/Services/TelematicsCalibrationService.php) |
+| Engineering defaults | [telematics.php](../../../backend/config/telematics.php) |
+| Synthetic regression cases | [Mobile computation tests](../../../mobile-frontend/lib/telematics/calibration.test.mjs), [backend calibration tests](../../../backend/tests/Feature/TelematicsCalibrationTest.php) |
 
 The [dated verification record](telematics-calibration.md#parked-noise-verification--2026-10-17)
 reports 591 backend tests and 61 focused mobile tests passing for protocol 3,

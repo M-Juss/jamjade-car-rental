@@ -1,5 +1,4 @@
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
 // Increment when the disclosure's recording scope or terms materially change.
 export const CALIBRATION_DISCLOSURE_VERSION = 2;
@@ -16,7 +15,7 @@ export async function hasCalibrationConsent(scope: CalibrationConsentScope) {
   const key = scopeKey(scope);
   if (accepted.has(key)) return true;
   try {
-    const value = Platform.OS === 'web' ? window.localStorage.getItem(key) : await SecureStore.getItemAsync(key);
+    const value = await SecureStore.getItemAsync(key);
     if (value !== 'accepted') return false;
     accepted.add(key);
     return true;
@@ -28,7 +27,6 @@ export async function rememberCalibrationConsent(scope: CalibrationConsentScope)
   // Preserve explicit agreement for this runtime if device storage is unavailable.
   accepted.add(key);
   try {
-    if (Platform.OS === 'web') window.localStorage.setItem(key, 'accepted');
-    else await SecureStore.setItemAsync(key, 'accepted');
+    await SecureStore.setItemAsync(key, 'accepted');
   } catch { /* A storage failure never invents agreement after a fresh launch. */ }
 }

@@ -31,7 +31,17 @@ function native(platform = 'android', changes = {}) {
 }
 const fix = (timestamp, latitude = 14) => ({ timestamp, coords: { latitude, longitude: 121, accuracy: 5, speed: 10, heading: 80 } });
 
-for (const platform of ['android', 'ios']) {
+test('unsupported runtimes cannot start a background location service', async () => {
+  for (const platform of ['ios', 'web']) {
+    const api = native(platform);
+    await assert.rejects(api.watchBackgroundLocation(5, () => {}, () => {}), /Android/);
+    assert.equal(api.starts, 0);
+    await api.stopBackgroundCollection();
+    assert.equal(api.stops, 0);
+  }
+});
+
+for (const platform of ['android']) {
   test(`${platform}: definition and permission check never start collection; explicit watch enables system visibility`, async () => {
     const api = native(platform);
     assert.equal(api.starts, 0);
@@ -39,7 +49,7 @@ for (const platform of ['android', 'ios']) {
     assert.equal(api.starts, 0);
     const subscription = await api.watchBackgroundLocation(5, () => {}, () => {});
     assert.equal(api.starts, 1);
-    assert.equal(api.options.showsBackgroundLocationIndicator, true);
+    assert.equal(api.options.foregroundService.notificationTitle, 'JamJade location sharing');
     assert.equal(api.options.foregroundService.killServiceOnDestroy, true);
     assert.match(api.options.foregroundService.notificationBody, /Telematics to stop/);
     assert.equal(api.options.timeInterval, 5000);
@@ -86,7 +96,7 @@ test('late callbacks after stop cannot deliver readings and old subscriptions ca
 });
 
 test('native failures are awaited and denied access never starts a watcher', async () => {
-  const denied = native('ios', { access: { status: 'background_required' } });
+  const denied = native('android', { access: { status: 'background_required' } });
   await assert.rejects(denied.prepareBackgroundCollection(() => true), /Allow background/);
   assert.equal(denied.starts, 0);
   const api = native();

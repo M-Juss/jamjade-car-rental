@@ -1,4 +1,8 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # Mobile Telematics drawer
+
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](../../android-only-mobile.md).
 
 Approved and implemented in code on 2026-10-19. Physical Android/iOS verification remains pending. This increment changes the mobile presentation, adds explicit preparation for automatic GPS startup after staff release, and reuses in-app notifications for booking activity. Rental collection remains latest GPS only; route history, rental motion streams, classifications and phone push notifications are outside this increment.
 

@@ -109,10 +109,9 @@ export function movementCaptureComplete(summary: ReturnType<CalibrationAccumulat
   }, movement, forwardLimits, policy.maxGapMs) === 'captured';
 }
 
-// Expo Sensors 15.0.8 exposes rotationRate axes in a different order on iOS.
-// Verified against the installed DeviceMotion native modules, not axis labels.
-export function rotationAxes(rate: { alpha: number; beta: number; gamma: number }, platform: string): Vector3 {
-  return platform === 'ios' ? [rate.gamma, rate.beta, rate.alpha] : [rate.alpha, rate.beta, rate.gamma];
+// Expo Sensors 15.0.8 Android maps gyroscope x/y/z to alpha/beta/gamma.
+export function rotationAxes(rate: { alpha: number; beta: number; gamma: number }): Vector3 {
+  return [rate.alpha, rate.beta, rate.gamma];
 }
 
 export class CalibrationAccumulator {

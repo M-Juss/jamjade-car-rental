@@ -1,15 +1,15 @@
 import { Info, X } from 'lucide-react-native';
-import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton } from '@/components/bookings';
 import { themeColors } from '@/constants/theme';
 
-export function BackgroundLocationDisclosureDialog({ visible, onCancel, onContinue, onDismiss }: {
-  visible: boolean; onCancel: () => void; onContinue: () => void; onDismiss: () => void;
+export function BackgroundLocationDisclosureDialog({ visible, onCancel, onContinue }: {
+  visible: boolean; onCancel: () => void; onContinue: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  return <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={onCancel} onDismiss={onDismiss}>
+  return <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={onCancel}>
     <View className="flex-1 justify-center bg-foreground/35 px-screen" style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }}>
       <Pressable accessibilityRole="button" accessibilityLabel="Close background access disclosure" onPress={onCancel} className="absolute inset-0" />
       <View accessibilityViewIsModal className="max-h-full w-full max-w-[560px] self-center rounded-card border border-border bg-surface">
@@ -20,7 +20,7 @@ export function BackgroundLocationDisclosureDialog({ visible, onCancel, onContin
         </View>
         <ScrollView className="shrink" contentContainerClassName="gap-4 p-card" showsVerticalScrollIndicator>
           <Text className="font-sans text-body leading-6 text-foreground">Background location access lets you share your latest GPS location with authorized JamJade staff during an active rental when the app is minimized or the screen is locked.</Text>
-          <Text className="font-sans text-body leading-6 text-secondary-foreground">{Platform.OS === 'ios' ? 'Allow location while using the app first, then choose Always for background access. If you previously chose Allow Once, you may need to change this in device Settings.' : 'Allow location while using the app first. Android may then open device Settings; choose Allow all the time for background access.'}</Text>
+          <Text className="font-sans text-body leading-6 text-secondary-foreground">Allow location while using the app first. Android may then open device Settings; choose Allow all the time for background access.</Text>
           <Text className="font-sans text-body leading-6 text-foreground">This step only prepares permissions. To start sharing, return to Monitoring, choose Share location or Resume sharing, then agree to background sharing.</Text>
           <Text className="font-sans text-body leading-6 text-secondary-foreground">You can decline or change access later in device Settings. Sharing while the app is open remains available.</Text>
         </ScrollView>

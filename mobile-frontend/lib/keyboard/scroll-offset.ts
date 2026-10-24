@@ -3,7 +3,6 @@ type FocusedFieldLayout = {
   fieldHeight: number;
   viewportTop: number;
   viewportHeight: number;
-  keyboardTop?: number;
   scrollOffset: number;
   clearance: number;
 };
@@ -13,12 +12,11 @@ export function getFocusedFieldScrollOffset({
   fieldHeight,
   viewportTop,
   viewportHeight,
-  keyboardTop,
   scrollOffset,
   clearance,
 }: FocusedFieldLayout): number | null {
   const visibleTop = viewportTop + clearance;
-  const visibleBottom = Math.min(viewportTop + viewportHeight, keyboardTop ?? Infinity) - clearance;
+  const visibleBottom = (viewportTop + viewportHeight) - clearance;
   const visibleHeight = visibleBottom - visibleTop;
 
   if (visibleHeight <= 0 || fieldHeight <= 0) return null;

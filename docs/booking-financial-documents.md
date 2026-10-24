@@ -1,5 +1,7 @@
 # Rental information and payment receipts
 
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](android-only-mobile.md).
+
 Updated 2026-10-19: new successful Customer payments issue a Payment Receipt and matching Rental Information PDF. This replaces new invoice issuance. Previously issued documents, including historical invoices, retain their stored references, filenames, contexts and exact PDF bytes. No historical payment is automatically reissued or emailed.
 
 ## Documents and financial boundary

@@ -1,3 +1,5 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # RC-car telematics demonstration and validation
 
 ## Forward acceleration threshold — revision 5
@@ -282,9 +284,9 @@ changing them invalidates the current calibration and requires a new reference.
 
 - [Calibration computation and sensor fusion](telematics-calibration-computation.md)
 - [Calibration workflow and verification](telematics-calibration.md)
-- [Profile service](../backend/app/Services/TelematicsCalibrationProfileService.php)
-- [Calibration evaluation](../backend/app/Services/TelematicsCalibrationService.php)
-- [Server configuration](../backend/config/telematics.php)
+- [Profile service](../../../backend/app/Services/TelematicsCalibrationProfileService.php)
+- [Calibration evaluation](../../../backend/app/Services/TelematicsCalibrationService.php)
+- [Server configuration](../../../backend/config/telematics.php)
 
 ## Verification — 2026-10-17
 

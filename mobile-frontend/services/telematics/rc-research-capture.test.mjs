@@ -57,7 +57,16 @@ function harness({ platform = 'android', granted = true } = {}) {
   };
 }
 
-for (const platform of ['android', 'ios']) test(`${platform}: records beyond ten seconds until manual stop and releases resources`, async () => {
+test('unsupported runtimes cannot subscribe to research motion', async () => {
+  for (const platform of ['ios', 'web']) {
+    const h = harness({ platform });
+    await assert.rejects(h.capture(protocol, new AbortController().signal, new AbortController().signal, () => {}), /Android/);
+    assert.equal(h.active, false);
+    assert.equal(h.timers, 0);
+  }
+});
+
+for (const platform of ['android']) test(`${platform}: records beyond ten seconds until manual stop and releases resources`, async () => {
   const h = harness({ platform }), stop = new AbortController();
   let completed = false;
   const result = h.capture(protocol, new AbortController().signal, stop.signal, () => {}).then(value => { completed = true; return value; });
@@ -69,8 +78,8 @@ for (const platform of ['android', 'ios']) test(`${platform}: records beyond ten
   const recording = await result;
   assert.ok(recording.summary.duration_ms > 40000);
   assert.ok(recording.samples.length > 2000);
-  assert.equal(recording.samples[0].rotation_x, platform === 'android' ? 1 : 3);
-  assert.equal(recording.samples[0].rotation_z, platform === 'android' ? 3 : 1);
+  assert.equal(recording.samples[0].rotation_x, 1);
+  assert.equal(recording.samples[0].rotation_z, 3);
   assert.equal(recording.samples[0].elapsed_ms, 0);
   assert.equal(h.active, false); assert.equal(h.timers, 0); assert.equal(h.removed, 1);
 });

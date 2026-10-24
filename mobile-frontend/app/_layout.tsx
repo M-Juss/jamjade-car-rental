@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import 'react-native-reanimated';
 import '../global.css';
 import '@/services/telematics/background-location';
@@ -14,6 +14,10 @@ import { themeColors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { isResearchAdmin } from '@/lib/auth/mobile-access';
 import { useLocationMonitoringLifecycle } from '@/hooks/telematics/useLocationMonitoring';
+
+if (Platform.OS !== 'android') {
+  throw new Error('JamJade mobile supports Android only.');
+}
 
 void SplashScreen.preventAutoHideAsync();
 

@@ -11,7 +11,7 @@ export function StationaryResumeCheckDialog({ check, initialSettings }: {
 }) {
   const settings = check.settings ?? initialSettings;
   const passed = check.live?.phase === 'passed';
-  return <TelematicsStageDialog title="Stationary check" visible={check.visible} busy={check.busy} compact animationType="none" onClose={check.close} onDismiss={check.onDismiss}
+  return <TelematicsStageDialog title="Stationary check" visible={check.visible} busy={check.busy} compact animationType="none" onClose={check.close}
     footer={check.busy ? <ActionButton label="Cancel check" onPress={check.close} />
       : passed ? <ActionButton label="Resume monitoring" variant="primary" onPress={check.resume} />
         : <View className="gap-3">

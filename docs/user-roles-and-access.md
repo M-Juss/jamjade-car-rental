@@ -8,13 +8,12 @@ Accounts remain in `users`, with role membership in the existing Spatie tables. 
 
 ## Access responsibilities
 
-Local RC Research exception — 2026-10-17: an existing active Admin uses the normal
-mobile sign-in when Laravel's local/testing `rc_demo` profile is enabled and goes
-directly to an empty RC Research screen with sign-out. The server chooses an
-eight-hour research-only bearer token; it cannot access other authenticated
-mobile features. Admin mobile sign-in remains denied outside local/testing RC
-mode, including mixed-role accounts. Customer/Driver destinations and web
-authentication are unchanged. See [the entry contract](telematics-rc-demonstration.md#mobile-admin-entry).
+Admin RC Research: an existing active Admin uses normal mobile sign-in when
+Laravel's local/testing `rc_demo` profile is enabled. The implemented destination
+has Data / Collect / Logout and manual foreground research recording. Its
+eight-hour research-only bearer token cannot access ordinary mobile features;
+web session authentication remains separate. Access outside local/testing RC mode
+is not implemented. See [the central access contract](telematics-master-plan.md#existing-rc-research-v1).
 
 | Function | Staff | Driver |
 | --- | --- | --- |
@@ -92,7 +91,13 @@ Admin manages default monitoring zones and custom booking zones on the website. 
 
 Self Drive telematics is operated by the owning Customer; With Assigned Driver telematics is operated by the current assigned Driver. Driver Services provides entry to the assigned rental's setup and activity screens, while Laravel checks assignment and setup eligibility on every read and mutation. Staff retains inspection and rental release authority. Video recording, sending, auditing, and dashcam offerings remain outside scope.
 
-Fleet Monitoring reads real ongoing bookings and saved tracking states for active Admin/Staff accounts with `view fleet tracker`. Its minimal resource excludes precise coordinates, route history and driving scores; the map remains unavailable. Module access does not imply live tracking or physically verified calibration. See [Fleet Monitoring](fleet-tracker.md). The Customer Self Drive and assigned Driver flows use explicitly consented pre-release setup/calibration and post-release latest-location sharing; see [calibration](telematics-calibration.md). See [telematics architecture](telematics-architecture.md), [booking rental lifecycle](booking-rental-lifecycle.md), and [vehicle condition architecture](vehicle-condition-architecture.md).
+Fleet Monitoring reads ongoing rentals and authorized latest locations for active
+Admin/Staff accounts with `view fleet tracker`. The latest-point map and private
+Reverb updates are implemented; route history and driving scores are not part of
+that resource. Module access does not establish physical tracking or AI accuracy.
+Customer Self Drive and current assigned-Driver setup, consent, and collection
+remain separately authorized. See the [central telematics guide](telematics-master-plan.md),
+[booking lifecycle](booking-rental-lifecycle.md), and [vehicle condition](vehicle-condition-architecture.md).
 
 ## Verification
 

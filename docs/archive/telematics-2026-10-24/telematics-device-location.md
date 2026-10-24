@@ -1,4 +1,8 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # Telematics device and location readiness
+
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](../../android-only-mobile.md).
 
 ## Phase 3 boundary
 
@@ -48,7 +52,7 @@ Laravel accepts only a fresh, plausible setup coordinate: latitude `-90..90`, lo
 
 GPS quality is independent of geofence membership. Being outside a zone, or having no zones configured, never fails a setup check. Geofence setup attempts are no longer accepted and phone mount depends on the GPS check. The mobile setup sequence has six device-readiness checks.
 
-Monitoring zones are managed exclusively through the website. Admin controls default zones and optional custom booking zones; Staff has read access. Defaults apply automatically and zone geometry/preferences are frozen at rental release. Entry/exit observations belong to the active-trip backend, not setup. See [geofence monitoring](geofence-monitoring.md).
+Monitoring zones are managed exclusively through the website. Admin controls default zones and optional custom booking zones; Staff has read access. Defaults apply automatically and zone geometry/preferences are frozen at rental release. Entry/exit observations belong to the active-trip backend, not setup. See [geofence monitoring](../../geofence-monitoring.md).
 
 ## Server contract and recovery
 

@@ -25,7 +25,7 @@ function native(platform, changes = {}) {
   return { ...exports, get prompts() { return prompts; }, get removes() { return removes; }, get options() { return options; }, emit: (value) => callback(value) };
 }
 
-for (const platform of ['android', 'ios']) {
+for (const platform of ['android']) {
   test(`${platform}: existing foreground permission is reused and the removable watcher drops speed/heading`, async () => {
     const api = native(platform);
     await api.prepareForegroundLocation(() => true);
@@ -41,9 +41,15 @@ for (const platform of ['android', 'ios']) {
 }
 
 test('disabled services, denied permission and unsupported platforms cannot start collection', async () => {
-  await assert.rejects(native('web').prepareForegroundLocation(() => true), /Android or iOS/);
+  for (const platform of ['ios', 'web']) {
+    const unsupported = native(platform);
+    await assert.rejects(unsupported.prepareForegroundLocation(() => true), /Android/);
+    assert.throws(() => unsupported.watchForegroundLocation(5, () => {}, () => {}), /Android/);
+    assert.equal(unsupported.options, undefined);
+    assert.equal(unsupported.prompts, 0);
+  }
   await assert.rejects(native('android', { hasServicesEnabledAsync: async () => false }).prepareForegroundLocation(() => true), /Enable location services/);
-  const denied = native('ios', { getForegroundPermissionsAsync: async () => ({ granted: false, canAskAgain: false }) });
+  const denied = native('android', { getForegroundPermissionsAsync: async () => ({ granted: false, canAskAgain: false }) });
   await assert.rejects(denied.prepareForegroundLocation(() => true), /Settings/);
   assert.equal(denied.prompts, 0);
 });

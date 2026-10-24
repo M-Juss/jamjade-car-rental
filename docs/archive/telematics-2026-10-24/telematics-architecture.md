@@ -1,6 +1,10 @@
+> **Historical archive — 2026-10-24.** This is a superseded working-copy snapshot, not current coding guidance. Read the [central implementation guide](../../telematics-master-plan.md). Historical plans, exclusions, platform targets, and verification statements below retain their original dates; relative Markdown links were rebased for this archive.
+
 # Telematics architecture
 
-Geofence follow-up — 2026-10-19: consent version 3 now evaluates frozen booking zones from accepted latest-GPS fixes and saves named Customer in-app entry/exit alerts. This supersedes earlier exclusions of geofence evaluation below. Latest-only coordinate storage, native collection modes and route-history exclusion are preserved; each sharing start establishes a fresh membership baseline. See [geofence monitoring](geofence-monitoring.md). Physical Android/iOS crossing checks remain pending.
+Android-only scope — 2026-10-24: `mobile-frontend` now targets Android only; iOS and mobile-browser support are retired. Earlier dated multi-platform descriptions and results below are historical. Shared Laravel contracts, saved records and the separate Next.js website are unchanged. Current physical verification is required on Android. See [Android-only mobile scope](../../android-only-mobile.md).
+
+Geofence follow-up — 2026-10-19: consent version 3 now evaluates frozen booking zones from accepted latest-GPS fixes and saves named Customer in-app entry/exit alerts. This supersedes earlier exclusions of geofence evaluation below. Latest-only coordinate storage, native collection modes and route-history exclusion are preserved; each sharing start establishes a fresh membership baseline. See [geofence monitoring](../../geofence-monitoring.md). Physical Android/iOS crossing checks remain pending.
 
 Mobile update — 2026-10-19: [the drawer contract](telematics-mobile-dashboard.md) adds a dedicated three-tab screen and explicit preparation for one automatic GPS start after server-confirmed release. This supersedes the earlier requirement for a separate sharing action only when the Customer agreed during device setup and the same prepared screen/runtime is still active. Collection remains latest GPS only; active motion/classification and automatic restart after Stop/runtime loss are unchanged exclusions. Setup/calibration never collect rental GPS before release.
 
@@ -10,7 +14,7 @@ With Assigned Driver adaptation — 2026-10-19: the self-drive lifecycle is now 
 
 JamJade telematics is a smartphone-assisted rental workflow for Self Drive and With Assigned Driver bookings. The Customer operates a self-drive booking; the active assigned Driver operates a With Driver booking. It is not an anti-theft system, driver scoring system, or covert monitoring feature. A supported booking has a pre-release setup session and, after authorized release, at most one actual trip.
 
-AI driving-event classification is a main capstone goal, planned after physical validation of device readiness/calibration, active-trip collection, and a labeled dataset. No trained classifier or automated driving-event detection is implemented today. Classification is separate from driver scoring; see the [project roadmap](project-status-and-roadmap.md) for phase status.
+AI driving-event classification is a main capstone goal, planned after physical validation of device readiness/calibration, active-trip collection, and a labeled dataset. No trained classifier or automated driving-event detection is implemented today. Classification is separate from driver scoring; see the [project roadmap](../../project-status-and-roadmap.md) for phase status.
 
 Video recording, sending/uploads, auditing, and dashcam offerings are outside project scope. GPS, geofencing, accelerometer/gyroscope readiness, phone mounting, and calibration remain in scope. Sensor events are observations, not confirmed fault or automatic penalties; financial responsibility remains a staff decision.
 
@@ -59,7 +63,7 @@ One supported booking may have one `telematics_setup_session`. Each required che
 
 Reusable circles and polygons in `geofences` are default monitoring zones. Active defaults apply automatically to every supported rental. Admin may add optional booking-specific zones before release; Staff can view zones but cannot manage them. No zone assignment, containment, or zone configuration is a handover or release requirement.
 
-At Start Rental, Laravel copies active defaults into `booking_geofences` and freezes those settings together with the booking's custom zones. Geometry and entry/exit alert preferences remain unchanged throughout the released rental. Library edits, deactivation, and soft deletion affect future rentals only. See [geofence monitoring](geofence-monitoring.md).
+At Start Rental, Laravel copies active defaults into `booking_geofences` and freezes those settings together with the booking's custom zones. Geometry and entry/exit alert preferences remain unchanged throughout the released rental. Library edits, deactivation, and soft deletion affect future rentals only. See [geofence monitoring](../../geofence-monitoring.md).
 
 ## Data handling
 

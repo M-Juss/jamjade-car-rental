@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Platform, View } from 'react-native';
+import { Alert, AppState, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FloatingTabBarSurface } from '@/components/navigation/FloatingTabBarSurface';
@@ -67,13 +67,13 @@ export function TelematicsMonitoringControls({ monitoring, released, ended = fal
       ]} />
     </View>
     {monitoring.snapshot ? <LocationSharingDisclosureDialog visible={disclosureOpen} policy={monitoring.snapshot.policy}
-      onCancel={() => { pending.current = null; setDisclosureOpen(false); }} onDismiss={begin}
+      onCancel={() => { pending.current = null; setDisclosureOpen(false); }}
       onAgree={(consent) => {
         pending.current = consent;
         void monitoring.rememberConsent(consent).then(() => {
           if (AppState.currentState !== 'active') return;
           setDisclosureOpen(false);
-          if (Platform.OS !== 'ios') setTimeout(begin, 0);
+          setTimeout(begin, 0);
         });
       }} /> : null}
   </>;

@@ -5,17 +5,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActionButton } from '@/components/bookings';
 import { themeColors } from '@/constants/theme';
 
-export function CalibrationDisclosureDialog({ visible, disabled, rcDemo, onCancel, onAgree, onDismiss }: {
+export function CalibrationDisclosureDialog({ visible, disabled, rcDemo, onCancel, onAgree }: {
   visible: boolean;
   disabled: boolean;
   rcDemo: boolean;
   onCancel: () => void;
   onAgree: () => void;
-  onDismiss?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={onCancel} onDismiss={onDismiss}>
+    <Modal transparent statusBarTranslucent navigationBarTranslucent visible={visible} animationType="none" onRequestClose={onCancel}>
       <View className="flex-1 justify-center bg-foreground/35" style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16, paddingLeft: Math.max(20, insets.left), paddingRight: Math.max(20, insets.right) }}>
         <Pressable accessibilityRole="button" accessibilityLabel="Close calibration disclosure" onPress={onCancel} className="absolute inset-0" />
         <View accessibilityViewIsModal className="max-h-full w-full max-w-[560px] self-center rounded-card border border-border bg-surface">

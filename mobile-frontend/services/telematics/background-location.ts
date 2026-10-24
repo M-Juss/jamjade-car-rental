@@ -7,7 +7,7 @@ export const BACKGROUND_LOCATION_READINESS_TASK = 'jamjade-telematics-background
 // This definition is deliberately inert. It makes the native task infrastructure
 // available for a later active-trip phase without registering location updates,
 // collecting data, creating trips, or uploading any locations during setup.
-if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(BACKGROUND_LOCATION_READINESS_TASK)) {
+if (Platform.OS === 'android' && !TaskManager.isTaskDefined(BACKGROUND_LOCATION_READINESS_TASK)) {
   TaskManager.defineTask(BACKGROUND_LOCATION_READINESS_TASK, async () => undefined);
 }
 
@@ -23,7 +23,7 @@ export async function getBackgroundLocationReadiness() {
     canAskAgain: backgroundPermission.canAskAgain,
     backgroundLocationAvailable,
     taskManagerAvailable,
-    taskDefined: Platform.OS !== 'web' && TaskManager.isTaskDefined(BACKGROUND_LOCATION_READINESS_TASK),
+    taskDefined: Platform.OS === 'android' && TaskManager.isTaskDefined(BACKGROUND_LOCATION_READINESS_TASK),
     platform: Platform.OS,
     checkedAt: new Date().toISOString(),
   } as const;

@@ -1,6 +1,5 @@
-import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { Keyboard, Platform, StyleSheet, View } from 'react-native';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FloatingTabBarSurface } from '@/components/navigation/FloatingTabBarSurface';
@@ -18,13 +17,12 @@ export function RcResearchTabs({ selectedTab, onTabChange, onLogout, isLoggingOu
   const insets = useSafeAreaInsets();
   const [keyboardVisible, setKeyboardVisible] = useState(() => Keyboard.isVisible());
   useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboardVisible(false));
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
     return () => { show.remove(); hide.remove(); };
   }, []);
   const select = (tab: RcResearchTab) => {
     if (disabled || isLoggingOut) return;
-    if (Platform.OS === 'ios') void Haptics.selectionAsync();
     onTabChange(tab);
   };
 

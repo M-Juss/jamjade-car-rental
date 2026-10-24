@@ -12,7 +12,7 @@ export class CalibrationCaptureAccessError extends Error {
 export async function captureCalibration(seconds: number, reference: MountReference | null, signal: AbortSignal,
   callbacks: { onReady?: () => void; onReading?: (reading: CalibrationReading) => void; forwardLimits?: ForwardCalibrationLimits; completion?: MovementCompletion } = {},
 ) {
-  if (Platform.OS !== 'android' && Platform.OS !== 'ios') throw new Error('Calibration requires the Android or iOS app.');
+  if (Platform.OS !== 'android') throw new Error('Calibration requires the Android app.');
   if (!Number.isFinite(seconds) || seconds < 3 || seconds > 30) throw new Error('Calibration settings could not be loaded. Refresh and try again.');
   const limits = callbacks.forwardLimits;
   const completion = callbacks.completion;
@@ -94,7 +94,7 @@ export async function captureCalibration(seconds: number, reference: MountRefere
           if (lastTimestamp !== null && acceleration.timestamp <= lastTimestamp) return;
           lastTimestamp = acceleration.timestamp;
           const elapsed = arrival - start;
-          const rotation = rotationAxes(rotationRate, Platform.OS);
+          const rotation = rotationAxes(rotationRate);
           accumulator.add(linear, gravity, rotation, acceleration.timestamp, elapsed);
           if (arrival - lastFeedback >= 200) {
             const summary = accumulator.summary(elapsed);

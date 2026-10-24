@@ -27,6 +27,7 @@ export type RcProtocol = { version: number; recording_mode: 'manual'; requested_
   minimum_duration_ms: number; max_samples: number; max_samples_json_bytes: number; consent_version: number };
 export type RcResearchSession = Omit<RcSessionSetupInput, 'movement' | 'intensity' | 'consent'> & {
   phone_model: string | null; rc_model: string | null; mount_method: string | null; rc_configuration: string | null;
+  // Historical records from the shared API may retain a retired platform.
   id: string; platform: 'android' | 'ios'; app_version: string; added_load_g: number; protocol: RcProtocol; created_at: string;
 };
 export type RcSample = { elapsed_ms: number; acceleration_timestamp_s: number; gravity_timestamp_s: number; rotation_timestamp_s: number;

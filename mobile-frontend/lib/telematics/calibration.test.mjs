@@ -29,8 +29,7 @@ test('upright mount maps forward acceleration and braking to opposite longitudin
 });
 
 test('Expo Sensors 15 native rotation mappings produce the same physical XYZ axes', () => {
-  assert.deepEqual(rotationAxes({ alpha: 1, beta: 2, gamma: 3 }, 'android'), [1, 2, 3]);
-  assert.deepEqual(rotationAxes({ alpha: 3, beta: 2, gamma: 1 }, 'ios'), [1, 2, 3]);
+  assert.deepEqual(rotationAxes({ alpha: 1, beta: 2, gamma: 3 }), [1, 2, 3]);
 });
 
 test('left and right yaw integrate separately around the mounted vertical axis', () => {

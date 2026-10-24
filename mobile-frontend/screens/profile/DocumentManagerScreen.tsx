@@ -2,7 +2,7 @@ import { themeColors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, CheckCircle2, CircleDashed, Clock3, type LucideIcon } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DocumentTypeTabs, DocumentUploadPanel } from '@/components/profile';
@@ -14,70 +14,7 @@ import {
 import { pickImageFromDevice } from '@/lib/customer/image-picker';
 import type { RenterDocument, RenterDocumentId } from '@/lib/profile/profile-data';
 
-type WebFileInput = {
-  accept: string;
-  click: () => void;
-  files?: { [index: number]: Blob | undefined; length: number } | null;
-  onchange: (() => void) | null;
-  type: string;
-};
-
-type WebDocument = {
-  createElement: (tagName: 'input') => WebFileInput;
-};
-
-type WebFileReader = {
-  onerror: (() => void) | null;
-  onload: (() => void) | null;
-  readAsDataURL: (file: unknown) => void;
-  result: ArrayBuffer | string | null;
-};
-
-type WebFileReaderConstructor = new () => WebFileReader;
-
-function pickImageFromWeb() {
-  const webGlobals = globalThis as typeof globalThis & {
-    document?: WebDocument;
-    FileReader?: WebFileReaderConstructor;
-  };
-
-  if (!webGlobals.document || !webGlobals.FileReader) {
-    return Promise.resolve<string | null>(null);
-  }
-
-  return new Promise<string | null>((resolve) => {
-    const input = webGlobals.document?.createElement('input');
-    const FileReaderConstructor = webGlobals.FileReader;
-
-    if (!input || !FileReaderConstructor) {
-      resolve(null);
-      return;
-    }
-
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = () => {
-      const selectedFile = input.files?.[0];
-
-      if (!selectedFile) {
-        resolve(null);
-        return;
-      }
-
-      const reader = new FileReaderConstructor();
-      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(selectedFile);
-    };
-    input.click();
-  });
-}
-
 async function selectDocumentImage() {
-  if (Platform.OS === 'web') {
-    return pickImageFromWeb();
-  }
-
   const result = await pickImageFromDevice();
 
   return result.uri;

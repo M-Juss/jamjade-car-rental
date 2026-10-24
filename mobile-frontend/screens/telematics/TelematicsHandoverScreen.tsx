@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { ArrowLeft, CheckCircle2, CircleAlert, FileCheck2, RefreshCcw } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, BackHandler, Linking, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, Linking, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton, BookingEmptyState, SectionCard } from '@/components/bookings';
@@ -129,7 +129,6 @@ export function TelematicsHandoverScreen() {
     scroll.current?.scrollTo({ y: 0, animated: false });
   }, [busy, isDriver, router, view, clearCalibrationConsent]);
   useFocusEffect(useCallback(() => {
-    if (Platform.OS !== 'android') return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       goBack();
       return true;
@@ -227,11 +226,11 @@ export function TelematicsHandoverScreen() {
     </TelematicsStageDialog>
     <CalibrationDisclosureDialog rcDemo={handover?.calibration.profile.id === 'rc_demo'}
       visible={calibrationDisclosure !== null && calibrationDisclosure === handover?.bookingCode && canEnterCalibration} disabled={!canEnterCalibration}
-      onDismiss={finishCalibrationDisclosure}
+
       onCancel={() => { pendingCalibration.current = false; setCalibrationDisclosure(null); }} onAgree={() => {
         if (!canEnterCalibration || !handover || calibrationDisclosure !== handover.bookingCode || AppState.currentState !== 'active') return;
         disclosure.accept(); pendingCalibration.current = true; setCalibrationDisclosure(null);
-        if (Platform.OS !== 'ios') requestAnimationFrame(finishCalibrationDisclosure);
+        requestAnimationFrame(finishCalibrationDisclosure);
       }} />
   </View>;
 }

@@ -1,6 +1,6 @@
 # JamJade Mobile
 
-Expo customer application for the JamJade Laravel API.
+Android-only Expo application for Customers and assigned Drivers using the JamJade Laravel API. iOS and mobile-browser targets are retired; the separate Next.js management website remains supported. See [Android-only mobile scope](../docs/android-only-mobile.md).
 
 Use the repository [documentation map](../docs/README.md) to locate the current
 booking, delivery, verification, geofence, and telematics contracts before
@@ -86,8 +86,7 @@ profile for coding with live updates.
 For a native development client, use the `development` profile and then start
 Metro for that client:
 
-Configure the existing restricted `EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY` and
-`EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY` in the project's EAS **development**
+Configure the existing restricted `EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY` in the project's EAS **development**
 environment before building. Use Sensitive visibility. The ignored `.env.local`
 file supplies local builds and Metro, but is not uploaded to EAS. A key available
 to JavaScript does not prove that an installed app contains its native Maps key.
@@ -110,8 +109,7 @@ an update between them. Do not uninstall the existing app as a routine fix.
 1. Keep Laravel and its HTTPS tunnel running, or use a hosted Laravel API.
 2. In the project's EAS **preview** environment, configure
    `EXPO_PUBLIC_BACKEND_API` with the reachable HTTPS API URL ending in `/api`,
-   plus `EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY` and
-   `EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY` with the existing restricted SDK keys.
+   plus `EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY` with the existing restricted SDK key.
    Use Sensitive visibility to avoid printing their values in build logs.
    These are client configuration values embedded in the app, not server secrets.
    The ignored `.env.local` file is not uploaded to EAS Build.
@@ -152,13 +150,13 @@ The mobile UI uses the existing JamJade light palette with compact white surface
 
 Use `px-screen`, `p-card`, `rounded-card`, `rounded-field`, and the `text-title`, `text-section`, `text-body`, `text-caption`, and `text-button` utilities when their roles fit. Keep screen content scrollable, leave validation messages in normal layout flow, and apply safe-area insets at screen or footer boundaries. Shared controls live in `components/common` and `components/ui`.
 
-The splash plugin uses the same solid-blue JamJade logo as the website header on the light background. Configuration changes require a new native build. Verify the final splash on Android and iOS release builds; Expo Go and development builds do not fully represent the release splash.
+The splash plugin uses the same solid-blue JamJade logo as the website header on the light background. Configuration changes require a new native build. Verify the final splash on Android release builds; Expo Go and development builds do not fully represent the release splash.
 
 ## Branding
 
 `web-frontend/public/JamJadeLogo-solid.png` is the branding source. Website headers, login, footer, mobile headers, and booking PDFs use that artwork. Run `npm run branding:sync` from `web-frontend/` after updating it to copy the mobile and backend PDF logos and export the browser favicon, Apple touch icon, opaque app icon, and Android adaptive/themed icon layers. It uses the image tooling already installed with Next.js, applies the web primary color, and preserves the artwork's silhouette, transparency, and proportions.
 
-`app.json` references these exports. Browser favicons use a white tile with a small corner radius. Android uses a white background and a transparent foreground with padding for launcher masks; the phone's launcher determines the outer icon shape. The monochrome layer uses the same silhouette for Android themed icons. Apple app and touch icons retain opaque white backgrounds so the platform can apply its own mask. Native app icons and splash assets require rebuilding and reinstalling the app; reloading Expo Go does not update an installed APK. If a generated `android/` or `ios/` project already exists, synchronize it with Expo prebuild before the next native build.
+`app.json` references the mobile icon and splash exports. Android uses a white background and a transparent foreground with padding for launcher masks; the launcher determines the outer icon shape. The monochrome layer preserves the same silhouette for themed icons. The shared sync command still creates website favicon and Apple touch-icon assets for the separate Next.js website. Native icon and splash changes require rebuilding the Android app. If a generated `android/` project exists, synchronize it with `npx expo prebuild --platform android --no-install` before the next native build; do not use a destructive clean as routine maintenance. Expo SDK 54 can recreate an iOS launch script during generation; run `npm pkg delete scripts.ios scripts.web` afterward and review the package diff.
 
 ## Settlement Payments
 
@@ -168,11 +166,7 @@ The pickup-deadline warning appears only for a pending/confirmed booking with a 
 
 ## Form Keyboard Handling
 
-Form screens use one `KeyboardAvoidingView` at the screen or modal boundary with
-`padding` on iOS. Android uses the existing native `adjustResize` behavior;
-do not also subtract the keyboard height in JavaScript. A boundary beneath a
-native header or safe-area top inset must account for that height through
-`keyboardVerticalOffset` on iOS.
+Android uses native `adjustResize` at the screen or modal boundary. Do not add a second JavaScript keyboard-resizing wrapper. Preserve safe-area insets and keep footer actions inside the resized boundary.
 
 Use `KeyboardFormScrollView` for editable form content and `KeyboardAwareField`
 around custom inputs. `InputWithLabel`, `FormInput`, and location search already
@@ -195,8 +189,7 @@ After reloading the corrected bundle over USB on 2026-10-14, the user confirmed
 that typing in both login fields, switching fields, and scrolling with the
 keyboard open kept the Redmi Note 8 Pro (Android 11) development client open.
 The app process stayed running and the latest native crash remained the earlier
-pre-fix record. This verifies the reported login crash; other form flows and iOS
-keyboard smoke checks remain pending.
+pre-fix record. This verifies the reported login crash; other form flows remained pending at that time. iOS was retired on 2026-10-24.
 
 When the keyboard opens, the scroll content also gains a temporary spacer equal
 to its reported height. This extra scroll space lets the final fields and actions
@@ -214,7 +207,7 @@ node --test lib/keyboard/scroll-offset.test.mjs
 
 Native smoke checks must cover login/registration, onboarding, personal and
 emergency-contact sheets, credential sheets, booking delivery fields, and price
-filters. On both Android and iOS, focus the last field, switch backward/forward,
+filters. On Android, focus the last field, switch backward/forward,
 show validation errors, enter multiline text, and reach the submit action with
 the keyboard open. Repeat with a small screen, larger text, and phone/decimal
 keypads. Verify keyboard dismissal restores the normal layout. Browser viewport
@@ -243,44 +236,23 @@ The Customer Profile separates Personal Information from Account Information. Pe
 
 These endpoints require an active Customer account and allow five combined attempts per minute per account. New passwords follow the current minimum of eight characters, must differ from the current password, and are limited to 72 UTF-8 bytes for bcrypt. Password inputs are not trimmed, persisted in the customer store, or logged. Changing an account does not require a completed personal profile.
 
-## Phase 3 self-drive setup
+## Telematics and RC research
 
-The self-drive Telematics tab is a server-gated handover readiness workflow.
-The six available checks run through `services/telematics` and
-`services/telematics/setup-workflow.ts` in this order:
+Read the [central implementation guide](../docs/telematics-master-plan.md) for
+current contracts, agreed pipeline, data/inspection UI, sequencing, and evidence.
+It replaces the previous separate telematics/calibration/research guides.
 
-1. device capability check
-2. motion permission
-3. foreground location permission
-4. background location readiness
-5. one fresh GPS fix
-6. explicit phone-mount confirmation
+Existing Customer Self Drive and assigned-Driver setup use Laravel eligibility,
+six readiness checks, five explicitly consented foreground calibration captures,
+and staff-controlled release. Released latest-GPS sharing has separate consent
+and foreground/background modes. The readiness task is inert; the rental location
+task is distinct. Neither collects continuous rental motion.
 
-`setup-readiness.ts` collects typed evidence from the native adapters and the
-workflow re-reads the handover before each step before submitting it through
-`services/api/telematics.service.ts`. The six readiness checks do not start tracking or subscribe to sensors. A
-separate, explicitly consented calibration stage now captures bounded foreground
-DeviceMotion summaries for stationary, forward, braking, left-turn and right-turn
-checks under Staff supervision in a controlled area. Captures stop on timeout,
-cancellation, navigation or backgrounding. No raw streams, route points, active
-trips or background location updates are created. See
-[calibration](../docs/telematics-calibration.md). The background location task
-definition remains intentionally inert.
-
-The authoritative state comes from `/mobile/telematics/setup` or
-`/mobile/bookings/{booking}/telematics-setup`. Render the returned
-`eligibility` and only show setup actions when `canWorkSetup` is true. A booking
-selector is a navigation filter. In standard mode, Laravel still rechecks
-ownership, self-drive type, approved documents, confirmation, server time inside the reserved
-`[rental_start_at, rental_end_at)` interval, competing Customer self-drive
-handovers/rentals, and staff-started handover for every mutation. The
-local/testing handover test mode intentionally relaxes those business gates as
-described in the handover lifecycle guide, while native evidence and the
-no-tracking setup boundary remain in force.
-Staff's existing **Start Rental** action performs the only release transition.
-See [telematics architecture](../docs/telematics-architecture.md),
-[handover lifecycle](../docs/telematics-handover-lifecycle.md), and
-[device/location policy](../docs/telematics-device-location.md).
+The separate Admin RC Research screen currently offers manual foreground capture,
+review, numerical summaries and encrypted server save. Native durable recording,
+a web waveform inspector, processing/export, ML classification, scoring and
+report-ready notifications are target work, not implemented capabilities.
+Use the central guide and source rather than historical phase descriptions.
 
 ## API Structure
 
@@ -298,11 +270,11 @@ service boundary and map server `422` errors to the corresponding mobile field.
 PayPal callbacks are owned by `lib/payments/paypal-callbacks.ts`, while
 `app/+native-intent.ts` consumes the registered `mobilefrontend://paypal/return`
 and `cancel` paths for installed builds. Keep those paths synchronized with the
-scheme in `app.json`; Expo Go/web callbacks use Expo's generated URL.
+scheme in `app.json`; Android Expo Go callbacks use Expo's generated URL.
 
 `app.json` owns native plugins, permissions, splash, edge-to-edge behavior, and
-the `mobilefrontend` scheme. `app.config.ts` supplies the iOS and Android Maps
-SDK keys from the environment variables documented in `.env.example`. Native
+the `mobilefrontend` scheme. `app.config.ts` supplies the Android Maps SDK
+key from the environment variables documented in `.env.example`. Native
 permission, plugin, Maps-key, splash, icon, or bundled-asset changes require a
 new development or preview build.
 
@@ -314,18 +286,19 @@ From `mobile-frontend/`, run the installed checks as appropriate:
 npm run lint
 npx tsc --noEmit
 npx expo-doctor
+node --test $(rg --files lib services components -g '*.test.mjs')
+npx expo export --platform android
 ```
 
 The mobile test foundation is not configured yet. Establish it in a dedicated
 task before adding Jest or React Native Testing Library tests. Smoke-test
-permission, map, callback, safe-area, and edge-to-edge changes on both iOS and
-Android when devices or development builds are available.
+permission, map, callback, safe-area, and edge-to-edge changes on Android when devices or development builds are available.
 
 Web admin authentication remains cookie/CSRF based. Mobile authentication uses Sanctum bearer tokens stored with Expo SecureStore.
 
 ### Delivery maps
 
-Delivery uses the SDK 54-compatible `react-native-maps` package with Google rendering. Configure the restricted Android/iOS SDK keys from `.env.example` and rebuild a development client after native key changes. Places/Routes REST calls go through Laravel using its server-only key. Pricing Settings edits delivery rates and preserves the garage point configured in Laravel. No device location permission is requested by delivery pin selection. See [delivery pricing](../docs/delivery-pricing.md) for automatic delivery confirmation, quote expiry, deferred actual tolls, interrupted requests and verification limits.
+Delivery uses the SDK 54-compatible `react-native-maps` package with Google rendering. Configure the restricted Android SDK key from `.env.example` and rebuild a development client after native key changes. Places/Routes REST calls go through Laravel using its server-only key. Pricing Settings edits delivery rates and preserves the garage point configured in Laravel. No device location permission is requested by delivery pin selection. See [delivery pricing](../docs/delivery-pricing.md) for automatic delivery confirmation, quote expiry, deferred actual tolls, interrupted requests and verification limits.
 
 ## Payment receipts
 
@@ -339,7 +312,7 @@ See [the receipt contract](../docs/booking-financial-documents.md#customer-mobil
 Save receipt exports the displayed receipt, including its balance and deadline,
 at 1080 pixels wide without the header, navigation, or action buttons. Native
 saving uses SDK 54 compatible `react-native-view-shot`, `expo-file-system`, and
-`expo-media-library`; web uses `html2canvas` and JPEG canvas encoding. It does not
+`expo-media-library`. It does not
 download or rename the PDF. Retained PDF documents and email attachments remain
 unchanged. Rebuild an existing custom development client after installing the
 native modules. If the installed APK lacks capture, gallery, or filesystem
@@ -351,9 +324,8 @@ only after the write succeeds. Save-only permission is checked/requested on the
 button press; denied access stops capture, and permanently denied access directs
 the user to phone settings. No existing photo assets are read. Android 13+ needs
 no read-media permission for saving; older Android versions may require storage
-access. iOS uses add-only photo-library access. Temporary private cache files are
-removed after success or failure. Web retains a browser JPEG download because
-browsers cannot write directly to the native gallery. No token-bearing URL is used.
+access. Temporary private cache files are
+removed after success or failure. No token-bearing URL is used.
 
 Standalone receipt/HTTP regression checks (Node 22.18 or newer):
 

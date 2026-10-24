@@ -6,77 +6,12 @@ import {
   type RenterDocumentId,
 } from '@/lib/profile/profile-data';
 
-const STORAGE_KEY = 'jamjade:renter-documents:v2';
-
 const listeners = new Set<() => void>();
-
-function getStorage() {
-  const storageHost = globalThis as typeof globalThis & {
-    localStorage?: {
-      getItem: (key: string) => string | null;
-      setItem: (key: string, value: string) => void;
-      removeItem?: (key: string) => void;
-    };
-  };
-
-  const storage = storageHost.localStorage;
-
-  if (
-    !storage ||
-    typeof storage.getItem !== 'function' ||
-    typeof storage.setItem !== 'function'
-  ) {
-    return undefined;
-  }
-
-  return storage;
-}
-
-function readStoredDocuments() {
-  const storage = getStorage();
-
-  if (!storage) {
-    return renterDocumentDefinitions;
-  }
-
-  try {
-    const storedValue = storage.getItem(STORAGE_KEY);
-
-    if (!storedValue) {
-      return renterDocumentDefinitions;
-    }
-
-    const storedDocuments = JSON.parse(storedValue) as RenterDocument[];
-    const storedById = new Map(storedDocuments.map((document) => [document.id, document]));
-
-    return renterDocumentDefinitions.map((document) => ({
-      ...document,
-      ...storedById.get(document.id),
-    }));
-  } catch {
-    storage.removeItem?.(STORAGE_KEY);
-    return renterDocumentDefinitions;
-  }
-}
-
-let renterDocuments = readStoredDocuments();
+// Document image drafts remain in memory for the current Android session.
+let renterDocuments = renterDocumentDefinitions;
 
 function emitChange() {
   listeners.forEach((listener) => listener());
-}
-
-function persistDocuments() {
-  const storage = getStorage();
-
-  if (!storage) {
-    return;
-  }
-
-  try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(renterDocuments));
-  } catch {
-    // Large image previews may exceed web storage. Keep the in-memory copy for this session.
-  }
 }
 
 function subscribe(listener: () => void) {
@@ -106,7 +41,6 @@ export function storeRenterDocumentImage(documentId: RenterDocumentId, imageUri:
         }
       : document,
   );
-  persistDocuments();
   emitChange();
 }
 
@@ -121,6 +55,5 @@ export function removeRenterDocumentImage(documentId: RenterDocumentId) {
         }
       : document,
   );
-  persistDocuments();
   emitChange();
 }

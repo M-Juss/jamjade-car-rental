@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { Settings } from 'lucide-react-native';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Text, View } from 'react-native';
 
 import { ActionButton } from '@/components/bookings';
 import { themeColors } from '@/constants/theme';
@@ -54,8 +54,7 @@ export function TelematicsSetupChecklist({
     continueRequested.current = true;
     pendingConsent.current = consent;
     setDisclosureOpen(false);
-    // iOS must finish dismissing its native modal before OS permission prompts.
-    if (Platform.OS !== 'ios') finishDisclosure();
+    finishDisclosure();
   };
   const progress = deviceSetupProgress(handover);
   const resetsCalibration = handover.steps.some((step) => step.type.endsWith('_calibration') && step.status === 'passed');
@@ -121,8 +120,7 @@ export function TelematicsSetupChecklist({
         resetsCalibration={resetsCalibration}
         onCancel={cancelDisclosure}
         onContinue={continueSetup}
-        onDismiss={finishDisclosure}
-      />
+       />
     </View>
   );
 }

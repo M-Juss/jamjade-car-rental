@@ -1,5 +1,4 @@
 import * as ImagePicker from 'expo-image-picker';
-import { Platform } from 'react-native';
 
 export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -19,12 +18,9 @@ export async function pickImageFromDevice({
   allowsEditing?: boolean;
 } = {}): Promise<DocumentImagePickResult> {
   try {
-    if (Platform.OS !== 'web') {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        return { error: 'permission-denied', uri: null };
-      }
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      return { error: 'permission-denied', uri: null };
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({

@@ -1,7 +1,7 @@
 import { themeColors } from '@/constants/theme';
 import { X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function ProfileFormSheet({
@@ -21,8 +21,7 @@ export function ProfileFormSheet({
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <View
         className="flex-1 justify-end bg-black/35">
         <Pressable accessibilityRole="button" className="flex-1" onPress={onClose} />
         <View
@@ -47,7 +46,7 @@ export function ProfileFormSheet({
           {children}
         </View>
         {overlay}
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

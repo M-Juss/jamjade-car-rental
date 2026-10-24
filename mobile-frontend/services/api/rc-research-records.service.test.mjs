@@ -24,9 +24,16 @@ const setup = { name: 'Controlled trial', phone_model: 'Test phone', rc_model: '
 const review = { observed_movement: 'acceleration', observed_intensity: 'harsh', label_status: 'confirmed', quality: 'usable',
   event_start_ms: 41000, event_end_ms: 48000, notes: 'Observer confirmed' };
 
+test('unsupported runtimes cannot create new research sessions', async () => {
+  for (const platform of ['ios', 'web']) {
+    const api = service({ apiPost: () => assert.fail('Unsupported runtime must not submit a session') }, platform);
+    await assert.rejects(api.createRcResearchSession(setup), /Android/);
+  }
+});
+
 test('setup consent, conditional labels and bounded text match the research contract', () => {
   assert.equal(rcSessionSetupSchema.safeParse(setup).success, true);
-  for (const change of [{ consent: false }, { name: ' ' }, { phone_model: 'x'.repeat(101) }, { movement: 'stationary' }, { intensity: 'not_applicable' }])
+  for (const change of [{ consent: false }, { name: ' ' }, { name: 'x'.repeat(101) }, { movement: 'stationary' }, { intensity: 'not_applicable' }])
     assert.equal(rcSessionSetupSchema.safeParse({ ...setup, ...change }).success, false);
   assert.equal(rcSessionSetupSchema.safeParse({ ...setup, movement: 'stationary', intensity: 'not_applicable' }).success, true);
 });
@@ -38,7 +45,7 @@ test('review accepts manual intervals beyond ten seconds and enforces actual cap
     assert.equal(rcTrialReviewSchema(50000).safeParse({ ...review, ...change }).success, false);
 });
 
-for (const platform of ['android', 'ios']) test(`${platform}: session mapping excludes trial labels and sends platform metadata`, async () => {
+for (const platform of ['android']) test(`${platform}: session mapping excludes trial labels and sends platform metadata`, async () => {
   const api = service({ apiPost: async (path, body) => {
     assert.equal(path, '/mobile/rc-research/sessions');
     assert.equal(body.platform, platform); assert.equal(body.app_version, '1.0.0');
