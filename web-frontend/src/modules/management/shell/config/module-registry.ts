@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   History,
   Wrench,
+  Activity,
 } from "lucide-react";
 
 export type ManagementPortal = "admin" | "staff";
@@ -26,7 +27,8 @@ export type ManagementModuleId =
   | "fleetTracker"
   | "reports"
   | "personnel"
-  | "deliveryPricing";
+  | "deliveryPricing"
+  | "research";
 
 type ManagementSection =
   | "Overview"
@@ -126,6 +128,7 @@ export const managementModules: readonly ManagementModule[] = [
     adminOnly: true,
     path: "personnel",
   },
+  { id: "research", label: "RC Research", section: "Insights", icon: Activity, adminOnly: true, path: "research" },
   { id: "deliveryPricing", label: "Fee Pricing", section: "Administration", icon: PhilippinePeso, adminOnly: true, path: "delivery-pricing" },
 ] as const;
 

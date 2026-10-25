@@ -10,10 +10,14 @@ Accounts remain in `users`, with role membership in the existing Spatie tables. 
 
 Admin RC Research: an existing active Admin uses normal mobile sign-in when
 Laravel's local/testing `rc_demo` profile is enabled. The implemented destination
-has Data / Collect / Logout and manual foreground research recording. Its
+has Data / Collect / Logout and explicit local native v2 recording. Its
 eight-hour research-only bearer token cannot access ordinary mobile features;
 web session authentication remains separate. Access outside local/testing RC mode
-is not implemented. See [the central access contract](telematics-master-plan.md#existing-rc-research-v1).
+is not implemented. The Admin website now has separate read-only, owner-scoped
+recording list/sample endpoints under `/admin/rc-research/trials`, using its normal
+web session and the same active RC-mode restriction. These do not authorize web
+cookies on mobile research routes or mobile tokens on web routes. See
+[the central access contract](telematics-master-plan.md#existing-rc-research-v1).
 
 | Function | Staff | Driver |
 | --- | --- | --- |

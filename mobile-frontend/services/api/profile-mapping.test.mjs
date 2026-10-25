@@ -85,7 +85,9 @@ test('sign-in, restoration, registration and email updates retain the corrected 
     apiPut: async () => ({ data: user }),
     persistApiAuthToken: async () => {},
   };
-  const auth = loadModule('./auth.service.ts', { './profile-mapping': mapping, '@/services/http': http, 'react-native': { Platform: { OS: 'android' } } });
+  const auth = loadModule('./auth.service.ts', { './profile-mapping': mapping, '@/services/http': http, 'react-native': { Platform: { OS: 'android' } },
+    '@/services/telematics/native-recorder': { nativeRecorder: { lock: async () => {} } },
+  });
   const account = loadModule('./account.service.ts', { './profile-mapping': mapping, '@/services/http': http });
   const results = [(await auth.login({})).user, (await auth.register({})).user, await auth.getCurrentUser(), await account.updateAccountEmail({})];
   for (const result of results) assert.equal(result.profile.profilePicture, 'https://backend.example.test/storage/profiles/example.jpg');

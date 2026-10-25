@@ -33,6 +33,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
 
     Route::middleware(['auth:sanctum', RestrictRcResearchToken::class, 'active_user', 'throttle:mobile-api'])->group(function () {
         Route::get('/rc-research', [RcResearchController::class, 'show'])->name('rc-research.show');
+        Route::get('/rc-research/native-access', [RcResearchController::class, 'nativeAccess'])->name('rc-research.native-access');
         Route::post('/rc-research/sessions', [RcResearchController::class, 'storeSession'])->name('rc-research.sessions.store');
         Route::post('/rc-research/sessions/{session}/trials', [RcResearchController::class, 'storeTrial'])->whereUuid('session')->name('rc-research.trials.store');
         Route::get('/rc-research/trials', [RcResearchController::class, 'trials'])->name('rc-research.trials.index');

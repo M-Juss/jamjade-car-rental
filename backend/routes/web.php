@@ -15,6 +15,7 @@ use App\Http\Controllers\Web\Admin\MaintenanceController;
 use App\Http\Controllers\Web\Admin\ManagementNavigationController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\PersonnelController;
+use App\Http\Controllers\Web\Admin\RcResearchController;
 use App\Http\Controllers\Web\Admin\ReportController;
 use App\Http\Controllers\Web\Admin\SelfDriveVerificationController;
 use App\Http\Controllers\Web\Admin\VehicleConfigurationController;
@@ -39,6 +40,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/navigation-counts', ManagementNavigationController::class)->name('navigation-counts');
+        Route::middleware(['role:admin', 'throttle:60,1'])->prefix('rc-research')->name('rc-research.')->group(function () {
+            Route::get('/trials', [RcResearchController::class, 'index'])->name('trials.index');
+            Route::get('/trials/{trial}', [RcResearchController::class, 'show'])->whereUuid('trial')->name('trials.show');
+        });
         Route::post('/broadcasting/auth', FleetBroadcastAuthController::class)
             ->middleware('permission:view fleet tracker')->name('fleet.broadcasting.auth');
 

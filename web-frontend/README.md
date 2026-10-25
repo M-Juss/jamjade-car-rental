@@ -109,6 +109,15 @@ loads `/admin/me`, logs in/out, and resolves the user's role and permissions.
 guard. Routes under `/admin` are for the Admin role; routes under `/staff` are
 filtered by the module permission registry and never replace backend checks.
 
+Admin **RC Research** (`/admin/research`) inspects the signed-in Admin's saved v1
+recordings through protected web-session reads. Laravel must have the existing
+local/testing `rc_demo` profile enabled. The inspector shows saved phone-axis
+signals, interval statistics, observer labels and capture quality. It does not
+edit labels or perform vehicle alignment, cleaning or AI classification. See the
+[central telematics guide](../docs/telematics-master-plan.md#implemented-web-inspection-2026-10-24).
+Pure timing/statistics regressions run with
+`node --test src/modules/management/research/recording-analysis.test.mjs`.
+
 The management registry in
 `src/modules/management/shell/config/module-registry.ts` is the discovery map:
 

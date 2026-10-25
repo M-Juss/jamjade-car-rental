@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,7 +11,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { checkRcResearchAccess } from '@/services/api/rc-research.service';
 import { ApiError } from '@/services/http';
 
-import { RcCollectionPanel } from './RcCollectionPanel';
+import { RcNativeCollectionPanel } from './RcNativeCollectionPanel';
 import { RcDataPanel } from './RcDataPanel';
 import { RcResearchTabs, type RcResearchTab } from './RcResearchTabs';
 
@@ -20,10 +20,8 @@ export function RcResearchScreen() {
   const [state, setState] = useState<'checking' | 'ready' | 'error'>('checking');
   const [retry, setRetry] = useState(0);
   const [tab, setTab] = useState<RcResearchTab>('collect');
-  const [revision, setRevision] = useState(0);
-  const [collectBusy, setCollectBusy] = useState(false);
-  const [hasUnsaved, setHasUnsaved] = useState(false);
-  const saved = useCallback(() => setRevision(value => value + 1), []);
+  const [recording, setRecording] = useState(false);
+  const verified = useRef(false);
   const logout = useLogoutConfirmation();
 
   useFocusEffect(useCallback(() => {
@@ -31,16 +29,16 @@ export function RcResearchScreen() {
     let revision = 0;
     const check = async () => {
       const current = ++revision;
-      setState('checking');
+      if (!verified.current) setState('checking');
       try {
         await checkRcResearchAccess();
-        if (active && current === revision) setState('ready');
+        if (active && current === revision) { verified.current = true; setState('ready'); }
       } catch (error) {
         if (!active || current !== revision) return;
         if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
           await signOut();
         } else {
-          setState('error');
+          setState(verified.current ? 'ready' : 'error');
         }
       }
     };
@@ -59,21 +57,20 @@ export function RcResearchScreen() {
         <ActionButton label="Retry" onPress={() => setRetry(value => value + 1)} />
       </View> : null}
       <View className="flex-1" style={{ display: state === 'ready' && tab === 'collect' ? 'flex' : 'none' }}>
-        <RcCollectionPanel active={state === 'ready' && tab === 'collect'} onSaved={saved} onBusyChange={setCollectBusy} onUnsavedChange={setHasUnsaved} />
+        <RcNativeCollectionPanel active={state === 'ready' && tab === 'collect'} onRecordingChange={setRecording} />
       </View>
       <View className="flex-1" style={{ display: state === 'ready' && tab === 'data' ? 'flex' : 'none' }}>
-        <RcDataPanel active={state === 'ready' && tab === 'data'} revision={revision} />
+        <RcDataPanel active={state === 'ready' && tab === 'data'} revision={0} />
       </View>
       <RcResearchTabs
         selectedTab={tab}
         onTabChange={setTab}
-        disabled={collectBusy}
         onLogout={logout.open}
         isLoggingOut={logout.isLoggingOut}
       />
       <LogoutConfirmationDialog
         accountLabel="admin"
-        warning={hasUnsaved ? 'Your unsaved recording will be discarded.' : undefined}
+        warning={recording ? 'Recording will stop. Saved recordings stay on this phone.' : undefined}
         visible={logout.visible}
         isLoading={logout.isLoggingOut}
         onCancel={logout.close}

@@ -4,14 +4,15 @@ import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
 
-function serviceWith(filename, http, platform = 'android') {
+function serviceWith(filename, http, platform = 'android', recorder = { lock: async () => {} }) {
   const source = readFileSync(new URL(filename, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const exports = {};
   vm.runInNewContext(compiled, { exports, require: (name) => {
     if (name === 'react-native') return { Platform: { OS: platform } };
     if (name === '@/services/http') return http;
-    if (name === './profile-mapping') return serviceWith('./profile-mapping.ts', http, platform);
+    if (name === './profile-mapping') return serviceWith('./profile-mapping.ts', http, platform, recorder);
+    if (name === '@/services/telematics/native-recorder') return { nativeRecorder: recorder };
     throw new Error(`Unexpected import: ${name}`);
   } });
   return exports;
@@ -54,4 +55,14 @@ test('the empty research page checks access through the authenticated transport'
     return { data: null };
   } });
   assert.equal(await api.checkRcResearchAccess(), undefined);
+});
+
+test('sign-out locks native capture before network revocation and clears credentials after failures', async () => {
+  const calls = [];
+  const api = serviceWith('./auth.service.ts', {
+    apiPost: async () => { calls.push('remote'); throw new Error('offline'); },
+    removeApiAuthToken: async () => { calls.push('credentials'); },
+  }, 'android', { lock: async () => { calls.push('native'); throw new Error('cleanup timeout'); } });
+  await api.logout();
+  assert.deepEqual(calls, ['native', 'remote', 'credentials']);
 });

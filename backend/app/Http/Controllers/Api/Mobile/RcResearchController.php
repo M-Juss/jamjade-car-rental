@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Research\ListRcResearchTrialsRequest;
 use App\Http\Requests\Research\StoreRcResearchSessionRequest;
 use App\Http\Requests\Research\StoreRcResearchTrialRequest;
+use App\Http\Resources\RcResearchNativeAccessResource;
 use App\Http\Resources\RcResearchSessionResource;
 use App\Http\Resources\RcResearchTrialResource;
 use App\Models\RcResearchTrial;
@@ -24,6 +25,25 @@ class RcResearchController extends Controller
     {
         return $this->noData('RC Research access confirmed.')
             ->header('Cache-Control', 'no-store');
+    }
+
+    public function nativeAccess(Request $request): JsonResponse
+    {
+        // The research-token middleware owns role/profile/scope checks. This read grants no new token ability.
+        $token = $request->user()->currentAccessToken();
+        $expiresAt = $token?->expires_at;
+        $globalMinutes = (int) config('sanctum.expiration', 0);
+        if ($expiresAt && $globalMinutes > 0) {
+            $expiresAt = $expiresAt->min($token->created_at->copy()->addMinutes($globalMinutes));
+        }
+        $seconds = $expiresAt ? max(0, min(28800, (int) floor(now()->diffInSeconds($expiresAt, false)))) : 0;
+        abort_unless($seconds > 0, 403, 'An expiring research session is required. Sign in again.');
+
+        return $this->success('Native research access confirmed.', new RcResearchNativeAccessResource([
+            'owner_id' => $request->user()->id,
+            'valid_for_seconds' => $seconds,
+            'expires_at' => $expiresAt->toISOString(),
+        ]))->header('Cache-Control', 'private, no-store');
     }
 
     public function storeSession(StoreRcResearchSessionRequest $request): JsonResponse

@@ -90,10 +90,11 @@ local module; presentation components must not own sensors or network calls.
   uses a separately consented app-wide foreground or explicit background collector;
   the readiness task stays inert. Prepared one-use startup and local Stationary
   resume checks do not imply cold start or automatic recovery after Stop/runtime loss.
-- Current Admin RC Research is foreground/memory-only, with reviewed uploads to
-  private encrypted files. The native Kotlin recorder, durable drafts, web waveform
-  inspector, preprocessing/export, AI events, report and score are agreed targets
-  still requiring implementation; do not claim they already work.
+- Current Admin Collect uses the local Kotlin v2 recorder with encrypted durable
+  checkpoints, unlabeled saves, recovery and metadata review. Data and the protected
+  web waveform inspector read historical v1 uploads. V2 upload/web integration,
+  preprocessing/export, AI, reports and scores remain pending. The compiled APK
+  does not establish actual Redmi lock-screen/interruption reliability.
 - Implement native collection/storage/processing independently of screen JS when
   adding lock-screen recording. Preserve explicit consent, visible recording state,
   stop/recovery, account cleanup, and protocol/source/unit provenance. Do not

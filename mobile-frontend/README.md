@@ -248,11 +248,50 @@ and staff-controlled release. Released latest-GPS sharing has separate consent
 and foreground/background modes. The readiness task is inert; the rental location
 task is distinct. Neither collects continuous rental motion.
 
-The separate Admin RC Research screen currently offers manual foreground capture,
-review, numerical summaries and encrypted server save. Native durable recording,
-a web waveform inspector, processing/export, ML classification, scoring and
-report-ready notifications are target work, not implemented capabilities.
-Use the central guide and source rather than historical phase descriptions.
+The separate Admin RC Research screen's Collect tab now uses
+`modules/rc-recorder`: independent original Android sensor streams, a visible
+foreground service and native Stop notification, encrypted local checkpoints,
+interrupted-record recovery and explicit deletion. Local records are unlabeled;
+the phone shows per-channel counts, delivered rate and gaps. No resampling,
+filtering, vehicle alignment or AI occurs during this capture. Start/unlock needs
+online research access verification; an authorized recording can continue offline
+until its bounded lease expires. The new flow needs a rebuilt Android client.
+
+Adapter 1.1.0 adds create/select collection groups with durable UUIDs and automatic
+recording numbering. The `MN-82S roof mount` preset locks the RC model and phone
+orientation. The Collect form also fixes the mount method to **Adjustable screw**
+for the confirmed phone holder, using the existing native text field;
+this form/validation change only needs Metro reload with adapter 1.1.0 installed.
+Groups fill editable surface, slope and purpose defaults. Each recording saves
+its own snapshot. New group names are generated as `Tiles - Level - Group 01`
+from the selected surface/slope, with an unused number and no typing. Existing
+groups keep their names. Manual angle and RC battery inputs are removed and
+remain unmeasured in new files. Phone battery/charging/Battery Saver
+are read automatically, with recording power snapshots under consent version 3.
+Older APKs need updating for the new group APIs. Group IDs are local/owner-bound;
+they are distinct from runtime `collection_session_id` and do not establish valid
+calibration or independently split training data.
+
+Data shows historical uploaded v1 trials; the website inspector reads those v1
+files. **V2 upload/web waveforms are not connected yet.** Local-only originals
+are lost on uninstall/app-data clearing or Keystore loss; update using compatible
+signing rather than uninstalling. Retention, quotas, framing and authorization
+are defined in the central guide. Processing/export, ML, scoring and report-ready
+notifications remain targets. Redmi screen-lock/interruption reliability has not
+been physically verified.
+
+For local native verification, from `mobile-frontend/android/`:
+
+```bash
+./gradlew :jamjade-rc-recorder:testDebugUnitTest :app:assembleDebug --offline
+```
+
+The development APK is `android/app/build/outputs/apk/debug/app-debug.apk` and
+needs Metro (`npx expo start --dev-client` from `mobile-frontend/`). Use the
+existing preview profile when a bundled standalone APK is required. Local module
+sources and its manifest survive Android regeneration through Expo autolinking;
+do not copy them into the disposable generated app project. Expo Go/older clients
+show an explicit build requirement and cannot fall back to v1 capture.
 
 ## API Structure
 

@@ -7,6 +7,7 @@ use App\Models\RcResearchTrial;
 use App\Models\User;
 use App\Support\RcResearchProtocol;
 use Carbon\CarbonImmutable;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -16,6 +17,53 @@ use Illuminate\Validation\ValidationException;
 
 class RcResearchService
 {
+    public function recordings(User $user, array $filters): LengthAwarePaginator
+    {
+        return RcResearchTrial::with('session')
+            ->whereHas('session', fn ($query) => $query->where('user_id', $user->id))
+            ->when($filters['label_status'] ?? null, fn ($query, $status) => $query->where('label_status', $status))
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                // Escape LIKE wildcards so searching is literal, including on SQLite.
+                $term = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
+                $query->whereHas('session', fn ($session) => $session->where(function ($fields) use ($term) {
+                    foreach (['name', 'surface', 'phone_model', 'rc_model'] as $column) {
+                        $fields->orWhereRaw($column." LIKE ? ESCAPE '!'", [$term]);
+                    }
+                }));
+            })
+            ->latest('started_at')->orderByDesc('id')->paginate((int) ($filters['per_page'] ?? 10));
+    }
+
+    public function inspection(RcResearchTrial $trial): array
+    {
+        $disk = Storage::disk('local');
+        abort_unless($trial->samples_path && $disk->exists($trial->samples_path), 503,
+            'The recording is unavailable. Try again.');
+        try {
+            $content = Crypt::decryptString($disk->get($trial->samples_path));
+            abort_unless(hash_equals($trial->content_hash, hash('sha256', $content)), 503);
+            $recording = json_decode($content, true, 32, JSON_THROW_ON_ERROR);
+            abort_unless(($recording['protocol']['version'] ?? null) === 1
+                && is_array($recording['samples'] ?? null)
+                && count($recording['samples']) >= 8
+                && count($recording['samples']) <= RcResearchProtocol::settings()['max_samples'], 503);
+        } catch (\Throwable) {
+            abort(503, 'The recording could not be verified. Try again.');
+        }
+
+        // Original Expo v1 values are not independent native sensor events or vehicle axes.
+        return [
+            'protocol' => $recording['protocol'],
+            'source' => $trial->session->app_version === 'synthetic-demo' ? 'synthetic_demo_v1' : 'expo_device_motion_v1',
+            'coordinate_frame' => 'phone',
+            'units' => ['acceleration' => 'm/s²', 'rotation' => 'deg/s', 'time' => 'ms'],
+            'reference' => null,
+            'processing' => null,
+            'content_sha256' => $trial->content_hash,
+            'samples' => $recording['samples'],
+        ];
+    }
+
     public function session(User $user, string $id): RcResearchSession
     {
         $session = RcResearchSession::findOrFail($id);
