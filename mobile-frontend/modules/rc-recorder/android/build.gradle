@@ -4,11 +4,11 @@ plugins {
 }
 
 group = 'com.jamjade'
-version = '1.1.0'
+version = '1.2.0'
 
 android {
   namespace 'com.jamjade.rcrecorder'
-  defaultConfig { versionCode 2; versionName '1.1.0' }
+  defaultConfig { versionCode 3; versionName '1.2.0' }
 }
 
 dependencies {

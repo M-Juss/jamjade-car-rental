@@ -146,7 +146,50 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
       summary.put(it, record.opt(it) ?: JSONObject.NULL)
     }
     summary.put("context", record.optJSONObject("context") ?: JSONObject())
+    if (record.optString("state") != "unavailable" && record.optString("recording_id").matches(Regex("[0-9a-f-]{36}"))) {
+      // A damaged transfer receipt must not hide otherwise readable originals.
+      val transfer = try { transfer(record.getString("recording_id")) } catch (_: Exception) { JSONObject().put("state", "upload_failed") }
+      summary.put("transfer_state", transfer.getString("state")).put("transfer", transfer)
+    }
     return summary
+  }
+
+  fun transfer(id: String): JSONObject {
+    val file = File(directory(id), "transfer.rc2")
+    if (!file.exists() && !File(file.path + ".bak").exists()) return JSONObject().put("state", "local_only")
+    return readDocument(file, "$ownerHash/$id/transfer")
+  }
+
+  fun setTransfer(id: String, value: JSONObject) {
+    require(value.keys().asSequence().toSet().all { it in setOf("state", "server_id", "manifest_sha256") })
+    require(value.getString("state") in setOf("uploading", "upload_failed", "uploaded"))
+    if (value.getString("state") == "uploaded") {
+      require(value.getString("server_id").matches(Regex("[0-9a-f-]{36}")))
+      require(value.getString("manifest_sha256").matches(Regex("[0-9a-f]{64}")))
+    }
+    readManifest(id)
+    writeDocument(File(directory(id), "transfer.rc2"), "$ownerHash/$id/transfer", value)
+  }
+
+  fun exportManifest(id: String): JSONObject {
+    val record = recover(id)
+    require(record.getString("state") in setOf("stopped", "interrupted")) { "Stop recording before uploading" }
+    require(record.optString("integrity") in setOf("sealed", "verified_prefix")) { "Recording needs verified recovery before upload" }
+    val json = canonical(record)
+    return JSONObject().put("manifest_json", json).put("manifest_sha256", hash(json.toByteArray(Charsets.UTF_8)))
+  }
+
+  fun exportChunk(id: String, channel: String, index: Int): String {
+    require(channel in channels && index in 0..9999)
+    val manifest = recover(id)
+    require(manifest.getString("state") in setOf("stopped", "interrupted"))
+    val chunks = manifest.getJSONArray("chunks")
+    val descriptor = (0 until chunks.length()).map { chunks.getJSONObject(it) }
+      .single { it.getString("channel") == channel && it.getInt("chunk_index") == index }
+    require(descriptor.getBoolean("sealed"))
+    val bytes = VerifiedChunk.read(File(directory(id), "$channel-${index.toString().padStart(6, '0')}.rc2"), key(),
+      "$ownerHash/$id/$channel/$index", descriptor.getLong("logical_bytes"), descriptor.getString("sha256"), descriptor.optBoolean("truncated_tail"))
+    return String(bytes, Charsets.UTF_8)
   }
 
   fun recover(id: String): JSONObject {

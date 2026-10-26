@@ -18,10 +18,11 @@ function load(filename, dependencies, globals = {}) {
 }
 const setup = load('../../lib/research/native-recorder.ts', {});
 const validation = load('../../validation/research/native-recorder.ts', { zod: { z }, '@/lib/research/native-recorder': setup });
+const uploadValidation = load('../../validation/research/native-upload.ts', { zod: { z } });
 const values = { recording_group_id: 'd87e0341-9f66-4a01-9f92-b2d1729486e1', surface: 'Test surface', mount_method: setup.NATIVE_MOUNT_METHOD,
   slope: 'level', recording_kind: 'maneuver_trial', consent: true };
 function deferred() { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; }
-function harness({ sdk = 33, permission = 'granted', present = true, response, request } = {}) {
+function harness({ sdk = 33, permission = 'granted', present = true, response, request, post } = {}) {
   let now = 0;
   const calls = [];
   const appState = { currentState: 'active' };
@@ -30,11 +31,14 @@ function harness({ sdk = 33, permission = 'granted', present = true, response, r
   const api = load('./native-recorder.ts', {
     '@/modules/rc-recorder': { default: present ? module : null }, '@/validation/research/native-recorder': validation,
     '@/lib/research/native-recorder': setup,
+    '@/validation/research/native-upload': uploadValidation,
     'react-native': { AppState: appState, Platform: { Version: sdk }, PermissionsAndroid: {
       PERMISSIONS: { POST_NOTIFICATIONS: 'notification' }, RESULTS: { GRANTED: 'granted' },
       request: async () => { calls.push(['permission']); return request ? request() : permission; },
     } },
-    '@/services/http': { apiGet: async path => {
+    '@/services/http': { getApiAuthToken: async () => 'synthetic-token', apiPost: async (path, body, options) => {
+      calls.push(['post', path, body, options]); return post ? post(path, body, options) : { data: {} };
+    }, apiGet: async path => {
       calls.push(['get', path]);
       if (response) return response();
       now = 1100;
@@ -53,6 +57,50 @@ test('native capture uses the restricted access read, conservative lifetime, and
   assert.equal(h.calls[1][2], 58);
   assert.deepEqual(JSON.parse(h.calls[3][1]), values);
   assert.equal(h.api.isAuthorized(7), true);
+});
+
+function uploadHarness(post) {
+  const h = harness({ response: async () => ({ data: { owner_id: '7', valid_for_seconds: 60, capture_protocol_version: 2, upload_available: true } }), post });
+  h.module.exportManifest = async id => JSON.stringify({ manifest_sha256: 'a'.repeat(64), manifest_json: JSON.stringify({ recording_id: id,
+    chunks: [{ channel: 'accelerometer', chunk_index: 0, sha256: 'b'.repeat(64), sealed: true }, { channel: 'gyroscope', chunk_index: 0, sealed: true }] }) });
+  h.module.exportChunk = async (id, channel) => { h.calls.push(['exportChunk', channel]); return 'synthetic-payload\n'; };
+  h.module.setTransfer = async (id, json) => { h.calls.push(['transfer', JSON.parse(json)]); };
+  // Availability is evaluated when loading the adapter; real native methods exist before app load.
+  h.api.uploadAvailable = true;
+  return h;
+}
+const receipt = { id: '8901a1f5-6628-46c2-8f44-6f124ac9bd60', client_recording_id: values.recording_group_id,
+  manifest_sha256: 'a'.repeat(64), expected_chunks: 2, received_chunks: 2, state: 'verified' };
+
+test('native upload resumes accepted chunks and marks uploaded only after matching server verification', async () => {
+  const h = uploadHarness(async path => ({ data: path.endsWith('/finalize') ? receipt : { ...receipt, state: 'incomplete', accepted_chunks: [{ channel: 'accelerometer', chunk_index: 0 }] } }));
+  await h.api.upload(7, values.recording_group_id);
+  assert.deepEqual(h.calls.filter(c => c[0] === 'exportChunk').map(c => c[1]), ['gyroscope']);
+  const chunk = h.calls.find(c => c[0] === 'post' && c[1].endsWith('/chunks'));
+  assert.deepEqual(Object.keys(chunk[2]).sort(), ['channel', 'chunk_index', 'payload']);
+  assert.equal(chunk[2].payload, 'synthetic-payload\n');
+  assert.equal(chunk[3].authToken, 'synthetic-token');
+  assert.equal(h.calls.at(-1)[1].state, 'uploaded');
+});
+
+test('failed or incomplete server acknowledgments preserve local originals and remain retryable', async () => {
+  const h = uploadHarness(async path => ({ data: path.endsWith('/finalize') ? { ...receipt, received_chunks: 1 } : { ...receipt, accepted_chunks: [] } }));
+  await assert.rejects(h.api.upload(7, values.recording_group_id), /not verified/);
+  assert.equal(h.calls.at(-1)[1].state, 'upload_failed');
+  assert.equal(h.calls.some(c => c[0] === 'delete'), false);
+});
+
+test('sign-out during upload prevents another raw chunk or uploaded state update', async () => {
+  const pending = deferred();
+  const h = uploadHarness(async path => path.endsWith('/chunks') ? pending.promise : { data: { ...receipt, accepted_chunks: [] } });
+  const task = h.api.upload(7, values.recording_group_id);
+  const rejected = assert.rejects(task, /access changed/);
+  while (!h.calls.some(c => c[0] === 'post' && c[1].endsWith('/chunks'))) await Promise.resolve();
+  await h.api.lock();
+  pending.resolve({ data: receipt });
+  await rejected;
+  assert.equal(h.calls.filter(c => c[0] === 'exportChunk').length, 1);
+  assert.equal(h.calls.some(c => c[0] === 'transfer' && c[1].state === 'uploaded'), false);
 });
 
 for (const data of [

@@ -65,7 +65,7 @@ export function NativeRecordingForm({ disabled, catalog, onStart, onCreateGroup,
       value={field.value} onValueChange={field.onChange} disabled={busy} error={fieldState.error?.message} />} />
     <Controller control={control} name="recording_kind" render={({ field, fieldState }) => <SelectWithLabel label="Recording purpose" required value={field.value}
       onValueChange={field.onChange} disabled={busy} error={fieldState.error?.message} options={NATIVE_RECORDING_PURPOSES} />} />
-    <Text className="font-sans text-caption text-secondary-foreground">Records motion and phone battery status locally, including while the screen is locked. Stop here or from the notification. Website upload is not connected yet.</Text>
+    <Text className="font-sans text-caption text-secondary-foreground">Records motion and phone battery status locally, including while the screen is locked. Stop here or from the notification. Upload saved recordings separately for Admin review.</Text>
     {errors.consent && <Text accessibilityRole="alert" className="font-sans text-caption text-destructive">{errors.consent.message}</Text>}
   </View></SectionCard><ActionButton label={busy ? 'Preparing…' : 'Agree & start recording'} variant="primary" disabled={busy}
     onPress={() => { setValue('consent', true); void handleSubmit(onStart)(); }} /></View>;

@@ -272,13 +272,23 @@ Older APKs need updating for the new group APIs. Group IDs are local/owner-bound
 they are distinct from runtime `collection_session_id` and do not establish valid
 calibration or independently split training data.
 
-Data shows historical uploaded v1 trials; the website inspector reads those v1
-files. **V2 upload/web waveforms are not connected yet.** Local-only originals
+Adapter **1.2.0** adds verified bounded chunk exports and explicit upload/retry from
+Saved on this phone. The separate encrypted transfer receipt survives restarts;
+an interrupted upload needs an explicit retry. Server acknowledgment requires the
+complete verified inventory. Local originals remain after upload; Delete local
+recording does not remove a server copy. Automatic background upload and remote
+v2 deletion management are not implemented. Install this compatible APK as an update.
+
+Data shows historical uploaded v1 trials. The Admin website defaults to native v2
+recordings and provides bounded original channel charts plus interval statistics.
+Earlier trials (v1) remain separately readable. Local-only originals
 are lost on uninstall/app-data clearing or Keystore loss; update using compatible
 signing rather than uninstalling. Retention, quotas, framing and authorization
 are defined in the central guide. Processing/export, ML, scoring and report-ready
-notifications remain targets. Redmi screen-lock/interruption reliability has not
-been physically verified.
+notifications remain targets. Redmi foreground and short screen-lock capture
+summaries have been checked, including a reported 60-second unplugged/locked
+interval. Raw noise/axes, longer-duration background and interruption recovery
+remain unverified; see the central guide for the exact evidence and limits.
 
 For local native verification, from `mobile-frontend/android/`:
 

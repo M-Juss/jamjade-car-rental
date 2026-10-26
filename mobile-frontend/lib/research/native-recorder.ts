@@ -33,7 +33,9 @@ export type NativeRecording = {
   device?: { model?: string; manufacturer?: string };
   phone_power?: { start: NativePhonePower; latest: NativePhonePower; end: NativePhonePower | null };
   channels: Record<string, NativeChannel>; end_reason: string | null;
-  annotation_state: 'unlabeled'; transfer_state: 'local_only'; integrity: string | null; diagnostics_partial: boolean;
+  annotation_state: 'unlabeled'; transfer_state: 'local_only' | 'uploading' | 'upload_failed' | 'uploaded';
+  transfer?: { state: string; server_id?: string; manifest_sha256?: string };
+  integrity: string | null; diagnostics_partial: boolean;
 };
 export type NativePhonePower = { battery_percent: number | null; charging: boolean | null; battery_saver: boolean | null; elapsed_ns: string };
 export type NativeCollectionGroup = {

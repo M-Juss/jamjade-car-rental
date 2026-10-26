@@ -1,8 +1,12 @@
 # Project status and roadmap
 
-Last reconciled for telematics: **2026-10-25**, including the local native v2
-recorder and read-only v1 Admin inspector. V2 upload and Redmi physical validation
-remain pending. Rental-release behavior is unchanged.
+Last reconciled for telematics: **2026-10-26**, including native v2 collection,
+explicit resumable upload, server verification, protected native signal review
+and local stationary/forward-reference previews with automatic interval suggestions
+and fixed vehicle-axis plots, plus experimental local synchronization and low-pass
+comparison previews. Saved references, validated filter settings and reproducible server processing,
+AI and broader Redmi validation remain pending. Rental-release
+behavior is unchanged.
 
 ## Product direction
 
@@ -37,7 +41,7 @@ during the current source review. Dated checks in other guides are not rerun her
 | Verification | Staff manually review the required Customer documents in a centered Customer Verification dialog. Customer information appears first, and each document's metadata appears above its immediately visible front/back images; wider screens show both sides together, and phones stack them. Booking minimum age is 18. Self Drive requires only approved driver's license and proof of address. License numbers use uppercase letters/digits (maximum 11, excluding display hyphens), formatted like `N03-12-123456`. License front/back images are required; proof of address requires a main image with an optional back image. Address evidence may be a recent utility bill, billing statement, or official document showing the Customer's name and current residential address. Legacy passport records are preserved but no longer required or offered for upload. |
 | Condition and maintenance | Current, Outgoing, and Incoming vehicle inspections are distinct snapshots. Maintenance plans and work records are implemented. Vehicle Management Configure provides an Admin-only shared option library with checklist-version checks and preserved historical labels; see [vehicle configuration](vehicle-configuration.md). |
 | Geofences | Website-managed default circle/polygon monitoring zones apply automatically at release for both supported rental types. Admin can add custom booking zones before release; multiple zones are frozen for rental history. Updated 2026-10-19: consent version 3 connects foreground/background latest GPS to backend crossing detection, website activity and named Customer in-app alerts. No route history is collected. Physical crossing verification and phone push remain pending; see [geofences](geofence-monitoring.md). |
-| Telematics | Existing setup/calibration and consented latest-GPS sharing are implemented. Collect now uses local native v2 motion recording with encrypted checkpoints/recovery and unlabeled saves. The protected Admin waveform inspector reads historical v1 records. V2 upload/web integration, annotation revisions, cleaning, ML, scoring and reports remain targets; Redmi lock-screen/interruption checks remain pending. See the [central guide](telematics-master-plan.md). |
+| Telematics | Existing rental setup/calibration and latest-GPS sharing are preserved. RC Collect uses native v2 recording, encrypted originals, explicit resumable chunk upload and server verification. The owner-bound Admin inspector shows original v2 signals/timing/variation. The v1 tab and old local development v1 data were retired at the user's request, with a private encrypted recovery copy. Automatic background transfer, annotation revisions, cleaning, ML, scoring and reports remain targets; broader physical validation remains pending. See the [central guide](telematics-master-plan.md). |
 | Fleet Monitoring | Ongoing-rental reads, authorized latest-location map and private Reverb invalidations are implemented. Connected AI event alerts are planned; physical end-to-end verification remains a separate gate. See [fleet baseline](telematics-master-plan.md#existing-fleet-monitoring). |
 | Database | The migration files in this checkout are the source for the current schema. ERD diagrams and audits are dated documentation snapshots, and their historical table/column counts must not be read as current runtime counts. Retention and production migration-baseline issues remain open. |
 
@@ -53,9 +57,9 @@ Payment-only issuance now creates an immutable Rental Information and Payment Re
 
 | Increment | Status | Completion boundary |
 | --- | --- | --- |
-| Native acquisition and recording contract | Local native v2 code/APK with fixed preset, durable group IDs/defaults/numbering and automatic phone power metadata; Redmi foreground and reported ~22-second screen-lock capture summaries checked while charging | Independent original channels/timestamps/units, encrypted checkpoints/recovery; raw noise/axes, longer/unplugged screen-lock and interruption checks, and v2 transfer still required |
-| Recording inspection workflow | Partially implemented | V1 web waveforms and local v2 unlabeled save/metadata review implemented; v2 ingestion/web waveforms, annotation revisions and upload states pending |
-| Processing and export | Agreed target | Reproducible references, synchronization, filters, features and manifests |
+| Native acquisition and recording contract | Native v2 recorder/export APK, fixed preset, durable groups/numbering, phone power and short stationary/locked smoke checks | Physical axes, controlled noise characterization, longer background and interruption checks remain required |
+| Recording inspection workflow | Native v2 original-signal inspection is the active workspace; legacy v1 navigation retired | Explicit upload/retry, encrypted originals, server integrity/timing summaries and bounded native windows implemented; automatic background transfer, remote deletion UI and annotation revisions pending |
+| Processing and export | Local reference/projection previews, automatic interval suggestions, 50 Hz synchronization and experimental 3/5/8 Hz low-pass comparisons implemented; remaining pipeline is an agreed target | Browser-only pilot diagnostics; accepted alignment, saved/versioned references, dynamic gravity correction, live/server synchronization, validated filter settings, features and export remain pending |
 | Dataset and classifier | Agreed target | Independent observed labels/session splits, baseline comparison, held-out metrics and automatic-reverse evaluation |
 | Live events, report and score | Agreed target | Server-owned inference events, website alerts, deduplication, late-data finalization and report notification |
 

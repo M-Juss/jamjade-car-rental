@@ -169,7 +169,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
         .put("device", JSONObject().put("manufacturer", Build.MANUFACTURER).put("model", Build.MODEL)
           .put("android_release", Build.VERSION.RELEASE).put("android_api", Build.VERSION.SDK_INT)
           .put("app_version", version.versionName).put("app_build", if (Build.VERSION.SDK_INT >= 28) version.longVersionCode.toString() else version.versionCode.toString())
-          .put("native_adapter_version", "1.1.0"))
+          .put("native_adapter_version", "1.2.0"))
         .put("consent_version", 3).put("annotation_state", "unlabeled").put("transfer_state", "local_only")
         .put("stationary_reference_id", JSONObject.NULL).put("forward_reference_id", JSONObject.NULL)
         .put("diagnostics_partial", false).put("integrity", "recording")
@@ -323,6 +323,15 @@ internal class RcRecorderEngine private constructor(private val context: Applica
   }
   fun list(offset: Int) = call { authorized().list(offset, activeId) }
   fun groups() = call { authorized().groups() }
+  fun exportManifest(id: String) = call {
+    check(activeId == null && !pending) { "Stop recording before uploading" }
+    authorized().exportManifest(id)
+  }
+  fun exportChunk(id: String, channel: String, index: Int) = call {
+    check(activeId == null && !pending) { "Stop recording before uploading" }
+    authorized().exportChunk(id, channel, index)
+  }
+  fun setTransfer(id: String, value: String) = call { authorized().setTransfer(id, JSONObject(value)) }
   fun createGroup(config: String) = call {
     check(activeId == null && !pending) { "Stop recording before creating a group" }
     authorized().createGroup(ResearchSetup.group(JSONObject(config)), utc())

@@ -91,10 +91,12 @@ local module; presentation components must not own sensors or network calls.
   the readiness task stays inert. Prepared one-use startup and local Stationary
   resume checks do not imply cold start or automatic recovery after Stop/runtime loss.
 - Current Admin Collect uses the local Kotlin v2 recorder with encrypted durable
-  checkpoints, unlabeled saves, recovery and metadata review. Data and the protected
-  web waveform inspector read historical v1 uploads. V2 upload/web integration,
-  preprocessing/export, AI, reports and scores remain pending. The compiled APK
-  does not establish actual Redmi lock-screen/interruption reliability.
+  checkpoints, unlabeled saves, recovery and metadata review. Adapter 1.2.0 adds
+  verified bounded exports, explicit resumable upload and encrypted transfer receipts.
+  The web inspector reads v2 original channel windows and historical v1; mobile Data
+  still reads historical v1. Automatic background upload, preprocessing/dataset export,
+  AI, reports and scores remain pending. Short Redmi smoke checks do not establish
+  long-duration or interruption reliability.
 - Implement native collection/storage/processing independently of screen JS when
   adding lock-screen recording. Preserve explicit consent, visible recording state,
   stop/recovery, account cleanup, and protocol/source/unit provenance. Do not

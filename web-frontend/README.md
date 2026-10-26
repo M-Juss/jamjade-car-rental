@@ -109,14 +109,53 @@ loads `/admin/me`, logs in/out, and resolves the user's role and permissions.
 guard. Routes under `/admin` are for the Admin role; routes under `/staff` are
 filtered by the module permission registry and never replace backend checks.
 
-Admin **RC Research** (`/admin/research`) inspects the signed-in Admin's saved v1
-recordings through protected web-session reads. Laravel must have the existing
-local/testing `rc_demo` profile enabled. The inspector shows saved phone-axis
-signals, interval statistics, observer labels and capture quality. It does not
-edit labels or perform vehicle alignment, cleaning or AI classification. See the
-[central telematics guide](../docs/telematics-master-plan.md#implemented-web-inspection-2026-10-24).
+Admin **RC Research** (`/admin/research`) lists native uploads only. Earlier trials
+(v1) navigation was retired and old local v1 data removed at the user's request,
+with an encrypted private recovery copy. Legacy endpoints/routes remain retained.
+Protected, owner-bound web reads
+require the existing local/testing `rc_demo` profile. Native review shows upload
+integrity, capture status, original independent phone-axis signals, channel timing
+and interval means/std/RMS/peaks through bounded 30-second windows. Axis toggles
+and automatic native chart scaling expose stationary variation. Gyroscope values
+remain rad/s; original nanoseconds stay decimal strings until relative-time conversion.
+The detail header reuses the vehicle breadcrumb/name pattern, with the recording
+date at the right. File/capture/label status lives in Data quality; technical
+explanations are collapsed rather than repeated across the signal view.
+In the original Accelerometer view, Preview synchronization adds a local 50 Hz
+phone-axis grid with independent linear interpolation only across source brackets
+up to 60 ms. Exact/interpolated/missing row counts and selected-row provenance are
+inspectable. Edges and larger gaps remain null. The grid is anchored to recording
+start and limited to the loaded 30 s window, with no extrapolation or source edits.
+These are experimental settings; no saved output, finalized dataset or live
+synchronization is implemented by this preview. Preview filter adds a causal
+second-order Butterworth comparison at 3/5/8 Hz (initial control value 5 Hz).
+Before/After share the existing chart, selection and cursor; metrics compare
+identical post-warm-up rows. Each channel restarts at missing rows, with the first
+500 ms excluded. Cutoffs remain experimental: lower variation is not a quality
+pass, and largest-peak timing differences are not measured event latency.
+For stationary/other captures, the accelerometer view offers an operator-confirmed stationary-reference preview:
+resting acceleration/gravity direction, residual gyro mean, variation and timing.
+Changing the selection clears it. Results stay in page memory; no reference is
+saved or applied, and no automatic stillness/quality pass is assigned.
+Forward-reference captures instead suggest three local intervals (Resting,
+Starting, Stopping) for operator review, with manual selection as fallback.
+Show in chart highlights the interval and scrolls to the plots; Restore suggestions
+discards manual adjustments. Experimental search boundaries and missing post-brake
+settling are shown for review. Confirmation remains required before the horizontal
+PCA candidate axis and start/stop/rotation comparison. Small steering corrections are allowed; short resting selections are
+flagged as pilot estimates. Assigned-range changes clear confirmation/results;
+window/channel/page changes discard the preview. No reference or annotation is
+submitted and no matrix is applied to recordings or rental setup.
+A successful forward preview adds fixed vehicle-axis acceleration/gyro plots for
+the whole loaded window, sharing selection and cursor with the originals.
+Acceleration switches between gravity-included and relative-to-rest views; gyro
+uses its resting offset. Selected means/std and Up-axis rotation RMS are shown,
+with Select whole window and independent original timing/gap diagnostics.
+These are local candidate projections, without dynamic gravity correction,
+filtering, saved alignment, training labels or AI. See the
+[central telematics guide](../docs/telematics-master-plan.md).
 Pure timing/statistics regressions run with
-`node --test src/modules/management/research/recording-analysis.test.mjs`.
+`node --test src/modules/management/research/*.test.mjs`.
 
 The management registry in
 `src/modules/management/shell/config/module-registry.ts` is the discovery map:

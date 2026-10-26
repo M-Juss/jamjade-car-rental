@@ -1,9 +1,13 @@
 # Telematics and RC Research: central implementation guide
 
-Last reconciled: **2026-10-25**. Scope: Laravel, the Next.js management website,
-and the Android-only Expo application. The baseline includes the read-only v1
-Admin inspector and local native v2 recorder. V2 upload, processing and AI remain
-pending; native compilation does not establish Redmi recording reliability.
+Last reconciled: **2026-10-26**. Scope: Laravel, the Next.js management website,
+and the Android-only Expo application. The active workspace uses the native v2
+recorder, explicit resumable chunk upload and protected v2
+signal inspection and local stationary/forward-reference previews with automatic
+reference-interval suggestions, fixed vehicle-axis plots, local synchronization
+and experimental low-pass comparison previews. Validated noise filtering, saved
+references, accepted vehicle alignment and AI remain pending; compilation and
+short recording tests do not establish general Redmi recording reliability.
 
 ## Authority and status
 
@@ -80,7 +84,7 @@ not an authoritative description of this codebase or a verified industry standar
 | Mobile stack | Expo SDK 54 (`~54.0.37`), React Native 0.81.5, `expo-sensors ~15.0.8`, Android-only local `modules/rc-recorder` Kotlin module | New development build required for the native recorder; Expo Go cannot capture v2 |
 | Builds | Generated Android project; development and standalone preview APK profiles | A successful build does not prove device reliability |
 | Research capture | Collect uses native independent original streams, fixed MN-82S preset, encrypted persistent collection groups/defaults/numbering, automatic phone power metadata, requested 20 ms updates and explicit native Start/Stop | Actual sensor axes/rates, lock-screen continuity, interruption and power behavior require Redmi validation |
-| Research storage and inspection | Local v2 unlabeled saves, recovery, metadata review and explicit deletion; historical server v1 encrypted files with protected web waveform/quality review | No v2 server ingestion/web waveform, upload queue, processed overlays, export or annotation revisions |
+| Research storage and inspection | Encrypted local v2 originals, explicit chunk upload/retry and server verification; protected v2 per-channel windows/statistics, local reference/projection/synchronization previews and experimental low-pass overlays | V1 list retired and old local v1 data removed with an encrypted recovery copy; no validated filter setting, saved research references, accepted vehicle alignment, automatic background transfer queue, dataset export or annotation revisions; remote v2 deletion UI remains pending |
 | Calibration | Six readiness checks and five supervised foreground exercises, summary-only evidence | Provisional settings; moving RC/reference accuracy not established |
 | Released rental GPS | Explicit foreground/background latest-location sharing, consent, pause/resume, server eligibility | No continuous rental motion collector, offline recording queue, or route-history collection in this flow |
 | Fleet website | Ongoing rentals, latest-location map, private Reverb invalidations and authorized rereads | No connected AI driving-event dashboard |
@@ -200,14 +204,21 @@ Current API:
 - `DELETE /api/mobile/rc-research/trials/{trial}`
 
 The current screen retains Data / Collect / Logout. **Collect now mounts the
-local native v2 recorder described below.** Data reads historical uploaded v1
-trials. The retained v1 collector/forms are no longer mounted in Collect; their
-foreground, memory-only, cancel-on-background behavior is historical. V1 server
-validation and existing files remain unchanged and readable.
+local native v2 recorder described below.** The legacy Data screen can still read
+v1 endpoints, but the old local development v1 records were removed at the user's
+request on 2026-10-26. The retained v1 collector/forms are no longer mounted in
+Collect; their foreground, memory-only, cancel-on-background behavior is historical.
+V1 validation and APIs remain available; do not recreate retired dummy data as
+part of normal setup.
 
 ### Implemented web inspection (2026-10-24)
 
-The Admin portal now includes **RC Research** at `/admin/research` and recording
+This section records the **historical v1 implementation**. The Earlier trials
+tab was retired from the active list on 2026-10-26; the old local data was removed
+with a private encrypted recovery copy. Retained v1 routes/contracts below are
+not the current collection or inspection entry point.
+
+The Admin portal included **RC Research** at `/admin/research` and recording
 review at `/admin/research/{trialId}`. Normal web sessions use separate read-only
 `GET /admin/rc-research/trials` and `GET /admin/rc-research/trials/{trial}` endpoints.
 Active Admin, local/testing `rc_demo`, and existing session ownership remain
@@ -236,9 +247,9 @@ Integrity and label certainty remain separate; the UI does not display the old
 eligibility boolean as scientific training approval. No vehicle reference or
 versioned cleaning exists for these v1 records, and the interface says so.
 
-The web inspector does **not** implement annotation editing/revisions, v2
-ingestion, processed overlays, dataset export or AI. Local native v2 saves are
-unlabeled but cannot yet appear here. Existing v1 immutable-file contracts remain.
+The historical v1 workspace does **not** implement annotation editing/revisions,
+processed overlays, dataset export or AI. The separate native v2 view added
+2026-10-26 is described below. Existing v1 immutable-file contracts remain.
 
 Sources: [web workspace](../web-frontend/src/modules/management/research/ResearchModule.tsx),
 [recording review](../web-frontend/src/modules/management/research/RecordingReviewModule.tsx),
@@ -373,9 +384,11 @@ Sources: [fleet service](../backend/app/Services/FleetTrackerService.php),
 
 ## Target pipeline
 
-This section describes the **complete agreed target**. V1 web inspection and local
-native v2 acquisition are implemented subsets. V2 upload/web integration, cleaning,
-reviewed annotation revisions, ML, scores and reports remain pending.
+This section describes the **complete agreed target**. Native v2 acquisition,
+explicit resumable upload, original-signal inspection and local reference/projection/
+synchronization/filter-comparison previews are implemented subsets. Automatic background transfer,
+reproducible server-owned processing/export, validated noise filtering, reviewed annotation revisions,
+ML, scores and reports remain pending.
 
 ```mermaid
 flowchart TD
@@ -418,23 +431,25 @@ another channel did not arrive simultaneously. Record omissions/rejections.
 
 Store originals separately from derived datasets. The local implementation below
 provides encrypted chunks, checksums, sequences and interrupted-file recovery.
-Server acknowledgments, upload retry/deduplication and transfer states beyond
-`local_only` remain pending. Recovery never silently restarts collection.
+Server acknowledgments and explicit upload retry/deduplication are now implemented.
+Automatic background upload/resume remains pending. Recovery never silently
+restarts collection.
 
 ### V2 acquisition contract and local implementation
 
 Specified and implemented locally **2026-10-25** in `modules/rc-recorder`, with
 phone setup/Start/Stop, per-channel diagnostics, saved-record inspection and
 deletion. The development APK compiles; user-operated stationary foreground and
-short screen-lock captures on the connected, charging Redmi have been reviewed
-through saved summaries. The user reported approximately 22 seconds locked in
-the second capture, with no long gap shown in the required-sensor summaries.
-Raw motion noise, physical axes, longer/unplugged screen-lock continuity and
-interruption recovery remain unverified. The upload/final-acknowledgment portions
-below remain specifications.
+short screen-lock captures on the Redmi have been reviewed through saved summaries.
+The second capture included a reported approximately 22 seconds locked while
+charging. The third followed a requested 60-second unplugged/locked interval,
+saved 69.9 seconds overall and showed charging No at the end. Neither showed a
+long gap in the required-sensor summaries. Raw motion noise, physical axes,
+longer-duration background continuity and interruption recovery remain unverified.
+The upload/final-acknowledgment implementation below was added 2026-10-26.
 V1 APIs and immutable historical files remain unchanged. Keep `RcResearchProtocol`
-at version 1 for those endpoints. V2 needs its own server validation, storage and
-inspection before ingestion is enabled; never send it to v1 `samples_json`.
+at version 1 for those endpoints. V2 has separate server validation, storage and
+inspection; never send it to v1 `samples_json`.
 
 Native adapter **1.1.0** adds the setup/group contract below. Its group APIs must
 exist before the current Collect UI becomes available; older v2 development APKs
@@ -445,7 +460,7 @@ entries; they are neither rewritten nor assigned guessed group IDs.
 `GET /api/mobile/rc-research/native-access` is a private/no-store **access read**,
 not sensor ingestion. Existing Admin, active-account, `rc_demo` and restricted-token
 middleware still apply. It returns owner ID, remaining lifetime, effective token
-expiry, protocol 2 and `upload_available = false`; no new token or broader ability
+expiry, protocol 2 and `upload_available = true`; no new token or broader ability
 is issued. The local monotonic lease is capped at eight hours, token expiry and
 global Sanctum expiry. The client conservatively subtracts request duration.
 Starting or unlocking after process loss requires online access verification;
@@ -693,8 +708,406 @@ bounds and hash. Identical retries for a recording/channel/chunk are idempotent;
 different content under the same identity conflicts. A final server acknowledgment
 requires the complete expected chunk inventory and finalization checks. Otherwise
 the record stays incomplete. Recalculate quality from accepted originals; a client
-summary cannot declare a recording verified or fit for training. No native v2
-HTTP endpoint is enabled by this specification.
+summary cannot declare a recording verified or fit for training. The implemented
+native v2 HTTP boundary is described immediately below.
+
+#### Implemented explicit upload and native web inspection (2026-10-26)
+
+Native adapter **1.2.0** adds owner-authorized `exportManifest`, `exportChunk` and
+`setTransfer` bridge methods. A compatible APK update preserves earlier 1.1.0
+recordings and their original capture-adapter metadata. Only stopped/sealed or
+verified-prefix recovered recordings can upload. Each chunk is decrypted in
+bounded memory and authenticated against its descriptor's exact byte length/hash;
+unexpected truncated tails are rejected. Original event payloads are never
+reserialized. The exported manifest uses native canonical JSON; original files
+are not rewritten and no plaintext export file is created.
+
+Collect provides explicit **Upload recording**, retry/progress, and **Verify
+uploaded copy**. The confirmation identifies motion/setup/phone diagnostics and
+private Admin review. Transfers run sequentially through the existing mobile HTTP
+service while this workflow is active; they are not an Android background uploader.
+An encrypted, separate `transfer.rc2` sidecar persists transfer state/receipt without
+changing the original manifest or its hash. An unreadable transfer receipt is
+shown as retryable and cannot hide otherwise readable originals; missing-key
+recordings retain their unavailable/deletion behavior. An interrupted `uploading` state is
+retryable, not proof of completion; reopening does not automatically transmit.
+Sign-out revisions block subsequent exports/requests/receipt updates, and the
+transfer captures the original bearer token so an account change cannot redirect
+old measurements into another account's upload. Local copies remain after success.
+
+The restricted bearer-only mobile API is:
+
+- `POST /api/mobile/rc-research/native-recordings` with exact `manifest_json`.
+- `POST /api/mobile/rc-research/native-recordings/{id}/chunks` with channel,
+  zero-based chunk index and exact NDJSON `payload`.
+- `POST /api/mobile/rc-research/native-recordings/{id}/finalize`.
+
+The manifest is limited to 1 MiB, 2,000 descriptors and 64 MiB logical payload.
+Each chunk is at most 1 MiB / 10,000 events. These are transport bounds, not
+maneuver-quality thresholds. PHP validates decimal-string nanoseconds within
+signed 64-bit range, protocol/source/frame, channel types/units, layout lengths,
+finite values, sequence order, consent, bounds and inventory hash. The original
+payload newline is preserved by skipping string trimming only on these routes.
+Exact manifest/chunk retries are idempotent; changed content conflicts. Account
+locking serializes manifest creation; recording locking serializes chunk/finalize.
+Finalization requires the complete inventory and re-verifies every encrypted
+chunk before recomputing per-channel timing, anomalies, means, population standard
+deviation and magnitude summaries. Finite repeated/backward sensor timestamps
+remain original and are reported, not sorted or silently discarded.
+
+Laravel stores encrypted originals on the private local disk under `rc-research-v2`.
+`rc_native_recordings` and `rc_native_recording_chunks` contain bounded metadata,
+hashes, file indexes and summaries, never sample rows. Server allocation is bounded
+to 100 recordings / 256 MiB logical payload per owner, including incomplete uploads.
+There is no automatic purge. Remote v2 deletion/retention-management UI remains
+pending; **Delete local recording** removes only the phone copy and says that
+complete or partial server copies are separate. Do not silently delete originals
+or advertise the local action as server deletion.
+
+The web reads retain session authentication, active Admin/`rc_demo` checks,
+owner filtering, no-store headers and no private-path exposure:
+
+- `GET /admin/rc-research/native-recordings` (maximum 10 records, literal search).
+- `GET /admin/rc-research/native-recordings/{id}` (verified manifest/metadata).
+- `GET /admin/rc-research/native-recordings/{id}/window` with channel/start/end.
+
+The `/admin/research` view lists native uploads only. The **Earlier trials (v1)**
+tab was removed on 2026-10-26. `/admin/research/native/{id}` uses the vehicle-detail
+breadcrumb pattern: Recordings / actual recording name, with the recording date
+at the right. The duplicate Recording review heading/description, Native v2 badge,
+header status chips and Understand this recording heading were removed. File
+integrity, capture and label state remain plain data in Data quality. Setup/source
+and server-recomputed quality remain accessible. Technical explanations are
+collapsed under Signal details and reference calculation/method sections; units,
+errors, confirmation, short-rest/missing-settling warnings and one concise tilt
+limitation remain visible where applicable. Sample reads are channel-specific windows of at most
+30 seconds / 10,000 events. Excess density requires a narrower interval; no silent
+training-data decimation occurs. Web times subtract the monotonic origin using
+BigInt before converting relative milliseconds. Independent original channels
+are plotted without joining or interpolation. Axis toggles and automatic native
+chart scaling expose small stationary variation; gaps above 250 ms and non-forward
+timestamps break lines. That is a visualization boundary, not a harsh threshold.
+Rotation-vector components 4–5 remain preserved but only the first three are plotted.
+Selected-window means/std/peak/RMS support inspection, not automatic calibration:
+accelerometer means include gravity. No labels, alignment references, filtering,
+training approval or AI predictions are assigned by this workflow.
+
+#### Time synchronization preview (2026-10-26)
+
+The original Accelerometer view offers **Preview synchronization**, independent
+of the stationary/forward-reference confirmations. It adds two synchronized
+**phone-axis** plots below original interval statistics. Existing raw plots,
+reference fitting and fixed vehicle-axis plots still use their original independent
+events. Synchronization does not silently replace those sources or combine the
+stages into a finalized preprocessing pipeline.
+
+`linear-grid-50hz-v1` is a bounded, unsaved browser diagnostic:
+
+1. Use the recording's monotonic start as origin and generate 20 ms grid ticks
+   within the loaded window (at most 30 s / 1,501 rows). Window boundaries do not
+   reset grid phase. Source absolute nanoseconds and grid arithmetic use BigInt;
+   only relative durations and interpolation ratios become numbers. Callback
+   receipt time and wall-clock time are not synchronization inputs.
+2. Validate both original three-component streams: at least two readings per
+   channel inside the window, finite values/statistics, strictly increasing sensor
+   times, safe nonnegative integer callback sequences and no sequence jumps.
+   Refuse anomalies rather than sort, deduplicate or silently repair them.
+3. At each grid tick, retain an **Original** value only for an exact nanosecond
+   match. Otherwise use the immediately surrounding original events to calculate
+   each axis linearly, `v = (1 - f)*v_before + f*v_after`, where `f` uses sensor
+   time differences. Each channel is evaluated independently. A short source
+   segment can support multiple grid ticks; those are interpolated values, not
+   additional measurements. Zero exact matches is possible with offset clocks.
+4. Allow interpolation only when the two source readings are at most **60 ms**
+   apart, inclusive. This is an experimental three-nominal-period search budget,
+   not a validated RC noise/quality criterion. A longer bracket is **Missing · long
+   gap**. A tick before the first/after the last loaded reading is **Missing ·
+   window edge**, with no extrapolation, forward fill or zero substitution. Only
+   loaded events are used; no neighboring-window reads are made.
+5. Preserve every grid row with per-channel state, source bracket timestamps and
+   span, plus a paired-row count. A row is paired only when both values exist;
+   that does not certify training suitability. Null values break chart lines.
+   Counts distinguish exact, interpolated, internal-gap and edge-missing values.
+
+Both new plots share the existing cursor/interval controls. Selected counts and
+the nearest grid row show actual XYZ, units and source state; collapsed details
+show source timestamps, spans, original counts and method settings. **Select whole
+window** changes only inspection selection. Hiding the preview, navigating or
+changing channel/window does not save or apply anything. Invalid/missing sources
+show an inline error; a valid sparse window can have zero paired rows and remains
+inspectable without fabricated values.
+
+50 Hz is an experimental inspection grid matching the requested nominal capture
+rate, not a claim that hardware delivered exactly 50 Hz or the final ML rate.
+Linear interpolation can change peaks between sampled times; it is neither a
+vibration filter nor an anti-aliasing design. No alternate lower-rate export,
+dynamic gravity correction, normalization, filtering, saved calibration, dataset
+export, inference or training approval is introduced. Android linear acceleration,
+gravity and quaternion channels are not interpolated by this feature. Future
+live processing needs bounded buffering for the later bracketing event; no
+zero-latency or live/offline parity has been established.
+
+Sources: [synchronization helper](../web-frontend/src/modules/management/research/synchronization-preview.ts),
+[preview panel](../web-frontend/src/modules/management/research/components/SynchronizationPreview.tsx),
+[linear interpolation definition](https://numpy.org/doc/stable/reference/generated/numpy.interp.html),
+[Android sensor timestamp contract](https://developer.android.com/reference/android/hardware/SensorEvent#timestamp).
+The NumPy reference defines the mathematical basis; no NumPy dependency or its
+default edge-value extension is used in the browser implementation.
+
+#### Vibration filter comparison preview (2026-10-26)
+
+After opening synchronization, **Preview filter** adds a local before/after
+comparison using that exact 50 Hz grid. It does not replace the synchronized
+source plots, raw reference fitting or vehicle-axis preview. Both source channels
+retain phone XYZ: acceleration includes gravity; gyro retains its resting offset.
+There is no gravity removal, axis refitting or saved preprocessing output.
+
+`butterworth2-causal-50hz-v1` implements one causal second-order Butterworth
+low-pass section per axis and per channel. Experimental cutoff choices are
+**3, 5 and 8 Hz**, with **5 Hz** as the initial comparison control value, not a
+selected optimum or learned threshold. With `K = tan(pi*cutoff/50)` and
+`N = 1/(1 + sqrt(2)*K + K²)`, coefficients are:
+
+```
+b = [K²*N, 2*K²*N, K²*N]
+a = [1, 2*(K²-1)*N, (1-sqrt(2)*K+K²)*N]
+y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
+```
+
+Initialization extends the first valid vector as both prior inputs and outputs,
+so resting gravity/DC does not ramp from zero. Every missing vector resets only
+that channel's history; no gap is filled or filtered across. The first **500 ms**
+of each valid segment (25 rows) are warm-up: internal recursion runs, but plotted
+After values remain null and comparisons exclude those rows. This exclusion is
+an experimental budget, not proof that arbitrary transients have settled. Short
+segments can have no post-warm-up output. The helper refuses partial/malformed
+vectors, nonfinite/overflow output, unsupported cutoffs, unmatched channel grids,
+more than 1,501 rows or grids not spaced at 20 ms with missing rows retained.
+
+The overlay reuses `SignalTimeline`: **Before is dashed/translucent; After is
+solid**, with paired tooltip labels and shared XYZ visibility, cursor and interval
+controls. Selectors choose acceleration or gyro and the cutoff. Selected counts
+separate compared, warm-up and missing rows. For each phone axis, the table shows
+population standard deviation, largest absolute component and largest-peak time
+difference, computed on identical post-warm-up rows for Before/After. Ties choose
+the earliest peak; zero peaks have no time-difference result. This statistic may
+compare different movements and is **not measured event latency**. Reduced
+variation alone is not proof of removed noise or preserved driving events.
+
+Filter state is computed over the entire loaded window before selecting summary
+ranges; changing inspection selection does not restart it. Cutoff/window/source
+changes recompute the window. The method uses no future samples, reverse pass,
+zero-phase filtering, timestamp compensation, data normalization, event detection
+or automatic acceptance. The overlay keeps original timestamps, so causal phase
+effects remain visible. Synchronization still needs a later bracketing source
+event; this local causal recurrence does not establish live end-to-end parity.
+No downsampling is introduced, and this is not a completed anti-aliasing design.
+
+Keep the setting provisional until multiple development runs demonstrate acceptable
+movement preservation and delay. Do not pick the smoothest trace alone or tune
+on held-out evaluation data. Rest/starting/stopping selections in Recording 025
+are pilot comparisons, not a noise-ground-truth dataset or harsh-event thresholds.
+
+Sources: [filter and comparison math](../web-frontend/src/modules/management/research/filter-preview.ts),
+[filter panel](../web-frontend/src/modules/management/research/components/FilterPreview.tsx),
+[Butterworth definition](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html),
+[steady-state initialization](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter_zi.html),
+[frequency-dependent filter delay](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.group_delay.html).
+SciPy documents the mathematical basis; no SciPy/runtime package was added to
+the browser. Its routines are not invoked by the app.
+
+#### Stationary-reference preview (2026-10-26)
+
+For captures other than `forward_reference`, the native inspector's Accelerometer
+including gravity view adds **Stationary reference** beneath the selected-interval
+statistics. The operator confirms that
+the RC was stationary and the phone untouched throughout the selected interval,
+then explicitly requests a preview. Changing the interval, channel or recording
+clears that confirmation/result. No recording is automatically certified stationary.
+
+`stationary-mean-v1` operates on the existing bounded original accelerometer and
+gyroscope windows, separately on their original sensor timestamps. It uses
+sample arithmetic means and population standard deviations, without filtering,
+resampling or joining the streams. It displays:
+
+- Mean resting acceleration XYZ, its magnitude, and its normalized **up** direction
+  in Android phone axes. This includes accelerometer bias; one stationary position
+  cannot separate that bias from gravity. This is not a vehicle-forward reference.
+- Remaining gyro mean XYZ as a candidate resting offset, plus gyro variation.
+- The angle between first- and second-half acceleration means as a descriptive
+  consistency indicator; no angle or noise pass/fail threshold is assigned.
+- Per-channel sample counts, observed spans, maximum gaps and leading/trailing
+  gaps. Missing data remains missing; a computed preview does not approve coverage.
+
+Five seconds is an initial **preview minimum**, not a learned stationarity or
+harsh-event threshold. Empty/one-reading channels, nonfinite/malformed vectors,
+repeated/backward sensor times, in-interval callback sequence gaps, invalid time
+bounds and a zero-length acceleration mean cannot produce a preview. A large
+delivery gap without a callback sequence loss remains visible in timing diagnostics;
+it is not silently interpolated or automatically accepted as a usable calibration.
+
+Results and the operator checkbox exist only in page memory. They do not submit
+an annotation, save a reference ID, change source metadata, alter booking setup,
+apply a correction, create a vehicle rotation matrix or authorize training.
+Future persisted references must be versioned and recomputed/validated by Laravel
+from the authorized originals, not trusted from these browser values. Continuous
+gravity estimation during RC motion remains separate work; do not subtract this
+fixed resting mean throughout turns or changing pitch/roll and call it cleaned motion.
+
+Sources: [preview mathematics](../web-frontend/src/modules/management/research/stationary-reference.ts),
+[preview panel](../web-frontend/src/modules/management/research/components/StationaryReferencePreview.tsx),
+[Android motion sensor conventions](https://developer.android.com/develop/sensors-and-location/sensors/sensors_motion).
+
+#### Forward-reference preview (2026-10-26)
+
+For `forward_reference` captures, the accelerometer view instead shows **Forward
+reference**. It proposes Resting, Starting and Stopping intervals automatically
+when the loaded signals support candidates. **Show in chart** selects a proposed
+interval and scrolls to the plots. Manual selection/assignment remains available
+when suggestions are unavailable or need adjustment. All ranges must lie within
+the currently loaded window (at most 30 s), be non-overlapping and ordered, and
+last at least 0.5 s.
+The 0.5 s minimum is a pilot preview budget, not a scientific validity threshold.
+Short resting ranges below the 5 s collection guide remain inspectable with an
+explicit short-pilot warning; this does not relax the separate stationary-preview
+minimum or certify those ranges as calibration. No per-recording ranges are hardcoded.
+
+The operator confirms stillness in the resting interval, a forward start and stop,
+and a fixed phone. Small steering corrections while following a mostly straight
+tile guide are allowed; zero steering input is not a requirement. These reports
+describe the research procedure, not verified trajectories or automatic ground truth.
+
+`reference-sections-v1` is an **experimental offline suggestion algorithm**, not a
+trained classifier, stillness detector or live direction switch. It processes only
+the loaded 2.5–30 s window, with no recording-specific ranges:
+
+1. Validate both original channels and refuse sequence/timestamp anomalies,
+   internal gaps above 125 ms, or window edge gaps above 250 ms. Group independent
+   samples into 250 ms analysis bins; do not interpolate or replace the originals.
+   Bins need at least 200 ms, three readings per channel and edge gaps no larger
+   than 125 ms. At least eight usable bins are required; invalid bins break
+   contiguous sections.
+2. Compute per-bin acceleration vector variation and gyro vector RMS. For each,
+   use the lowest 20% of bin values (at least two) to calculate median `m` and MAD.
+   The quiet boundary is `max(1e-6, 1.5*m, m + 6*1.4826*MAD)`. The relative margin
+   prevents nearly uniform low-tail noise from collapsing the boundary. Adjacent
+   valid-bin acceleration means must differ by no more than three times the
+   acceleration boundary. These are provisional search settings, not measured
+   device specifications or harsh-event thresholds.
+3. The first quiet run of at least 0.5 s supplies a provisional up/phone-top frame.
+   Compute a forward-mean boundary of six times its projected population standard
+   deviation, with a 1e-6 numerical floor. Look for positive then negative runs
+   of at least 0.5 s. A bin must be non-quiet or exceed three times that boundary
+   in magnitude, as well as exceeding the signed boundary. Choose the first
+   positive run and last subsequent negative run. Separate start/stop candidates
+   across a quiet run require manual review; a quiet cruise alone does not.
+4. Suggest up to 5 s from the longest preceding quiet run, up to the first 1 s
+   of starting and the last 1 s of stopping. Reuse the PCA preview's numeric and
+   ordering checks; refuse a direction opposing the phone top or a non-opposing
+   stop. A missing subsequent quiet run remains a visible review note, never an
+   invented resting interval. The quiet-run check also requires forward mean
+   within three times the search boundary.
+
+Quiet IMU signals cannot distinguish a stationary RC from sufficiently steady
+motion. Phone tilt, a reversed maneuver, handling, or sustained acceleration can
+also confound these candidates. The operator still reviews the procedure and
+confirms the three intervals; no interval is accepted automatically. Search uses
+future samples and the current phone-top mounting assumption, so it is not the
+future live event pipeline. Wider recordings, real cars and repeatability need
+separate validation. Search diagnostics are available with the preview method.
+
+`horizontal-pca-v1` uses original events independently per channel, with no
+interpolation, smoothing, whitening or learned thresholds:
+
+1. Normalize the resting accelerometer mean to estimate up in phone coordinates.
+   Form a horizontal basis from the projected phone top and its right vector.
+2. Center the Starting interval's horizontal projections and compute the leading
+   eigenvector of its 2D covariance matrix. PCA estimates an unsigned axis;
+   orient it toward the observed forward start's mean acceleration. The Stopping
+   interval is not used to fit that axis.
+3. Compare start/stop forward and right means and the angle between the start mean
+   and the negated stopping mean. Project independent gyro events onto the fixed
+   estimated up direction after subtracting the resting gyro mean; display RMS.
+   This is a fixed-frame rotation diagnostic, not validated trajectory/yaw estimation.
+4. Display the candidate matrix with rows **Right, Forward, Up**. It is a
+   right-handed phone-XYZ-to-RFU rotation; swapping the first two rows changes
+   handedness. Show variance share as a data descriptor, never ML confidence or
+   an accuracy percentage.
+
+Empty/malformed/nonfinite channels, numerical overflow, repeated/backward timestamps,
+in-interval sequence gaps, a zero up vector, a vertical phone top, degenerate PCA
+or an unresolved sign reject the preview. Numerical tolerances are 1e-9 for vector
+normalization/sign, 1e-12 for covariance trace and a relative eigenvalue separation
+of 1e-6; these are numerical guards, not measured RC noise specifications.
+Delivery gaps remain unfilled and visible in per-phase timing diagnostics.
+An opposing-phone-top estimate or a stop that does not oppose the start produces
+review notes. Rotation, lateral means and consistency remain visible; there is
+no automatic stillness, coverage, alignment or training pass.
+
+Changing an assigned range or restoring the automatic suggestions clears the
+confirmation/result. Merely inspecting or moving the timeline selection does not
+change assigned ranges. Channel/window,
+recording, retry or page changes discard the page-only references. Nothing is
+submitted, saved, applied to originals or linked to mobile setup. Research labels
+used to orient this preview must never become required live direction inputs.
+Dynamic pitch/roll gravity correction, filtering, versioned server-owned references
+and physical validation remain separate increments.
+
+Sources: [forward mathematics](../web-frontend/src/modules/management/research/forward-reference.ts),
+[automatic interval suggestions](../web-frontend/src/modules/management/research/reference-suggestions.ts),
+[forward panel](../web-frontend/src/modules/management/research/components/ForwardReferencePreview.tsx),
+[PCA definition](https://scikit-learn.org/stable/modules/decomposition.html#pca).
+
+#### Vehicle-axis window preview (2026-10-26)
+
+After a confirmed forward-reference preview succeeds, **Vehicle axes · preview**
+plots all original acceleration and gyro events in the currently loaded window,
+not only the three reference intervals. For Recording 025, that window covers
+the entire 10.67 s capture. Longer recordings retain the bounded 30 s inspector
+window; this feature does not load an unbounded trip or carry references into a
+different window. It makes no additional requests or saved-reference assignments.
+
+`fixed-vehicle-frame-v1` uses the candidate matrix with rows Right, Forward, Up:
+
+- **Including gravity:** `R * a(t)`. Rotation preserves the original vector
+  magnitude; the Up component retains resting gravity and sensor bias.
+- **Relative to resting mean** (default): `R * (a(t) - mean(a_rest))`. This is a
+  fixed resting baseline subtraction, not dynamic gravity removal or validated
+  linear acceleration. Changing pitch/roll, mount position or slope remains
+  visible as apparent acceleration; the preview states this limitation.
+- **Rotation around vehicle axes:** `R * (gyro(t) - mean(gyro_rest))`, independently
+  on original gyro timestamps, in rad/s. This is angular velocity, not a heading,
+  trajectory or integrated angle. Up-axis RMS describes rotation about the fixed
+  candidate up axis.
+
+The chart's presentation slots are Forward, Right, Up, while matrix rows remain
+RFU. Forward is positive toward the RC front; Right is positive toward its right;
+Up is positive upward. Forward acceleration alone does not establish travel
+direction or velocity. Original phone-axis plots remain visible and unchanged.
+All plots share the interval/cursor controls; selections do not refit the candidate.
+**Select whole window** resets the inspection selection without altering references.
+Per-axis visibility, both acceleration views and selected interval means/population
+standard deviations retain the inspector's existing controls and design.
+
+The helper checks all source events in the loaded window, not only those in the
+fitting intervals. Missing channels, malformed/nonfinite values, timestamp/sequence
+anomalies and arithmetic overflow refuse the derived preview while original plots
+remain inspectable. It also rejects non-orthonormal or left-handed matrices rather
+than repairing them (1e-6 numeric tolerance, not a measured accuracy threshold).
+Unfilled time gaps above 250 ms remain line breaks, with original counts and
+leading/trailing/largest-gap diagnostics. Channels are not synchronized,
+interpolated, smoothed, resampled or assigned training labels.
+
+Reassigning a reference, restoring suggestions, unchecking confirmation, or
+changing the channel/window discards these local plots with the candidate. Page
+reload loses them. The preview neither saves a matrix nor alters recording files,
+mobile setup, rental release or accepted alignment. Versioned server-owned
+references, dynamic orientation/gravity estimation and tested filtering remain
+separate work.
+
+Sources: [projection and interval statistics](../web-frontend/src/modules/management/research/vehicle-axis-preview.ts),
+[vehicle preview panel](../web-frontend/src/modules/management/research/components/VehicleAxisPreview.tsx),
+[shared timeline](../web-frontend/src/modules/management/research/components/SignalTimeline.tsx).
 
 Keep capture (`preparing`, `recording`, `stopping`, `stopped`, `interrupted`,
 `failed`), transfer (`local_only`, `queued`, `uploading`, `uploaded`,
@@ -707,8 +1120,9 @@ continuous recording. App reopening lists recoverable drafts without starting se
 
 Research files remain tied to the account that captured them. Sign-out stops
 capture and locks pending transfers; another account cannot inspect/upload them.
-The implemented retention policy is explicit owner deletion, without automatic
-purge. There is no uploaded-copy retention yet because v2 upload is unavailable.
+The local retention policy is explicit owner deletion, without automatic purge.
+Uploaded originals are separately retained under the bounded server allocation
+above; remote deletion management remains pending.
 Files live under app-private `noBackupFilesDir/rc-research-v2`, excluded from
 Android backup, with one non-exportable Android Keystore key per owner. Keys are
 not biometric-bound so the explicitly started service can write while locked.
@@ -892,7 +1306,7 @@ the report increment without widening research tokens to unrelated mobile APIs.
 | Increment | Deliverable | Evidence required |
 | --- | --- | --- |
 | 1. Recording contract/service | Local native v2 implemented with encrypted durable files, metadata, explicit lifecycle and recovery; compiled development APK | Actual independent timestamps, exportable recordings, screen-lock and interruption tests on Redmi remain required |
-| 2. Inspection workflow | V1 web review and local v2 unlabeled save/metadata review implemented; v2 upload/waveforms and annotation revisions pending | Real trial visible and traceable; owner/access failures, gaps, retry and recovery exercised |
+| 2. Inspection workflow | V1/native v2 original review, explicit resumable upload, verified files, channel windows and unlabeled states implemented; annotation revisions and automatic transfer pending | Real trials visible and traceable; authorization/corruption/retry checks exercised; physical recovery and broader network-failure testing remain |
 | 3. Reproducible processing | Research references, quality reports, synchronization/filtering/features, export manifest | Original data preserved; plots reviewed; live/offline parity and rate comparisons |
 | 4. Dataset/model | Reviewed annotations, split sessions, baseline/model evaluation, versioned bundle | Held-out metrics, normal reverse/confounder tests, uncertainty and limits reported |
 | 5. Live AI/report | Server-owned event ingestion, admin alerts, deduplication, finalization, score and notification | End-to-end delay, offline recovery, no duplicate deductions, incomplete-report handling, recipient access |
@@ -905,6 +1319,187 @@ and hosting capacity are experimental or implementation decisions, not establish
 
 ## Verification and historical evidence
 
+- **2026-10-26 low-pass comparison preview:** the actual TypeScript
+  synchronization/filter helpers were run against Recording 025 through a
+  read-only local backend analysis. At every cutoff, the 534-row grid retained
+  8 acceleration / 13 gyro missing edge rows, excluded 25 warm-up rows per
+  channel, and compared **501 acceleration / 496 gyro rows** independently.
+  Each channel had one valid segment. Source events remained unchanged; no
+  recording, reference, annotation or settings were saved. At **5 Hz**, the
+  1.50–2.50 s phone-Y acceleration standard deviation changed from **0.027458
+  to 0.008610 m/s²**. In the selected 2.50–3.25 s start, its largest absolute
+  component changed from **1.077467 to 0.781100 m/s²**, with the largest peak
+  appearing **40 ms** later. In the 9.00–9.75 s stop, it changed from **2.258854
+  to 1.690031 m/s²**, with a **60 ms** largest-peak time difference. These are
+  selection-dependent phone-axis comparisons, not a noise-removal accuracy,
+  physical forward-axis result or measured event/alert latency. The reduction
+  of movement peaks is a reason to keep all candidate settings provisional;
+  no cutoff was selected as the optimum. Other axes' maxima can correspond
+  to different movements and give large or negative time differences.
+  All **49 web timing/math tests**, lint, TypeScript, production build and
+  `git diff --check` passed. New checks cover reference coefficients, analytical
+  frequency gain including the cutoff response, steady gravity/offset retention,
+  independent gap resets, warm-up/missing masks, same-row statistics, causal
+  prefix invariance, peak changes and invalid/mismatched-grid refusal. Browser
+  checks could not run because local browser use remained disabled in Work
+  settings; actual rendered overlays/tooltips, selections, responsive states,
+  cutoff/channel switching and empty/error states remain unverified. The
+  existing research timeline, FilterSelect, table and data panels were reused.
+  No backend/mobile runtime, API/Form Request/Zod contract or dependency changed.
+- **2026-10-26 synchronization preview:** the actual synchronization helper was
+  run against Recording 025's authorized private source window through a local
+  read-only backend analysis. Original counts remained **532 acceleration / 528
+  gyro**; the 0–10.674292578 s window produced **534 grid rows** from 0 to
+  10.660 s, with **521 paired rows** from 0.140 to 10.540 s. Acceleration had
+  526 interpolated / 8 edge-missing rows; gyro had 521 interpolated / 13
+  edge-missing rows. Neither channel had exact grid matches or long-gap missing
+  rows; exact zero is expected for these offset clocks and does not mean the
+  originals were lost. The largest bracket actually used was **33.991984 ms**.
+  Input events were unchanged after calculation; no sample file was saved in
+  plaintext, uploaded or modified. These diagnostics establish this bounded
+  calculation only, not reliable acquisition or training suitability.
+  All **42 web timing/math tests**, lint, TypeScript, production build and
+  `git diff --check` passed. New tests cover known linear trajectories, gravity
+  retention, asynchronous clocks, exact/estimated provenance, one-nanosecond
+  distinctions above JS safe integer origin, grid phase/window bounds, 60 ms
+  inclusive cutoff, unfilled long gaps/edges, no paired coverage, source anomaly
+  refusal, preserved originals/recorded peaks and the 1,501-row bound. Browser
+  smoke/visual checks could not run because local browser use was disabled in
+  Work settings; responsive, interaction and rendered empty/error states remain
+  unverified. The existing research timeline, buttons and data panel patterns
+  were reused. No backend/mobile code, API/Form Request/Zod contract, source
+  recording, reference confirmation or stored annotation changed.
+- **2026-10-26 v1 retirement and inspector copy cleanup:** at the user's explicit
+  request, the local development owner's six v1 sessions and 102 trial rows
+  (100 synthetic demos, one active legacy capture and one already-deleted row)
+  were removed. The 101 remaining v1 encrypted sample files were deleted after
+  validating a private encrypted recovery bundle containing original database
+  rows and encrypted samples under `storage/app/private/rc-research-archive/`.
+  Existing trial deletion behavior and a database transaction were used; native
+  manifest identities/hashes/state/chunk counts were compared before/after and
+  all seven native recordings were preserved. The archive is ignored by Git and
+  remains local/private, protected by the existing application encryption key.
+  It is a recovery artifact, not an active dataset or an automatic purge policy.
+  No backend/mobile runtime or API/Form Request/Zod contract changed. V1 routes,
+  protocol code and the explicitly invoked synthetic seeder remain retained;
+  normal research navigation no longer offers v1.
+  The updated breadcrumb/name/date, removed header chips and quality/setup tabs
+  were inspected in the desktop browser. Later browser verification was blocked
+  because local browser use was disabled in Work settings; the final list view,
+  reference interactions and small viewport could not be rechecked in that state.
+  All **33 web timing/math tests**, lint, TypeScript, production build and
+  `git diff --check` passed for this cleanup. The existing vehicle-detail breadcrumb
+  and research panel/control patterns were reused.
+- **2026-10-26 vehicle-axis preview:** Recording 025's user-confirmed reference
+  intervals produced local vehicle-axis plots across its complete 10.67 s window,
+  retaining **532 acceleration / 528 gyro events**. The browser showed the
+  expected gravity-included Up mean (**9.8242 m/s²**) and a near-zero Up mean
+  relative to the selected resting baseline; neither is an accuracy measure.
+  The selected 9.00–9.75 s stopping interval showed rest-relative Forward/Right/Up
+  means **-0.5250 / 0.1516 / -0.0279 m/s²** and Up-axis gyro RMS **0.02394 rad/s**.
+  Both acceleration views, axis toggles/last-visible protection, shared raw/vehicle
+  selection, chart dragging, whole-window reset and confirmation invalidation
+  were checked in the desktop browser. The full-window preview was left open
+  with the user's previously confirmed candidate; no reference/annotation was
+  saved. All **33 web timing/math tests**, lint, TypeScript and production build
+  passed. New checks cover RFU mapping/inverse reconstruction, magnitude/gravity
+  retention, rest subtraction, independent clock/count preservation, unfilled
+  gaps, bad full-window data/matrices, selected statistics and the deliberate
+  lack of dynamic tilt correction. The existing inspector's timeline, controls
+  and nested data panels were reused. No API/Form Request/Zod, backend or mobile
+  behavior changed. Small web viewport verification remains pending; physical
+  alignment accuracy, filtering and repeatability are still unverified.
+- **2026-10-26 automatic reference suggestions:** `reference-sections-v1`
+  proposed Resting **1.50–2.50 s**, Starting **2.50–3.25 s** and Stopping
+  **9.00–9.75 s** for Recording 025 without preset recording IDs or intervals.
+  No continuous post-brake quiet run met the search settings; the UI displayed
+  that uncertainty. During a page-only smoke test, the candidate preview showed
+  **2.06°** from phone top, **77.7%** start-axis variance share and **13.08°**
+  start/opposite-stop direction difference. These selection-dependent descriptors
+  do not replace the earlier manually selected result, establish accuracy or
+  accept a calibration. Automatic population, initially unchecked/disabled
+  preview, chart navigation, manual replacement invalidation, restore/reset,
+  successful preview and incomplete-window fallback were checked in the desktop
+  browser. All **28 web timing/math tests**, lint, TypeScript and production build
+  passed. New synthetic checks cover noise/independent clocks, ordered sections,
+  tilted mounts, offset windows/large timestamps, sparse/malformed streams,
+  stationary-only and missing-stop refusal, multiple trials, quiet cruising and
+  short post-brake settling. Small web viewport verification remains pending.
+  The existing inspector cards, buttons and timeline were reused. This increment
+  changes no backend/mobile behavior, API/Form Request/Zod contract, original,
+  persisted reference or annotation. The review checkbox was reset after testing.
+- **2026-10-26 forward-reference preview:** user-reported Recording 025 followed
+  a tile guide with small steering corrections and a fixed phone. The uploaded
+  10.67 s capture has 532 accelerometer and 528 gyro events at approximately
+  50.47 / 50.54 Hz; both required channels showed no repeated/backward timestamps,
+  sequence gaps or out-of-interval readings. Browser preview used exploratory
+  ranges Resting 0.30–2.20 s, Starting 2.40–3.40 s and Stopping 8.80–9.60 s.
+  These ranges were inferred for inspection, not independently timestamped labels.
+  The candidate axis displayed 0.48° from projected phone top, 79.5% starting
+  horizontal variance share, and a 15.84° start/opposite-stop mean-direction
+  difference. Start forward/right means were 0.2167 / 0.0034 m/s²; stop means
+  were -0.4936 / 0.1318 m/s². These describe this selection, not mounting-angle
+  accuracy, an accepted calibration or an established correction tolerance.
+  The short-rest warning, incomplete/disabled state, assigning/inspecting ranges,
+  replacement invalidation and misordered/overlapping-range rejection were checked
+  in the desktop browser. All **20 web timing/math tests**, web lint, TypeScript
+  and production build passed. Synthetic cases cover tilted-axis recovery,
+  right-handed matrix/sign, degeneracy, malformed data, missing channels,
+  interval boundaries, delivery coverage and small rotation. Small web viewport
+  verification remains pending. No backend/mobile code, API/Form Request/Zod
+  contract, persisted reference/annotation or original file changed in this increment.
+- **2026-10-26 stationary-reference preview:** the real recording 003's 30–60 s
+  interval displayed resting acceleration XYZ **0.3982 / -0.0654 / 9.8004 m/s²**,
+  magnitude **9.8087 m/s²**, normalized up XYZ **0.04060 / -0.00667 / 0.99915**,
+  and residual gyro mean XYZ **-0.000073 / 0.000032 / 0.000033 rad/s**.
+  First/second-half mean-direction change displayed **0.005°**; this is a
+  descriptive calculation, not a verified mounting angle or accuracy bound.
+  The browser check used the user's reported stationary procedure, not an
+  independently observed trial. It verified initial disabled state, explicit
+  preview, timing expansion, selection-change invalidation and under-five-second
+  rejection. The shared waveform tooltip now reads the source point's time
+  instead of formatting a series label as a number. All **15 web timing/math
+  tests**, web lint, TypeScript and production build passed. The build needed
+  network access for the existing Poppins Google Fonts fetch. Desktop visual
+  review used the existing interval/detail/checkbox patterns; a small web
+  viewport was unavailable. No backend/mobile code, API/Form Request/Zod contract,
+  stored reference, label or original recording was changed by this increment.
+- **2026-10-26 native upload/inspection increment:** adapter 1.2.0 was installed
+  over the existing app by USB; all three earlier 1.1.0 captures remained. The user
+  explicitly approved uploading these originals/diagnostics to the private JamJade
+  backend. The 31.2-, 34.0- and 69.9-second recordings uploaded with final server
+  verification, and all three remained **Uploaded and verified** on the phone.
+  Browser review of recording 003 showed original acceleration/gyro charts with
+  correct m/s² / rad/s, independent timing, window navigation, interval selection,
+  axis toggles, source metadata and server-recomputed quality. Its original capture
+  adapter remained 1.1.0. Both required channels had 3,525 readings, approximately
+  50.54 Hz, zero repeated/backward timestamps, sequence gaps and out-of-interval
+  readings. Server largest gaps were approximately 19.93 ms acceleration / 19.90 ms
+  gyro. A selected 30–60 s interval displayed acceleration std XYZ approximately
+  0.0077 / 0.0073 / 0.0092 m/s². This is an observed example interval, not a frozen
+  noise specification, calibration or model-accuracy claim.
+  The completed backend suite passed **923 tests / 5,568 assertions** (19 new upload
+  cases); mobile **255 Node tests**, native **20 JVM tests**, web **10 timing/math
+  tests**, both frontend lints/TypeScript, PHP formatting, production web build,
+  Android export, **18/18 Expo Doctor**, native lint and debug APK assembly passed.
+  Negative checks cover missing chunks, changed identities, malformed payloads,
+  owner/auth/profile restrictions, timestamp precision/units, corrupt encrypted
+  files and sign-out during transfer. Actual network-drop/retry, long-duration
+  background capture and interruption recovery were not physically tested here.
+  Web visual checks used the available desktop browser viewport; small web
+  viewport behavior remains a separate check. No new sensor recording was started.
+- **2026-10-25 third capture, reported unplugged screen-lock trial:** the user
+  reported saving the requested unplugged/60-second-locked stationary run.
+  Recording number 3 showed `stopped` / `operator_stopped` and **69.9 s** in the
+  Redmi UI. Accelerometer and gyroscope each showed **3,525 saved events,
+  50.5 Hz, largest gap 19.9 ms**. No warning appeared in the inspected required-sensor
+  sections. Battery start/end showed 86%, end/latest charging **No**, Battery Saver
+  Off; the phone was reconnected for inspection. These rounded UI statistics
+  support a short unplugged screen-lock continuity smoke check under the reported
+  procedure. Screen-state and unplug duration were not independently timestamped,
+  and no raw samples were read. This does not establish stationary signal noise,
+  vehicle-axis alignment, long-duration reliability, interruption recovery,
+  server transfer or training readiness. Preserve the original local recordings.
 - **2026-10-25 second capture, reported screen-lock trial:** recording number 2
   showed `stopped` / `operator_stopped` and **34.0 s** in the connected Redmi UI.
   Accelerometer: **1,710 saved events, 50.5 Hz, largest gap 23.9 ms**. Gyroscope:

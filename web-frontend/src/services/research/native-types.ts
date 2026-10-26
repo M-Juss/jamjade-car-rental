@@ -1,0 +1,15 @@
+export type NativeChannel = "accelerometer" | "gyroscope" | "gravity" | "linear_acceleration" | "rotation_vector";
+export type NativeEvent = { sequence: number; sensor_timestamp_ns: string; received_elapsed_ns: string; accuracy: number; values: number[]; elapsed_ms: number };
+export type NativeStatistics = { event_count: number; rate_hz: number | null; max_gap_ms: number | null;
+  startup_gap_ms: number | null; trailing_gap_ms: number | null; duplicate_timestamps: number; backwards_timestamps: number;
+  sequence_gaps: number; out_of_interval: number; mean_xyz: number[] | null; std_xyz: number[] | null; rms_magnitude: number | null; peak_magnitude: number | null };
+export type NativeRecording = { id: string; client_recording_id: string; name: string; surface: string;
+  state: "incomplete" | "verified"; capture_state: "stopped" | "interrupted"; duration_ms: number; started_at: string;
+  verified_at: string | null; manifest_sha256: string; expected_chunks: number; received_chunks: number;
+  summary: Partial<Record<NativeChannel, NativeStatistics>> | null; annotation_state: "unlabeled"; protocol_version: 2 };
+export type NativeInspection = { recording: NativeRecording; processing: null; reference: null;
+  manifest: { started_elapsed_ns: string; source: "android_sensor_manager_v2"; coordinate_frame: "android_device_natural";
+    context: { recording_kind: string; recording_group_id?: string; recording_group_name?: string; surface: string; slope: string; rc_model?: string; mount_method: string; mount_orientation: string };
+    device?: { model?: string; native_adapter_version?: string };
+    channels: Record<NativeChannel, { availability: string; unit: string; sampling_period_us: number; value_layout: string[] }> } };
+export type NativeWindow = { channel: NativeChannel; start_ms: number; end_ms: number; events: NativeEvent[] };

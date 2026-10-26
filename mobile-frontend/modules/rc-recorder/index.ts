@@ -10,6 +10,9 @@ export type RcRecorderNative = {
   groups(): Promise<string>;
   createGroup(config: string): Promise<string>;
   details(id: string): Promise<string>;
+  exportManifest(id: string): Promise<string>;
+  exportChunk(id: string, channel: string, index: number): Promise<string>;
+  setTransfer(id: string, value: string): Promise<null>;
   delete(id: string): Promise<null>;
 };
 

@@ -23,6 +23,12 @@ class RcRecorderModule : Module() {
       engine().createGroup(config).toString()
     }
     AsyncFunction("details") { id: String -> engine().details(id).toString() }
+    AsyncFunction("exportManifest") { id: String -> engine().exportManifest(id).toString() }
+    AsyncFunction("exportChunk") { id: String, channel: String, index: Int -> engine().exportChunk(id, channel, index) }
+    AsyncFunction("setTransfer") { id: String, value: String ->
+      require(value.length <= 512)
+      engine().setTransfer(id, value); null
+    }
     AsyncFunction("delete") { id: String -> engine().delete(id); null }
     AsyncFunction("stop") { engine().stop(); null }
     AsyncFunction("start") { config: String ->

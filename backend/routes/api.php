@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Mobile\NotificationController;
 use App\Http\Controllers\Api\Mobile\PaymentController;
 use App\Http\Controllers\Api\Mobile\PayPalController;
 use App\Http\Controllers\Api\Mobile\ProfileController;
+use App\Http\Controllers\Api\Mobile\RcNativeRecordingController;
 use App\Http\Controllers\Api\Mobile\RcResearchController;
 use App\Http\Controllers\Api\Mobile\TelematicsController;
 use App\Http\Controllers\Api\Mobile\TelematicsSetupController;
@@ -34,6 +35,9 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::middleware(['auth:sanctum', RestrictRcResearchToken::class, 'active_user', 'throttle:mobile-api'])->group(function () {
         Route::get('/rc-research', [RcResearchController::class, 'show'])->name('rc-research.show');
         Route::get('/rc-research/native-access', [RcResearchController::class, 'nativeAccess'])->name('rc-research.native-access');
+        Route::post('/rc-research/native-recordings', [RcNativeRecordingController::class, 'store'])->name('rc-research.native.store');
+        Route::post('/rc-research/native-recordings/{recording}/chunks', [RcNativeRecordingController::class, 'chunk'])->whereUuid('recording')->name('rc-research.native.chunk');
+        Route::post('/rc-research/native-recordings/{recording}/finalize', [RcNativeRecordingController::class, 'finalize'])->whereUuid('recording')->name('rc-research.native.finalize');
         Route::post('/rc-research/sessions', [RcResearchController::class, 'storeSession'])->name('rc-research.sessions.store');
         Route::post('/rc-research/sessions/{session}/trials', [RcResearchController::class, 'storeTrial'])->whereUuid('session')->name('rc-research.trials.store');
         Route::get('/rc-research/trials', [RcResearchController::class, 'trials'])->name('rc-research.trials.index');

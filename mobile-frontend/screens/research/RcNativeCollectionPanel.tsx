@@ -26,6 +26,7 @@ export function RcNativeCollectionPanel({ active, onRecordingChange }: { active:
   const [lastInput, setLastInput] = useState<NativeRecordingInput | undefined>();
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ id: string; sent: number; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true), working = useRef(false), querying = useRef<Promise<void> | null>(null), wasRecording = useRef(false);
@@ -102,6 +103,15 @@ export function RcNativeCollectionPanel({ active, onRecordingChange }: { active:
     return created;
   };
   const current = selected ?? (setup && !state?.active ? null : state?.current);
+  const upload = async (record: NativeRecording) => {
+    if (!user) return;
+    setUploadProgress({ id: record.recording_id, sent: 0, total: 0 });
+    try {
+      await run(() => nativeRecorder.upload(user.id, record.recording_id, (sent, total) => {
+        if (mounted.current) setUploadProgress({ id: record.recording_id, sent, total });
+      }));
+    } finally { if (mounted.current) setUploadProgress(null); }
+  };
 
   return <View className="flex-1">
     <View className="w-full max-w-[640px] flex-row items-center justify-between self-center px-screen pb-3"><Text accessibilityRole="header" className="font-sans text-section font-semibold text-foreground">Motion recording</Text><Pressable accessibilityRole="button" accessibilityLabel="Refresh local recordings" disabled={busy} className="min-h-control min-w-control items-center justify-center" onPress={() => void refresh(true)}><RefreshCcw size={20} color={themeColors.primary} /></Pressable></View>
@@ -118,12 +128,19 @@ export function RcNativeCollectionPanel({ active, onRecordingChange }: { active:
             onCreateGroup={createGroup} onStart={start} initialValues={lastInput} phonePower={state?.phone_power} /> : <ActionButton label="Record another trial" variant="primary" disabled={busy} onPress={() => { setSetup(true); setSelected(null); }} />}
           {current && <NativeRecordingDetails recording={current} />}
           <SectionCard title="Saved on this phone" icon={Database}>
-            <Text className="font-sans mb-3 text-caption text-secondary-foreground">V2 · local only · unlabeled. Storage budgets: 64 MiB per recording and 256 MiB per account. Saved files stay until you delete them.</Text>
+            <Text className="font-sans mb-3 text-caption text-secondary-foreground">Original recordings stay on this phone after upload.</Text>
+            {!nativeRecorder.uploadAvailable && <Text className="font-sans mb-3 text-caption text-secondary-foreground">Update the Android app to upload these recordings.</Text>}
             {!records.length ? <Text className="font-sans text-body text-secondary-foreground">No local recordings on this page.</Text> : <View className="gap-3">{records.map(record => <View key={record.recording_id} className="gap-2 border-b border-border pb-3">
               <Pressable accessibilityRole="button" accessibilityLabel={`Inspect ${record.context?.name ?? 'local recording'}`} onPress={() => void run(async () => { setSelected(await nativeRecorder.details(record.recording_id)); setSetup(false); })}>
                 <Text className="font-sans text-body font-semibold text-primary">{record.context?.name ?? 'Unavailable recording'}</Text><Text className="font-sans mt-1 text-caption text-secondary-foreground">{record.started_at_utc ? formatRentalDate(record.started_at_utc) : 'Time unavailable'} · {record.state} · {((record.duration_ms ?? 0) / 1000).toFixed(1)} s</Text>
               </Pressable>
-              {record.state !== 'recording' && record.state !== 'preparing' && <ActionButton label="Delete local recording" variant="danger" disabled={busy} onPress={() => Alert.alert('Delete local recording?', 'This permanently removes the motion data from this phone. It has not been uploaded.', [
+              <Text className="font-sans text-caption text-secondary-foreground">{record.transfer_state === 'uploaded' ? 'Uploaded and verified' : record.transfer_state === 'upload_failed' ? 'Upload failed · retry available' : 'Saved locally'} · Unlabeled</Text>
+              {['stopped', 'interrupted'].includes(record.state) && nativeRecorder.uploadAvailable && <ActionButton
+                label={uploadProgress?.id === record.recording_id ? `Uploading ${uploadProgress.sent}/${uploadProgress.total || '…'}` : record.transfer_state === 'uploaded' ? 'Verify uploaded copy' : record.transfer_state === 'local_only' ? 'Upload recording' : 'Retry upload'}
+                disabled={busy || Boolean(state?.active)} onPress={() => Alert.alert('Upload recording?', 'Send motion readings, setup details and phone diagnostics to your private Admin research inspector. The local original will be kept.', [
+                  { text: 'Cancel', style: 'cancel' }, { text: 'Upload', onPress: () => void upload(record) },
+                ])} />}
+              {record.state !== 'recording' && record.state !== 'preparing' && <ActionButton label="Delete local recording" variant="danger" disabled={busy} onPress={() => Alert.alert('Delete local recording?', 'This permanently removes the phone copy. Any complete or partial server upload is kept separately. Unuploaded data cannot be recovered.', [
                 { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void run(async () => { await nativeRecorder.remove(record.recording_id); setSelected(null); }) },
               ])} />}
             </View>)}</View>}

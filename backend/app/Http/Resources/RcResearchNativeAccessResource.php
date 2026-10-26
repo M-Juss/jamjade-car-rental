@@ -14,7 +14,7 @@ class RcResearchNativeAccessResource extends JsonResource
             'valid_for_seconds' => $this->resource['valid_for_seconds'],
             'expires_at' => $this->resource['expires_at'],
             'capture_protocol_version' => 2,
-            'upload_available' => false,
+            'upload_available' => true,
         ];
     }
 }

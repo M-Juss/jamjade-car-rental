@@ -13,13 +13,13 @@ beforeEach(function () {
     $this->admin->assignRole('admin');
 });
 
-it('bounds local capture authority to the current research token without enabling upload', function () {
+it('bounds local capture authority to the current research token and advertises native upload', function () {
     $this->travelTo(now()->startOfSecond());
     $expires = now()->addMinutes(3);
     $token = $this->admin->createToken('research', ['rc-research'], $expires);
     $this->withToken($token->plainTextToken)->getJson('/api/mobile/rc-research/native-access')->assertOk()
         ->assertJsonPath('data.owner_id', (string) $this->admin->id)->assertJsonPath('data.valid_for_seconds', 180)
-        ->assertJsonPath('data.expires_at', $expires->toISOString())->assertJsonPath('data.upload_available', false)
+        ->assertJsonPath('data.expires_at', $expires->toISOString())->assertJsonPath('data.upload_available', true)
         ->assertJsonPath('data.capture_protocol_version', 2)->assertJsonMissingPath('data.token')
         ->assertHeader('Cache-Control', 'no-store, private');
     $this->assertDatabaseCount('rc_research_sessions', 0);
