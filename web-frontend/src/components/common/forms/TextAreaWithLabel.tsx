@@ -41,7 +41,7 @@ export const TextAreaWithLabel = React.forwardRef<
     ref,
   ) => {
     return (
-      <div className={cn("grid w-full gap-1.5", wrapperClassName)}>
+      <div className={cn("grid w-full min-w-0 grid-cols-1 gap-1.5", wrapperClassName)}>
         <Label
           htmlFor={id}
           className={cn(

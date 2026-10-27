@@ -55,13 +55,11 @@ export function ProfileHeaderCard({ profile }: { profile: CustomerProfile }) {
               </Text>
             </View>
             <Text
-              className="font-sans mt-3 text-[24px] font-semibold leading-[28px] text-foreground"
-              numberOfLines={2}>
+              className="font-sans mt-3 text-[24px] font-semibold leading-[28px] text-foreground">
               {getFullName(profile)}
             </Text>
             <Text
-              className="font-sans mt-1 text-[13px] font-semibold leading-5 text-secondary-foreground"
-              numberOfLines={1}>
+              className="font-sans mt-1 text-[13px] font-semibold leading-5 text-secondary-foreground">
               {profile.email}
             </Text>
           </View>
@@ -238,7 +236,7 @@ export function ProfileInfoRow({
       </View>
       <View className="min-w-0 flex-1">
         <Text className="font-sans text-[12px] font-medium text-secondary-foreground">{label}</Text>
-        <Text className="font-sans mt-1 text-[14px] font-medium leading-5 text-foreground" numberOfLines={2}>
+        <Text className="font-sans mt-1 text-[14px] font-medium leading-5 text-foreground">
           {value}
         </Text>
       </View>

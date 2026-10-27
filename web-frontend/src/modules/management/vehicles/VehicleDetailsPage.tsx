@@ -157,11 +157,11 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
 
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
-      <div className="flex items-center gap-2">
-        <button onClick={() => router.push(vehiclePath)} className="group flex items-center gap-1.5 rounded-md p-1.5 -ml-1.5 text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <button onClick={() => router.push(vehiclePath)} className="group flex shrink-0 items-center gap-1.5 rounded-md p-1.5 -ml-1.5 text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
           <ChevronLeft size={15} className="transition-transform group-hover:-translate-x-0.5" /> Vehicle Management
         </button>
-        <span className="text-border">/</span><span className="text-xs font-semibold text-foreground">{vehicle.name}</span>
+        <span className="text-border">/</span><span className="min-w-0 text-xs font-semibold text-foreground">{vehicle.name}</span>
       </div>
 
       <div>
@@ -188,12 +188,12 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
                 <h1 className="text-xl font-bold text-foreground">{vehicle.name}</h1>
                 <div className="mt-2 grid gap-1.5">
                   <p className="flex items-center gap-2 text-xs">
-                    <span className="w-11 text-[10px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Brand</span>
-                    <span className="rounded-md bg-muted px-2 py-0.5 font-semibold text-primary">{vehicle.brand}</span>
+                    <span className="w-11 shrink-0 text-[10px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Brand</span>
+                    <span className="min-w-0 rounded-md bg-muted px-2 py-0.5 font-semibold text-primary">{vehicle.brand}</span>
                   </p>
                   <p className="flex items-center gap-2 text-xs">
-                    <span className="w-11 text-[10px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Model</span>
-                    <span className="rounded-md bg-background px-2 py-0.5 font-semibold text-foreground">{vehicle.model}</span>
+                    <span className="w-11 shrink-0 text-[10px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">Model</span>
+                    <span className="min-w-0 rounded-md bg-background px-2 py-0.5 font-semibold text-foreground">{vehicle.model}</span>
                   </p>
                 </div>
               </div>
@@ -230,8 +230,8 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
 
       {section === "maintenance" && vehicleId && <VehicleMaintenanceHistory key={vehicleId} vehicleId={vehicleId} />}
 
-      {section !== "maintenance" && <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-4">
+      {section !== "maintenance" && <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-4">
           {section === "general" && (
             <>
           {vehicle.description && (
@@ -250,7 +250,7 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
             </div></CardContent>
           </Card>
 
-          <Card className="rounded-2xl border-0 bg-surface shadow-sm"><CardHeader className="pb-1"><CardTitle className="flex items-center gap-2 text-sm"><CheckCircle2 size={15} className="text-primary" /> Features</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-2">{vehicle.features.map((feature) => <span key={feature} className="rounded-xl border border-border bg-muted px-3 py-1.5 text-xs font-medium text-primary">{feature}</span>)}</div></CardContent></Card>
+          <Card className="rounded-2xl border-0 bg-surface shadow-sm"><CardHeader className="pb-1"><CardTitle className="flex items-center gap-2 text-sm"><CheckCircle2 size={15} className="text-primary" /> Features</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-2">{vehicle.features.map((feature) => <span key={feature} className="min-w-0 max-w-full rounded-xl border border-border bg-muted px-3 py-1.5 text-xs font-medium text-primary">{feature}</span>)}</div></CardContent></Card>
 
           <Card className="rounded-2xl border-0 bg-surface shadow-sm"><CardHeader className="pb-1"><CardTitle className="text-sm">Image Gallery</CardTitle></CardHeader><CardContent>{vehicle.images.length ? <VehicleImageGallery images={vehicle.images} alt={vehicle.name} /> : <p className="text-xs text-muted-foreground">No images uploaded.</p>}</CardContent></Card>
             </>
@@ -289,7 +289,7 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
           </Card>}
         </div>
 
-        <aside>
+        <aside className="min-w-0">
           {section === "general" ? (
             <Card className="sticky top-5 rounded-2xl border-0 bg-surface shadow-sm">
               <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><ClipboardCheck size={16} className="text-primary" /> Current Condition</CardTitle></CardHeader>

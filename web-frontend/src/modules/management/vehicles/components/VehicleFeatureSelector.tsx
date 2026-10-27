@@ -22,7 +22,7 @@ export function VehicleFeatureSelector({ value, options, onChange, disabled = fa
           <label key={feature} htmlFor={id + "-" + index} className="flex min-h-11 cursor-pointer items-center gap-3 py-2 text-xs font-medium text-foreground has-disabled:cursor-not-allowed has-disabled:opacity-60">
             <Checkbox id={id + "-" + index} checked={value.includes(feature)} disabled={disabled} aria-invalid={Boolean(error)}
               onCheckedChange={(checked) => onChange(checked === true ? [...value, feature] : value.filter((item) => item !== feature))} />
-            <span className="min-w-0 break-words leading-5">{feature}</span>
+            <span className="min-w-0 flex-1 break-words leading-5">{feature}</span>
           </label>
         ))}
       </div>

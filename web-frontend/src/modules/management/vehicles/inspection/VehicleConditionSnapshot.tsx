@@ -30,7 +30,7 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
       ? [{ title: "Operator Signature", signatures: signatures.filter((signature) => signature.signerType !== "personnel") }] : []),
   ];
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 grid-cols-1 gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -89,15 +89,15 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
         </div>
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {(["exterior", "interior", "equipment"] as const).map((category) => (
-          <section key={category} className="rounded-xl border border-border bg-surface p-4">
+          <section key={category} className="min-w-0 rounded-xl border border-border bg-surface p-4">
             <h3 className="text-sm font-bold text-foreground">{VEHICLE_CHECKLIST_CATEGORY_LABELS[category]}</h3>
             <div className="mt-3 grid gap-2">
               {(inspection.checklist?.[category] ?? []).map((item) => (
-                <div key={item.key} className="flex items-center justify-between gap-3 rounded-lg bg-background px-3 py-2">
-                  <span className="text-xs font-medium text-foreground">{item.label}</span>
-                  <span className={`flex items-center gap-1 text-xs font-bold ${item.value ? "text-success" : "text-destructive"}`}>
+                <div key={item.key} className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-background px-3 py-2">
+                  <span className="min-w-0 flex-1 text-xs font-medium text-foreground [overflow-wrap:anywhere]">{item.label}</span>
+                  <span className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-bold ${item.value ? "text-success" : "text-destructive"}`}>
                     {item.value ? <Check size={14} /> : <X size={14} />}
                     {item.value ? "Yes" : "No"}
                   </span>

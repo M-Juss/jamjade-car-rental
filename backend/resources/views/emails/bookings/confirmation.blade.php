@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>{{ $isRentalInformation ? 'Rental Information and Payment Receipt' : 'Invoice and Payment Receipt' }}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6;">
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; word-wrap: break-word;">
     <p style="margin: 0 0 16px;">Dear {{ $confirmation['customer']['name'] }},</p>
 
     <p style="margin: 0 0 16px;">Please find attached your {{ $isRentalInformation ? 'rental information' : 'invoice' }}, including the rental agreement, and the receipt for the payment listed below.</p>

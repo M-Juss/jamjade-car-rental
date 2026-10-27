@@ -102,13 +102,11 @@ export default function ProfileScreen() {
               </View>
               <View className="min-w-0 flex-1">
                 <Text
-                  className="font-sans text-[22px] font-semibold leading-[28px] text-foreground"
-                  numberOfLines={2}>
+                  className="font-sans text-[22px] font-semibold leading-[28px] text-foreground">
                   {fullName}
                 </Text>
                 <Text
-                  className="font-sans mt-1 text-[13px] font-medium leading-[18px] text-secondary-foreground"
-                  numberOfLines={1}>
+                  className="font-sans mt-1 text-[13px] font-medium leading-[18px] text-secondary-foreground">
                   {customer.email}
                 </Text>
                 <View className="mt-2">

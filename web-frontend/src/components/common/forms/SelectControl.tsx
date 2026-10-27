@@ -67,7 +67,7 @@ export function SelectControl({
         aria-label={ariaLabel}
         aria-invalid={invalid}
         className={cn(
-          "w-full rounded-xl border-border bg-background px-3 text-[12.5px] text-muted-foreground shadow-none",
+          "w-full min-w-0 max-w-full rounded-xl border-border bg-background px-3 text-[12.5px] text-muted-foreground shadow-none",
           triggerHeightClasses[height],
           "data-[placeholder]:text-subtle-foreground focus:ring-1 focus:ring-primary",
           "disabled:cursor-not-allowed disabled:opacity-50",
@@ -83,7 +83,7 @@ export function SelectControl({
       <SelectContent
         align="start"
         className={cn(
-          "w-full min-w-[var(--radix-select-trigger-width)] rounded-xl border-border",
+          "w-[var(--radix-select-trigger-width)] min-w-0 max-w-[calc(100vw-2rem)] rounded-xl border-border",
           contentClassName,
         )}
       >

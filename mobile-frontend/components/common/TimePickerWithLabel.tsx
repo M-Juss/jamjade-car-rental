@@ -162,7 +162,7 @@ export function TimePickerWithLabel({
       : helperText;
 
   return (
-    <View className={cx('relative gap-2', error || helperText ? 'mb-8' : 'mb-4', wrapperClassName)}>
+    <View className={cx('gap-2 mb-4', wrapperClassName)}>
       <Text className="font-sans text-caption font-medium text-foreground">
         {label}
         {required ? <Text className="text-destructive"> *</Text> : null}
@@ -190,18 +190,16 @@ export function TimePickerWithLabel({
         <MaterialIcons name="keyboard-arrow-down" size={24} color={themeColors.mutedForeground} />
       </Pressable>
 
-      <View className="absolute left-1 right-1 top-full mt-1.5">
-        {error || pickerHelperText ? (
-          <Text
-            className={cx(
-              'font-sans',
-              'text-[11px] leading-4 text-secondary-foreground',
-              error && 'font-medium text-destructive',
-            )}>
-            {error || pickerHelperText}
-          </Text>
-        ) : null}
-      </View>
+      {error || pickerHelperText ? (
+        <Text
+          className={cx(
+            'font-sans',
+            'px-1 text-[11px] leading-4 text-secondary-foreground',
+            error && 'font-medium text-destructive',
+          )}>
+          {error || pickerHelperText}
+        </Text>
+      ) : null}
 
       <Modal animationType="fade" transparent visible={isOpen} onRequestClose={() => setIsOpen(false)}>
         <View className="flex-1 justify-end bg-black/35">

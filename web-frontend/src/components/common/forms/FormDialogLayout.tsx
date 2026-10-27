@@ -68,7 +68,7 @@ export function FormDialogHeader({
           <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-primary", iconClassName)}>
             <Icon className="size-[18px]" strokeWidth={2.2} aria-hidden="true" />
           </div>
-          <DialogTitle className="truncate text-base font-bold leading-tight text-foreground">
+          <DialogTitle className="min-w-0 whitespace-normal text-base font-bold leading-tight text-foreground [overflow-wrap:anywhere]">
             {title}
           </DialogTitle>
         </div>

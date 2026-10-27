@@ -24,7 +24,7 @@ export function TelematicsActivity({ activity }: { activity: ReturnType<typeof u
     {activity.items.map((item) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.isRead ? `${item.title}, read` : `Mark ${item.title} as read`} accessibilityHint={item.isRead ? undefined : 'Marks this activity as read.'} disabled={activity.openingId !== null} onPress={() => void activity.markRead(item)} className={`flex-row items-start gap-3 rounded-field border border-border p-3 ${item.isRead ? 'bg-surface' : 'bg-muted'}`}>
       <View className="min-w-0 flex-1 gap-1">
         <Text className="font-sans text-body font-semibold text-foreground">{item.title}</Text>
-        <Text numberOfLines={2} className="font-sans text-caption text-secondary-foreground">{item.message}</Text>
+        <Text className="font-sans text-caption leading-5 text-secondary-foreground">{item.message}</Text>
         <Text className="font-sans text-[11px] text-secondary-foreground">{formatRentalDate(item.createdAt)}</Text>
       </View>
       {activity.openingId === item.id ? <ActivityIndicator size="small" color={themeColors.primary} /> : null}

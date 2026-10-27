@@ -11,8 +11,8 @@
         .summary { width: 100%; margin-top: 18px; border-collapse: collapse; }
         .summary td { width: 33.33%; padding: 10px; border: 1px solid #dde3ee; }
         .summary strong { display: block; margin-top: 4px; font-size: 16px; }
-        table.data { width: 100%; border-collapse: collapse; }
-        table.data th, table.data td { padding: 7px; border: 1px solid #dde3ee; text-align: left; }
+        table.data { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        table.data th, table.data td { padding: 7px; border: 1px solid #dde3ee; text-align: left; word-wrap: break-word; }
         table.data th { background: #eef4ff; font-size: 9px; text-transform: uppercase; }
     </style>
 </head>

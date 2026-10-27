@@ -157,6 +157,10 @@ redundant text and extra containers introduced by the change before reducing
 text or touch-target sizes. Keep navigation and actions predictable without
 forcing desktop layouts onto phone screens.
 
+Constrain variable text beside controls with native flex sizing and allow rows
+to grow vertically. Show complete values in detail views; cap preview lines only
+when the full value can be opened or expanded. Keep field errors in normal flow.
+
 Urbanist is bundled under `assets/fonts/urbanist/` and loaded by
 `expo-font` in `app/_layout.tsx`. The static faces and aliases in
 `constants/font-families.json` and `constants/fonts.ts` back the `font-sans`

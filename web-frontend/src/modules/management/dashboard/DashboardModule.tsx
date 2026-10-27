@@ -445,13 +445,13 @@ export default function Dashboard() {
                     <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-primary">
                       <UserRound size={18} />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[14px] font-bold text-foreground">
                         {selectedEvent.customerName}
                       </p>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
                         {selectedEvent.customerEmail ? (
-                          <span className="flex items-center gap-1.5">
+                          <span className="flex min-w-0 max-w-full items-center gap-1.5">
                             <Mail size={11} />
                             {selectedEvent.customerEmail}
                           </span>

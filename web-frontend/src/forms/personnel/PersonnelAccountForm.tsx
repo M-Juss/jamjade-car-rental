@@ -37,7 +37,7 @@ import {
   sanitizePersonName,
   type PersonnelAccountFormValues,
 } from "@/validations/personnel/schemas";
-import { AbsoluteFieldError } from "@/components/common/forms/AbsoluteFieldError";
+import { FormFieldError } from "@/components/common/forms/FormFieldError";
 
 type PersonnelAccountFormMode = "add" | "edit" | "view";
 
@@ -223,7 +223,7 @@ export function PersonnelAccountForm({
                         void firstNameField.onChange(event);
                       }}
                     />
-                    <AbsoluteFieldError message={errors.firstName?.message} />
+                    <FormFieldError message={errors.firstName?.message} />
                   </div>
 
                   <div className="relative pb-5">
@@ -243,7 +243,7 @@ export function PersonnelAccountForm({
                         void lastNameField.onChange(event);
                       }}
                     />
-                    <AbsoluteFieldError message={errors.lastName?.message} />
+                    <FormFieldError message={errors.lastName?.message} />
                   </div>
 
                   <div className="relative pb-5 sm:col-span-2">
@@ -263,7 +263,7 @@ export function PersonnelAccountForm({
                         void phoneNumberField.onChange(event);
                       }}
                     />
-                    <AbsoluteFieldError message={errors.phoneNumber?.message} />
+                    <FormFieldError message={errors.phoneNumber?.message} />
                   </div>
                 </div>
               </div>
@@ -297,7 +297,7 @@ export function PersonnelAccountForm({
                       inputClassName={isViewMode ? "disabled:opacity-100" : undefined}
                       {...register("email")}
                     />
-                    <AbsoluteFieldError message={errors.email?.message} />
+                    <FormFieldError message={errors.email?.message} />
                   </div>
 
                   {!isViewMode && (
@@ -316,7 +316,7 @@ export function PersonnelAccountForm({
                           labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                           {...register("password")}
                         />
-                        <AbsoluteFieldError message={errors.password?.message} />
+                        <FormFieldError message={errors.password?.message} />
                       </div>
 
                       <div className="relative pb-5">
@@ -333,7 +333,7 @@ export function PersonnelAccountForm({
                           labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                           {...register("passwordConfirmation")}
                         />
-                        <AbsoluteFieldError
+                        <FormFieldError
                           message={errors.passwordConfirmation?.message}
                         />
                       </div>
@@ -385,7 +385,7 @@ export function PersonnelAccountForm({
                         isViewMode ? "disabled:opacity-100" : ""
                       }`}
                     />
-                    <AbsoluteFieldError message={errors.role?.message} />
+                    <FormFieldError message={errors.role?.message} />
                   </div>
 
                   <div className="relative pb-5">
@@ -416,7 +416,7 @@ export function PersonnelAccountForm({
                         isViewMode ? "disabled:opacity-100" : ""
                       }`}
                     />
-                    <AbsoluteFieldError message={errors.status?.message} />
+                    <FormFieldError message={errors.status?.message} />
                   </div>
                 </div>
               </div>

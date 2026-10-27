@@ -604,8 +604,8 @@ export function ReportsAnalytics() {
                 {data.customerCancellationLeaders.length === 0 ? (
                   <EmptyState message="No customer cancellations in this period." />
                 ) : data.customerCancellationLeaders.map((customer) => (
-                  <div key={customer.id} className="flex items-center justify-between rounded-xl bg-background px-3 py-2.5">
-                    <div>
+                  <div key={customer.id} className="flex items-center justify-between gap-3 rounded-xl bg-background px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[12px] font-medium text-foreground">{customer.name}</p>
                       <p className="text-[11px] text-muted-foreground">{customer.email}</p>
                     </div>

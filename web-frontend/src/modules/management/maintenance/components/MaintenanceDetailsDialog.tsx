@@ -27,7 +27,7 @@ function currency(value: number) {
 
 function Detail({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{label}</p>
       <div className="mt-1 text-xs font-semibold leading-5 text-foreground">{value || "—"}</div>
     </div>

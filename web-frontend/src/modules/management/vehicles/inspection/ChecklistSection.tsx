@@ -25,7 +25,7 @@ export function ChecklistSection({
 }: ChecklistSectionProps) {
 
   return (
-    <section>
+    <section className="min-w-0">
       <h3 className="text-sm font-bold text-foreground">
         {VEHICLE_CHECKLIST_CATEGORY_LABELS[category]}
       </h3>
@@ -34,7 +34,7 @@ export function ChecklistSection({
           <div
             key={key}
             data-item={`condition-checklist-${category}-${key}`}
-            className="flex min-h-11 flex-wrap items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 has-disabled:cursor-not-allowed has-disabled:opacity-60"
+            className="flex min-h-11 min-w-0 flex-wrap items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 has-disabled:cursor-not-allowed has-disabled:opacity-60"
           >
             <Checkbox
               id={`condition-checklist-${category}-${key}`}
@@ -44,7 +44,7 @@ export function ChecklistSection({
               aria-describedby={errors?.[key] ? "checklist-error-" + category + "-" + key : undefined}
               onCheckedChange={(checked) => onChange(key, checked === true)}
             />
-            <label htmlFor={"condition-checklist-" + category + "-" + key} className="min-w-0 flex-1 cursor-pointer leading-5">{label}</label>
+            <label htmlFor={"condition-checklist-" + category + "-" + key} className="min-w-0 flex-1 cursor-pointer leading-5 [overflow-wrap:anywhere]">{label}</label>
             {value[key] === null ? <span className="flex gap-1">
               <button type="button" disabled={disabled} className="min-h-11 min-w-11 rounded-md border border-border bg-surface px-2 text-primary" aria-label={"Mark " + label + " as Yes"} onClick={(event) => { event.preventDefault(); onChange(key, true); }}>Yes</button>
               <button type="button" disabled={disabled} className="min-h-11 min-w-11 rounded-md border border-border bg-surface px-2" aria-label={"Mark " + label + " as No"} onClick={(event) => { event.preventDefault(); onChange(key, false); }}>No</button>

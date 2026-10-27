@@ -29,7 +29,7 @@ import { SelectWithLabel } from "@/components/common/forms/SelectWithLabel";
 import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { VehicleImageGallery } from "@/modules/management/vehicles/components/VehicleImageGallery";
 import { VehicleFeatureSelector } from "@/modules/management/vehicles/components/VehicleFeatureSelector";
-import { AbsoluteFieldError } from "@/components/common/forms/AbsoluteFieldError";
+import { FormFieldError } from "@/components/common/forms/FormFieldError";
 import {
   FormDialogContent,
   FormDialogFooter,
@@ -669,7 +669,7 @@ export function VehicleFormDialog({
                     e.target.value = "";
                   }}
                 />
-                <AbsoluteFieldError
+                <FormFieldError
                   message={fieldMessage(errors.images?.message)}
                 />
               </div>
@@ -706,7 +706,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       triggerClassName="text-[12.5px] rounded-xl border-border bg-background focus:ring-primary focus:ring-1"
                     />
-                    <AbsoluteFieldError message={errors.brand?.message} />
+                    <FormFieldError message={errors.brand?.message} />
                   </div>
 
                   <div className="relative pb-5">
@@ -719,7 +719,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("name")}
                     />
-                    <AbsoluteFieldError message={errors.name?.message} />
+                    <FormFieldError message={errors.name?.message} />
                   </div>
 
                   <div className="relative pb-5">
@@ -732,7 +732,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("model")}
                     />
-                    <AbsoluteFieldError message={errors.model?.message} />
+                    <FormFieldError message={errors.model?.message} />
                   </div>
                   <div className="relative pb-5">
                     <InputWithLabel
@@ -744,7 +744,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("plate_number")}
                     />
-                    <AbsoluteFieldError message={errors.plate_number?.message} />
+                    <FormFieldError message={errors.plate_number?.message} />
                   </div>
                   <div className="relative pb-5 md:col-span-2">
                     <InputWithLabel
@@ -759,7 +759,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("price_per_day")}
                     />
-                    <AbsoluteFieldError
+                    <FormFieldError
                       message={errors.price_per_day?.message}
                     />
                   </div>
@@ -776,7 +776,7 @@ export function VehicleFormDialog({
                       textareaClassName="min-h-[92px]"
                       {...register("description")}
                     />
-                    <AbsoluteFieldError message={errors.description?.message} />
+                    <FormFieldError message={errors.description?.message} />
                   </div>
                 </div>
               </div>
@@ -807,7 +807,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("seats")}
                     />
-                    <AbsoluteFieldError message={errors.seats?.message} />
+                    <FormFieldError message={errors.seats?.message} />
                   </div>
 
                   <div className="relative pb-5">
@@ -820,7 +820,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("color")}
                     />
-                    <AbsoluteFieldError message={errors.color?.message} />
+                    <FormFieldError message={errors.color?.message} />
                   </div>
 
                   <div className="relative pb-5">
@@ -842,7 +842,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
                     />
-                    <AbsoluteFieldError
+                    <FormFieldError
                       message={errors.transmission?.message}
                     />
                   </div>
@@ -866,7 +866,7 @@ export function VehicleFormDialog({
                       labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                       triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
                     />
-                    <AbsoluteFieldError message={errors.fuel_type?.message} />
+                    <FormFieldError message={errors.fuel_type?.message} />
                   </div>
                 </div>
               </div>
@@ -908,7 +908,7 @@ export function VehicleFormDialog({
                   labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
                   triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
                 />
-                <AbsoluteFieldError message={errors.status?.message} />
+                <FormFieldError message={errors.status?.message} />
               </div>
                 </>
               ) : (

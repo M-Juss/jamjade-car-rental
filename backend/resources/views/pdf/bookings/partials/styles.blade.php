@@ -334,6 +334,10 @@
             line-height: 1.42;
         }
 
+        .signature-table {
+            table-layout: fixed;
+        }
+
         .signature-table td {
             width: 33.333%;
             padding-right: 14px;
@@ -351,6 +355,7 @@
             color: #17315F;
             font-size: 9.5px;
             text-align: center;
+            word-wrap: break-word;
         }
 
         .signature-value img {

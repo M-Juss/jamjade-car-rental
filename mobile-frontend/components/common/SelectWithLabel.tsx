@@ -78,10 +78,9 @@ export function SelectWithLabel({
         <Text
           className={cx(
             'font-sans',
-            'min-w-0 flex-1 text-[15px] text-foreground',
+            'min-w-0 flex-1 py-3 text-[15px] text-foreground',
             !selectedOption && 'font-medium text-secondary-foreground',
-          )}
-          numberOfLines={1}>
+          )}>
           {selectedOption?.label ?? placeholder}
         </Text>
         <MaterialIcons name="keyboard-arrow-down" size={24} color={themeColors.mutedForeground} />
@@ -119,13 +118,13 @@ export function SelectWithLabel({
                     accessibilityState={{ selected: isSelected }}
                     onPress={() => handleSelect(item.value)}
                     className={cx(
-                      'min-h-[46px] flex-row items-center justify-between rounded-2xl px-3',
+                      'min-h-[46px] flex-row items-center justify-between gap-3 rounded-2xl px-3 py-3',
                       isSelected && 'bg-muted',
                     )}>
                     <Text
                       className={cx(
                         'font-sans',
-                        'text-[15px] text-foreground',
+                        'min-w-0 flex-1 text-[15px] text-foreground',
                         isSelected && 'text-foreground',
                       )}>
                       {item.label}

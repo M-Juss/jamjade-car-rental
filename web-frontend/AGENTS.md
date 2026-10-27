@@ -52,6 +52,7 @@ Start discovery in these locations, then inspect the closest feature-specific im
 - Management submodule page titles and concise purpose descriptions: `src/modules/management/shell/components/ManagementPageHeading.tsx`. Use this shared heading for each full management page; keep feature controls in the surrounding responsive header and embedded section headings local.
 - Base UI primitives: `src/components/ui/`
 - Labeled form controls: `src/components/common/forms/InputWithLabel.tsx`, `SelectWithLabel.tsx`, and `TextAreaWithLabel.tsx`
+- Standalone field errors: `src/components/common/forms/FormFieldError.tsx`; keep errors in normal layout flow so multiline messages reserve their actual height.
 - Management filters and searches: `src/components/common/forms/FilterSelect.tsx` and `SearchInput.tsx`
 - Table row actions: `src/components/common/tables/TableActionMenu.tsx`
 - Dashboard KPI cards and dashboard content cards: `src/modules/management/dashboard/DashboardModule.tsx`
@@ -193,6 +194,7 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 - Match the nearest page shell's content width, padding, section spacing, grid breakpoints, and stacking behavior.
 - Keep titles, page actions, filters, records, and pagination in predictable positions. Remove redundant introductions and nested containers before reducing text size or control height; use cards only for meaningful groups and preserve responsive access to all actions.
 - Build mobile-first and verify small, medium, and large layouts relevant to the changed component.
+- Ordinary text inherits `overflow-wrap: anywhere` from the global theme. Keep variable-text grid/flex children shrinkable with `min-w-0`, preserve control widths, and let rows grow vertically. Detailed values must remain fully readable; use truncation only for compact previews with access to the complete value.
 - Reuse existing motion timing and movement for equivalent content. Do not add animation to a component type that is otherwise static.
 - Preserve visible focus, keyboard operation, touch target size, labels, contrast, reduced-motion expectations, and semantic HTML.
 
