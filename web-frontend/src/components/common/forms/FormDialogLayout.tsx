@@ -101,7 +101,7 @@ export function FormDialogFooter({
   return (
     <DialogFooter
       className={cn(
-        "mx-0 mb-0 grid shrink-0 grid-cols-1 gap-2.5 rounded-b-2xl border-t border-border bg-surface px-4 py-4 sm:px-6 [&>*]:h-11 [&>*]:w-full [&>*]:rounded-xl",
+        "mx-0 mb-0 grid shrink-0 grid-cols-1 gap-2.5 rounded-b-2xl border-t border-border bg-surface px-4 py-4 sm:px-6 [&>*]:h-auto [&>*]:min-h-11 [&>*]:min-w-0 [&>*]:w-full [&>*]:whitespace-normal [&>*]:rounded-xl [&>*]:py-2.5",
         actionCount > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1",
         className,
       )}

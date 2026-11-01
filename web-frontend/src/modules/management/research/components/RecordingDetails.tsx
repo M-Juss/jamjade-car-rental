@@ -2,11 +2,21 @@ import type { ReactNode } from "react";
 import { CheckCircle2, CircleAlert, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ResearchInspection } from "@/services/research/types";
 import { humanize, maneuverLabel, seconds } from "../recording-analysis";
 
-export function DetailsList({ items }: { items: [string, ReactNode][] }) {
-  return <dl className="space-y-3 text-xs">{items.map(([label, value]) => <div key={label} className="flex flex-wrap justify-between gap-x-4 gap-y-1"><dt className="text-muted-foreground">{label}</dt><dd className="max-w-full break-words text-right font-medium">{value}</dd></div>)}</dl>;
+export function DetailsList({ items }: { items: [label: string, value: ReactNode, help?: ReactNode][] }) {
+  return <dl className="space-y-3 text-xs">{items.map(([label, value, help]) => <div key={label} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+    <dt className="inline-flex items-center gap-1 text-muted-foreground">{label}{help && <Popover>
+      <PopoverTrigger asChild><Button type="button" variant="ghost" size="icon-xs" aria-label={`About ${label.toLowerCase()}`}><Info className="size-3.5" aria-hidden="true" /></Button></PopoverTrigger>
+      <PopoverContent align="start" aria-label={`About ${label.toLowerCase()}`} className="space-y-3 text-xs leading-relaxed">
+        <p className="font-semibold">{label}</p>{help}
+      </PopoverContent>
+    </Popover>}</dt>
+    <dd className="max-w-full break-words text-right font-medium">{value}</dd>
+  </div>)}</dl>;
 }
 
 export function ObserverDetails({ inspection, onInspect }: { inspection: ResearchInspection; onInspect: () => void }) {

@@ -93,7 +93,7 @@ export function MaintenanceDetailsDialog({
               </section>
             ) : null}
             {record.resultingCondition ? (
-              <Button type="button" variant="outline" onClick={() => setConditionOpen(true)}>
+              <Button type="button" variant="outline" className="h-auto min-h-9 whitespace-normal" onClick={() => setConditionOpen(true)}>
                 <FileCheck2 /> View Resulting Vehicle Condition
               </Button>
             ) : null}

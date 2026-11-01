@@ -91,7 +91,7 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 grid grid-cols-1 gap-2.5 rounded-b-xl border-t bg-muted/50 p-4 sm:grid-cols-2 [&>*]:h-10 [&>*]:w-full [&>*]:rounded-xl",
+        "-mx-4 -mb-4 grid min-w-0 grid-cols-1 gap-2.5 rounded-b-xl border-t bg-muted/50 p-4 sm:grid-cols-2 [&>*]:h-auto [&>*]:min-h-10 [&>*]:min-w-0 [&>*]:w-full [&>*]:whitespace-normal [&>*]:rounded-xl [&>*]:py-2",
         className
       )}
       {...props}
