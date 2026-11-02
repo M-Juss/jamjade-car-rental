@@ -69,7 +69,7 @@ export function ForwardReferencePreview({ acceleration, gyroscope, origin, selec
             <h4 className="text-sm font-semibold">Candidate direction</h4>
             <DetailsList items={[
               ["Angle from phone top", `${preview.angleFromPhoneTop.toFixed(2)}°`],
-              ["Start variance on this axis", `${(preview.varianceShare * 100).toFixed(1)}%`],
+              ["Start variance share", `${(preview.varianceShare * 100).toFixed(1)}%`],
               ["Start / opposite-stop difference", preview.stopOppositionDegrees === null ? "Unavailable" : `${preview.stopOppositionDegrees.toFixed(2)}°`],
             ]} />
           </div>
@@ -98,21 +98,23 @@ export function ForwardReferencePreview({ acceleration, gyroscope, origin, selec
               ["Acceleration std XYZ (m/s²)", vector(phase.acceleration.std)],
             ]} />
           </div>)}</div>
-          <div className="mt-4 space-y-3"><h4 className="font-semibold">Candidate matrix · phone XYZ to right / forward / up</h4>
+          <div className="mt-4 space-y-3"><h4 className="font-semibold">Phone XYZ → right / forward / up</h4>
             <DetailsList items={preview.rotationRfu.map((row, index) => [["Right row", "Forward row", "Up row"][index], vector(row)])} />
           </div>
           {suggestion.available && !adjusted && <div className="mt-4 space-y-3"><h4 className="font-semibold">Automatic selection · {SUGGESTION_VERSION}</h4>
             <DetailsList items={[
-              ["Quiet section after stopping", suggestion.quietAfter ? rangeText(suggestion.quietAfter) : "Not found"],
+              ["Quiet after stopping", suggestion.quietAfter ? rangeText(suggestion.quietAfter) : "Not found"],
               ["Analysis bin (ms)", String(suggestion.diagnostics.binMs)],
-              ["Acceleration variation boundary (m/s²)", suggestion.diagnostics.accelLimit.toFixed(6)],
-              ["Gyro RMS boundary (rad/s)", suggestion.diagnostics.gyroLimit.toFixed(6)],
-              ["Forward-mean boundary (m/s²)", suggestion.diagnostics.levelLimit.toFixed(6)],
+              ["Acceleration variation limit (m/s²)", suggestion.diagnostics.accelLimit.toFixed(6)],
+              ["Gyro RMS limit (rad/s)", suggestion.diagnostics.gyroLimit.toFixed(6)],
+              ["Forward mean limit (m/s²)", suggestion.diagnostics.levelLimit.toFixed(6)],
             ]} />
-            <p className="leading-relaxed text-muted-foreground">Experimental search boundaries; not harsh-event thresholds or proof of stillness.</p>
+            <p className="leading-relaxed text-muted-foreground">Search limits do not confirm stillness or harsh events.</p>
           </div>}
-          <p className="mt-3 leading-relaxed text-muted-foreground">{FORWARD_PREVIEW_VERSION}: resting mean estimates up; centered horizontal PCA uses only the starting interval. Its sign follows the confirmed forward start. Independent raw gyro readings are projected on that fixed up axis after subtracting their resting mean. No interpolation or smoothing. Intervals under 0.5 seconds are excluded as a preview budget; numerical degeneracy is rejected. Timing and signal quality still require review.</p>
-          <p className="mt-3 leading-relaxed text-muted-foreground">Unsaved research preview. Variance share is not confidence or accuracy. Small steering corrections are allowed. No dynamic gravity correction, quality pass or training label.</p>
+          <p className="mt-3 leading-relaxed text-muted-foreground">{FORWARD_PREVIEW_VERSION}: resting acceleration estimates up; horizontal PCA estimates forward from the confirmed start.</p>
+          <p className="mt-3 leading-relaxed text-muted-foreground">Gyro readings use that fixed up axis after resting-offset removal, without interpolation or smoothing.</p>
+          <p className="mt-3 leading-relaxed text-muted-foreground">Requires ≥0.5 s per interval and a solvable axis; review timing and signal quality.</p>
+          <p className="mt-3 leading-relaxed text-muted-foreground">Unsaved estimate; small steering corrections are allowed, but variance share does not measure confidence or accuracy.</p>
         </details>
         <VehicleAxisPreview acceleration={acceleration} gyroscope={gyroscope} origin={origin} bounds={bounds} reference={preview}
           selection={selection} cursor={cursor} onCursor={onCursor} onSelection={onSelection} syncId={syncId} />

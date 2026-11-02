@@ -829,10 +829,19 @@ stages into a finalized preprocessing pipeline.
    that does not certify training suitability. Null values break chart lines.
    Counts distinguish exact, interpolated, internal-gap and edge-missing values.
 
+Signals uses concise labels and short, local guidance; formulas remain in the
+statistic info popovers, and method notes stay in expandable details. Units,
+source states, required confirmations and interpretation limits remain visible
+where needed. This copy cleanup does not change calculations or saved data.
+
 Both new plots share the existing cursor/interval controls. Selected counts and
 the nearest grid row show actual XYZ, units and source state; collapsed details
-show source timestamps, spans, original counts and method settings. **Select whole
-window** changes only inspection selection. Hiding the preview, navigating or
+show source timestamps, spans, original counts and method settings.
+Source timestamps are displayed as seconds since recording start (six decimal
+places), with Before/After labels or one Exact time for a matched original reading.
+Grid time uses the same recording-relative timeline. Original nanosecond values
+and exact-match/interpolation calculations remain unchanged.
+**Select whole window** changes only inspection selection. Hiding the preview, navigating or
 changing channel/window does not save or apply anything. Invalid/missing sources
 show an inline error; a valid sparse window can have zero paired rows and remains
 inspectable without fabricated values.

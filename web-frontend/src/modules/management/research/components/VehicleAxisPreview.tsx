@@ -45,12 +45,12 @@ export function VehicleAxisPreview({ acceleration, gyroscope, origin, bounds, re
         <DetailsList items={[
           ["Acceleration / rotation readings", `${stats.acceleration?.count ?? 0} / ${stats.rotation?.count ?? 0}`],
           ["Mean forward / right / up (m/s²)", stats.acceleration ? vector(stats.acceleration.mean) : "Unavailable"],
-          ["Std. deviation forward / right / up (m/s²)", stats.acceleration ? vector(stats.acceleration.std) : "Unavailable"],
+          ["Std. dev. forward / right / up (m/s²)", stats.acceleration ? vector(stats.acceleration.std) : "Unavailable"],
           ["Up-axis rotation RMS (rad/s)", stats.upRotationRms === null ? "Unavailable" : stats.upRotationRms.toFixed(5)],
         ]} />
       </div>
       <details className="text-xs">
-        <summary className="min-h-8 cursor-pointer font-medium text-primary">Window timing and projection</summary>
+        <summary className="min-h-8 cursor-pointer font-medium text-primary">Timing and projection</summary>
         <div className="mt-3 grid gap-4 lg:grid-cols-2">{([['Acceleration', result.accelerationTiming], ['Gyroscope', result.gyroscopeTiming]] as const).map(([label, timing]) => <div key={label} className="space-y-3">
           <h5 className="font-semibold">{label}</h5>
           <DetailsList items={[
@@ -58,8 +58,10 @@ export function VehicleAxisPreview({ acceleration, gyroscope, origin, bounds, re
             ["Leading / trailing gap (ms)", `${timing.leadingGapMs.toFixed(2)} / ${timing.trailingGapMs.toFixed(2)}`],
           ]} />
         </div>)}</div>
-        <p className="mt-3 leading-relaxed text-muted-foreground">{VEHICLE_PREVIEW_VERSION}: the candidate RFU matrix rotates each original event independently. The rest-relative view subtracts the fixed resting acceleration mean before rotation; gyro subtracts its resting mean. Source timestamps stay independent. No interpolation, dynamic gravity correction, filtering or saved calibration. Gaps above 250 ms break lines.</p>
-        <p className="mt-3 leading-relaxed text-muted-foreground">Positive directions: Forward toward the RC front, Right toward its right, Up upward.</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">{VEHICLE_PREVIEW_VERSION}: rotates original readings using the fixed candidate axes and independent timestamps.</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">Rest-relative acceleration and rotation subtract their resting means; gaps over 250 ms break lines.</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">Unsaved preview, without interpolation or filtering.</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">Positive axes: Forward = RC front; Right = RC right; Up = upward.</p>
       </details>
     </>}
   </section>;

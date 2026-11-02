@@ -23,7 +23,7 @@ export function StationaryReferencePreview({ acceleration, gyroscope, origin, se
     </div>
     <label htmlFor={`${id}-confirmed`} className="flex min-h-11 cursor-pointer items-center gap-3 text-xs font-medium">
       <Checkbox id={`${id}-confirmed`} checked={confirmed} onCheckedChange={value => { setConfirmed(value === true); setPreview(null); }} />
-      <span className="min-w-0 leading-5">RC stayed still and phone stayed fixed throughout the selection.</span>
+      <span className="min-w-0 leading-5">RC was still and phone fixed for this interval.</span>
     </label>
     <Button type="button" size="sm" variant="outline" disabled={!confirmed} onClick={() => setPreview(stationaryReferencePreview(acceleration, gyroscope, origin, ...selection))}>Preview reference</Button>
     <div aria-live="polite">
@@ -36,15 +36,15 @@ export function StationaryReferencePreview({ acceleration, gyroscope, origin, se
               ["Resting acceleration XYZ (m/s²)", vector(preview.acceleration.mean)],
               ["Magnitude (m/s²)", preview.magnitude.toFixed(4)],
               ["Estimated up · unit XYZ", vector(preview.upUnit, 5)],
-              ["Variation · std XYZ (m/s²)", vector(preview.acceleration.std)],
-              ["First / second half direction change", preview.directionChangeDegrees === null ? "Unavailable" : `${preview.directionChangeDegrees.toFixed(3)}°`],
+              ["Std. deviation XYZ (m/s²)", vector(preview.acceleration.std)],
+              ["Direction change · first vs second half", preview.directionChangeDegrees === null ? "Unavailable" : `${preview.directionChangeDegrees.toFixed(3)}°`],
             ]} />
           </div>
           <div className="space-y-3 rounded-xl border border-border p-4">
             <h4 className="text-sm font-semibold">Gyroscope resting offset</h4>
             <DetailsList items={[
               ["Estimated offset XYZ (rad/s)", vector(preview.gyroscope.mean, 6)],
-              ["Variation · std XYZ (rad/s)", vector(preview.gyroscope.std, 6)],
+              ["Std. deviation XYZ (rad/s)", vector(preview.gyroscope.std, 6)],
             ]} />
           </div>
         </div>
@@ -60,8 +60,8 @@ export function StationaryReferencePreview({ acceleration, gyroscope, origin, se
               ]} />
             </div>)}
           </div>
-          <p className="mt-3 leading-relaxed text-muted-foreground">{STATIONARY_PREVIEW_VERSION}: arithmetic means and population standard deviations, independently per channel. Five seconds is a preview minimum, not proof of stillness. Gaps remain unfilled; coverage and variation require review.</p>
-          <p className="mt-3 leading-relaxed text-muted-foreground">Unsaved preview. Resting acceleration includes gravity and sensor bias. No automatic stillness, quality or forward-direction result.</p>
+          <p className="mt-3 leading-relaxed text-muted-foreground">{STATIONARY_PREVIEW_VERSION}: per-channel means and population standard deviations, without gap filling.</p>
+          <p className="mt-3 leading-relaxed text-muted-foreground">Unsaved estimate includes gravity and sensor bias; five seconds alone does not prove stillness or quality.</p>
         </details>
       </div>}
     </div>

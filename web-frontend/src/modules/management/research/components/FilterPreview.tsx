@@ -34,7 +34,7 @@ export function FilterPreview({ acceleration, gyroscope, bounds, selection, curs
         <FilterSelect ariaLabel="Experimental filter cutoff" className="w-full sm:w-44" value={String(cutoff)} onValueChange={value => setCutoff(Number(value) as FilterCutoff)}
           options={FILTER_CUTOFFS.map(value => ({ value: String(value), label: `${value} Hz cutoff` }))} />
       </div>
-      <p className="text-xs text-muted-foreground">Experimental · first 0.5 s after each restart excluded. Peak timing may change.</p>
+      <p className="text-xs text-muted-foreground">Experimental; excludes the first 0.5 s after each restart.</p>
       <SignalTimeline title={channel === "acceleration" ? "Acceleration · before / after" : "Gyroscope · before / after"} unit={unit} points={signals.before}
         comparison={{ points: signals.after, label: "After" }} domain={bounds} selection={selection} cursor={cursor} onCursor={onCursor} onSelection={onSelection}
         syncId={syncId} includeZero={false} headingLevel="h5" />
@@ -44,8 +44,9 @@ export function FilterPreview({ acceleration, gyroscope, bounds, selection, curs
           <Button size="sm" variant="outline" disabled={selection[0] === bounds[0] && selection[1] === bounds[1]} onClick={() => onSelection([...bounds])}>Select whole window</Button>
         </div>
         <DetailsList items={[["Compared / warm-up / missing rows", `${comparison.paired} / ${comparison.warmup} / ${comparison.missing}`]]} />
-        {comparison.paired === 0 ? <p className="text-xs text-muted-foreground">No post-warm-up values in this selection.</p> : <Table>
-          <TableHeader><TableRow><TableHead>Phone axis</TableHead><TableHead>Std. before / after ({unit})</TableHead><TableHead>Peak |axis| before / after ({unit})</TableHead><TableHead>Peak-time difference (ms)</TableHead></TableRow></TableHeader>
+        {comparison.paired === 0 ? <p className="text-xs text-muted-foreground">No values after warm-up.</p> : <Table>
+          <caption className="pb-2 text-left text-xs text-muted-foreground">Values: before / after</caption>
+          <TableHeader><TableRow><TableHead>Axis</TableHead><TableHead>Std. deviation ({unit})</TableHead><TableHead>Peak |axis| ({unit})</TableHead><TableHead>Peak-time difference (ms)</TableHead></TableRow></TableHeader>
           <TableBody>{comparison.axes.map(axis => <TableRow key={axis.axis}>
             <TableCell className="font-medium">{axis.axis.toUpperCase()}</TableCell>
             <TableCell className="tabular-nums">{axis.before!.std.toFixed(5)} / {axis.after!.std.toFixed(5)}</TableCell>
@@ -53,7 +54,7 @@ export function FilterPreview({ acceleration, gyroscope, bounds, selection, curs
             <TableCell className="tabular-nums">{axis.peakTimeDifferenceMs === null ? "Unavailable" : axis.peakTimeDifferenceMs.toFixed(0)}</TableCell>
           </TableRow>)}</TableBody>
         </Table>}
-        {comparison.paired > 0 && <p className="text-xs text-muted-foreground">Largest peaks may represent different movements; their time difference is not event latency.</p>}
+        {comparison.paired > 0 && <p className="text-xs text-muted-foreground">Peak times may describe different movements, so their difference is not event delay.</p>}
       </div>
       <details className="text-xs"><summary className="min-h-8 cursor-pointer font-medium text-primary">Filter details</summary>
         <div className="mt-3 space-y-3"><DetailsList items={[
@@ -61,7 +62,9 @@ export function FilterPreview({ acceleration, gyroscope, bounds, selection, curs
           ["Channel segments", String(signals.segments)], ["Numerator b", result.coefficients.b.map(value => value.toFixed(9)).join(" / ")],
           ["Denominator a", result.coefficients.a.map(value => value.toFixed(9)).join(" / ")],
         ]} />
-        <p className="leading-relaxed text-muted-foreground">Single-pass causal second-order Butterworth, initialized from the first valid vector and restarted independently per channel after missing rows. Warm-up output is hidden; comparisons use identical remaining rows. No future samples or reverse pass, gap filling, gravity removal, saved settings or harsh-event thresholds. Reduced variation is not proof of removed noise. Peak-time difference compares largest absolute components and is not measured event latency; the largest peaks may represent different movements.</p>
+        <p className="leading-relaxed text-muted-foreground">Causal second-order Butterworth: starts from the first valid reading and restarts each channel after gaps.</p>
+        <p className="leading-relaxed text-muted-foreground">Comparisons use matching rows after warm-up; gaps stay missing and gravity stays included.</p>
+        <p className="leading-relaxed text-muted-foreground">Unsaved preview; lower variation does not prove noise removal.</p>
         </div>
       </details>
     </>)}

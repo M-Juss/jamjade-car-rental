@@ -7,9 +7,9 @@ export function SignalStatisticHelp({ kind, channel, count }: {
   const sensor = gyroscope ? "gyroscope" : channel === "accelerometer" ? "accelerometer"
     : channel === "linear_acceleration" ? "linear acceleration" : channel === "gravity" ? "gravity" : "rotation vector";
   const descriptions = {
-    peak: "The largest combined X/Y/Z magnitude from one reading in the selected interval.",
-    rms: "Root mean square (RMS) summarizes the overall magnitude across all readings in the selected interval. Larger readings have more influence.",
-    gyroscope: "Root mean square (RMS) summarizes rotation around all three phone axes across the selected interval. Closer to zero means less rotational activity overall.",
+    peak: "The highest X/Y/Z magnitude in this interval.",
+    rms: "RMS summarizes all magnitudes in this interval, giving larger values more weight.",
+    gyroscope: "RMS combines all X/Y/Z rotation readings; closer to zero means less rotation overall.",
   };
   return <>
     <p>{descriptions[kind]}</p>
@@ -17,10 +17,10 @@ export function SignalStatisticHelp({ kind, channel, count }: {
       <p>mᵢ = √(Xᵢ² + Yᵢ² + Zᵢ²)</p>
       <p>{kind === "peak" ? "Peak = max(m₁, …, mₙ)" : "RMS = √((m₁² + … + mₙ²) / n)"}</p>
     </div>
-    <p className="text-muted-foreground">Xᵢ, Yᵢ and Zᵢ come from the same {sensor} reading. mᵢ is its magnitude. n = {count.toLocaleString()} valid {sensor} readings in this selection.</p>
-    {gyroscope ? <p className="text-muted-foreground">Measured in rad/s. This describes rotation rate, not travel speed or total angle turned.</p>
-      : channel === "accelerometer" || channel === "gravity" ? <p className="text-muted-foreground">This channel includes gravity. A resting phone can have a magnitude near 9.8 m/s².</p>
-      : channel === "rotation_vector" ? <p className="text-muted-foreground">Uses only the first three rotation-vector components. Values are unitless, not acceleration or angles in degrees.</p>
-      : <p className="text-muted-foreground">Measured in m/s², using Android&apos;s gravity-removed acceleration estimate.</p>}
+    <p className="text-muted-foreground">Xᵢ/Yᵢ/Zᵢ = one {sensor} reading; mᵢ = its magnitude; n = {count.toLocaleString()} valid readings.</p>
+    {gyroscope ? <p className="text-muted-foreground">rad/s measures rotation rate, not travel speed or total angle.</p>
+      : channel === "accelerometer" || channel === "gravity" ? <p className="text-muted-foreground">Includes gravity: a resting phone can read about 9.8 m/s².</p>
+      : channel === "rotation_vector" ? <p className="text-muted-foreground">Uses unitless XYZ components, not acceleration or degrees.</p>
+      : <p className="text-muted-foreground">Android&apos;s acceleration estimate with gravity removed (m/s²).</p>}
   </>;
 }

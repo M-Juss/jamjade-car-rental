@@ -124,12 +124,12 @@ function NativeSignals({ inspection }: { inspection: NativeInspection }) {
     <FilterSelect value={channel} onValueChange={setChannel} ariaLabel="Original sensor channel" className="w-full sm:w-80" options={(["accelerometer", "linear_acceleration", "gravity", "rotation_vector"] as NativeChannel[]).map(value => ({ value, label: channelLabels[value] }))} />
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">{seconds(start)}–{seconds(end)} of {seconds(record.duration_ms)}</p><div className="flex flex-wrap gap-2">
       <FilterSelect ariaLabel="Signal window length" className="w-36" value={String(windowSize)} onValueChange={value => { setWindowSize(Number(value)); setStart(0); }} options={[{ value: "5000", label: "5 seconds" }, { value: "10000", label: "10 seconds" }, { value: "30000", label: "30 seconds" }]} />
-      <Button size="sm" variant="outline" disabled={start <= 0 || loading} onClick={() => setStart(v => Math.max(0, v - windowSize))}>Previous interval</Button><Button size="sm" variant="outline" disabled={end >= record.duration_ms || loading} onClick={() => setStart(end)}>Next interval</Button></div></div>
+      <Button size="sm" variant="outline" disabled={start <= 0 || loading} onClick={() => setStart(v => Math.max(0, v - windowSize))}>Previous</Button><Button size="sm" variant="outline" disabled={end >= record.duration_ms || loading} onClick={() => setStart(end)}>Next</Button></div></div>
     {loading || error ? <ResearchState loading={loading} error={error} onRetry={() => setRevision(v => v + 1)} /> : <>
-      {!points.length && <p className="text-sm text-muted-foreground">No readings for this channel in the selected interval.</p>}
+      {!points.length && <p className="text-sm text-muted-foreground">No readings in this interval.</p>}
       <div ref={timeline} className="scroll-mt-4"><SignalTimeline title={channelLabels[channel]} unit={unit} points={points} domain={[start, end]} selection={selection} cursor={cursor} onCursor={setCursor} onSelection={setSelection} syncId={record.id} includeZero={false} /></div>
       <SignalTimeline title="Gyroscope" unit="rad/s" points={gyro} domain={[start, end]} selection={selection} cursor={cursor} onCursor={setCursor} onSelection={setSelection} syncId={record.id} includeZero={false} />
-      <div className="grid gap-4 lg:grid-cols-2"><div className="space-y-3 rounded-xl border border-border p-4"><h3 className="text-sm font-semibold">Inspect an interval</h3>
+      <div className="grid gap-4 lg:grid-cols-2"><div className="space-y-3 rounded-xl border border-border p-4"><h3 className="text-sm font-semibold">Selected interval</h3>
         {(["Start", "End"] as const).map((label, index) => <div key={label}><label htmlFor={`native-${label}`} className="flex justify-between text-xs"><span>{label}</span><span>{seconds(selection[index])}</span></label><input id={`native-${label}`} type="range" className="h-11 w-full accent-primary" min={start} max={end} step={1} value={selection[index]} onChange={event => { const v = Number(event.target.value); setSelection(index === 0 ? [Math.min(v, selection[1]), selection[1]] : [selection[0], Math.max(v, selection[0])]); }} /></div>)}
         <DetailsList items={[
           ["Readings", String(stats?.count ?? 0)],
@@ -137,7 +137,7 @@ function NativeSignals({ inspection }: { inspection: NativeInspection }) {
           ["RMS magnitude", stats ? `${fixed(stats.rms, 4)} ${unit}` : "Unavailable", <SignalStatisticHelp key="rms" kind="rms" channel={channel} count={stats?.count ?? 0} />],
           ["Gyroscope RMS", gyroStats ? `${fixed(gyroStats.rms, 4)} rad/s` : "Unavailable", <SignalStatisticHelp key="gyroscope" kind="gyroscope" channel="gyroscope" count={gyroStats?.count ?? 0} />],
         ]} />
-      </div><div className="space-y-3 rounded-xl border border-border p-4"><h3 className="text-sm font-semibold">Selected-axis statistics ({unit})</h3><DetailsList items={[
+      </div><div className="space-y-3 rounded-xl border border-border p-4"><h3 className="text-sm font-semibold">Axis statistics ({unit})</h3><DetailsList items={[
         ["Mean X / Y / Z", stats ? stats.mean.map(v => v.toFixed(4)).join(" / ") : "Unavailable"],
         ["Std. deviation X / Y / Z", stats ? stats.std.map(v => v.toFixed(4)).join(" / ") : "Unavailable"],
         ["Gyroscope mean X / Y / Z (rad/s)", gyroStats ? gyroStats.mean.map(v => v.toFixed(5)).join(" / ") : "Unavailable"],
