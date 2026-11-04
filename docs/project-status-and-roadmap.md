@@ -1,10 +1,11 @@
 # Project status and roadmap
 
-Last reconciled for telematics: **2026-10-26**, including native v2 collection,
+Last reconciled for telematics: **2026-11-04**, including native v2 collection,
 explicit resumable upload, server verification, protected native signal review
-and local stationary/forward-reference previews with automatic interval suggestions
-and fixed vehicle-axis plots, plus experimental local synchronization and low-pass
-comparison previews. Saved references, validated filter settings and reproducible server processing,
+and stationary/forward-reference preparation with automatic interval suggestions,
+separate Signals/Prepare data tabs, and saved bounded server processing runs with run-specific
+references and experimental reuse for a separate maneuver trial. Reusable accepted
+calibration, validated filter settings, full-recording processing/export,
 AI and broader Redmi validation remain pending. Rental-release
 behavior is unchanged.
 
@@ -59,7 +60,7 @@ Payment-only issuance now creates an immutable Rental Information and Payment Re
 | --- | --- | --- |
 | Native acquisition and recording contract | Native v2 recorder/export APK, fixed preset, durable groups/numbering, phone power and short stationary/locked smoke checks | Physical axes, controlled noise characterization, longer background and interruption checks remain required |
 | Recording inspection workflow | Native v2 original-signal inspection is the active workspace; legacy v1 navigation retired | Explicit upload/retry, encrypted originals, server integrity/timing summaries and bounded native windows implemented; automatic background transfer, remote deletion UI and annotation revisions pending |
-| Processing and export | Local reference/projection previews, automatic interval suggestions, 50 Hz synchronization and experimental 3/5/8 Hz low-pass comparisons implemented; remaining pipeline is an agreed target | Browser-only pilot diagnostics; accepted alignment, saved/versioned references, dynamic gravity correction, live/server synchronization, validated filter settings, features and export remain pending |
+| Processing and export | Reference preparation plus saved/versioned bounded server synchronization → filtering → vehicle axes, including explicit experimental reference reuse for maneuver trials; Signals opens the latest result and exposes comparison on demand | Accepted reusable alignment, full-recording/live state, dynamic gravity correction, validated filters, features and export remain pending |
 | Dataset and classifier | Agreed target | Independent observed labels/session splits, baseline comparison, held-out metrics and automatic-reverse evaluation |
 | Live events, report and score | Agreed target | Server-owned inference events, website alerts, deduplication, late-data finalization and report notification |
 

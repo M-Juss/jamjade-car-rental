@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { spawnSync } from "node:child_process";
 
 function load(file, dependencies = {}) {
   const exports = {};
@@ -26,6 +27,66 @@ const { synchronizationPreview, synchronizationCounts } = synchronized;
 const { butterworthCoefficients, lowPassPreview, filterComparison } = load("./filter-preview.ts", { "./synchronization-preview": synchronized });
 const origin = "9007199254741001";
 const event = (offset, values = [1, 2, 3]) => ({ sensor_timestamp_ns: String(BigInt(origin) + BigInt(offset)), values });
+
+// The authoritative PHP pipeline must agree with the independent existing browser mathematics.
+// Synthetic only: tilted mount, asynchronous clocks, vibration and independent channel outages.
+for (const cutoff of [3, 5, 8]) test(`saved PHP processing matches browser stages at ${cutoff} Hz without mutating sources`, () => {
+  const u = [0, Math.sin(.17), Math.cos(.17)];
+  const f = [Math.sin(.4), Math.cos(.4) * Math.cos(.17), -Math.cos(.4) * Math.sin(.17)];
+  const streams = { acceleration: [], gyroscope: [] };
+  for (const [channel, offset] of [["acceleration", 5], ["gyroscope", 13]]) {
+    for (let time = offset; time <= 5000; time += 20) {
+      if (channel === "acceleration" && time > 2600 && time < 2700 || channel === "gyroscope" && time > 2200 && time < 2320) continue;
+      const t = time / 1000;
+      const motion = time >= 1000 && time <= 1800 ? .8 + .4 * Math.sin(time / 100)
+        : time >= 3500 && time <= 4300 ? -.7 - .25 * Math.sin(time / 100) : 0;
+      const values = channel === "acceleration"
+        ? u.map((v, i) => 9.81 * v + f[i] * motion + .02 * Math.sin(2 * Math.PI * 13 * t + i))
+        : u.map((v, i) => [0.001, -.002, .003][i] + v * .04 * Math.sin(2 * Math.PI * t));
+      streams[channel].push({ ...event(time * 1e6, values), sequence: streams[channel].length });
+    }
+  }
+  const config = { start_ms: 0, end_ms: 5000, cutoff_hz: cutoff, confirmed: true,
+    ranges: { rest: [100, 900], starting: [1000, 1800], stopping: [3500, 4300] } };
+  const original = JSON.stringify(streams);
+  const ref = forwardReferencePreview(streams.acceleration, streams.gyroscope, origin, config.ranges, [0, 5000]);
+  assert.equal(ref.available, true, ref.reason);
+  const grid = synchronizationPreview(streams.acceleration, streams.gyroscope, origin, [0, 5000]);
+  assert.equal(grid.available, true, grid.reason);
+  const filtered = lowPassPreview(grid.acceleration, grid.gyroscope, cutoff);
+  assert.equal(filtered.available, true, filtered.reason);
+  const php = spawnSync("php", ["-r", `require '../backend/vendor/autoload.php';
+    $v=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);
+    echo json_encode((new App\\Services\\RcMotionProcessing)->calculate($v['acceleration'],$v['gyroscope'],$v['origin'],$v['config']),JSON_THROW_ON_ERROR);`],
+  { input: JSON.stringify({ ...streams, origin, config }), encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+  assert.equal(php.status, 0, php.stderr);
+  const actual = JSON.parse(php.stdout);
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} differs from ${b}`);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) near(actual.reference.rotation_rfu[i][j], ref.rotationRfu[i][j]);
+  near(actual.reference.variance_share, ref.varianceShare);
+  near(actual.reference.angle_from_phone_top, ref.angleFromPhoneTop);
+  near(actual.reference.stop_opposition_degrees, ref.stopOppositionDegrees);
+  assert.deepEqual(actual.counts, JSON.parse(JSON.stringify(grid.counts)));
+  for (let index = 0; index < grid.rows.length; index++) {
+    assert.equal(actual.rows[index].sensor_timestamp_ns, grid.rows[index].sensorTimestampNs);
+    for (const channel of ["acceleration", "gyroscope"]) {
+      assert.equal(actual.rows[index][channel].state, grid.rows[index][channel].state);
+      assert.deepEqual(actual.rows[index][channel].source_times_ns, JSON.parse(JSON.stringify(grid.rows[index][channel].sourceTimesNs)));
+      assert.equal(actual.signals[channel].warmup[index], filtered[channel].warmup[index]);
+      for (const stage of ["before", "after"]) {
+        const point = filtered[channel][stage][index];
+        const output = actual.signals[channel][stage][index];
+        assert.equal(output.time, point.time);
+        if (point.x === null) { assert.equal(output.x, null); assert.equal(output.y, null); assert.equal(output.z, null); continue; }
+        const offset = channel === "acceleration" ? ref.phases[0].acceleration.mean : ref.phases[0].gyroscope.mean;
+        const v = [point.x, point.y, point.z].map((value, axis) => value - offset[axis]);
+        const rfu = ref.rotationRfu.map(row => row.reduce((sum, value, axis) => sum + value * v[axis], 0));
+        near(output.x, rfu[1]); near(output.y, rfu[0]); near(output.z, rfu[2]);
+      }
+    }
+  }
+  assert.equal(JSON.stringify(streams), original);
+});
 
 test("native display subtracts integer nanoseconds before converting relative time", () => {
   const points = nativeSignalPoints([event(1), event(20000001)], origin);

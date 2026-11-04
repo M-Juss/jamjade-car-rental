@@ -1,12 +1,14 @@
 # Telematics and RC Research: central implementation guide
 
-Last reconciled: **2026-10-26**. Scope: Laravel, the Next.js management website,
+Last reconciled: **2026-11-04**. Scope: Laravel, the Next.js management website,
 and the Android-only Expo application. The active workspace uses the native v2
 recorder, explicit resumable chunk upload and protected v2
-signal inspection and local stationary/forward-reference previews with automatic
-reference-interval suggestions, fixed vehicle-axis plots, local synchronization
-and experimental low-pass comparison previews. Validated noise filtering, saved
-references, accepted vehicle alignment and AI remain pending; compilation and
+signal inspection, local stationary/forward-reference preparation with automatic
+reference-interval suggestions, and bounded saved server synchronization/filtering/
+vehicle-axis results, including experimental reuse of a reviewed forward reference
+for a separate maneuver trial. Signals and Prepare data are separate; earlier standalone
+diagnostic panels have been retired. Validated noise filtering, reusable accepted references,
+accepted vehicle alignment and AI remain pending; compilation and
 short recording tests do not establish general Redmi recording reliability.
 
 ## Authority and status
@@ -84,7 +86,7 @@ not an authoritative description of this codebase or a verified industry standar
 | Mobile stack | Expo SDK 54 (`~54.0.37`), React Native 0.81.5, `expo-sensors ~15.0.8`, Android-only local `modules/rc-recorder` Kotlin module | New development build required for the native recorder; Expo Go cannot capture v2 |
 | Builds | Generated Android project; development and standalone preview APK profiles | A successful build does not prove device reliability |
 | Research capture | Collect uses native independent original streams, fixed MN-82S preset, encrypted persistent collection groups/defaults/numbering, automatic phone power metadata, requested 20 ms updates and explicit native Start/Stop | Actual sensor axes/rates, lock-screen continuity, interruption and power behavior require Redmi validation |
-| Research storage and inspection | Encrypted local v2 originals, explicit chunk upload/retry and server verification; protected v2 per-channel windows/statistics, local reference/projection/synchronization previews and experimental low-pass overlays | V1 list retired and old local v1 data removed with an encrypted recovery copy; no validated filter setting, saved research references, accepted vehicle alignment, automatic background transfer queue, dataset export or annotation revisions; remote v2 deletion UI remains pending |
+| Research storage and inspection | Encrypted local v2 originals, explicit chunk upload/retry and server verification; separate signal review and reference preparation; bounded saved server processing with run-specific references and explicit experimental reuse for maneuver trials | V1 list retired; no validated filter setting, reusable accepted alignment, background transfer queue, dataset export or annotation revisions; remote v2 deletion UI remains pending |
 | Calibration | Six readiness checks and five supervised foreground exercises, summary-only evidence | Provisional settings; moving RC/reference accuracy not established |
 | Released rental GPS | Explicit foreground/background latest-location sharing, consent, pause/resume, server eligibility | No continuous rental motion collector, offline recording queue, or route-history collection in this flow |
 | Fleet website | Ongoing rentals, latest-location map, private Reverb invalidations and authorized rereads | No connected AI driving-event dashboard |
@@ -385,9 +387,10 @@ Sources: [fleet service](../backend/app/Services/FleetTrackerService.php),
 ## Target pipeline
 
 This section describes the **complete agreed target**. Native v2 acquisition,
-explicit resumable upload, original-signal inspection and local reference/projection/
-synchronization/filter-comparison previews are implemented subsets. Automatic background transfer,
-reproducible server-owned processing/export, validated noise filtering, reviewed annotation revisions,
+explicit resumable upload, original-signal inspection, local reference preparation,
+and bounded saved server processing runs
+are implemented subsets. Automatic background transfer, full-recording processing/export,
+validated noise filtering, reviewed annotation revisions,
 ML, scores and reports remain pending.
 
 ```mermaid
@@ -794,6 +797,8 @@ training approval or AI predictions are assigned by this workflow.
 
 #### Time synchronization preview (2026-10-26)
 
+**UI superseded on 2026-11-04:** the separate panel was removed during the Signals cleanup. The mathematics and tests remain; use the saved combined result described below. The following records the earlier diagnostic behavior.
+
 The original Accelerometer view offers **Preview synchronization**, independent
 of the stationary/forward-reference confirmations. It adds two synchronized
 **phone-axis** plots below original interval statistics. Existing raw plots,
@@ -857,13 +862,14 @@ live processing needs bounded buffering for the later bracketing event; no
 zero-latency or live/offline parity has been established.
 
 Sources: [synchronization helper](../web-frontend/src/modules/management/research/synchronization-preview.ts),
-[preview panel](../web-frontend/src/modules/management/research/components/SynchronizationPreview.tsx),
 [linear interpolation definition](https://numpy.org/doc/stable/reference/generated/numpy.interp.html),
 [Android sensor timestamp contract](https://developer.android.com/reference/android/hardware/SensorEvent#timestamp).
 The NumPy reference defines the mathematical basis; no NumPy dependency or its
 default edge-value extension is used in the browser implementation.
 
 #### Vibration filter comparison preview (2026-10-26)
+
+**UI superseded on 2026-11-04:** the separate panel was removed during the Signals cleanup. The mathematics and tests remain; use the saved combined result described below. The following records the earlier diagnostic behavior.
 
 After opening synchronization, **Preview filter** adds a local before/after
 comparison using that exact 50 Hz grid. It does not replace the synchronized
@@ -918,7 +924,6 @@ on held-out evaluation data. Rest/starting/stopping selections in Recording 025
 are pilot comparisons, not a noise-ground-truth dataset or harsh-event thresholds.
 
 Sources: [filter and comparison math](../web-frontend/src/modules/management/research/filter-preview.ts),
-[filter panel](../web-frontend/src/modules/management/research/components/FilterPreview.tsx),
 [Butterworth definition](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.butter.html),
 [steady-state initialization](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter_zi.html),
 [frequency-dependent filter delay](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.group_delay.html).
@@ -927,8 +932,9 @@ the browser. Its routines are not invoked by the app.
 
 #### Stationary-reference preview (2026-10-26)
 
-For captures other than `forward_reference`, the native inspector's Accelerometer
-including gravity view adds **Stationary reference** beneath the selected-interval
+For captures other than `forward_reference`, **Prepare data** now contains the
+stationary-reference check and its original-acceleration chart. The earlier UI
+placed **Stationary reference** beneath the selected-interval
 statistics. The operator confirms that
 the RC was stationary and the phone untouched throughout the selected interval,
 then explicitly requests a preview. Changing the interval, channel or recording
@@ -958,8 +964,9 @@ it is not silently interpolated or automatically accepted as a usable calibratio
 Results and the operator checkbox exist only in page memory. They do not submit
 an annotation, save a reference ID, change source metadata, alter booking setup,
 apply a correction, create a vehicle rotation matrix or authorize training.
-Future persisted references must be versioned and recomputed/validated by Laravel
-from the authorized originals, not trusted from these browser values. Continuous
+Persisted references must be versioned and recomputed/validated by Laravel
+from the authorized originals, not trusted from these browser values. The saved
+combined-run workflow below now does this for run-specific forward references. Continuous
 gravity estimation during RC motion remains separate work; do not subtract this
 fixed resting mean throughout turns or changing pitch/roll and call it cleaned motion.
 
@@ -968,6 +975,8 @@ Sources: [preview mathematics](../web-frontend/src/modules/management/research/s
 [Android motion sensor conventions](https://developer.android.com/develop/sensors-and-location/sensors/sensors_motion).
 
 #### Forward-reference preview (2026-10-26)
+
+**UI updated on 2026-11-04:** reference selection now belongs to **Prepare data**. **Inspect** highlights a proposed range in its single original-acceleration chart. Manual assignment is under **Adjust intervals**. Confirming the procedure computes the same local candidate automatically; no separate preview button or vehicle-axis charts are needed before processing. The mathematical contract below is unchanged; older button names describe the previous UI.
 
 For `forward_reference` captures, the accelerometer view instead shows **Forward
 reference**. It proposes Resting, Starting and Stopping intervals automatically
@@ -1059,8 +1068,10 @@ change assigned ranges. Channel/window,
 recording, retry or page changes discard the page-only references. Nothing is
 submitted, saved, applied to originals or linked to mobile setup. Research labels
 used to orient this preview must never become required live direction inputs.
-Dynamic pitch/roll gravity correction, filtering, versioned server-owned references
-and physical validation remain separate increments.
+The separate saved-run action below recomputes a run-specific reference and
+filtered projection on Laravel; it does not save this browser candidate.
+Dynamic pitch/roll gravity correction, reusable accepted references and physical
+validation remain separate increments.
 
 Sources: [forward mathematics](../web-frontend/src/modules/management/research/forward-reference.ts),
 [automatic interval suggestions](../web-frontend/src/modules/management/research/reference-suggestions.ts),
@@ -1068,6 +1079,8 @@ Sources: [forward mathematics](../web-frontend/src/modules/management/research/f
 [PCA definition](https://scikit-learn.org/stable/modules/decomposition.html#pca).
 
 #### Vehicle-axis window preview (2026-10-26)
+
+**UI superseded on 2026-11-04:** the separate panel was removed during the Signals cleanup. The mathematics and tests remain; use the saved combined result described below. The following records the earlier diagnostic behavior.
 
 After a confirmed forward-reference preview succeeds, **Vehicle axes · preview**
 plots all original acceleration and gyro events in the currently loaded window,
@@ -1110,12 +1123,12 @@ interpolated, smoothed, resampled or assigned training labels.
 Reassigning a reference, restoring suggestions, unchecking confirmation, or
 changing the channel/window discards these local plots with the candidate. Page
 reload loses them. The preview neither saves a matrix nor alters recording files,
-mobile setup, rental release or accepted alignment. Versioned server-owned
-references, dynamic orientation/gravity estimation and tested filtering remain
-separate work.
+mobile setup, rental release or accepted alignment. The separate saved-run action
+below combines synchronization/filtering/projection with a server-owned
+run-specific reference. Reusable accepted references, dynamic orientation/gravity
+estimation and validated filter selection remain separate work.
 
 Sources: [projection and interval statistics](../web-frontend/src/modules/management/research/vehicle-axis-preview.ts),
-[vehicle preview panel](../web-frontend/src/modules/management/research/components/VehicleAxisPreview.tsx),
 [shared timeline](../web-frontend/src/modules/management/research/components/SignalTimeline.tsx).
 
 Keep capture (`preparing`, `recording`, `stopping`, `stopped`, `interrupted`,
@@ -1143,6 +1156,146 @@ Uninstall/app-data clearing or lost/invalidated keys makes local-only originals
 unrecoverable. A missing key is never silently replaced while files remain; the
 UI lists unavailable records and permits explicit deletion. Account removal has
 no new local purge integration; access still requires fresh server authorization.
+
+#### Saved combined processing runs (2026-11-04)
+
+The recording inspector separates **Signals**, **Prepare data**, **Data quality**
+and **Setup & source**. For a forward-reference capture, Signals automatically
+opens the latest saved result; no result is created or accepted automatically.
+It shows one filtered chart (Forward acceleration initially, Up-axis rotation
+when switching sensors), a compact mean/absolute-peak table, and relevant
+experimental/short-reference warnings. **Compare before / after** adds the
+synchronized pre-filter series on demand. **Review interval** selects Whole
+window, Resting, Starting or Stopping; drag selection is still supported, with
+keyboard/touch sliders in Technical details. Saved-run selection appears only
+when there is more than one result; pagination appears only when needed.
+Original channels are accessible through **Original readings**, one sensor chart
+at a time, with interval statistics/timing collapsed. The duplicate top-level
+largest-gap metric was removed; it remains in Data quality.
+
+**Prepare data** owns the bounded source window, automatically suggested reference
+intervals, one original-acceleration chart, **Inspect**, collapsed **Adjust intervals**,
+the operator confirmation, cutoff selection and **Process & save run**. Confirmation
+computes the local solvability preview automatically; algorithm/PCA/matrix details
+are collapsed under Reference diagnostics. Saving returns to Signals and opens
+the server result. Changing assigned ranges resets confirmation. Stationary/other
+captures retain their unsaved stationary check under Prepare data. The separate
+browser synchronization, filter comparison and raw vehicle-projection panels were
+removed; pure helpers/tests and the combined server pipeline remain intact.
+No originals, saved runs, API contracts, processing mathematics or annotations
+were changed by this UI reorganization. Recording/route changes still discard
+unsaved page state.
+
+`rc-sync-filter-fixed-frame-v1` is a bounded offline pilot, not accepted calibration,
+training approval, dynamic orientation correction or live inference:
+
+1. Laravel reads the authenticated owner's verified v2 recording and verifies the
+   encrypted manifest and relevant original chunks. Self-fitting uses `forward_reference`
+   recordings and a window of at most 30 seconds. Separate `maneuver_trial` windows
+   can use a saved reference through the reuse contract below.
+2. Resting, Starting and Stopping intervals must be ordered, nonoverlapping and
+   at least 500 ms within that window. Each channel needs at least two readings
+   per reference interval. The full loaded channel refuses duplicate/backward
+   timestamps, sequence discontinuities or invalid components; it never sorts,
+   repairs or silently drops them. Numerical solvability does not certify quality.
+3. The server recomputes `horizontal-pca-v1` **from independent original channels**.
+   It saves the RFU matrix, original resting acceleration/gyro means, PCA
+   diagnostics and warnings. Browser matrices/results are never trusted or stored
+   as authority. Self-fitted references belong to that run/window; explicit reuse
+   links a separate research run to its source. Neither changes rental setup.
+4. It performs `linear-grid-50hz-v1` interpolation, then
+   `butterworth2-causal-50hz-v1`, then fixed RFU projection. Constants remain
+   20 ms origin-anchored grid, 60 ms maximum interpolation bracket and 500 ms
+   excluded warm-up per valid segment/channel. No extrapolation or future-looking
+   reverse filter pass is used. Each missing channel restarts independently.
+5. The **Before** series is synchronized data projected with the same fixed frame
+   and resting offsets. **After** filters phone XYZ and then projects/subtracts
+   the original resting means. Both chart slots are Forward/Right/Up; matrix rows
+   remain Right/Forward/Up. Gaps and warm-up remain null. Comparisons use only
+   matching post-warm-up rows. Fixed rest subtraction does not track changing gravity.
+
+`StoreRcProcessingRunRequest` and `src/validations/research/processing-run.ts` own
+the create contract: window bounds, `cutoff_hz`, affirmative `confirmed`, and
+three exact two-element `ranges` for self-fitting, or `reference_run_id` plus
+affirmative `same_mount_confirmed` for reuse (target ranges prohibited).
+Recording eligibility, ownership, integrity,
+duration containment and axis solvability remain server checks. The website
+uses its existing stateful cookie/CSRF HTTP service; mobile contracts are unchanged.
+GET/POST `/admin/rc-research/native-recordings/{recording}/processing-runs` and
+GET `.../processing-runs/{run}` retain active Admin/research-enabled and owner
+boundaries, return private/no-store responses, and bind a run to its recording.
+Creation is additionally throttled to 10 requests/minute. History is paginated
+at a maximum of 10; list responses contain metadata, never sample arrays.
+
+`rc_processing_runs` stores only identity/version/cutoff, an optional restricted
+foreign key to its source reference run, configuration fingerprint,
+private payload path/hash and creation time. The complete result (config,
+reference, coefficients/policies, original manifest/inventory hashes, row
+provenance/source timestamps and before/after arrays) is encrypted through the
+existing Laravel application encryption boundary in dedicated private v2 files.
+No source or derived high-volume samples go into database rows, public assets,
+ordinary recording-list responses or logs. There are at most 1,501 grid rows,
+a 4 MiB plaintext result budget and 100 runs per recording. File hashes are
+verified on reads/retries; failed database saves clean up the new file.
+
+The server-generated SHA-256 fingerprint binds source identity/hashes, pipeline
+version and normalized parameters/intervals. Identical retries reuse the same
+immutable result; changing a cutoff or interval creates a different run.
+Algorithm/constants changes must bump the pipeline version. Existing artifacts
+remain readable without recomputation under newer code. Remote deletion,
+processing retention cleanup, full-trip streaming state, live/offline feature
+parity and training export are still pending. Rollback removes only the new
+metadata table; private run files require a separate deliberate retention policy.
+
+Sources: [server mathematics](../backend/app/Services/RcMotionProcessing.php),
+[run storage](../backend/app/Services/RcProcessingRunService.php),
+[Admin workflow](../web-frontend/src/modules/management/research/components/ProcessingRuns.tsx).
+
+#### Experimental forward-reference reuse
+
+`rc-reused-fixed-frame-v1` processes a separate uploaded, verified
+`maneuver_trial` using the axes and original resting acceleration/gyro offsets
+from an original `rc-sync-filter-fixed-frame-v1` forward-reference run. It never
+fits PCA from the maneuver. The target retains its own original clock, window,
+channel values and hashes. Source Resting/Starting/Stopping ranges are provenance
+on the source timeline, never target intervals, labels or runtime direction inputs.
+The original self-fitting version and fingerprints are unchanged.
+
+In **Prepare data**, choose a saved reference, review it through its recording
+link, confirm the same physical phone/RC/mount was used without moving or
+remounting the phone, choose the experimental cutoff and Process & save run.
+Success opens Signals, with one reference link. Only Whole window/custom
+selection is offered for a maneuver; reference phases are collapsed technical data.
+No Android update is needed for this website/backend increment.
+
+GET `.../native-recordings/{recording}/reference-runs` returns at most ten
+owner-bound metadata choices per page, with compatibility and an unavailable
+reason. Reuse requires a different completed forward recording captured before
+the target, the same saved group UUID, complete matching phone/sensor conventions,
+RC/mount/preset and surface/slope metadata. Sensor details include the vendor,
+version, units/layout/range/resolution and requested acquisition settings. A new
+app collection session is allowed; its changing session ID is not a device ID.
+Matching models and metadata cannot prove physical identity or mount rigidity;
+the operator confirmation remains necessary. Remounting requires a new reference.
+
+A source resting range of **at least five seconds** is a conservative pilot entry
+rule, not a validated calibration-quality or accuracy threshold. Shorter existing
+runs remain readable but cannot be reused. Recovered/incomplete sources and
+references already borrowed from another run are ineligible. This increment does
+not introduce accepted calibration status, an automatic calibration-validity
+monitor, dynamic gravity removal, training labels or learned harsh thresholds.
+
+At submission Laravel revalidates compatibility, verifies the saved source
+artifact and reopens/hash-verifies original source chunks. It recomputes the
+source axes/offsets using its original configuration and requires them to match
+the saved version. Client matrices are ignored. The encrypted target result
+records the source run/version/fingerprint/payload and original hashes, source
+window/ranges, setup fingerprint and confirmation. Its own fingerprint includes
+that origin snapshot; identical retries are idempotent. The source foreign key
+restricts deletion. Existing window/filter/gap/warm-up policies remain unchanged;
+full-recording/live continuity, retention/export and physical validation remain
+pending. Reusing a frame assumes unchanged orientation and resting offsets;
+changes in tilt or gyro bias can invalidate that assumption during a trial.
 
 #### Required evidence before moving to formal trials
 
@@ -1213,9 +1366,11 @@ location history, and ordinary significant-event lists.
 
 ### Preprocessing and sampling
 
-Process original recordings reproducibly: inspect integrity -> align channels
-with bounded interpolation -> establish gravity/mount references -> reduce noise
-without erasing genuine maneuvers -> generate windows/features. Specify exact
+Process original recordings reproducibly: inspect integrity -> establish explicit
+gravity/mount references -> align channels with bounded interpolation -> reduce
+noise without erasing genuine maneuvers -> rotate into vehicle axes -> generate
+windows/features. The current pilot fits its fixed reference from original
+channels before applying synchronization/filtering to the window. Specify exact
 units, axes, timing, warmup, filter behavior, missing-data policy, and versions.
 Use filtering appropriate to live operation; offline future-looking processing
 must not create a falsely favorable live-inference evaluation. Apply appropriate
@@ -1316,7 +1471,7 @@ the report increment without widening research tokens to unrelated mobile APIs.
 | --- | --- | --- |
 | 1. Recording contract/service | Local native v2 implemented with encrypted durable files, metadata, explicit lifecycle and recovery; compiled development APK | Actual independent timestamps, exportable recordings, screen-lock and interruption tests on Redmi remain required |
 | 2. Inspection workflow | V1/native v2 original review, explicit resumable upload, verified files, channel windows and unlabeled states implemented; annotation revisions and automatic transfer pending | Real trials visible and traceable; authorization/corruption/retry checks exercised; physical recovery and broader network-failure testing remain |
-| 3. Reproducible processing | Research references, quality reports, synchronization/filtering/features, export manifest | Original data preserved; plots reviewed; live/offline parity and rate comparisons |
+| 3. Reproducible processing | Local diagnostics and saved bounded server synchronization/filtering/projection with explicit experimental forward-reference reuse implemented; quality approval, accepted calibration, features/export remain pending | Original data preserved; plots reviewed; live/offline parity and rate comparisons |
 | 4. Dataset/model | Reviewed annotations, split sessions, baseline/model evaluation, versioned bundle | Held-out metrics, normal reverse/confounder tests, uncertainty and limits reported |
 | 5. Live AI/report | Server-owned event ingestion, admin alerts, deduplication, finalization, score and notification | End-to-end delay, offline recovery, no duplicate deductions, incomplete-report handling, recipient access |
 
@@ -1327,6 +1482,152 @@ window/stride, thresholds, dataset size, automatic direction method, score formu
 and hosting capacity are experimental or implementation decisions, not established facts.
 
 ## Verification and historical evidence
+
+- **2026-11-04 Recording 033 real reference reuse:** The user uploaded a
+  `maneuver_trial` and confirmed one normal forward start–stop without reversing,
+  with the physical phone/mount unchanged since 031. The verified/stopped upload
+  was **17.407 s**, with **872 acceleration / 867 gyro** readings, approximately
+  **50.51 / 50.54 Hz**, largest gaps **29.03 / 19.79 ms**, and no sequence gaps,
+  duplicate/backward timestamps or out-of-interval readings. In Admin, 031's
+  saved 5 Hz reference was offered as compatible; the confirmed reuse submitted
+  successfully and opened a saved `rc-reused-fixed-frame-v1` result at **5 Hz**.
+  Technical details and a read-only artifact check verified the unchanged source
+  axes/resting offsets, source-phase provenance kept on source time, and the
+  target's own 0–17.407 s window without copied phase ranges. The target had
+  **871 grid / 857 paired / 832 filtered paired rows**, with edge exclusions
+  and per-channel warm-up retained. The start/brake waveform was visible.
+  Selected quiet intervals **1.5–5.0 s** and **13.0–16.5 s** had filtered Forward
+  means **0.0150 / 0.0270 m/s²** and standard deviations **0.00356 / 0.00384 m/s²**;
+  Right means were **0.0073 / 0.0465 m/s²**. These residuals remain experimental
+  fixed-frame diagnostics, not validated stillness/quality limits. This establishes
+  one real saved-reference reuse path, not general mount validity, classifier
+  accuracy, cutoff selection or full-trip reliability. The recording remains
+  Unlabeled; the normal-drive description is user-reported, not an AI label or
+  persisted observer interval. Repeatability and formal annotations remain pending.
+  No application code or mobile build changed; documentation content review and
+  `git diff --check` passed.
+- **2026-11-04 Recording 031 after remount:** The user reported a fresh forward
+  reference after remounting, then confirmed stationary → forward → brake without
+  reversing and a fixed phone (small steering corrections allowed). The private
+  upload was verified/stopped: **18.164 s**, **910 accelerometer / 905 gyro**
+  readings, approximately **50.53 / 50.55 Hz**, largest gaps **23.88 / 19.78 ms**,
+  with no repeated/backward timestamps, sequence gaps or out-of-interval samples.
+  Automatic suggestions selected rest **1.75–6.25 s** (only 4.5 seconds) and
+  stopping **9.00–9.50 s**. Read-only original-channel review found a stronger
+  braking candidate around **11.75–12.00 s** followed by settling; the automatic
+  selector's 500 ms minimum can miss short braking pulses. Suggestions remain
+  review candidates and this selection issue is unresolved in the algorithm.
+  After reviewing adjacent resting diagnostics and the user's physical account,
+  Admin manually selected **rest 1.25–6.25 s**, **start 6.75–7.50 s**, and
+  **stop 11.50–12.25 s** (a wider interval around the short pulse), confirmed
+  the reported sequence/mount and saved a **5 Hz** experimental processing run.
+  The saved artifact's intervals and processed chart were verified in the browser.
+  Original resting data had 253 readings/channel and half-to-half gravity-direction
+  difference about **0.014°**; the fitted axis was **1.58°** from phone top,
+  start variance share **78.6%**, and start/opposite-stop difference **18.03°**.
+  These are pilot diagnostics, not accuracy or physical calibration certification.
+  Browser result showed **894 synchronized paired / 869 filtered paired rows**;
+  edge exclusions and filter warm-up remain explicit. No trained threshold,
+  event label, model, accepted calibration or new mobile build was produced.
+  The fixed frame may be reused only under the existing unchanged-mount/setup
+  checks; a separate real maneuver reuse trial remains pending. Documentation
+  was content-reviewed and `git diff --check` passed; no application code changed.
+- **2026-11-04 experimental reference reuse:** Added owner-bound reference choices,
+  unchanged-physical-phone/mount confirmation, complete matching setup/sensor/group
+  checks, original source replay and encrypted origin provenance for separate
+  maneuver windows. Existing self-fitting version/fingerprints are retained;
+  source phases never become target labels. The nullable restricted source-run
+  migration was applied locally without changing existing recording files.
+  Focused backend tests passed **36 tests / 190 assertions**; full `composer test`
+  passed **959 tests / 5,758 assertions**. Pint, web lint, TypeScript and production
+  build passed. Research mathematics/parity and request-schema checks passed
+  **56 tests**, including preservation of original sources, fresh target clocks,
+  axis/offset reuse, warm-up, idempotency, mismatch/ownership/corruption failures,
+  disabled source choices and prohibited copied target phase ranges. Synthetic
+  source and target native session IDs differ deliberately; no hardware identity
+  is inferred from the phone model. No real maneuver processing result, source
+  reference, label or mobile build was created in this increment. The browser
+  reached the existing Admin login after its session expired; a populated
+  maneuver-form visual check and physical RC reuse remain pending.
+- **2026-11-04 standalone Android test build:** A locally signed ARM64 release
+  APK was built, verified for matching certificate/bundled JS/HTTPS API and
+  installed over the Redmi's development app with `adb install -r`. Existing
+  package/version and app data were retained through the update path; no
+  recording was started or uploaded. The Metro USB forward was removed and the
+  standalone process launched without observed fatal startup markers. After USB
+  disconnected, the user confirmed the app opens without the QR/development screen
+  and the saved recordings are visible. A new unplugged capture/upload remains
+  pending. The current API uses the existing website HTTPS
+  tunnel/proxy, so Laravel, Next.js and that tunnel still need to run for online
+  access; Metro/USB are not app-runtime requirements. The [Android build evidence](android-only-mobile.md#standalone-redmi-test-apk--2026-11-04)
+  records checks and limits. No collector, API contract, alignment or ML change
+  was introduced; standalone launch does not prove background reliability.
+
+- **2026-11-04 Signals organization:** removed the three superseded standalone
+  synchronization/filter/vehicle-axis presentation components; their pure math
+  helpers and regression coverage remain. Signals automatically opened Recording
+  025's existing saved 5 Hz run, with only filtered Forward acceleration enabled,
+  an optional before/after comparison and collapsed technical details. Desktop
+  appearance and the loading-to-populated state were observed through the browser.
+  Browser access subsequently became disabled in Work settings, so revised
+  Prepare data/save-return navigation, original-channel selection, small-screen
+  layout and failure feedback were not interactively reverified. No new run,
+  recording or annotation was written by this cleanup. All **52 math tests**,
+  web lint, TypeScript, production build and `git diff --check` passed. The form's
+  existing Form Request/Zod/service contract was reviewed and kept unchanged;
+  backend and mobile code were not changed in this UI increment. The nearest
+  precedents were the existing research tabs, SignalTimeline, FilterSelect,
+  DetailsList and shared JamJade cards/controls. A two-column tab grid at small
+  widths is implemented but remains a pending visual check. A subsequent user
+  screenshot showed the selected trigger overflowing the list: the shared
+  `group-data-horizontal/tabs:h-8` list height overrode the local `h-auto`, while
+  `min-h-9` triggers remained taller than the list. The recording screen now
+  overrides that same group variant to `h-auto` and sets each trigger to `h-9`;
+  the shared Tabs primitive and other screens are unchanged. Tailwind class
+  merging was checked; browser visual verification remains blocked by Work settings.
+  A further screenshot prompted consolidating the reading-view, sensor, interval,
+  Compare and saved-result controls into one wrapping toolbar. The existing compact
+  FilterSelect height matches the regular Button/icon sizes; saved-result date and
+  Refresh remain together rather than occupying opposite ends of a separate row.
+  Original-reading view/sensor controls share the same composition. Loading/error
+  states retain the view switch. No API or calculation contract changed.
+
+- **2026-11-04 combined processing run:** The additive metadata migration was
+  applied to the local development database. A read-only calculation on private
+  Recording 025 with the previously reviewed 1.50–2.50 s / 2.50–3.25 s /
+  9.00–9.75 s intervals produced 534 grid rows and 521 paired synchronized
+  rows; 501 acceleration and 496 gyro rows survived their independent 500 ms
+  warm-ups. The original-channel reference remained 2.0622° from phone top.
+  At experimental 5 Hz, mean forward acceleration remained positive during
+  starting (0.27346 → 0.26192 m/s²) and negative during stopping
+  (−0.51353 → −0.51583 m/s²). Absolute forward peaks fell from 1.05872 to
+  0.76217 m/s² and from 2.27650 to 1.70529 m/s² respectively; resting forward
+  std. deviation fell from 0.02706 to 0.00856 m/s². These are diagnostic changes,
+  not noise-removal accuracy or proof that maneuver peaks are preserved.
+  No actual 025 run/reference was saved during this read-only check; originals
+  and annotations were unchanged. All **52 web timing/math tests** passed,
+  including PHP/browser comparisons at 3/5/8 Hz using synthetic tilted/asynchronous
+  streams with independent gaps and nanosecond origins above JS safe integer
+  range (component tolerance 1e-9). All **937 backend tests** passed, including
+  14 new request/ownership/encryption/idempotency/corruption/rollback cases.
+  Web lint, TypeScript, production build and PHP formatting passed. The default
+  Homebrew Node 25 executable had a missing dynamic library; web checks used
+  the installed Node 24.22.1 without changing project dependencies or system links.
+  The initial browser check reached Admin login. After the user signed in,
+  Recording 025's experimental 5 Hz run was saved through the Admin screen at
+  10:01 AM. Repeating the identical save retained one run with the same identity
+  and creation time. A page reload cleared the local confirmation/preview;
+  selecting the saved run reopened its stored signals without recreating it.
+  Starting/Stopping controls, acceleration/gyro switching, individual
+  axis toggles and the provenance disclosure were exercised. Starting/stopping
+  comparisons matched the derived statistics above; rotation retained rad/s.
+  Layouts were reviewed at 390, 768 and 1280 px: no page-wide horizontal
+  overflow was observed, and the narrow comparison table retained its own
+  horizontal scroll container. The viewport override was reset. Browser-only
+  invalid-client/422/network-failure toast paths and manual chart dragging were
+  not separately exercised; backend validation/failure tests remain the evidence
+  for those server paths. This is bounded offline processing, not physical model
+  validation or live parity.
 
 - **2026-10-26 low-pass comparison preview:** the actual TypeScript
   synchronization/filter helpers were run against Recording 025 through a

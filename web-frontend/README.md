@@ -121,41 +121,51 @@ remain rad/s; original nanoseconds stay decimal strings until relative-time conv
 The detail header reuses the vehicle breadcrumb/name pattern, with the recording
 date at the right. File/capture/label status lives in Data quality; technical
 explanations are collapsed rather than repeated across the signal view.
-In the original Accelerometer view, Preview synchronization adds a local 50 Hz
-phone-axis grid with independent linear interpolation only across source brackets
-up to 60 ms. Exact/interpolated/missing row counts and selected-row provenance are
-inspectable. Edges and larger gaps remain null. The grid is anchored to recording
-start and limited to the loaded 30 s window, with no extrapolation or source edits.
-These are experimental settings; no saved output, finalized dataset or live
-synchronization is implemented by this preview. Preview filter adds a causal
-second-order Butterworth comparison at 3/5/8 Hz (initial control value 5 Hz).
-Before/After share the existing chart, selection and cursor; metrics compare
-identical post-warm-up rows. Each channel restarts at missing rows, with the first
-500 ms excluded. Cutoffs remain experimental: lower variation is not a quality
-pass, and largest-peak timing differences are not measured event latency.
-For stationary/other captures, the accelerometer view offers an operator-confirmed stationary-reference preview:
-resting acceleration/gravity direction, residual gyro mean, variation and timing.
-Changing the selection clears it. Results stay in page memory; no reference is
-saved or applied, and no automatic stillness/quality pass is assigned.
-Forward-reference captures instead suggest three local intervals (Resting,
-Starting, Stopping) for operator review, with manual selection as fallback.
-Show in chart highlights the interval and scrolls to the plots; Restore suggestions
-discards manual adjustments. Experimental search boundaries and missing post-brake
-settling are shown for review. Confirmation remains required before the horizontal
-PCA candidate axis and start/stop/rotation comparison. Small steering corrections are allowed; short resting selections are
-flagged as pilot estimates. Assigned-range changes clear confirmation/results;
-window/channel/page changes discard the preview. No reference or annotation is
-submitted and no matrix is applied to recordings or rental setup.
-A successful forward preview adds fixed vehicle-axis acceleration/gyro plots for
-the whole loaded window, sharing selection and cursor with the originals.
-Acceleration switches between gravity-included and relative-to-rest views; gyro
-uses its resting offset. Selected means/std and Up-axis rotation RMS are shown,
-with Select whole window and independent original timing/gap diagnostics.
-These are local candidate projections, without dynamic gravity correction,
-filtering, saved alignment, training labels or AI. See the
+The inspector has four focused tabs:
+
+- **Signals:** the latest saved processed result opens automatically for forward
+  captures and maneuver trials. One filtered vehicle-axis chart and a mean/absolute-peak table are
+  shown. Forward acceleration is initially visible; switching to rotation starts
+  with Up. Axis toggles remain available. Compare before / after adds synchronized
+  pre-filter values on demand. Review interval selects a forward run's saved phases; maneuver trials keep their own whole/custom interval.
+  Original readings shows one phone-axis sensor at a time. Detailed statistics,
+  source timestamps, hashes and coefficients remain collapsed.
+- **Prepare data:** suggested Resting/Starting/Stopping ranges, one original chart,
+  Inspect, collapsed manual adjustments, confirmation and Process & save run.
+  The local reference is calculated automatically after confirmation, then Laravel
+  recomputes it from verified originals when saving. Success returns to Signals.
+  Maneuver trials instead select a compatible reviewed forward reference and
+  confirm the unchanged physical phone/RC/mount; no reference phases are copied
+  onto the maneuver timeline. Stationary captures retain their unsaved check here.
+- **Data quality:** integrity, capture/label state and per-channel timing diagnostics.
+- **Setup & source:** collection and phone/mount metadata.
+
+Standalone synchronization/filter/vehicle-projection panels were removed during
+the 2026-11-04 cleanup; pure math helpers and regression coverage remain. Saved
+server processing synchronizes → filters → projects a bounded window and retains
+run-specific references or an explicit source-run link, original source fingerprints,
+parameters and provenance.
+Encrypted originals/results are preserved. Reopening does not reconfirm or
+recreate a run; identical processing requests reuse its immutable identity.
+History remains owner-bound and paginated at 10.
+`StoreRcProcessingRunRequest` mirrors `src/validations/research/processing-run.ts`;
+eligibility, source quality/solvability and ownership remain server checks. Apply
+the additive `2026_11_04_000001_create_rc_processing_runs.php` and
+`2026_11_04_000002_add_reference_run_to_rc_processing_runs.php` migrations before use.
+Reference choices use the paginated owner-bound `.../{recording}/reference-runs`
+endpoint. A five-second resting source range, completed earlier source, matching
+group/device/sensors/setup and explicit physical-mount confirmation are required;
+chained references are rejected. The five-second rule is an experimental pilot
+guard, not proof of calibration quality. Source originals are reverified and its
+frame recomputed server-side. No mobile build is required.
+These are experimental fixed-frame pilot outputs, without reusable accepted
+calibration, dynamic gravity tracking, dataset export, live inference or AI labels.
+See the
 [central telematics guide](../docs/telematics-master-plan.md).
-Pure timing/statistics regressions run with
-`node --test src/modules/management/research/*.test.mjs`.
+Timing/statistics and cross-language processing regressions run with
+`node --test src/modules/management/research/*.test.mjs src/validations/research/processing-run.test.mjs`. The three PHP parity
+cases also require the PHP CLI and installed `backend/vendor` dependencies;
+they process synthetic data in memory and do not connect to a database.
 
 The management registry in
 `src/modules/management/shell/config/module-registry.ts` is the discovery map:

@@ -129,6 +129,29 @@ does not host Laravel: the computer running it must stay online. If the API tunn
 URL changes, update the EAS preview variable and build a new APK. Code and bundled
 asset changes also require a new preview APK; Metro reloads do not update it.
 
+For an internal local APK that updates the existing locally signed development
+install, first confirm that the installed APK and the local signing certificate
+match. Set `EXPO_PUBLIC_BACKEND_API` to the verified reachable HTTPS API in the
+ignored local environment before building. The installed app's recordings and
+Android Keystore entries must be preserved with an update (`adb install -r`),
+never an uninstall or clear-data operation. The generated native project's
+current release signing uses the local debug certificate and is for internal
+testing only, not store distribution.
+
+```bash
+# From mobile-frontend/android; Java 17 and the installed Android SDK are required.
+NODE_ENV=production ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+This local variant targets the Redmi's ARM64 architecture and bundles JavaScript
+and assets. It does not need Metro or USB after installation. A configuration
+pointing at `localhost` still needs USB forwarding and is unsuitable for untethered
+trials. When the configured HTTPS API is the website's existing `/api` proxy,
+Laravel, Next.js and that tunnel must remain running for login, access checks and
+uploads; the Metro tunnel is unrelated. Recording does not automatically upload
+data. Start research with valid access and explicit consent before any offline run.
+
 If the mobile API uses the management website’s tunnel and Next.js proxies `/api` to Laravel, also set backend `PAYPAL_CALLBACK_ORIGIN` to that public origin (without `/api`). Set the mobile `EXPO_PUBLIC_BACKEND_TUNNEL_API` to the same origin with `/api` appended. The explicit callback origin keeps PayPal return/cancel and Android fallback links reachable when the proxy sends Laravel a loopback Host. Refresh Laravel configuration and start a new checkout after changing it; existing PayPal orders retain their original return URLs. Keep both values synchronized when a temporary tunnel changes.
 
 Laravel recognizes the HTTPS protocol forwarded by a tunnel connecting through

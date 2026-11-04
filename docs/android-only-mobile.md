@@ -9,6 +9,49 @@ Telematics and RC pipeline decisions are maintained only in the
 [central implementation guide](telematics-master-plan.md). This document records
 platform configuration and dated build verification, not an alternate AI roadmap.
 
+## Standalone Redmi test APK — 2026-11-04
+
+A local `:app:assembleRelease -PreactNativeArchitectures=arm64-v8a` build completed
+using the existing generated Android project, Node 24.22.1 and Java 17. No native
+configuration, permissions, dependencies or sensor algorithms were changed.
+The 59.7 MiB APK is at
+`mobile-frontend/android/app/build/outputs/apk/release/app-release.apk` (ignored).
+It contains the bundled JavaScript/assets and the verified existing HTTPS API
+configuration. It is non-debuggable, targets ARM64, and retains package
+`com.anonymous.jamjadecarrental`, version code 1 / version 1.0.0. Its existing
+local debug certificate is suitable for this internal update, not store release.
+
+The signing certificate matched the installed development APK before installation.
+An idle recorder-service check found no active RC service. An aggregate inventory
+of 253 encrypted research files was recorded before the update without decrypting
+or copying their contents. `adb install -r` completed successfully; no uninstall,
+clear-data or recording migration was performed. Old Metro USB port forwarding
+was removed before launching `mobilefrontend://rc-research`. The new app process
+was running with no fatal startup/uncaught-native-module error markers in the
+bounded check. The device disconnected from ADB during the remaining launch wait.
+The user subsequently confirmed that the app opens without the QR/development
+screen and the old recordings are visible. The temporary pulled development APK
+was removed after that confirmation. A new unplugged capture/upload smoke check
+remains pending; launch and record visibility do not establish collection accuracy,
+successful decryption/export of every original, or background reliability.
+
+The configured API currently uses the existing website HTTPS tunnel and Next.js
+`/api` proxy to Laravel, not the separate Metro tunnel. Unauthenticated access
+checks returned Laravel's expected 401 through both the local API and that
+existing HTTPS route. No new public endpoint was opened. For online research
+access/login/uploads, keep Laravel, Next.js and its tunnel running; neither Metro
+nor USB is needed by this APK. Originals remain local until an explicit upload.
+Changing the embedded API address or mobile code requires a replacement APK;
+website/backend-only edits do not. Do not replace this certificate or uninstall
+the app while local encrypted originals must be retained.
+
+Mobile lint and TypeScript passed, as did all 22 focused native recorder/upload
+adapter regressions. Expo dependency validation used the installed SDK 54 local
+map and reported dependencies up to date, with online-version validation unavailable
+under the network sandbox. The APK build passed. The build log was sanitized of
+configured environment values; no APK/source/recording was uploaded to a new service.
+See the [local standalone workflow](../mobile-frontend/README.md#standalone-android-demonstrations).
+
 ## Baseline and boundaries
 
 The prior cross-platform checkpoint is commit `f1ef1e4`, tagged

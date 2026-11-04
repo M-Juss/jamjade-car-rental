@@ -13,7 +13,7 @@ const axes = [
 ] as const;
 const phoneLabels = { x: "X", y: "Y", z: "Z" };
 
-export function SignalTimeline({ title, unit, points, domain, selection, observed, cursor, onCursor, onSelection, syncId, includeZero = true, axisLabels = phoneLabels, frameLabel = "Phone", headingLevel = "h3", comparison }: {
+export function SignalTimeline({ title, unit, points, domain, selection, observed, cursor, onCursor, onSelection, syncId, includeZero = true, axisLabels = phoneLabels, frameLabel = "Phone", headingLevel = "h3", comparison, initialAxes = ["x", "y", "z"] }: {
   title: string; unit: string; points: SignalPoint[]; domain: [number, number];
   selection: [number, number]; observed?: [number, number]; cursor: number;
   onCursor: (time: number) => void; onSelection: (range: [number, number]) => void; syncId: string;
@@ -21,9 +21,10 @@ export function SignalTimeline({ title, unit, points, domain, selection, observe
   axisLabels?: Record<"x" | "y" | "z", string>; frameLabel?: string;
   headingLevel?: "h3" | "h4" | "h5";
   comparison?: { points: SignalPoint[]; label: string };
+  initialAxes?: ("x" | "y" | "z")[];
 }) {
   const dragStart = useRef<number | null>(null);
-  const [visible, setVisible] = useState({ x: true, y: true, z: true });
+  const [visible, setVisible] = useState({ x: initialAxes.includes("x") || initialAxes.length === 0, y: initialAxes.includes("y"), z: initialAxes.includes("z") });
   const config = Object.fromEntries(axes.flatMap(axis => [
     [axis.key, { label: `${comparison ? "Before · " : ""}${frameLabel} ${axisLabels[axis.key]}`, color: axis.color }],
     ...(comparison ? [[`after_${axis.key}`, { label: `${comparison.label} · ${frameLabel} ${axisLabels[axis.key]}`, color: axis.color }]] : []),

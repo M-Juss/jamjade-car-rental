@@ -16,6 +16,7 @@ use App\Http\Controllers\Web\Admin\ManagementNavigationController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\PersonnelController;
 use App\Http\Controllers\Web\Admin\RcNativeRecordingController;
+use App\Http\Controllers\Web\Admin\RcProcessingRunController;
 use App\Http\Controllers\Web\Admin\RcResearchController;
 use App\Http\Controllers\Web\Admin\ReportController;
 use App\Http\Controllers\Web\Admin\SelfDriveVerificationController;
@@ -42,6 +43,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/navigation-counts', ManagementNavigationController::class)->name('navigation-counts');
         Route::middleware(['role:admin', 'throttle:60,1'])->prefix('rc-research')->name('rc-research.')->group(function () {
+            Route::get('/native-recordings/{recording}/reference-runs', [RcProcessingRunController::class, 'references'])->whereUuid('recording')->name('processing.references');
+            Route::get('/native-recordings/{recording}/processing-runs', [RcProcessingRunController::class, 'index'])->whereUuid('recording')->name('processing.index');
+            Route::post('/native-recordings/{recording}/processing-runs', [RcProcessingRunController::class, 'store'])->middleware('throttle:10,1')->whereUuid('recording')->name('processing.store');
+            Route::get('/native-recordings/{recording}/processing-runs/{run}', [RcProcessingRunController::class, 'show'])->whereUuid(['recording', 'run'])->name('processing.show');
             Route::get('/native-recordings', [RcNativeRecordingController::class, 'index'])->name('native.index');
             Route::get('/native-recordings/{recording}', [RcNativeRecordingController::class, 'show'])->whereUuid('recording')->name('native.show');
             Route::get('/native-recordings/{recording}/window', [RcNativeRecordingController::class, 'window'])->whereUuid('recording')->name('native.window');
