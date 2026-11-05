@@ -27,10 +27,10 @@ class RcNativeRecordingController extends Controller
     public function index(ListRcNativeRecordingsRequest $request): JsonResponse
     {
         $this->enabled();
-        $query = RcNativeRecording::where('user_id', $request->user()->id)->withCount('chunks');
+        $query = RcNativeRecording::where('user_id', $request->user()->id)->with(['latestAnnotation', 'collectionContext:recording_id,display_code'])->withCount('chunks');
         if ($search = $request->validated('search')) {
             $term = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
-            $query->where(fn ($q) => $q->whereRaw("name LIKE ? ESCAPE '!'", [$term])->orWhereRaw("surface LIKE ? ESCAPE '!'", [$term]));
+            $query->where(fn ($q) => $q->whereRaw("name LIKE ? ESCAPE '!'", [$term])->orWhereHas('collectionContext', fn ($context) => $context->whereRaw("display_code LIKE ? ESCAPE '!'", [$term]))->orWhereRaw("surface LIKE ? ESCAPE '!'", [$term]));
         }
 
         return $this->paginated('Native recordings fetched.', $query->latest('started_at')->orderByDesc('id')
@@ -40,7 +40,7 @@ class RcNativeRecordingController extends Controller
     public function show(Request $request, string $recording): JsonResponse
     {
         $this->enabled();
-        $record = $this->research->recording($request->user(), $recording)->loadCount('chunks');
+        $record = $this->research->recording($request->user(), $recording)->load(['latestAnnotation', 'collectionContext:recording_id,display_code'])->loadCount('chunks');
 
         return $this->success('Native recording fetched.', ['recording' => new RcNativeRecordingResource($record),
             'manifest' => $this->research->manifest($record), 'processing' => null, 'reference' => null])

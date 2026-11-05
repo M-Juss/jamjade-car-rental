@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FloatingTabBarSurface } from '@/components/navigation/FloatingTabBarSurface';
 import { mobileLayout } from '@/constants/layout';
 
-export type RcResearchTab = 'collect' | 'data';
+export type RcResearchTab = 'collect' | 'recordings';
 
 export function RcResearchTabs({ selectedTab, onTabChange, onLogout, isLoggingOut, disabled = false }: {
   selectedTab: RcResearchTab;
@@ -34,8 +34,8 @@ export function RcResearchTabs({ selectedTab, onTabChange, onLogout, isLoggingOu
       paddingLeft: Math.max(12, insets.left), paddingRight: Math.max(12, insets.right),
     }]}>
       <FloatingTabBarSurface items={[
-        { key: 'data', label: 'Data', icon: 'database-outline', selected: selectedTab === 'data',
-          disabled: disabled || isLoggingOut, onPress: () => select('data') },
+        { key: 'recordings', label: 'Recordings', icon: 'database-outline', selected: selectedTab === 'recordings',
+          disabled: disabled || isLoggingOut, onPress: () => select('recordings') },
         { key: 'collect', label: 'Collect', icon: 'flask-outline', featured: true, selected: selectedTab === 'collect',
           disabled: disabled || isLoggingOut, onPress: () => select('collect') },
         { key: 'logout', label: isLoggingOut ? 'Logging out…' : 'Logout', icon: 'logout',

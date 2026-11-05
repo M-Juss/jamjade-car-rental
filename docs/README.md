@@ -22,6 +22,12 @@ retired; the separate Next.js website remains supported.
 The central telematics guide is the only active pipeline/roadmap reference for
 that domain. Unrelated guides below remain authoritative for their own contracts.
 
+Its [Phase 1 collection contract](telematics-master-plan.md#collection-workflow-redesign-phase-1-contract)
+defines the agreed RC workflow redesign. The linked JSON catalog/schema/examples
+remain machine-checked design artifacts. The central guide’s Phase 2 runtime
+boundary records the implemented pilot collection flow and narrower authoritative
+write DTOs; Redmi physical acceptance and the web workflow redesign remain pending.
+
 | Guide | Read when | Current boundary |
 | --- | --- | --- |
 | [Rental information and payment receipts](booking-financial-documents.md) | Changing rental-information/receipt generation, Customer mobile receipt access/download, payment email delivery, resends, or document retention | A matching Rental Information and Payment Receipt pair per successful payment, immutable private copies and preserved historical documents, Customer-owned mobile receipt reads/downloads, and per-payment delivery tracking; live email-provider checks remain separate |

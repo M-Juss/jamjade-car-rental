@@ -19,6 +19,11 @@ import { SignalTimeline } from "./SignalTimeline";
 import { SignalSelectionControls } from "./SignalSelectionControls";
 
 const labels = { x: "Forward", y: "Right", z: "Up" };
+const accelerationAxes = {
+  x: { label: "Front–back", positive: "Toward front", negative: "Toward rear" },
+  y: { label: "Right–left", positive: "Toward right", negative: "Toward left" },
+  z: { label: "Up–down", positive: "Upward", negative: "Downward" },
+};
 const phaseNames = { rest: "Resting", starting: "Starting", stopping: "Stopping" };
 const rangeText = (range: ReferenceRange) => `${seconds(range[0])}–${seconds(range[1])}`;
 
@@ -103,6 +108,10 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
   const pairedAfter = result.signals.acceleration.after.filter((point, index) => point.x !== null && result.signals.gyroscope.after[index].x !== null).length;
   const metric = (axis: typeof comparison.axes[number], key: "mean" | "std" | "peak") => axis.after
     ? `${compare ? `${axis.before![key].toFixed(4)} / ` : ""}${axis.after[key].toFixed(4)}` : "Unavailable";
+  const directionalPeak = (axis: typeof comparison.axes[number], key: "positivePeak" | "negativePeak") => {
+    const format = (value: number | null) => value === null ? "None" : `${value > 0 ? "+" : ""}${value.toFixed(4)}`;
+    return axis.after ? `${compare ? `${format(axis.before![key])} / ` : ""}${format(axis.after[key])}` : "Unavailable";
+  };
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center gap-2">
       {viewControl}
@@ -116,7 +125,6 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
       <Button className="rounded-xl" variant={compare ? "default" : "outline"} aria-label="Compare before and after filtering" aria-pressed={compare} onClick={() => setCompare(v => !v)}>Compare</Button>
       {savedControl}
     </div>
-    {origin && <p className="text-xs text-muted-foreground">Reference: <Link className="font-medium text-primary underline-offset-4 hover:underline" href={`/admin/research/native/${origin.recording_id}`}>{origin.recording_name}</Link></p>}
     <SignalTimeline key={channel} title={channel === "acceleration" ? "Vehicle acceleration" : "Vehicle rotation"} unit={unit}
       points={compare ? signals.before : signals.after} comparison={compare ? { points: signals.after, label: "After" } : undefined}
       domain={bounds} selection={selection} cursor={cursor} onCursor={setCursor} onSelection={setSelection} syncId={run.id}
@@ -128,37 +136,69 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
       </div>
       {comparison.paired === 0 ? <p className="text-xs text-muted-foreground">No values after warm-up.</p> : <Table>
         {compare && <caption className="pb-2 text-left text-xs text-muted-foreground">Before / after · matching readings</caption>}
-        <TableHeader><TableRow><TableHead>Axis</TableHead><TableHead>Mean ({unit})</TableHead><TableHead>Peak |axis| ({unit})</TableHead></TableRow></TableHeader>
-        <TableBody>{comparison.axes.map(axis => <TableRow key={axis.axis}><TableCell className="font-medium">{labels[axis.axis]}</TableCell>
-          <TableCell className="tabular-nums">{metric(axis, "mean")}</TableCell><TableCell className="tabular-nums">{metric(axis, "peak")}</TableCell>
+        <TableHeader><TableRow><TableHead>Axis</TableHead><TableHead>Mean ({unit})</TableHead><TableHead>Positive peak ({unit})</TableHead><TableHead>Negative peak ({unit})</TableHead></TableRow></TableHeader>
+        <TableBody>{comparison.axes.map(axis => <TableRow key={axis.axis}><TableCell className="font-medium">{channel === "acceleration" ? accelerationAxes[axis.axis].label : labels[axis.axis]}</TableCell>
+          <TableCell className="tabular-nums">{metric(axis, "mean")}</TableCell>
+          <TableCell className="tabular-nums">{directionalPeak(axis, "positivePeak")}
+            {channel === "acceleration" && <span className="block text-xs text-muted-foreground">{accelerationAxes[axis.axis].positive}</span>}
+          </TableCell>
+          <TableCell className="tabular-nums">{directionalPeak(axis, "negativePeak")}
+            {channel === "acceleration" && <span className="block text-xs text-muted-foreground">{accelerationAxes[axis.axis].negative}</span>}
+          </TableCell>
         </TableRow>)}</TableBody>
       </Table>}
     </div>
     <div className="space-y-1 text-xs text-muted-foreground">
-      <p>Experimental fixed frame; tilt changes can affect acceleration.</p>
       {result.reference.warnings.map(warning => <p key={warning}>{warning}</p>)}
     </div>
-    <details className="text-xs"><summary className="min-h-9 cursor-pointer font-medium text-primary">Technical details</summary>
+    <details className="text-xs"><summary className="min-h-9 cursor-pointer font-medium text-primary">Details</summary>
       <div className="mt-3 space-y-4">
         <SignalSelectionControls bounds={bounds} selection={selection} onSelection={setSelection} />
-        <DetailsList items={[["Window", rangeText(bounds)], ["Pipeline", run.version], ["Reference fitting", origin ? "Reused source reference" : "Original independent channels"],
-          ["Synchronized / filtered paired rows", `${result.counts.paired} / ${pairedAfter}`], ["Grid / restart exclusion", `${result.settings.grid_ms} ms / ${result.settings.warmup_ms} ms`],
-          ...Object.entries(result.methods).map(([key, value]): [string, string] => [key, value]),
-          ["Interpolation limit (ms)", String(result.settings.max_interpolation_ms)], ["Filter b", result.settings.b.map(v => v.toFixed(9)).join(" / ")],
-          ["Filter a", result.settings.a.map(v => v.toFixed(9)).join(" / ")],
-          ...(phaseRanges ? (["rest", "starting", "stopping"] as const).map((phase): [string, string] => [phaseNames[phase], rangeText(phaseRanges[phase])]) : []),
-          ["Source manifest SHA-256", result.source.manifest_sha256], ["Chunk inventory SHA-256", result.source.chunk_inventory_sha256], ["Run fingerprint", run.fingerprint]]} />
-        {origin && <DetailsList items={[["Reference run", origin.run_id], ["Reference pipeline", origin.version], ["Reference window (source time)", rangeText(origin.window)],
-          ...(["rest", "starting", "stopping"] as const).map((phase): [string, string] => [`Reference ${phaseNames[phase].toLowerCase()} (source time)`, rangeText(origin.ranges[phase])]),
-          ["Reference fingerprint", origin.run_fingerprint], ["Reference payload SHA-256", origin.payload_sha256], ["Reference manifest SHA-256", origin.manifest_sha256],
-          ["Reference inventory SHA-256", origin.chunk_inventory_sha256], ["Setup SHA-256", origin.setup_sha256], ["Unchanged physical phone / mount", "Confirmed by operator"]]} />}
-        <DetailsList items={comparison.axes.map(axis => [`${labels[axis.axis]} std. deviation (${unit})`, metric(axis, "std")])} />
-        <DetailsList items={result.reference.rotation_rfu.map((v, index) => [["Right row", "Forward row", "Up row"][index], v.map(n => n.toFixed(6)).join(" / ")])} />
-        <DetailsList items={[["Cursor grid time", seconds(row.time)], ["Source state", row[channel].state],
-          ["Source bracket timestamps (ns)", row[channel].source_times_ns?.join(" / ") ?? "Unavailable"],
-          ["Filtered forward / right / up", after.x === null ? signals.warmup[rowIndex] ? "Warm-up" : "Missing" : [after.x, after.y!, after.z!].map(v => v.toFixed(5)).join(" / ")]]} />
-        <p className="leading-relaxed text-muted-foreground">Filtered readings use the saved fixed rotation and original resting means. Compare adds synchronized readings in the same frame. Missing values stay missing; each channel restarts after a gap.</p>
-        <p className="leading-relaxed text-muted-foreground">This run is not training approval. Its fixed frame applies to this window, without dynamic gravity correction or changes to rental setup.</p>
+        <DetailsList items={[
+          ["Time range", rangeText(selection)], ["Filter", `${run.cutoff_hz} Hz`],
+          ["Reference", origin ? <Link className="text-primary underline-offset-4 hover:underline" href={`/admin/research/native/${origin.recording_id}`}>{origin.recording_name}</Link> : "This recording"],
+          ...(origin ? [["Phone mount", "Unchanged · confirmed by operator"] as [string, string]] : []),
+          ["Usable readings", comparison.paired.toLocaleString()],
+        ]} />
+        <div className="space-y-3">
+          <h4 className="font-medium">Standard deviation ({unit}){compare ? " · before / after" : ""}</h4>
+          <DetailsList items={comparison.axes.map(axis => [channel === "acceleration" ? accelerationAxes[axis.axis].label : labels[axis.axis], metric(axis, "std")])} />
+        </div>
+        <p className="leading-relaxed text-muted-foreground">Fixed reference; phone tilt can affect acceleration.</p>
+        <details><summary className="min-h-9 cursor-pointer font-medium text-primary">Advanced diagnostics</summary>
+          <div className="mt-3 space-y-4">
+            <div className="space-y-3">
+              <h4 className="font-medium">Processing</h4>
+              <DetailsList items={[["Window", rangeText(bounds)], ["Pipeline", run.version], ["Reference fitting", origin ? "Reused source reference" : "Original independent channels"],
+                ["Synchronized / filtered paired rows", `${result.counts.paired} / ${pairedAfter}`], ["Grid / restart exclusion", `${result.settings.grid_ms} ms / ${result.settings.warmup_ms} ms`],
+                ...Object.entries(result.methods).map(([key, value]): [string, string] => [key.charAt(0).toUpperCase() + key.slice(1), value]),
+                ["Interpolation limit (ms)", String(result.settings.max_interpolation_ms)], ["Filter b", result.settings.b.map(v => v.toFixed(9)).join(" / ")],
+                ["Filter a", result.settings.a.map(v => v.toFixed(9)).join(" / ")],
+                ...(phaseRanges ? (["rest", "starting", "stopping"] as const).map((phase): [string, string] => [phaseNames[phase], rangeText(phaseRanges[phase])]) : []),
+              ]} />
+            </div>
+            {origin && <div className="space-y-3">
+              <h4 className="font-medium">Reference source</h4>
+              <DetailsList items={[["Reference run", origin.run_id], ["Reference pipeline", origin.version], ["Reference window (source time)", rangeText(origin.window)],
+                ...(["rest", "starting", "stopping"] as const).map((phase): [string, string] => [`Reference ${phaseNames[phase].toLowerCase()} (source time)`, rangeText(origin.ranges[phase])]),
+                ["Reference fingerprint", origin.run_fingerprint], ["Reference payload SHA-256", origin.payload_sha256], ["Reference manifest SHA-256", origin.manifest_sha256],
+                ["Reference inventory SHA-256", origin.chunk_inventory_sha256], ["Setup SHA-256", origin.setup_sha256]]} />
+            </div>}
+            <div className="space-y-3">
+              <h4 className="font-medium">Verification</h4>
+              <DetailsList items={[["Source manifest SHA-256", result.source.manifest_sha256], ["Chunk inventory SHA-256", result.source.chunk_inventory_sha256], ["Run fingerprint", run.fingerprint]]} />
+            </div>
+            <div className="space-y-3">
+              <h4 className="font-medium">Alignment and cursor</h4>
+              <DetailsList items={result.reference.rotation_rfu.map((v, index) => [["Right row", "Forward row", "Up row"][index], v.map(n => n.toFixed(6)).join(" / ")])} />
+              <DetailsList items={[["Cursor grid time", seconds(row.time)], ["Source state", row[channel].state],
+                ["Source bracket timestamps (ns)", row[channel].source_times_ns?.join(" / ") ?? "Unavailable"],
+                ["Filtered forward / right / up", after.x === null ? signals.warmup[rowIndex] ? "Warm-up" : "Missing" : [after.x, after.y!, after.z!].map(v => v.toFixed(5)).join(" / ")]]} />
+            </div>
+            <p className="leading-relaxed text-muted-foreground">Compare uses the same fixed axes and resting offsets; gaps stay missing and restart each channel.</p>
+            <p className="leading-relaxed text-muted-foreground">Experimental result; not training approval.</p>
+          </div>
+        </details>
       </div>
     </details>
   </div>;

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { getNativeRecordings } from "@/services/research/native-research.service";
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import { ResearchState } from "./components/ResearchState";
-import { seconds } from "./recording-analysis";
+import exerciseCatalog from "./rc-exercises-v1.json";
+import { humanize, seconds } from "./recording-analysis";
 
 export function NativeRecordings({ revision }: { revision: number }) {
   const [search, setSearch] = useState("");
@@ -31,15 +32,21 @@ export function NativeRecordings({ revision }: { revision: number }) {
   }, [page, search, revision, retry]);
   return <div className="space-y-5">
     <SearchInput value={search} onValueChange={value => { setSearch(value.slice(0, 100)); setPage(1); }} placeholder="Search recording or surface..." />
+    <details className="rounded-xl border border-border bg-surface px-4 py-3 text-xs text-foreground">
+      <summary className="cursor-pointer font-semibold text-primary focus-visible:outline-primary">Abbreviation guide</summary>
+      <div className="mt-3 space-y-3"><p><strong>S02-FSS-R038</strong> · Session 02 · Forward Start-Stop · Recording 038</p>
+        <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">{exerciseCatalog.protocols.map(protocol => <div className="flex gap-2" key={protocol.code}><dt className="font-semibold">{protocol.code}</dt><dd>{protocol.label}</dd></div>)}</dl>
+      </div>
+    </details>
     {loading || error || !result?.recordings.length ? <ResearchState loading={loading} error={error} onRetry={() => setRetry(v => v + 1)} /> : <>
       <TableCard><Table><TableHeader><TableRow className="border-b border-border bg-background hover:bg-background">
         {["Recording", "Duration", "Upload", "Capture", "Labels"].map(title => <TableHead key={title} className="px-4 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{title}</TableHead>)}
       </TableRow></TableHeader><TableBody>{result.recordings.map(record => <TableRow key={record.id} className="border-b border-background hover:bg-background">
-        <TableCell data-label="Recording" className="px-4 py-3"><Link className="text-[12.5px] font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline" href={`/admin/research/native/${record.id}`}>{record.name}</Link><p className="mt-1 text-xs text-muted-foreground">{formatReturnDateTime(record.started_at)}</p></TableCell>
+        <TableCell data-label="Recording" className="px-4 py-3"><Link className="text-[12.5px] font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline" href={`/admin/research/native/${record.id}`}>{record.display_code ?? record.name}</Link><p className="mt-1 text-xs text-muted-foreground">{formatReturnDateTime(record.started_at)}</p></TableCell>
         <TableCell data-label="Duration" className="px-4 py-3 text-xs">{seconds(record.duration_ms)}</TableCell>
         <TableCell data-label="Upload" className="px-4 py-3"><Badge variant="outline">{record.state === "verified" ? "Integrity verified" : `${record.received_chunks}/${record.expected_chunks} chunks`}</Badge></TableCell>
         <TableCell data-label="Capture" className="px-4 py-3 text-xs">{record.capture_state === "interrupted" ? "Interrupted" : "Stopped"}</TableCell>
-        <TableCell data-label="Labels" className="px-4 py-3"><Badge variant="secondary">Unlabeled</Badge></TableCell>
+        <TableCell data-label="Labels" className="px-4 py-3"><Badge variant="secondary">{humanize(record.annotation_state)}</Badge></TableCell>
       </TableRow>)}</TableBody></Table></TableCard>
       <TablePagination page={result.page} lastPage={result.lastPage} total={result.total} onPageChange={setPage} label="Native recordings pagination" />
     </>}

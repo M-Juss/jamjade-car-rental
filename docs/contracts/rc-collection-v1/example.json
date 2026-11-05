@@ -1,0 +1,179 @@
+{
+  "contract_version": "rc-collection-v1",
+  "synthetic": true,
+  "session": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "owner_id": 1,
+    "device_profile_id": "00000000-0000-4000-8000-000000000002",
+    "session_number": 2,
+    "recording_group_id": "00000000-0000-4000-8000-000000000003",
+    "collection_stage": "pilot",
+    "state": "open",
+    "conditions": {
+      "surface": "Tiles",
+      "slope": "level"
+    },
+    "preset_id": "mn82s_roof_v1",
+    "catalog_version": "rc-exercises-v1",
+    "operator_code": "OP01",
+    "observer_code": "OB01",
+    "opened_at": "2026-11-05T10:00:00Z",
+    "closed_at": null
+  },
+  "mount": {
+    "id": "00000000-0000-4000-8000-000000000004",
+    "research_session_id": "00000000-0000-4000-8000-000000000001",
+    "mount_number": 1,
+    "reason": "initial",
+    "orientation_preset_id": "mn82s_roof_v1",
+    "created_at": "2026-11-05T10:00:00Z",
+    "invalidated_at": null,
+    "alignment_status": "pending",
+    "alignment_method_version": null,
+    "validation_evidence_id": null,
+    "reference_run_id": null
+  },
+  "preflight": {
+    "id": "00000000-0000-4000-8000-000000000005",
+    "mount_version_id": "00000000-0000-4000-8000-000000000004",
+    "window_ms": 5000,
+    "accelerometer_events": 250,
+    "gyroscope_events": 249,
+    "criteria_version": null,
+    "criteria_status": "unassessed",
+    "holder_locked_confirmed": true,
+    "top_toward_front_confirmed": true,
+    "rc_still_confirmed": true,
+    "checks": {
+      "sensors": "pass",
+      "timing": "unassessed",
+      "orientation": "unassessed",
+      "stability": "unassessed"
+    },
+    "result": "inconclusive",
+    "clock_context_id": "00000000-0000-4000-8000-000000000014",
+    "start_elapsed_ns": "9007199254741001",
+    "end_elapsed_ns": "9007204254741001",
+    "summary_method_version": "synthetic-preflight-summary-example-1",
+    "metrics": {
+      "rest_acceleration_mean_xyz_mps2": [
+        0,
+        0,
+        9.81
+      ],
+      "acceleration_std_xyz_mps2": [
+        0.01,
+        0.01,
+        0.01
+      ],
+      "gyroscope_rms_radps": 0.001,
+      "accelerometer_rate_hz": 50,
+      "gyroscope_rate_hz": 49.8,
+      "accelerometer_max_gap_ms": 20,
+      "gyroscope_max_gap_ms": 21
+    },
+    "consent_version": 3,
+    "consented_at": "2026-11-05T09:59:59Z",
+    "started_at": "2026-11-05T10:00:00Z"
+  },
+  "recording": {
+    "recording_id": "00000000-0000-4000-8000-000000000006",
+    "server_recording_id": "00000000-0000-4000-8000-000000000007",
+    "research_session_id": "00000000-0000-4000-8000-000000000001",
+    "mount_version_id": "00000000-0000-4000-8000-000000000004",
+    "preflight_id": "00000000-0000-4000-8000-000000000005",
+    "recording_number": 38,
+    "recording_kind": "maneuver_trial",
+    "protocol_code": "FSS",
+    "catalog_version": "rc-exercises-v1",
+    "protocol_snapshot_sha256": "b2eb3c478400eb7256b43dc18c00cf5e5f532d23ecd21036848ed69339ba91f1",
+    "display_code": "S02-FSS-R038",
+    "planned_assessment": "normal",
+    "course_layout": {
+      "id": "indoor-straight",
+      "version": "layout-1",
+      "status": "provisional",
+      "measurement_method": "unmeasured",
+      "tile_count": null,
+      "lane_length_m": null,
+      "lane_width_m": null,
+      "turn_radius_m": null
+    },
+    "original_name": "Synthetic original - Recording 038",
+    "original_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "source_protocol_version": 2,
+    "source": "android_sensor_manager_v2",
+    "started_at": "2026-11-05T10:01:00Z",
+    "duration_ms": 20000,
+    "capture_state": "stopped",
+    "upload_state": "verified",
+    "clock_context_id": "00000000-0000-4000-8000-000000000014"
+  },
+  "observations": {
+    "id": "00000000-0000-4000-8000-000000000008",
+    "recording_id": "00000000-0000-4000-8000-000000000006",
+    "revision": 1,
+    "created_at": "2026-11-05T10:02:00Z",
+    "source": "observed",
+    "observer_code": "OB01",
+    "completed_as_planned": true,
+    "flags": [
+      "steering_corrections"
+    ],
+    "actual_stop_method": "brake_applied",
+    "notes": null
+  },
+  "labels": {
+    "id": "00000000-0000-4000-8000-000000000009",
+    "recording_id": "00000000-0000-4000-8000-000000000006",
+    "version": "rc-phase-labels-v2",
+    "revision": 1,
+    "previous_revision_id": null,
+    "review_status": "draft",
+    "reviewed_at": null,
+    "created_at": "2026-11-05T10:03:00Z",
+    "original_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "intervals": [
+      {
+        "interval_id": "00000000-0000-4000-8000-000000000010",
+        "start_ms": 7000,
+        "end_ms": 7600,
+        "movement": "acceleration",
+        "direction": "forward",
+        "severity": "normal",
+        "movement_confidence": "confident",
+        "boundary_confidence": "approximate",
+        "source": "observed",
+        "notes": null
+      }
+    ]
+  },
+  "processing_profile": {
+    "id": "00000000-0000-4000-8000-000000000011",
+    "version": "pilot-fixed-frame-5hz-1",
+    "validation_status": "experimental",
+    "validation_evidence_id": null,
+    "requested_sampling_hz": 50,
+    "grid_ms": 20,
+    "max_interpolation_ms": 60,
+    "warmup_ms": 500,
+    "filter_method": "butterworth2-causal-50hz-v1",
+    "cutoff_hz": 5,
+    "projection_method": "fixed-vehicle-frame-v1"
+  },
+  "dataset_review": {
+    "id": "00000000-0000-4000-8000-000000000012",
+    "recording_id": "00000000-0000-4000-8000-000000000006",
+    "revision": 1,
+    "decision": "pending",
+    "reason": null,
+    "policy_version": "pilot-review-1",
+    "original_manifest_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "processing_run_id": null,
+    "processing_profile_id": null,
+    "annotation_revision_id": null,
+    "observation_revision_id": null,
+    "included_intervals": [],
+    "created_at": "2026-11-05T10:04:00Z"
+  }
+}

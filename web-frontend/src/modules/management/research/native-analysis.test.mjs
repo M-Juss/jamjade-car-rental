@@ -707,6 +707,34 @@ test("comparison reports signed peak-time differences on identical post-warm-up 
   assert.equal(empty.paired, 0); assert.equal(empty.total, 0);
 });
 
+test("directional peaks keep signs and use matching selected rows, excluding warm-up and missing output", () => {
+  const point = (x, index, y = 2) => ({ time: index * 20, x, y: x === null ? null : y, z: x === null ? null : 0 });
+  const channel = {
+    before: [99, 2, -8, 3, -4, 100, null].map((x, index) => point(x, index)),
+    after: [null, 0.5, -2, 1.2, -3, null, null].map((x, index) => point(x, index, 1)),
+    warmup: [true, false, false, false, false, true, false], segments: 2,
+  };
+  const comparison = filterComparison(channel, [0, 120]);
+  assert.equal(comparison.paired, 4);
+  const [forward, right, up] = comparison.axes;
+  assert.equal(forward.before.positivePeak, 3);
+  assert.equal(forward.before.negativePeak, -8);
+  assert.equal(forward.after.positivePeak, 1.2);
+  assert.equal(forward.after.negativePeak, -3);
+  assert.equal(forward.after.peak, 3);
+  assert.equal(right.after.positivePeak, 1);
+  assert.equal(right.after.negativePeak, null);
+  assert.equal(up.after.positivePeak, null);
+  assert.equal(up.after.negativePeak, null);
+  const selected = filterComparison(channel, [20, 40]).axes[0];
+  assert.equal(selected.after.positivePeak, 0.5);
+  assert.equal(selected.after.negativePeak, -2);
+  const negativeOnly = filterComparison(channel, [40, 40]).axes[0];
+  assert.equal(negativeOnly.after.positivePeak, null);
+  assert.equal(negativeOnly.after.negativePeak, -2);
+  assert.equal(filterComparison(channel, [0, 0]).axes[0].after, null);
+});
+
 test("filtering refuses malformed, irregular or unmatched grids and unsupported settings", () => {
   const input = uniformPoints(51);
   assert.equal(lowPassPreview([], [], 5).available, false);

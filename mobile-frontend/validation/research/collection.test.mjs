@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import vm from 'node:vm';
+import ts from 'typescript';
+import { z } from 'zod';
+import { collectionFixture as fixture } from './collection-fixture.mjs';
+const id = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
+
+const exports = {};
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('./collection.ts', import.meta.url), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, { exports, require: name => { assert.equal(name, 'zod'); return { z }; } });
+const { collectionContextSchema, observationInputSchema } = exports;
+test('metadata preserves integer nanosecond subtraction beyond JavaScript safe integers', () => {
+  assert.equal(collectionContextSchema.safeParse(fixture()).success, true);
+});
+for (const [name, change] of [
+  ['invented pass', v => { v.preflight.result = 'passed'; }],
+  ['invented alignment', v => { v.mount.alignment_status = 'accepted'; }],
+  ['cross-session mount', v => { v.mount.research_session_id = id(8); }],
+  ['cross-mount check', v => { v.preflight.mount_version_id = id(8); }],
+  ['clock overflow', v => { v.preflight.end_elapsed_ns = '9223372036854775808'; }],
+  ['inconsistent window', v => { v.preflight.window_ms = 5001; }],
+  ['consent after collection', v => { v.preflight.consented_at = '2026-11-06T00:00:02Z'; }],
+  ['missing measured mean', v => { v.preflight.measurements.accelerometer.mean = null; }],
+  ['unconfirmed mount', v => { v.preflight.holder_locked = false; }],
+]) test(`metadata rejects ${name}`, () => { const input = fixture(); change(input); assert.equal(collectionContextSchema.safeParse(input).success, false); });
+
+test('observations preserve uncertainty and need independent observer provenance', () => {
+  const input = { base_revision: 0, completed_as_planned: null, source: 'operator_report', observer_code: null, flags: [], actual_stop_method: 'unknown', notes: null };
+  assert.equal(observationInputSchema.safeParse(input).success, true);
+  assert.equal(observationInputSchema.safeParse({ ...input, source: 'observed' }).success, false);
+  assert.equal(observationInputSchema.safeParse({ ...input, flags: ['bump', 'bump'] }).success, false);
+  assert.equal(observationInputSchema.safeParse({ ...input, actual_stop_method: 'harsh' }).success, false);
+});
+
+test('all deployed protocol snapshots match the approved provisional catalog byte for byte', () => {
+  const root = new URL('../../', import.meta.url);
+  const canonical = readFileSync(new URL('../docs/contracts/rc-collection-v1/catalog.json', root), 'utf8');
+  for (const path of ['assets/research/rc-exercises-v1.json', 'modules/rc-recorder/android/src/main/assets/rc-exercises-v1.json', '../backend/resources/research/rc-exercises-v1.json', '../web-frontend/src/modules/management/research/rc-exercises-v1.json']) {
+    assert.equal(readFileSync(new URL(path, root), 'utf8'), canonical);
+  }
+});

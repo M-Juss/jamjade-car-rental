@@ -93,8 +93,7 @@ local module; presentation components must not own sensors or network calls.
 - Current Admin Collect uses the local Kotlin v2 recorder with encrypted durable
   checkpoints, unlabeled saves, recovery and metadata review. Adapter 1.2.0 adds
   verified bounded exports, explicit resumable upload and encrypted transfer receipts.
-  The web inspector reads v2 original channel windows and historical v1; mobile Data
-  still reads historical v1. Automatic background upload, preprocessing/dataset export,
+  The web inspector reads v2 original channel windows and historical v1. Adapter 1.3.0 adds Collect/Recordings, encrypted session/mount/context/observation sidecars and bounded consented foreground setup evidence. Main mobile v1 Data is retired; historical APIs/data remain. Setup results remain pilot/inconclusive, not accepted alignment. Automatic background upload, preprocessing/dataset export,
   AI, reports and scores remain pending. Short Redmi smoke checks do not establish
   long-duration or interruption reliability.
 - Implement native collection/storage/processing independently of screen JS when

@@ -1,6 +1,8 @@
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 
 import nativeModule from '@/modules/rc-recorder';
+import type { CollectionState, CollectionStatus, RecordingCollection } from '@/lib/research/collection';
+import { collectionContextSchema, observationInputSchema, observationUploadSchema, type ObservationInput } from '@/validation/research/collection';
 import { nativeCollectionGroupName, type NativeRecorderState, type NativeRecording, type NativeCollectionGroup, type NativeGroupCatalog } from '@/lib/research/native-recorder';
 import { apiGet, apiPost, getApiAuthToken } from '@/services/http';
 import { nativeCollectionGroupFormSchema, nativeCollectionGroupSchema, nativeRecordingSchema, type NativeCollectionGroupInput, type NativeRecordingInput } from '@/validation/research/native-recorder';
@@ -37,6 +39,7 @@ function moduleOrThrow() {
 
 export const nativeRecorder = {
   available: nativeModule !== null && typeof nativeModule.groups === 'function' && typeof nativeModule.createGroup === 'function',
+  collectionAvailable: nativeModule !== null && typeof nativeModule.collectionAction === 'function' && typeof nativeModule.beginCheck === 'function',
   uploadAvailable: nativeModule !== null && typeof nativeModule.exportManifest === 'function'
     && typeof nativeModule.exportChunk === 'function' && typeof nativeModule.setTransfer === 'function',
   async authorize(ownerId: number) {
@@ -84,6 +87,10 @@ export const nativeRecorder = {
   async stop() { await moduleOrThrow().stop(); },
   async status(): Promise<NativeRecorderState> { return JSON.parse(await moduleOrThrow().status()); },
   async list(offset = 0): Promise<NativeRecording[]> { return JSON.parse(await moduleOrThrow().list(offset)); },
+  async listCollection(offset: number, filter: 'all' | 'current' | 'pilot'): Promise<NativeRecording[]> {
+    if (!this.collectionAvailable) return this.list(offset);
+    return JSON.parse(await moduleOrThrow().listCollection(offset, filter));
+  },
   async groups(): Promise<NativeGroupCatalog> { return JSON.parse(await moduleOrThrow().groups()); },
   async createGroup(values: NativeCollectionGroupInput): Promise<NativeCollectionGroup> {
     const conditions = nativeCollectionGroupFormSchema.parse(values);
@@ -152,6 +159,55 @@ export const nativeRecorder = {
       }
       throw error;
     } finally { uploading.delete(id); }
+  },
+  async collectionAction(values: { action: 'current' } | { action: 'open'; group_id: string } | { action: 'mount'; reason: 'remounted' | 'repositioned' | 'suspected_shift' }): Promise<CollectionState> {
+    const revision = accessRevision;
+    return mutate(async () => { checkRevision(revision); return JSON.parse(await moduleOrThrow().collectionAction(JSON.stringify(values))); });
+  },
+  async beginCheck() {
+    const revision = accessRevision;
+    if (AppState.currentState !== 'active') throw new NativeRecorderError('Open RC Research before checking.');
+    await mutate(async () => { checkRevision(revision); await moduleOrThrow().beginCheck(); });
+  },
+  async cancelCheck() { if (this.collectionAvailable) await moduleOrThrow().cancelCheck(); },
+  async saveObservation(id: string, values: ObservationInput): Promise<RecordingCollection> {
+    nativeUploadIdSchema.parse(id);
+    const input = observationInputSchema.parse(values), revision = accessRevision;
+    return mutate(async () => { checkRevision(revision); return JSON.parse(await moduleOrThrow().saveObservation(id, JSON.stringify(input))); });
+  },
+  async statuses(ids: string[]): Promise<CollectionStatus[]> {
+    if (!ids.length) return [];
+    if (ids.length > 10) throw new NativeRecorderError('Open one recording page at a time.');
+    ids.forEach(id => nativeUploadIdSchema.parse(id));
+    const revision = accessRevision;
+    const result = (await apiGet<CollectionStatus[]>(`/mobile/rc-research/native-recordings/status?${ids.map(id => `ids[]=${encodeURIComponent(id)}`).join('&')}`)).data;
+    checkRevision(revision);
+    return result;
+  },
+  async syncCollection(id: string) {
+    nativeUploadIdSchema.parse(id);
+    const revision = accessRevision;
+    const module = moduleOrThrow();
+    const localCall = <T>(fn: () => Promise<T>) => mutate(async () => { checkRevision(revision); return fn(); });
+    const record = await this.details(id);
+    if (record.transfer_state !== 'uploaded' || !record.transfer?.server_id || !record.transfer.manifest_sha256) throw new NativeRecorderError('Upload and verify the original first.');
+    const collection: RecordingCollection | null = JSON.parse(await localCall(() => module.collection(id)));
+    if (!collection?.session) return; // Historical originals have no invented session or exercise.
+    const { session, mount, preflight, recording_id, capture_number, protocol_code, catalog_version, protocol_sha256, contract_version } = collection;
+    const input = collectionContextSchema.parse({ session, mount, preflight, recording_id, capture_number, protocol_code, catalog_version, protocol_sha256, contract_version, manifest_sha256: record.transfer.manifest_sha256 });
+    const route = `/mobile/rc-research/native-recordings/${record.transfer.server_id}`;
+    let status = (await apiPost<CollectionStatus>(`${route}/context`, input)).data;
+    checkRevision(revision);
+    const receipt = async (confirmed: number) => {
+      await localCall(() => module.collectionReceipt(id, JSON.stringify({ context_synced: status.context_synced,
+        observation_revision: confirmed, annotation_state: status.annotation_state, checked_at: status.checked_at })));
+    };
+    await receipt(0);
+    for (const observation of collection.observations ?? []) {
+      const { revision: number, ...fields } = observation;
+      status = (await apiPost<CollectionStatus>(`${route}/observations`, observationUploadSchema.parse({ ...fields, base_revision: number - 1 }))).data;
+      checkRevision(revision); await receipt(number);
+    }
   },
   async remove(id: string) { await moduleOrThrow().delete(id); },
   isAuthorized(ownerId: number) { return authorizedOwner === ownerId; },

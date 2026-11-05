@@ -84,7 +84,7 @@ function PresetDetails({ catalog, phonePower }: { catalog: NativeGroupCatalog; p
   </View>;
 }
 
-function NativeCollectionGroupForm({ disabled, catalog, onCancel, onCreate, phonePower }: {
+export function NativeCollectionGroupForm({ disabled, catalog, onCancel, onCreate, phonePower }: {
   disabled: boolean; catalog: NativeGroupCatalog; onCancel?: () => void; onCreate: (values: NativeCollectionGroupInput) => Promise<void>;
   phonePower?: NativePhonePower;
 }) {
@@ -97,14 +97,11 @@ function NativeCollectionGroupForm({ disabled, catalog, onCancel, onCreate, phon
   const busy = disabled || isSubmitting;
   return <SectionCard title="New collection group" icon={ClipboardList}><View className="gap-4">
     <PresetDetails catalog={catalog} phonePower={phonePower} />
-    <Controller control={control} name="surface" render={({ field, fieldState }) => <SelectWithLabel label="Default surface" required options={surfaces}
+    <Controller control={control} name="surface" render={({ field, fieldState }) => <SelectWithLabel label="Surface" required options={surfaces}
       value={field.value} onValueChange={field.onChange} disabled={busy} error={fieldState.error?.message} />} />
-    <Controller control={control} name="slope" render={({ field, fieldState }) => <SelectWithLabel label="Default slope" required options={RC_SLOPES}
+    <Controller control={control} name="slope" render={({ field, fieldState }) => <SelectWithLabel label="Slope" required options={RC_SLOPES}
       value={field.value} onValueChange={field.onChange} disabled={busy} error={fieldState.error?.message} />} />
     <InfoRow label="Group name" value={name || 'Select a surface'} />
-    <Controller control={control} name="recording_kind" render={({ field, fieldState }) => <SelectWithLabel label="Default recording purpose" required
-      options={NATIVE_RECORDING_PURPOSES} value={field.value} onValueChange={field.onChange} disabled={busy} error={fieldState.error?.message} />} />
-    <Text className="font-sans text-caption text-secondary-foreground">Selecting this group fills these defaults. You can adjust the conditions for each recording.</Text>
     <ActionButton label={busy ? 'Creating…' : 'Create group'} variant="primary" disabled={busy} onPress={() => void handleSubmit(onCreate)()} />
     {onCancel && <ActionButton label="Cancel" disabled={busy} onPress={onCancel} />}
   </View></SectionCard>;

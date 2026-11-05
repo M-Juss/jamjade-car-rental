@@ -280,7 +280,20 @@ filtering, vehicle alignment or AI occurs during this capture. Start/unlock need
 online research access verification; an authorized recording can continue offline
 until its bounded lease expires. The new flow needs a rebuilt Android client.
 
-Adapter 1.1.0 adds create/select collection groups with durable UUIDs and automatic
+Adapter **1.3.0** is the current guided pilot flow: Collect / Recordings, durable
+research session and remount versions, fixed conditions, one selected exercise,
+protocol/course viewer, consented five-second setup measurements, compact
+`S02-FSS-R038` aliases and an abbreviation guide. Setup limits are unvalidated:
+results remain inconclusive/pilot with pending alignment and forward-reference
+fallback. Every new guided recording needs a fresh one-use foreground check;
+background/restart/remount invalidate unused evidence. Stop saves the original
+before encrypted observation revisions, which sync independently after verified
+original upload. The library shows real owner-bound server v1 label status or
+explicitly unavailable/cached status. See the central guide's Phase 2 section for
+write DTOs and remaining physical validation. This needs a rebuilt standalone APK;
+Metro reload cannot add the new Kotlin APIs.
+
+Historical adapter 1.1.0 added create/select collection groups with durable UUIDs and automatic
 recording numbering. The `MN-82S roof mount` preset locks the RC model and phone
 orientation. The Collect form also fixes the mount method to **Adjustable screw**
 for the confirmed phone holder, using the existing native text field;
@@ -302,7 +315,7 @@ complete verified inventory. Local originals remain after upload; Delete local
 recording does not remove a server copy. Automatic background upload and remote
 v2 deletion management are not implemented. Install this compatible APK as an update.
 
-Data shows historical uploaded v1 trials. The Admin website defaults to native v2
+The historical v1 Data tab is retired from main navigation; its records/APIs are retained. The Admin website defaults to native v2
 recordings and provides bounded original channel charts plus interval statistics.
 Earlier trials (v1) remain separately readable. Local-only originals
 are lost on uninstall/app-data clearing or Keystore loss; update using compatible

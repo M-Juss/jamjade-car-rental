@@ -42,8 +42,8 @@ export function NativeSignalWindow({ record, channels, children }: {
       <div className="flex flex-wrap gap-2">
         <FilterSelect ariaLabel="Signal window length" className="w-36" value={String(windowSize)} onValueChange={value => { setWindowSize(Number(value)); setStart(0); }}
           options={[{ value: "5000", label: "5 seconds" }, { value: "10000", label: "10 seconds" }, { value: "30000", label: "30 seconds" }]} />
-        <Button size="sm" variant="outline" disabled={start <= 0 || pending} onClick={() => setStart(v => Math.max(0, v - windowSize))}>Previous</Button>
-        <Button size="sm" variant="outline" disabled={end >= record.duration_ms || pending} onClick={() => setStart(end)}>Next</Button>
+        <Button type="button" size="sm" variant="outline" disabled={start <= 0 || pending} onClick={() => setStart(v => Math.max(0, v - windowSize))}>Previous</Button>
+        <Button type="button" size="sm" variant="outline" disabled={end >= record.duration_ms || pending} onClick={() => setStart(end)}>Next</Button>
       </div>
     </div>}
     {pending || error || !result ? <ResearchState loading={Boolean(pending)} error={error} onRetry={() => setRevision(v => v + 1)} />

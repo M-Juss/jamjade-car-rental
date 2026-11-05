@@ -12,7 +12,6 @@ import { checkRcResearchAccess } from '@/services/api/rc-research.service';
 import { ApiError } from '@/services/http';
 
 import { RcNativeCollectionPanel } from './RcNativeCollectionPanel';
-import { RcDataPanel } from './RcDataPanel';
 import { RcResearchTabs, type RcResearchTab } from './RcResearchTabs';
 
 export function RcResearchScreen() {
@@ -56,11 +55,8 @@ export function RcResearchScreen() {
         <Text accessibilityRole="alert" className="font-sans text-body text-secondary-foreground">Unable to connect.</Text>
         <ActionButton label="Retry" onPress={() => setRetry(value => value + 1)} />
       </View> : null}
-      <View className="flex-1" style={{ display: state === 'ready' && tab === 'collect' ? 'flex' : 'none' }}>
-        <RcNativeCollectionPanel active={state === 'ready' && tab === 'collect'} onRecordingChange={setRecording} />
-      </View>
-      <View className="flex-1" style={{ display: state === 'ready' && tab === 'data' ? 'flex' : 'none' }}>
-        <RcDataPanel active={state === 'ready' && tab === 'data'} revision={0} />
+      <View className="flex-1" style={{ display: state === 'ready' ? 'flex' : 'none' }}>
+        <RcNativeCollectionPanel active={state === 'ready'} mode={tab} onRecordingChange={setRecording} />
       </View>
       <RcResearchTabs
         selectedTab={tab}

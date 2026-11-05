@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Mobile\NotificationController;
 use App\Http\Controllers\Api\Mobile\PaymentController;
 use App\Http\Controllers\Api\Mobile\PayPalController;
 use App\Http\Controllers\Api\Mobile\ProfileController;
+use App\Http\Controllers\Api\Mobile\RcCollectionController;
 use App\Http\Controllers\Api\Mobile\RcNativeRecordingController;
 use App\Http\Controllers\Api\Mobile\RcResearchController;
 use App\Http\Controllers\Api\Mobile\TelematicsController;
@@ -35,6 +36,10 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::middleware(['auth:sanctum', RestrictRcResearchToken::class, 'active_user', 'throttle:mobile-api'])->group(function () {
         Route::get('/rc-research', [RcResearchController::class, 'show'])->name('rc-research.show');
         Route::get('/rc-research/native-access', [RcResearchController::class, 'nativeAccess'])->name('rc-research.native-access');
+        Route::get('/rc-research/catalog', [RcCollectionController::class, 'catalog'])->name('rc-research.catalog');
+        Route::get('/rc-research/native-recordings/status', [RcCollectionController::class, 'status'])->name('rc-research.native.status');
+        Route::post('/rc-research/native-recordings/{recording}/context', [RcCollectionController::class, 'context'])->whereUuid('recording')->name('rc-research.native.context');
+        Route::post('/rc-research/native-recordings/{recording}/observations', [RcCollectionController::class, 'observe'])->whereUuid('recording')->name('rc-research.native.observations');
         Route::post('/rc-research/native-recordings', [RcNativeRecordingController::class, 'store'])->name('rc-research.native.store');
         Route::post('/rc-research/native-recordings/{recording}/chunks', [RcNativeRecordingController::class, 'chunk'])->whereUuid('recording')->name('rc-research.native.chunk');
         Route::post('/rc-research/native-recordings/{recording}/finalize', [RcNativeRecordingController::class, 'finalize'])->whereUuid('recording')->name('rc-research.native.finalize');

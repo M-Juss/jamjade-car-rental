@@ -20,10 +20,10 @@ export function TablePagination({ total, page, lastPage, onPageChange, disabled 
       <span role="status" aria-live="polite">{total} result{total === 1 ? "" : "s"}</span>
       <nav aria-label={label} className="flex items-center gap-2">
         <span>Page {Math.max(1, page)} of {Math.max(1, lastPage)}</span>
-        <Button variant="outline" size="icon" aria-label="Previous page" disabled={disabled || page <= 1} onClick={() => onPageChange(page - 1)}>
+        <Button type="button" variant="outline" size="icon" aria-label="Previous page" disabled={disabled || page <= 1} onClick={() => onPageChange(page - 1)}>
           <ChevronLeft size={15} />
         </Button>
-        <Button variant="outline" size="icon" aria-label="Next page" disabled={disabled || page >= lastPage || total === 0} onClick={() => onPageChange(page + 1)}>
+        <Button type="button" variant="outline" size="icon" aria-label="Next page" disabled={disabled || page >= lastPage || total === 0} onClick={() => onPageChange(page + 1)}>
           <ChevronRight size={15} />
         </Button>
       </nav>

@@ -12,6 +12,6 @@ export function ResearchState({ loading, error, onRetry }: { loading?: boolean; 
   return <Card className="rounded-2xl border border-border bg-surface shadow-none ring-0"><CardContent className="flex min-h-64 flex-col items-center justify-center gap-3 p-6 text-center" role={error ? "alert" : "status"}>
     <Icon className={`size-7 text-primary ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
     <div><p className="text-sm font-semibold">{title}</p>{description && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>}</div>
-    {Boolean(error) && onRetry && !denied && !missing && <Button variant="outline" onClick={onRetry}>Try again</Button>}
+    {Boolean(error) && onRetry && !denied && !missing && <Button type="button" variant="outline" onClick={onRetry}>Try again</Button>}
   </CardContent></Card>;
 }

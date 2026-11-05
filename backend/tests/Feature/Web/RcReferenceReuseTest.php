@@ -4,6 +4,7 @@ use App\Models\RcNativeRecording;
 use App\Models\User;
 use App\Services\RcNativeResearchService;
 use App\Services\RcProcessingRunService;
+use App\Services\RcReferenceReuseService;
 use App\Support\RcNativeProtocol;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Database\QueryException;
@@ -13,6 +14,13 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
+
+function syntheticCollectionBinding(string $session, string $mount, string $code): array
+{
+    return ['contract_version' => 'rc-collection-v1', 'research_session_id' => $session, 'mount_version_id' => $mount,
+        'preflight_id' => (string) Str::uuid(), 'clock_context_id' => (string) Str::uuid(), 'catalog_version' => 'rc-exercises-v1',
+        'protocol_code' => $code, 'protocol_sha256' => str_repeat('a', 64)];
+}
 
 function reusableRecording(User $owner, string $kind, string $group, array $overrides = []): RcNativeRecording
 {
@@ -171,3 +179,14 @@ it('keeps reference history bounded and preserves reference foreign keys', funct
     $this->postJson($this->url.'/processing-runs', $this->input)->assertOk();
     expect(fn () => $this->referenceRun->delete())->toThrow(QueryException::class);
 });
+
+it('requires the same declared session and mount for reference reuse', function (string $change) {
+    $session = (string) Str::uuid();
+    $mount = (string) Str::uuid();
+    $source = reusableRecording($this->admin, 'forward_reference', $this->group, ['collection_binding' => syntheticCollectionBinding($session, $mount, 'FR')]);
+    $binding = syntheticCollectionBinding($change === 'session' ? (string) Str::uuid() : $session, $change === 'mount' ? (string) Str::uuid() : $mount, 'FSS');
+    $target = reusableRecording($this->admin, 'maneuver_trial', $this->group, $change === 'legacy' ? [] : ['collection_binding' => $binding]);
+    $research = app(RcNativeResearchService::class);
+    $problem = app(RcReferenceReuseService::class)->compatibility($target, $research->manifest($target), $source, $research->manifest($source));
+    expect($problem)->toBe($change === 'same' ? null : 'Capture a forward reference for this research session and mount.');
+})->with(['session', 'mount', 'legacy', 'same']);

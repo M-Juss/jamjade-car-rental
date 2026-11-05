@@ -127,10 +127,36 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
   fun group(id: String) = collectionGroups().group(id)
   fun allocateRecording(groupId: String) = collectionGroups().allocate(groupId)
 
-  fun list(offset: Int, activeId: String?): JSONArray {
+  private fun workflowIndex(): JSONObject {
+    val file = File(root, "collection.rc2")
+    if (!file.exists() && !File(file.path + ".bak").exists()) return JSONObject()
+      .put("device_profile_id", java.util.UUID.randomUUID().toString()).put("next_session_number", 1)
+    return readDocument(file, "$ownerHash/collection")
+  }
+  fun workflow() = CollectionWorkflow(::workflowIndex) { value ->
+    key(true); writeDocument(File(root, "collection.rc2"), "$ownerHash/collection", value)
+  }
+  fun collection(id: String): JSONObject? {
+    readManifest(id)
+    val file = File(directory(id), "collection.rc2")
+    if (!file.exists() && !File(file.path + ".bak").exists()) return null
+    return readDocument(file, "$ownerHash/$id/collection")
+  }
+  fun saveCollection(id: String, document: JSONObject) {
+    readManifest(id)
+    writeDocument(File(directory(id), "collection.rc2"), "$ownerHash/$id/collection", document)
+  }
+
+  fun list(offset: Int, activeId: String?, filter: String = "all"): JSONArray {
+    require(filter in setOf("all", "current", "pilot"))
     require(offset in 0..MAX_RECORDINGS)
     val results = JSONArray()
-    directories().drop(offset).take(10).forEach { dir ->
+    directories().filter { dir ->
+      if (dir.name == activeId) false else if (filter == "all") true else {
+        val hasContext = try { collection(dir.name)?.has("session") == true } catch (_: Exception) { false }
+        if (filter == "current") hasContext else !hasContext
+      }
+    }.drop(offset).take(10).forEach { dir ->
       val record = try { if (dir.name == activeId) readManifest(dir.name) else recover(dir.name) } catch (_: Exception) {
         JSONObject().put("recording_id", dir.name).put("state", "unavailable").put("end_reason", "key_or_file_unavailable")
       }
@@ -150,6 +176,8 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
       // A damaged transfer receipt must not hide otherwise readable originals.
       val transfer = try { transfer(record.getString("recording_id")) } catch (_: Exception) { JSONObject().put("state", "upload_failed") }
       summary.put("transfer_state", transfer.getString("state")).put("transfer", transfer)
+      try { summary.put("collection", collection(record.getString("recording_id")) ?: JSONObject.NULL) }
+      catch (_: Exception) { summary.put("collection_error", true) }
     }
     return summary
   }

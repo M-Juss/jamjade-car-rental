@@ -15,6 +15,7 @@ use App\Http\Controllers\Web\Admin\MaintenanceController;
 use App\Http\Controllers\Web\Admin\ManagementNavigationController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\PersonnelController;
+use App\Http\Controllers\Web\Admin\RcAnnotationController;
 use App\Http\Controllers\Web\Admin\RcNativeRecordingController;
 use App\Http\Controllers\Web\Admin\RcProcessingRunController;
 use App\Http\Controllers\Web\Admin\RcResearchController;
@@ -43,6 +44,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/navigation-counts', ManagementNavigationController::class)->name('navigation-counts');
         Route::middleware(['role:admin', 'throttle:60,1'])->prefix('rc-research')->name('rc-research.')->group(function () {
+            Route::get('/native-recordings/{recording}/annotations', [RcAnnotationController::class, 'show'])->whereUuid('recording')->name('annotations.show');
+            Route::post('/native-recordings/{recording}/annotations', [RcAnnotationController::class, 'store'])->middleware('throttle:10,1')->whereUuid('recording')->name('annotations.store');
+            Route::get('/native-recordings/{recording}/annotations/history', [RcAnnotationController::class, 'history'])->whereUuid('recording')->name('annotations.history');
+            Route::get('/native-recordings/{recording}/annotations/{revision}', [RcAnnotationController::class, 'revision'])->whereUuid(['recording', 'revision'])->name('annotations.revision');
             Route::get('/native-recordings/{recording}/reference-runs', [RcProcessingRunController::class, 'references'])->whereUuid('recording')->name('processing.references');
             Route::get('/native-recordings/{recording}/processing-runs', [RcProcessingRunController::class, 'index'])->whereUuid('recording')->name('processing.index');
             Route::post('/native-recordings/{recording}/processing-runs', [RcProcessingRunController::class, 'store'])->middleware('throttle:10,1')->whereUuid('recording')->name('processing.store');

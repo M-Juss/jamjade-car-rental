@@ -1,0 +1,2747 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:jamjade:research:rc-collection-v1",
+  "title": "Phase 1 RC collection design contracts",
+  "description": "Design-time resource shapes and a synthetic specimen; not an active API request schema. Stateful acceptance rules are specified in docs/telematics-master-plan.md. No measured-sensor protocol changes are implied.",
+  "$ref": "#/definitions/specimen",
+  "definitions": {
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_ms",
+        "end_ms"
+      ],
+      "properties": {
+        "start_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "end_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400000
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "label",
+        "recording_kind",
+        "planned_assessment",
+        "planned_direction",
+        "expected_stop_method",
+        "layout_key",
+        "validation_status",
+        "quiet_time_guidance_ms",
+        "requires_course_rehearsal",
+        "steps"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "FSS",
+            "HA",
+            "HB",
+            "LT",
+            "RT",
+            "RSS",
+            "SW",
+            "SR",
+            "FR"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "recording_kind": {
+          "enum": [
+            "maneuver_trial",
+            "stationary_reference",
+            "forward_reference"
+          ]
+        },
+        "planned_assessment": {
+          "enum": [
+            "normal",
+            "harsh_attempt",
+            "unspecified",
+            "not_applicable"
+          ]
+        },
+        "planned_direction": {
+          "enum": [
+            "forward",
+            "reverse",
+            "not_applicable"
+          ]
+        },
+        "expected_stop_method": {
+          "enum": [
+            "brake_applied",
+            "neutral_release",
+            "not_applicable"
+          ]
+        },
+        "layout_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "validation_status": {
+          "const": "provisional"
+        },
+        "quiet_time_guidance_ms": {
+          "const": 5000
+        },
+        "requires_course_rehearsal": {
+          "type": "boolean"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "stage",
+              "instruction"
+            ],
+            "properties": {
+              "stage": {
+                "enum": [
+                  "precheck",
+                  "initial_rest",
+                  "exercise",
+                  "final_rest",
+                  "save",
+                  "observe",
+                  "upload"
+                ]
+              },
+              "instruction": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            }
+          },
+          "maxItems": 10,
+          "minItems": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "FSS"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              },
+              "planned_direction": {
+                "const": "forward"
+              },
+              "expected_stop_method": {
+                "const": "brake_applied"
+              },
+              "layout_key": {
+                "const": "straight_start_stop"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "HA"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "harsh_attempt"
+              },
+              "planned_direction": {
+                "const": "forward"
+              },
+              "expected_stop_method": {
+                "const": "brake_applied"
+              },
+              "layout_key": {
+                "const": "straight_start_stop"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "HB"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "harsh_attempt"
+              },
+              "planned_direction": {
+                "const": "forward"
+              },
+              "expected_stop_method": {
+                "const": "brake_applied"
+              },
+              "layout_key": {
+                "const": "straight_start_stop"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "LT"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              },
+              "planned_direction": {
+                "const": "forward"
+              },
+              "expected_stop_method": {
+                "const": "brake_applied"
+              },
+              "layout_key": {
+                "const": "left_turn"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "RT"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              },
+              "planned_direction": {
+                "const": "forward"
+              },
+              "expected_stop_method": {
+                "const": "brake_applied"
+              },
+              "layout_key": {
+                "const": "right_turn"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "RSS"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              },
+              "planned_direction": {
+                "const": "reverse"
+              },
+              "expected_stop_method": {
+                "const": "neutral_release"
+              },
+              "layout_key": {
+                "const": "straight_start_stop"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "SW"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "unspecified"
+              },
+              "planned_direction": {
+                "const": "forward"
+              },
+              "expected_stop_method": {
+                "const": "brake_applied"
+              },
+              "layout_key": {
+                "const": "swerve_recovery"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "SR"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "stationary_reference"
+              },
+              "planned_assessment": {
+                "const": "not_applicable"
+              },
+              "planned_direction": {
+                "const": "not_applicable"
+              },
+              "expected_stop_method": {
+                "const": "not_applicable"
+              },
+              "layout_key": {
+                "const": "stationary"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "FR"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "forward_reference"
+              },
+              "planned_assessment": {
+                "const": "not_applicable"
+              },
+              "planned_direction": {
+                "const": "forward"
+              },
+              "expected_stop_method": {
+                "const": "brake_applied"
+              },
+              "layout_key": {
+                "const": "forward_reference"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment",
+              "planned_direction",
+              "expected_stop_method",
+              "layout_key"
+            ]
+          }
+        }
+      ]
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "catalog_version",
+        "status",
+        "preset",
+        "preflight_thresholds",
+        "protocols"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "rc-collection-v1"
+        },
+        "catalog_version": {
+          "const": "rc-exercises-v1"
+        },
+        "status": {
+          "const": "provisional"
+        },
+        "preset": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preset_id",
+            "rc_model",
+            "phone_model",
+            "mount_method",
+            "mount_location",
+            "screen_facing",
+            "phone_top_toward_rc_front",
+            "long_axis_front_back",
+            "mount_angle_degrees"
+          ],
+          "properties": {
+            "preset_id": {
+              "const": "mn82s_roof_v1"
+            },
+            "rc_model": {
+              "const": "MN-82S Supertourer"
+            },
+            "phone_model": {
+              "const": "Redmi Note 8 Pro"
+            },
+            "mount_method": {
+              "const": "Adjustable screw"
+            },
+            "mount_location": {
+              "const": "upper_roof"
+            },
+            "screen_facing": {
+              "const": "up"
+            },
+            "phone_top_toward_rc_front": {
+              "const": true
+            },
+            "long_axis_front_back": {
+              "const": true
+            },
+            "mount_angle_degrees": {
+              "const": null
+            }
+          }
+        },
+        "preflight_thresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "criteria_version",
+            "orientation_tolerance_degrees",
+            "acceleration_std_limit_mps2",
+            "gyroscope_rms_limit_radps",
+            "cadence_tolerance_percent"
+          ],
+          "properties": {
+            "criteria_version": {
+              "const": null
+            },
+            "orientation_tolerance_degrees": {
+              "const": null
+            },
+            "acceleration_std_limit_mps2": {
+              "const": null
+            },
+            "gyroscope_rms_limit_radps": {
+              "const": null
+            },
+            "cadence_tolerance_percent": {
+              "const": null
+            }
+          }
+        },
+        "protocols": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protocol"
+          },
+          "maxItems": 9,
+          "minItems": 9
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "owner_id",
+        "device_profile_id",
+        "session_number",
+        "recording_group_id",
+        "collection_stage",
+        "state",
+        "conditions",
+        "preset_id",
+        "catalog_version",
+        "operator_code",
+        "observer_code",
+        "opened_at",
+        "closed_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "owner_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999999999,
+          "readOnly": true
+        },
+        "device_profile_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "session_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999999999
+        },
+        "recording_group_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "collection_stage": {
+          "enum": [
+            "pilot",
+            "controlled"
+          ]
+        },
+        "state": {
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "conditions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "surface",
+            "slope"
+          ],
+          "properties": {
+            "surface": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "slope": {
+              "enum": [
+                "level",
+                "uphill",
+                "downhill"
+              ]
+            }
+          }
+        },
+        "preset_id": {
+          "const": "mn82s_roof_v1"
+        },
+        "catalog_version": {
+          "const": "rc-exercises-v1"
+        },
+        "operator_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "observer_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opened_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "closed_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "open"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "closed_at": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "closed_at"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "closed"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "closed_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "closed_at"
+            ]
+          }
+        }
+      ]
+    },
+    "mount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "research_session_id",
+        "mount_number",
+        "reason",
+        "orientation_preset_id",
+        "created_at",
+        "invalidated_at",
+        "alignment_status",
+        "alignment_method_version",
+        "validation_evidence_id",
+        "reference_run_id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "research_session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mount_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999999999
+        },
+        "reason": {
+          "enum": [
+            "initial",
+            "remounted",
+            "repositioned",
+            "shift_reported"
+          ]
+        },
+        "orientation_preset_id": {
+          "const": "mn82s_roof_v1"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "invalidated_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alignment_status": {
+          "enum": [
+            "pending",
+            "experimental",
+            "accepted",
+            "invalidated"
+          ]
+        },
+        "alignment_method_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "validation_evidence_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reference_run_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "alignment_status": {
+                "const": "accepted"
+              }
+            },
+            "required": [
+              "alignment_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "validation_evidence_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "alignment_method_version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "required": [
+              "validation_evidence_id",
+              "alignment_method_version"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "alignment_status": {
+                "const": "invalidated"
+              }
+            },
+            "required": [
+              "alignment_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "invalidated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "invalidated_at"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "alignment_status": {
+                "enum": [
+                  "pending",
+                  "experimental",
+                  "accepted"
+                ]
+              }
+            },
+            "required": [
+              "alignment_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "invalidated_at": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "invalidated_at"
+            ]
+          }
+        }
+      ]
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "mount_version_id",
+        "started_at",
+        "window_ms",
+        "accelerometer_events",
+        "gyroscope_events",
+        "criteria_version",
+        "criteria_status",
+        "holder_locked_confirmed",
+        "top_toward_front_confirmed",
+        "rc_still_confirmed",
+        "checks",
+        "result",
+        "clock_context_id",
+        "start_elapsed_ns",
+        "end_elapsed_ns",
+        "summary_method_version",
+        "metrics",
+        "consent_version",
+        "consented_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mount_version_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "window_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 30000
+        },
+        "accelerometer_events": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "gyroscope_events": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "criteria_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "criteria_status": {
+          "enum": [
+            "unassessed",
+            "experimental",
+            "validated"
+          ]
+        },
+        "holder_locked_confirmed": {
+          "type": "boolean"
+        },
+        "top_toward_front_confirmed": {
+          "type": "boolean"
+        },
+        "rc_still_confirmed": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sensors",
+            "timing",
+            "orientation",
+            "stability"
+          ],
+          "properties": {
+            "sensors": {
+              "enum": [
+                "pass",
+                "fail",
+                "unassessed"
+              ]
+            },
+            "timing": {
+              "enum": [
+                "pass",
+                "fail",
+                "unassessed"
+              ]
+            },
+            "orientation": {
+              "enum": [
+                "pass",
+                "fail",
+                "unassessed"
+              ]
+            },
+            "stability": {
+              "enum": [
+                "pass",
+                "fail",
+                "unassessed"
+              ]
+            }
+          }
+        },
+        "result": {
+          "enum": [
+            "passed",
+            "failed",
+            "inconclusive"
+          ]
+        },
+        "clock_context_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start_elapsed_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$"
+        },
+        "end_elapsed_ns": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,18})$"
+        },
+        "summary_method_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rest_acceleration_mean_xyz_mps2",
+            "acceleration_std_xyz_mps2",
+            "gyroscope_rms_radps",
+            "accelerometer_rate_hz",
+            "gyroscope_rate_hz",
+            "accelerometer_max_gap_ms",
+            "gyroscope_max_gap_ms"
+          ],
+          "properties": {
+            "rest_acceleration_mean_xyz_mps2": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "acceleration_std_xyz_mps2": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "items": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gyroscope_rms_radps": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "accelerometer_rate_hz": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gyroscope_rate_hz": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "accelerometer_max_gap_ms": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "gyroscope_max_gap_ms": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "consent_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "consented_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "passed"
+              }
+            },
+            "required": [
+              "result"
+            ]
+          },
+          "then": {
+            "properties": {
+              "criteria_version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "criteria_status": {
+                "enum": [
+                  "experimental",
+                  "validated"
+                ]
+              },
+              "holder_locked_confirmed": {
+                "const": true
+              },
+              "top_toward_front_confirmed": {
+                "const": true
+              },
+              "rc_still_confirmed": {
+                "const": true
+              },
+              "accelerometer_events": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "gyroscope_events": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "checks": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sensors",
+                  "timing",
+                  "orientation",
+                  "stability"
+                ],
+                "properties": {
+                  "sensors": {
+                    "const": "pass"
+                  },
+                  "timing": {
+                    "const": "pass"
+                  },
+                  "orientation": {
+                    "const": "pass"
+                  },
+                  "stability": {
+                    "const": "pass"
+                  }
+                }
+              },
+              "metrics": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "rest_acceleration_mean_xyz_mps2",
+                  "acceleration_std_xyz_mps2",
+                  "gyroscope_rms_radps",
+                  "accelerometer_rate_hz",
+                  "gyroscope_rate_hz",
+                  "accelerometer_max_gap_ms",
+                  "gyroscope_max_gap_ms"
+                ],
+                "properties": {
+                  "rest_acceleration_mean_xyz_mps2": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "acceleration_std_xyz_mps2": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  "gyroscope_rms_radps": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "accelerometer_rate_hz": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "gyroscope_rate_hz": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "accelerometer_max_gap_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "gyroscope_max_gap_ms": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "required": [
+              "criteria_version",
+              "criteria_status",
+              "holder_locked_confirmed",
+              "top_toward_front_confirmed",
+              "rc_still_confirmed",
+              "accelerometer_events",
+              "gyroscope_events",
+              "checks"
+            ]
+          }
+        }
+      ]
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "status",
+        "measurement_method",
+        "tile_count",
+        "lane_length_m",
+        "lane_width_m",
+        "turn_radius_m"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "status": {
+          "enum": [
+            "provisional",
+            "verified"
+          ]
+        },
+        "measurement_method": {
+          "enum": [
+            "unmeasured",
+            "tile_count",
+            "measured"
+          ]
+        },
+        "tile_count": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lane_length_m": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lane_width_m": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "turn_radius_m": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "measurement_method": {
+                "const": "unmeasured"
+              }
+            },
+            "required": [
+              "measurement_method"
+            ]
+          },
+          "then": {
+            "properties": {
+              "tile_count": {
+                "type": "null"
+              },
+              "lane_length_m": {
+                "type": "null"
+              },
+              "lane_width_m": {
+                "type": "null"
+              },
+              "turn_radius_m": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "tile_count",
+              "lane_length_m",
+              "lane_width_m",
+              "turn_radius_m"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "measurement_method": {
+                "const": "tile_count"
+              }
+            },
+            "required": [
+              "measurement_method"
+            ]
+          },
+          "then": {
+            "properties": {
+              "tile_count": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "lane_length_m": {
+                "type": "null"
+              },
+              "lane_width_m": {
+                "type": "null"
+              },
+              "turn_radius_m": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "tile_count",
+              "lane_length_m",
+              "lane_width_m",
+              "turn_radius_m"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "measurement_method": {
+                "const": "measured"
+              }
+            },
+            "required": [
+              "measurement_method"
+            ]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "lane_length_m": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "lane_length_m"
+                ]
+              },
+              {
+                "properties": {
+                  "lane_width_m": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "lane_width_m"
+                ]
+              },
+              {
+                "properties": {
+                  "turn_radius_m": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "turn_radius_m"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "recording": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recording_id",
+        "server_recording_id",
+        "research_session_id",
+        "mount_version_id",
+        "preflight_id",
+        "recording_number",
+        "recording_kind",
+        "protocol_code",
+        "catalog_version",
+        "protocol_snapshot_sha256",
+        "display_code",
+        "planned_assessment",
+        "course_layout",
+        "original_name",
+        "original_manifest_sha256",
+        "source_protocol_version",
+        "source",
+        "started_at",
+        "duration_ms",
+        "capture_state",
+        "upload_state",
+        "clock_context_id"
+      ],
+      "properties": {
+        "recording_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "server_recording_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "research_session_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mount_version_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "preflight_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recording_number": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999999999
+        },
+        "recording_kind": {
+          "enum": [
+            "maneuver_trial",
+            "stationary_reference",
+            "forward_reference"
+          ]
+        },
+        "protocol_code": {
+          "enum": [
+            "FSS",
+            "HA",
+            "HB",
+            "LT",
+            "RT",
+            "RSS",
+            "SW",
+            "SR",
+            "FR"
+          ]
+        },
+        "catalog_version": {
+          "const": "rc-exercises-v1"
+        },
+        "protocol_snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "display_code": {
+          "type": "string",
+          "pattern": "^S[0-9]{2,}-(FSS|HA|HB|LT|RT|RSS|SW|SR|FR)-R[0-9]{3,}$",
+          "readOnly": true
+        },
+        "planned_assessment": {
+          "enum": [
+            "normal",
+            "harsh_attempt",
+            "unspecified",
+            "not_applicable"
+          ]
+        },
+        "course_layout": {
+          "$ref": "#/definitions/layout"
+        },
+        "original_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "readOnly": true
+        },
+        "original_manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source_protocol_version": {
+          "const": 2
+        },
+        "source": {
+          "const": "android_sensor_manager_v2"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "duration_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "capture_state": {
+          "enum": [
+            "stopped",
+            "interrupted"
+          ]
+        },
+        "upload_state": {
+          "enum": [
+            "local_only",
+            "uploading",
+            "upload_failed",
+            "verified"
+          ]
+        },
+        "clock_context_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              }
+            },
+            "required": [
+              "recording_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "protocol_code": {
+                "enum": [
+                  "FSS",
+                  "HA",
+                  "HB",
+                  "LT",
+                  "RT",
+                  "RSS",
+                  "SW"
+                ]
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "recording_kind": {
+                "const": "stationary_reference"
+              }
+            },
+            "required": [
+              "recording_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "protocol_code": {
+                "const": "SR"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "recording_kind": {
+                "const": "forward_reference"
+              }
+            },
+            "required": [
+              "recording_kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "protocol_code": {
+                "const": "FR"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "upload_state": {
+                "const": "verified"
+              }
+            },
+            "required": [
+              "upload_state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "server_recording_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "server_recording_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "FSS"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "HA"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "harsh_attempt"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "HB"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "harsh_attempt"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "LT"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "RT"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "RSS"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "normal"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "SW"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "maneuver_trial"
+              },
+              "planned_assessment": {
+                "const": "unspecified"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "SR"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "stationary_reference"
+              },
+              "planned_assessment": {
+                "const": "not_applicable"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protocol_code": {
+                "const": "FR"
+              }
+            },
+            "required": [
+              "protocol_code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "recording_kind": {
+                "const": "forward_reference"
+              },
+              "planned_assessment": {
+                "const": "not_applicable"
+              }
+            },
+            "required": [
+              "recording_kind",
+              "planned_assessment"
+            ]
+          }
+        }
+      ]
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "recording_id",
+        "revision",
+        "created_at",
+        "source",
+        "observer_code",
+        "completed_as_planned",
+        "flags",
+        "actual_stop_method",
+        "notes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "recording_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "enum": [
+            "observed",
+            "operator_report",
+            "signal_review"
+          ]
+        },
+        "observer_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completed_as_planned": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "steering_corrections",
+              "unexpected_reverse",
+              "unexpected_turn",
+              "bump",
+              "cone_contact",
+              "phone_shift",
+              "holder_loose",
+              "interrupted",
+              "not_sure"
+            ]
+          },
+          "maxItems": 9,
+          "uniqueItems": true
+        },
+        "actual_stop_method": {
+          "enum": [
+            "brake_applied",
+            "neutral_release",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interval_id",
+        "start_ms",
+        "end_ms",
+        "movement",
+        "direction",
+        "severity",
+        "movement_confidence",
+        "boundary_confidence",
+        "source",
+        "notes"
+      ],
+      "properties": {
+        "interval_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "end_ms": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "movement": {
+          "enum": [
+            "stationary",
+            "acceleration",
+            "driving",
+            "braking",
+            "left_turn",
+            "right_turn",
+            "swerving",
+            "other"
+          ]
+        },
+        "direction": {
+          "enum": [
+            "forward",
+            "reverse",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "normal",
+            "harsh",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "movement_confidence": {
+          "enum": [
+            "confident",
+            "uncertain"
+          ]
+        },
+        "boundary_confidence": {
+          "enum": [
+            "clear",
+            "approximate"
+          ]
+        },
+        "source": {
+          "enum": [
+            "observed",
+            "operator_report",
+            "signal_review"
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "movement": {
+                "const": "stationary"
+              }
+            },
+            "required": [
+              "movement"
+            ]
+          },
+          "then": {
+            "properties": {
+              "direction": {
+                "const": "not_applicable"
+              },
+              "severity": {
+                "const": "not_applicable"
+              }
+            },
+            "required": [
+              "direction",
+              "severity"
+            ]
+          },
+          "else": {
+            "properties": {
+              "direction": {
+                "enum": [
+                  "forward",
+                  "reverse",
+                  "unknown"
+                ]
+              },
+              "severity": {
+                "enum": [
+                  "normal",
+                  "harsh",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "direction",
+              "severity"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "signal_review"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "movement_confidence": {
+                "const": "uncertain"
+              }
+            },
+            "required": [
+              "movement_confidence"
+            ]
+          }
+        }
+      ]
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "recording_id",
+        "version",
+        "revision",
+        "previous_revision_id",
+        "review_status",
+        "reviewed_at",
+        "created_at",
+        "original_manifest_sha256",
+        "intervals"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "recording_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "version": {
+          "const": "rc-phase-labels-v2"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "previous_revision_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_status": {
+          "enum": [
+            "draft",
+            "reviewed"
+          ]
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "original_manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "intervals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/interval"
+          },
+          "maxItems": 100
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "review_status": {
+                "const": "draft"
+              }
+            },
+            "required": [
+              "review_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reviewed_at": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "reviewed_at"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "review_status": {
+                "const": "reviewed"
+              }
+            },
+            "required": [
+              "review_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reviewed_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "reviewed_at"
+            ]
+          }
+        }
+      ]
+    },
+    "processing_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "validation_status",
+        "validation_evidence_id",
+        "requested_sampling_hz",
+        "grid_ms",
+        "max_interpolation_ms",
+        "warmup_ms",
+        "filter_method",
+        "cutoff_hz",
+        "projection_method"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "validation_status": {
+          "enum": [
+            "experimental",
+            "validated"
+          ]
+        },
+        "validation_evidence_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requested_sampling_hz": {
+          "const": 50
+        },
+        "grid_ms": {
+          "const": 20
+        },
+        "max_interpolation_ms": {
+          "const": 60
+        },
+        "warmup_ms": {
+          "const": 500
+        },
+        "filter_method": {
+          "const": "butterworth2-causal-50hz-v1"
+        },
+        "cutoff_hz": {
+          "enum": [
+            3,
+            5,
+            8
+          ]
+        },
+        "projection_method": {
+          "const": "fixed-vehicle-frame-v1"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "validation_status": {
+                "const": "validated"
+              }
+            },
+            "required": [
+              "validation_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "validation_evidence_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "validation_evidence_id"
+            ]
+          }
+        }
+      ]
+    },
+    "dataset_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "recording_id",
+        "revision",
+        "decision",
+        "reason",
+        "policy_version",
+        "original_manifest_sha256",
+        "processing_run_id",
+        "processing_profile_id",
+        "annotation_revision_id",
+        "observation_revision_id",
+        "included_intervals",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "recording_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "decision": {
+          "enum": [
+            "pending",
+            "included",
+            "excluded"
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "original_manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "processing_run_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "processing_profile_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "annotation_revision_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observation_revision_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "included_intervals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/range"
+          },
+          "maxItems": 100
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "included"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "processing_run_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "processing_profile_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "annotation_revision_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "observation_revision_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "included_intervals": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/range"
+                },
+                "maxItems": 100,
+                "minItems": 1
+              }
+            },
+            "required": [
+              "reason",
+              "processing_run_id",
+              "processing_profile_id",
+              "annotation_revision_id",
+              "observation_revision_id",
+              "included_intervals"
+            ]
+          },
+          "else": {
+            "properties": {
+              "included_intervals": {
+                "type": "array",
+                "maxItems": 0
+              }
+            },
+            "required": [
+              "included_intervals"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "excluded"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          }
+        }
+      ]
+    },
+    "specimen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "synthetic",
+        "session",
+        "mount",
+        "preflight",
+        "recording",
+        "observations",
+        "labels",
+        "processing_profile",
+        "dataset_review"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "rc-collection-v1"
+        },
+        "synthetic": {
+          "const": true
+        },
+        "session": {
+          "$ref": "#/definitions/session"
+        },
+        "mount": {
+          "$ref": "#/definitions/mount"
+        },
+        "preflight": {
+          "$ref": "#/definitions/preflight"
+        },
+        "recording": {
+          "$ref": "#/definitions/recording"
+        },
+        "observations": {
+          "$ref": "#/definitions/observations"
+        },
+        "labels": {
+          "$ref": "#/definitions/labels"
+        },
+        "processing_profile": {
+          "$ref": "#/definitions/processing_profile"
+        },
+        "dataset_review": {
+          "$ref": "#/definitions/dataset_review"
+        }
+      }
+    }
+  }
+}

@@ -21,6 +21,7 @@ import { ForwardReferencePreview } from "./components/ForwardReferencePreview";
 import { ProcessingRuns } from "./components/ProcessingRuns";
 import { NativeSignalWindow } from "./components/NativeSignalWindow";
 import { SignalSelectionControls } from "./components/SignalSelectionControls";
+import { NativeAnnotations } from "./components/NativeAnnotations";
 import type { ReferenceRange } from "./forward-reference";
 import { humanize, seconds } from "./recording-analysis";
 import { nativeIntervalStats, nativeSignalPoints } from "./native-analysis";
@@ -50,7 +51,7 @@ export function NativeRecordingReview({ id }: { id: string }) {
         <Link href="/admin/research" className="group -ml-1.5 flex shrink-0 items-center gap-1.5 rounded-md p-1.5 text-xs text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
           <ChevronLeft size={15} className="transition-transform group-hover:-translate-x-0.5" />Recordings
         </Link>
-        {inspection && !error && <><span aria-hidden="true" className="text-border">/</span><h1 aria-current="page" className="min-w-0 break-words text-xs font-semibold text-foreground">{inspection.recording.name}</h1></>}
+        {inspection && !error && <><span aria-hidden="true" className="text-border">/</span><h1 aria-current="page" className="min-w-0 break-words text-xs font-semibold text-foreground">{inspection.recording.display_code ?? inspection.recording.name}</h1></>}
       </nav>
       {inspection && !error && <time dateTime={inspection.recording.started_at} className="text-xs text-muted-foreground">{formatReturnDateTime(inspection.recording.started_at)}</time>}
     </header>
@@ -61,7 +62,9 @@ export function NativeRecordingReview({ id }: { id: string }) {
 function NativeWorkspace({ inspection }: { inspection: NativeInspection }) {
   const { recording: record, manifest } = inspection;
   const [tab, setTab] = useState("signals");
+  const [labelsOpened, setLabelsOpened] = useState(false);
   const [savedResult, setSavedResult] = useState<ProcessingDetail | null>(null);
+  const [annotationState, setAnnotationState] = useState(record.annotation_state);
   const accel = record.summary?.accelerometer;
   const metrics = [
     { label: "Duration (s)", value: (record.duration_ms / 1000).toFixed(2), icon: Clock3 },
@@ -70,16 +73,20 @@ function NativeWorkspace({ inspection }: { inspection: NativeInspection }) {
   ];
   return <>
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{metrics.map(metric => <KpiCard key={metric.label} {...metric} />)}</div>
-    <Card className="min-w-0 rounded-2xl border border-border bg-surface shadow-none ring-0"><Tabs value={tab} onValueChange={setTab}>
-      <CardHeader className="border-b border-border"><TabsList className="grid w-full grid-cols-2 gap-1 group-data-horizontal/tabs:h-auto sm:grid-cols-4"><TabsTrigger value="signals" className="h-9">Signals</TabsTrigger><TabsTrigger value="prepare" className="h-9">Prepare data</TabsTrigger><TabsTrigger value="quality" className="h-9">Data quality</TabsTrigger><TabsTrigger value="setup" className="h-9">Setup & source</TabsTrigger></TabsList></CardHeader>
+    <Card className="min-w-0 rounded-2xl border border-border bg-surface shadow-none ring-0"><Tabs value={tab} onValueChange={value => { setTab(value); if (value === "labels") setLabelsOpened(true); }}>
+      <CardHeader className="border-b border-border"><TabsList className="grid w-full grid-cols-2 gap-1 group-data-horizontal/tabs:h-auto sm:grid-cols-5"><TabsTrigger value="signals" className="h-9">Signals</TabsTrigger><TabsTrigger value="prepare" className="h-9">Prepare data</TabsTrigger><TabsTrigger value="labels" className="h-9">Labels</TabsTrigger><TabsTrigger value="quality" className="h-9">Data quality</TabsTrigger><TabsTrigger value="setup" className="h-9">Setup & source</TabsTrigger></TabsList></CardHeader>
       <TabsContent value="signals" className="mt-0"><CardContent className="pt-4">{record.state !== "verified" ? <p className="text-sm text-muted-foreground">{record.received_chunks}/{record.expected_chunks} chunks received. Retry upload from the phone to finish verification.</p>
         : record.duration_ms <= 0 ? <p className="text-sm text-muted-foreground">This recording has no inspectable time interval.</p> : <NativeSignals inspection={inspection} initialResult={savedResult} />}</CardContent></TabsContent>
       <TabsContent value="prepare" className="mt-0"><CardContent className="pt-4">
         {record.state !== "verified" || record.duration_ms <= 0 ? <p className="text-sm text-muted-foreground">Finish uploading a recording with sensor readings before preparing data.</p>
           : <NativePreparation inspection={inspection} onSaved={result => { setSavedResult(result); setTab("signals"); }} />}
       </CardContent></TabsContent>
+      {labelsOpened && <TabsContent value="labels" forceMount className="mt-0 data-[state=inactive]:hidden"><CardContent className="pt-4">
+        {record.state !== "verified" || record.duration_ms <= 0 ? <p className="text-sm text-muted-foreground">Finish uploading before labeling intervals.</p>
+          : <NativeAnnotations inspection={inspection} onState={setAnnotationState} />}
+      </CardContent></TabsContent>}
       <TabsContent value="quality" className="mt-0"><CardContent className="space-y-5 pt-4">
-        <DetailsList items={[["File integrity", record.state === "verified" ? "Verified" : "Incomplete"], ["Capture", humanize(record.capture_state)], ["Labels", "Unlabeled"]]} />
+        <DetailsList items={[["File integrity", record.state === "verified" ? "Verified" : "Incomplete"], ["Capture", humanize(record.capture_state)], ["Interval labels", humanize(annotationState)]]} />
         {Object.entries(record.summary ?? {}).map(([channel, stats]) => <ChannelQuality key={channel} title={channelLabels[channel as NativeChannel]} stats={stats} />)}
       </CardContent></TabsContent>
       <TabsContent value="setup" className="mt-0"><CardContent className="space-y-5 pt-4"><DetailsList items={[

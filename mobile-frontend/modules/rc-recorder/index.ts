@@ -1,11 +1,18 @@
 import { requireOptionalNativeModule } from 'expo';
 
 export type RcRecorderNative = {
+  collectionAction(config: string): Promise<string>;
+  beginCheck(): Promise<null>;
+  cancelCheck(): Promise<null>;
+  collection(id: string): Promise<string>;
+  saveObservation(id: string, config: string): Promise<string>;
+  collectionReceipt(id: string, config: string): Promise<null>;
   authorize(ownerId: string, validForSeconds: number): Promise<null>;
   lock(): Promise<null>;
   start(config: string): Promise<null>;
   stop(): Promise<null>;
   status(): Promise<string>;
+  listCollection(offset: number, filter: string): Promise<string>;
   list(offset: number): Promise<string>;
   groups(): Promise<string>;
   createGroup(config: string): Promise<string>;

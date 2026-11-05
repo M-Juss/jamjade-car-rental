@@ -1,15 +1,20 @@
 # Telematics and RC Research: central implementation guide
 
-Last reconciled: **2026-11-04**. Scope: Laravel, the Next.js management website,
+Last reconciled: **2026-11-06**. Scope: Laravel, the Next.js management website,
 and the Android-only Expo application. The active workspace uses the native v2
 recorder, explicit resumable chunk upload and protected v2
 signal inspection, local stationary/forward-reference preparation with automatic
 reference-interval suggestions, and bounded saved server synchronization/filtering/
 vehicle-axis results, including experimental reuse of a reviewed forward reference
-for a separate maneuver trial. Signals and Prepare data are separate; earlier standalone
+for a separate maneuver trial. Native recording review also supports encrypted,
+revisioned interval labels with explicit source and uncertainty. Signals, Prepare data
+and Labels are separate; earlier standalone
 diagnostic panels have been retired. Validated noise filtering, reusable accepted references,
 accepted vehicle alignment and AI remain pending; compilation and
 short recording tests do not establish general Redmi recording reliability.
+The [Phase 1 collection contract](#collection-workflow-redesign-phase-1-contract)
+now defines the agreed next workflow; its new fields and three-step UI are not
+active runtime behavior yet.
 
 ## Authority and status
 
@@ -38,6 +43,571 @@ provides project-wide status. [Archived guides](archive/telematics-2026-10-24/RE
 are historical evidence only: do not use them as competing implementation instructions.
 The external `telematics_blueprint.md` was a proposal reviewed during planning,
 not an authoritative description of this codebase or a verified industry standard.
+
+## Collection workflow redesign: Phase 1 contract
+
+**Status, 2026-11-06:** Phase 1 definitions are complete. Phase 2 pilot collection
+is implemented in native/mobile code and the owner-bound Laravel metadata API;
+installation and physical acceptance on the Redmi remain pending. Phases 3–5 are
+not complete. Current web review still uses five tabs and `rc-phase-labels-v1`.
+No accepted alignment, approved dataset, trained model or physical verification
+is implied by a successful build or synthetic test.
+
+The design-time, language-independent contract pack is:
+
+- [schema.json](contracts/rc-collection-v1/schema.json): strict resource shapes and
+  a synthetic specimen envelope, using JSON Schema Draft 7.
+- [catalog.json](contracts/rc-collection-v1/catalog.json): the versioned exercise
+  catalog, fixed mounting preset, abbreviation meanings and mobile protocol text.
+- [example.json](contracts/rc-collection-v1/example.json): synthetic linked resource
+  examples only, with inconclusive preflight, pending alignment and pending dataset
+  review. It is not recording 038, a seed, a measurement or a production request.
+- [contract checks](../web-frontend/src/validations/research/collection-contract.test.mjs):
+  schema, invalid-combination, catalog, naming, snapshot and example-link checks.
+
+`rc-collection-v1` versions the **new collection metadata design**; it is not the
+retired Expo sensor v1 protocol. Original Android streams remain protocol 2,
+`android_sensor_manager_v2`, natural device axes, existing units and original
+nanosecond timestamps. Phase 2 deploys checked copies of the provisional catalog to each application;
+the resource schema and synthetic envelope remain design artifacts, not HTTP payloads.
+Laravel Form Requests/Resources remain authoritative for the **active** APIs.
+When wiring a new operation, implement the Laravel contract and owner/relationship
+checks, then matching native/client schema, service, Resource and tests together.
+A passing design-schema check is not server authorization or a working API.
+
+### Phase 2 pilot implementation: current runtime boundary
+
+Adapter **1.3.0** adds **Collect / Recordings**. Session creation uses an existing
+collection group's fixed surface/slope; new conditions require a new group/session.
+Sessions and mount versions survive JS/runtime restarts in an owner-scoped encrypted
+native index. Initial session+mount allocation is one atomic write. New session
+starts a new collection block; a declared remount preserves that session and creates
+another mount version with pending alignment. Explicit server close/reopen lifecycle
+operations are not exposed yet; the index selects the current block and source
+contexts retain their original session snapshots. Do not infer accepted alignment
+or a dataset boundary solely from these IDs.
+
+The native, explicitly consented **Agree & check setup** action records approximately
+five seconds in the foreground with the operator's holder/top-forward/still
+confirmations. It calculates Welford per-axis rest means/sample standard deviations,
+vector RMS, delivered rate and largest inter-event gap for accelerometer and gyro.
+The accelerometer mean retains gravity. Missing/insufficient or rejected events
+fail capture eligibility; otherwise the result is **inconclusive / pilot only**.
+Orientation, stability and cadence acceptance remain unvalidated; no `passed`
+criteria version or accepted vehicle frame is manufactured. The 30-second maximum
+is a bounded scheduling safeguard, not a physical stillness criterion.
+
+Unused check evidence is held only in the native runtime, is one-use, and is
+cancelled by app background/destruction, logout/account change, session change,
+declared remount and successful capture binding. Lease expiry prevents further
+capture. Restart therefore needs fresh evidence and physical confirmation even
+when the encrypted session/mount is restored. There is no additional wall-time
+freshness timeout; applicability is current owner/session/mount/native clock,
+continuous foreground presence and one use. Start still verifies restricted
+research access online, and an already authorized recording can continue offline
+within its existing lease. Cached protocols never extend access.
+
+New originals remain protocol 2 and add an optional `collection_binding` containing
+session/mount/preflight/clock/catalog/protocol identifiers and protocol hash. Existing
+installed clients' unbound protocol-2 originals remain accepted. New metadata sync
+requires an exact match with the sealed binding, original group/capture/conditions,
+source hash and check-before-recording monotonic times. Native elapsed nanoseconds
+remain decimal strings; subtraction occurs as integers before unit conversion.
+Fractional UTC ordering is retained. No old original is rewritten to add a binding.
+
+Full protocol snapshots and collection context live in a separate encrypted native
+sidecar, with append-only observation revisions and independent sync receipts.
+Stop seals the raw original before observations. Reported phone shift/loose holder
+starts a suspected-shift mount version; the later report does not prove the shift's
+actual onset. The protocol viewer never starts/resets capture and keeps Stop visible.
+The phone Stop action does not wait for a server-status request or upload queue.
+
+The **Recordings** library pages ten phone originals (at most the existing 100-record
+limit), filters Current collection/Pilot history/All, and reads owner-bound server
+status for those same UUIDs. It does not duplicate phone/server copies. Current
+collection means the new structured context, not approved training data: those
+captures are still pilot. Historical names remain unchanged. Live server label
+state explicitly identifies the current v1 semantics; unavailable/cached metadata
+is labelled accordingly. Original verification, context sync and observation sync
+remain separate. Retrying observations revalidates each ID/content even when a
+server revision count is already equal or higher. The local original stays after
+verified upload. The main v1 Data tab is retired; historical APIs/data are retained.
+
+Authoritative write DTOs are `StoreRcCollectionContextRequest` and
+`StoreRcObservationRequest`, mirrored in mobile `validation/research/collection.ts`.
+They are narrower **write DTOs**, not the Phase 1 synthetic resource envelope.
+`rest-welford-v1` uses `preflight.measurements.{accelerometer,gyroscope}` summaries
+and source/check metadata. Server status is `RcCollectionStatusResource`; it never
+exposes the encrypted sensor summaries or observation notes in a library read.
+
+| Restricted mobile route | Current contract |
+| --- | --- |
+| `GET /api/mobile/rc-research/catalog` | Trusted immutable `rc-exercises-v1` catalog |
+| `GET /api/mobile/rc-research/native-recordings/status?ids[]=UUID` | At most ten unique original client UUIDs; owner-bound status only |
+| `POST /api/mobile/rc-research/native-recordings/{server UUID}/context` | Verified original first; atomically create/check session, mount and one-use preflight/context; exact retries succeed, changed identities conflict |
+| `POST /api/mobile/rc-research/native-recordings/{server UUID}/observations` | Independent append with UUID/base revision/reported time; server owner/commit time; stale or different-content retries conflict |
+
+Metadata tables are additive: `rc_collection_sessions`, `rc_mount_versions`,
+`rc_collection_contexts`, `rc_observation_revisions`. Sensor summaries and reports
+use encrypted model payloads, distinct from original encrypted files. User and
+record locks serialize relevant writes; existing Customer/Driver and restricted
+Admin-token boundaries are preserved. Admin list/detail displays the same compact
+alias when context is synced, and alias search does not rename the raw original.
+New bound processing-reference reuse also requires the same research-session and
+mount UUIDs in both originals; a declared remount cannot be overridden by the old
+unchanged-mount checkbox. Legacy-to-legacy reference behavior remains available.
+Abbreviation guides exist in both libraries. Full Check/Prepare/Label review,
+v2 confidence separation, dataset decisions/export and automatic accepted alignment
+are still later phases.
+
+Runtime catalog copies are checked byte-for-byte by mobile
+`validation/research/collection.test.mjs`; keep the exact version immutable after
+physical use. Neither that check nor a protocol hash validates a physical procedure.
+
+### Phase 2 verification, 2026-11-06
+
+- PHP 8.4 full `composer test` (with process timeout disabled and an isolated
+  test-storage token): **1,047 tests / 6,246 assertions passed**. An
+  earlier invocation selected local PHP 8.5 and timed out; that is not a pass.
+- Mobile lint/type check, 270 existing/new Node checks, 27 native unit tests,
+  Android release compilation/bundling and APK signature verification passed.
+  Expo Doctor passed 18/18 checks. These are automated/synthetic evidence only.
+- Web lint/type check, production build and 111 research contract/render/analysis
+  checks passed. Concurrent unrelated development briefly left stale generated
+  route types; the completed build regenerated them successfully.
+- The additive collection migration was applied locally. Existing motion files,
+  source hashes and previous recording IDs were not rewritten or deleted.
+- Standalone release APK includes bundled JS and the checked protocol catalog;
+  adapter is 1.3.0 (the existing app package version remains 1.0.0). Install as an
+  update to retain encrypted phone data. No public download link was created.
+- No Android device was attached at the final ADB check. Installation, Redmi UI,
+  foreground/background transitions, physical remount/noise/sign behavior and the
+  first guided FSS end-to-end run remain pending. Do not mark those verified from
+  unit tests or build output. Browser visual acceptance was not performed here.
+
+### Agreed structure and identity
+
+One recording contains **one planned exercise**, with initial/final quiet periods.
+An exercise can contain multiple phases: FSS has starting and stopping; SW has
+one deviation and recovery. A recording is not assigned one automatic class.
+
+| Entity | Identity and required contract | Lifecycle/meaning |
+| --- | --- | --- |
+| Collection group | Existing `recording_group_id`; local preset/default library | Retained organization; membership alone proves neither mount validity nor independence for evaluation |
+| Research session | `id`, server-owned `owner_id`, `device_profile_id`, `session_number`, `recording_group_id`, `conditions`, `preset_id`, `catalog_version`, participant codes, open/close times | An explicit collection block; conditions are snapshotted. A remount creates a mount version within this session rather than forcing a new group/session |
+| Mount version | `id`, `research_session_id`, `mount_number`, reason, orientation preset, creation/invalidation times, alignment status/method/evidence/reference IDs | A declared physical mounting episode. References apply to the relevant episode, never silently across a remount |
+| Preflight evidence | `id`, `mount_version_id`, consent version/time, clock context/bounds, window, channel counts/measured summaries, summary-method/criteria versions, results and physical confirmations | Bounded explicit setup check; not a rental setup session, maneuver recording, observed event label or proof of accepted alignment |
+| Recording context | Original client `recording_id`, optional `server_recording_id`, research session/mount/preflight IDs, capture number, kind, planned protocol, course snapshot, source fingerprint and capture/upload states | A separately linked metadata projection. Preserve the sealed original name, timestamps, measurements, IDs and hashes |
+| Observation revision | `id`, `recording_id`, revision/time, source/observer code, completion report, flags, actual stopping method and optional notes | Saved after the original; encrypted, append-only and independently synchronized. Incomplete observations never prevent saving original data |
+| Annotation revision | `id`, `recording_id`, explicit version/revision, previous revision ID, review state/time, source fingerprint and intervals | Actual human-reviewed interval descriptions; distinct from the planned protocol and from dataset approval |
+| Processing profile | `id`, version, experimental/validated state and evidence, sampling/grid/filter/gap/warm-up/projection settings | Reproducible researcher configuration; no operator cutoff selector before each run |
+| Dataset review | `id`, `recording_id`, revision, decision/reason, policy version, source fingerprint, selected artifact/revision IDs and included intervals | Explicit inclusion/exclusion judgment; immutable exports later pin this exact review and its dependencies |
+
+`research_session_id` is deliberately separate from the existing native
+`collection_session_id`. The latter depends on entered context and the native
+runtime, can change on restart, and cannot detect an unreported remount. Never
+reinterpret historical runtime IDs as the new research-session identity.
+
+New session numbering is durable and owner/device-profile scoped. Existing
+recording numbering remains the native group-scoped monotonic capture allocation;
+it does not reset when a research session changes. Failed starts can leave gaps.
+Neither number counts successful recordings or usable training examples. UUIDs
+remain the authoritative keys; display codes are not globally unique identifiers.
+
+A session contains a fixed surface/slope/device/preset/protocol context. A changed
+surface/slope, phone or protocol collection block starts a new session. A changed
+cone layout creates a layout revision in recording metadata; it does not claim
+that the mount changed. App restart can restore a persisted research session only
+with a physical-mount confirmation; restart is not proof of either unchanged or
+changed physical mounting. Closing/reopening a collection block does not rewrite
+old records or automatically accept a reference.
+
+Only fixed participant codes such as `OP01`/`OB01` are needed for research provenance.
+They are not new personnel roles or login identities. Do not collect personal
+names, contacts or identifiers for this purpose. Ownership/reviewer identity is
+assigned by authentication, not trusted from a submitted specimen's `owner_id`.
+
+### Compact display naming and original preservation
+
+Use `S02-FSS-R038`, without spaces:
+
+| Part | Meaning |
+| --- | --- |
+| `S02` | Research session 02; pad to at least two digits |
+| `FSS` | Selected planned protocol code |
+| `R038` | Existing recording allocation 038; pad to at least three digits, using zero rather than letter O |
+
+Padding expands for larger numbers; never truncate or reuse numbers. Derive the
+code from structured values and retain the full readable protocol label in
+Details. Surface, slope and date belong to the session header. Add an
+**Abbreviation guide** action in both recording-library headers, populated from
+the same catalog meanings, rather than repeating explanations on each row.
+
+The display code is an overlay, not a replacement for `context.name` in existing
+sealed originals. Do not rename/reseal existing phone files, change source hashes,
+renumber history or use a display-code rename as a new upload identity. Older
+records without verified new session/protocol metadata keep their original names;
+do not invent `S01` or infer an exercise from their waveform to fill a missing code.
+
+### Fixed mounting and pre-run checks
+
+The user confirmed one Redmi Note 8 Pro and one mounting pattern for the capstone:
+MN-82S Supertourer roof, **Adjustable screw**, screen up, phone length along the
+RC front–back direction, **camera/notch end toward the RC front**. The user's
+confirmation resolves the ambiguous photograph. Mount angle is unmeasured, not
+10 degrees; RC battery percentage remains unmeasured. A photo does not prove
+rigidity, exact tilt, grip, levelness or reference validity.
+
+Target flow: **Mount -> explicitly run setup checks -> show the result -> explicit
+Start recording**. Explain what correction is needed. Opening a protocol must not
+start collection; opening it during an active recording must not pause, restart
+or reset that recording, and Stop must remain accessible.
+
+The preflight record separates:
+
+- Sensor availability and usable event timing.
+- Expected tilt/orientation and acceleration/gyro stability over a bounded window.
+- Operator confirmations that the RC is still, the holder is locked and the phone
+  top points forward. Stillness alone cannot prove holder rigidity or horizontal
+  front alignment.
+- Alignment applicability for this mount. `pending`, `experimental`, `accepted`
+  and `invalidated` are distinct. Acceptance requires registered validation
+  evidence and method version, not merely a non-null identifier supplied by a client.
+
+No numerical orientation/stability/cadence acceptance thresholds have been
+validated. They remain null in the Phase 1 catalog. `passed` requires an approved,
+registered criteria version, all required check results and physical confirmations;
+clients cannot produce a trusted pass by inventing their own criteria. A tested
+experimental criteria version can describe an experimental setup check without
+claiming validated vehicle alignment. Actual limits must come from the physical
+pilot and be versioned before wiring the Ready decision.
+
+Evidence includes the measured rest-acceleration mean and standard-deviation
+vectors, gyroscope RMS, per-channel delivered rates and maximum gaps, not only
+status flags. Acceleration includes gravity; stationary does not mean an all-zero
+accelerometer. Missing summaries are null, not fabricated zero/noise-free values.
+Retain summary-method version, source window and original units. The synthetic
+specimen's numbers are deliberately artificial and must never become default
+measurements or acceptance thresholds.
+
+`start_elapsed_ns`/`end_elapsed_ns` are decimal strings in a native
+`clock_context_id`; use integer/BigInt subtraction before conversion to relative
+milliseconds. Check signed-64-bit bounds, ordering and agreement with `window_ms`
+server-side. Preflight `started_at` denotes the start of that source window;
+reported consent must precede it and the access grant must be valid independently.
+Recording context identifies the same clock domain; a runtime/clock restart
+requires new evidence even when the physical session/mount can be restored.
+UTC or explicit-offset source times remain explicit internally, with server
+revision times and reported check times distinguished when wiring writes.
+Display dates in Asia/Manila without a visible timezone suffix.
+
+Preflight is an explicit consented motion-capture action. Verify its registered
+consent version and access grant before starting sensors; opening a guide or
+screen is not consent. The Phase 1 consent fields do not add a consent flow or
+authorize collection by themselves. Preserve the existing raw recording's own
+consent evidence rather than copying an invented result into it.
+
+Keep capture eligibility separate from derived-data/AI readiness. Diagnostic raw
+collection can preserve an inconclusive setup result with explicit status;
+it must not silently become an approved controlled/dataset capture. Define the
+freshness/one-use rule in the native implementation: evidence must precede Start,
+match the current owner/session/mount/clock context and be invalidated on declared
+remount/repositioning. No arbitrary expiry duration is frozen in Phase 1.
+
+A remount creates a new mount ID/number and requires rechecking. Automated
+fixed-mount reorientation from quiet evidence is an agreed investigation, not an
+implemented replacement for forward-reference capture. Preserve the short guided
+forward-reference fallback until repeated remount/sign/turn checks establish
+confidence. An old reference can never pass simply because a new mount's setup
+strings look identical. Phone-only sensing cannot guarantee detecting every shift;
+operator reports must remain usable evidence. Suspension rocking and mount slip
+are different phenomena and must not be silently conflated.
+
+`invalidated_at` records the end of applicability from the known invalidation
+time. A later remount does not by itself make correctly prepared earlier recordings
+bad. If a shift's actual onset is unknown, preserve that uncertainty and review the
+affected period; the time someone reported a shift is not its proven onset.
+
+### Versioned exercise protocols
+
+The catalog is `rc-exercises-v1`; every definition is provisional until the
+applicable physical rehearsal. `SR`/`FR` are setup codes, not maneuver classes.
+Only FSS/HA/HB/LT/RT/RSS/SW appear in the ordinary exercise picker.
+
+| Code | Planned exercise | Procedure focus |
+| --- | --- | --- |
+| FSS | Forward Start-Stop | Gradual forward start and routine controlled brake |
+| HA | Harsh Acceleration Attempt | Sharp start attempt followed by a normal stop |
+| HB | Harsh Braking Attempt | Normal start followed by a sharp brake attempt |
+| LT / RT | Left / Right Turn | One smooth turn from the RC's perspective, straighten, then stop |
+| RSS | Reverse Start-Stop | Reverse normally, release the lever to neutral, allow it to stop |
+| SW | Swerve Attempt | One planned deviation and recovery, then straighten and stop; ordinary corrections are not automatically swerving |
+| SR / FR | Stationary / Forward Reference | Dedicated setup evidence using the reference workflow |
+
+After starting, allow settling and about **five usable quiet seconds**, perform
+the planned exercise, stop, allow settling and about five quiet seconds, then
+Stop/save. Do not force exactly seven seconds, exactly five seconds or an event
+label derived from a countdown. The guidance interval is not a validated
+stationarity/quality threshold. SR has no driving exercise; its initial/exercise/
+final text represents continued stationary evidence, not a command to move.
+
+For the provisional FSS straight course: pair 1–2 is A/start; pair 3–4 is B/begin
+braking; pair 5–6 is C/end of intended stopping zone. Stop between B and C and
+retain a clear buffer beyond C. For RSS, B means **release lever to neutral**;
+rehearse its stopping distance separately. Turn/swerve geometry and all cone
+spacing/radius remain provisional. Keep unmeasured dimensions null; a tile count
+can be recorded as a count without converting it to invented metres. A layout
+revision must record what changed. Keep cones/cables out of the wheel path;
+contacts are observations, not automatic harsh-event labels.
+
+Show the selected maneuver's full protocol and layout before Start, a compact
+reminder while recording and the version used when reviewing an older record.
+No second phone or stopwatch is required. A teammate observes actual motion and
+can annotate after upload. Timing estimated from observations and chart review
+must remain identifiable as estimated; plots assist boundary placement and do
+not independently establish event truth or the brake command.
+
+`protocol_code`, trusted catalog version and the SHA-256 of the canonical selected
+protocol definition bind the exact instructions to a recording. The full definition
+must be retained in the trusted catalog/snapshot store for offline review and
+exports. Changing wording/procedure creates a new immutable catalog version;
+do not change historical snapshots in place. A hash proves identity, not physical
+truth. Cached protocols permit offline viewing; permission/access lifetime and
+new-recording offline eligibility are separate rules. Do not widen the current
+research-token scope or extend authorization lifetime as a shortcut.
+
+Before any physical recording uses this draft catalog, its wording can still be
+reviewed. Once used for capture, preserve that exact version/snapshot and publish
+a successor for changes. SR/FR labels and the contract version are technical
+identifiers; the UI must not imply that protocol procedures are already validated.
+
+Planned intensity and actual observation are separate fields. HA/HB encode an
+attempt, not a confirmed harsh class. SW has `planned_assessment = unspecified`;
+swerving motion is not automatically a harshness assessment. If a new harsh
+cornering procedure is introduced, version the catalog and define its course and
+rubric; do not invent HLT/HRT codes in one client before the shared contract changes.
+The current primary future targets still include harsh cornering.
+
+### Post-run observations and separate annotation judgments
+
+**Stop -> save the original immediately -> observations -> explicit upload ->
+server verification.** Save must not wait for a form, connectivity or a label.
+Store later observations in an owner-encrypted sidecar/revision boundary linked
+to the original ID/hash. Retry an observation upload independently and idempotently;
+never edit a sealed manifest to attach notes or revised instructions.
+
+`completed_as_planned` is true/false/null (null means unsure). Allowed flags are
+steering corrections, unexpected reversing/turning, bump, cone contact, phone
+shift, loose holder, interruption and not sure. Optional notes are nullable and
+bounded to 1,000 characters. Flags can coexist; minor corrections do not
+necessarily contradict completion. `actual_stop_method` is independently reported:
+`brake_applied`, `neutral_release`, `unknown` or `not_applicable`. Do not copy the
+expected protocol method into it as observed truth. RSS's neutral stop must not
+be forced into a brake-command claim or automatically classified as harsh braking.
+The existing `other` movement can retain a slowing phase that cannot honestly be
+called braking; a later explicit deceleration taxonomy requires a version change.
+
+The future annotation contract is **`rc-phase-labels-v2`**, not a silent change to
+existing v1. Retain the original movement/direction/severity/source/notes fields
+and add stable interval UUIDs, plus these independent judgments:
+
+| Field | Values | Meaning |
+| --- | --- | --- |
+| Revision `review_status` | `draft`, `reviewed` | Someone inspected the revision; not certainty, coverage, quality or dataset approval |
+| Interval `movement_confidence` | `confident`, `uncertain` | Confidence in the observed movement category |
+| Interval `boundary_confidence` | `clear`, `approximate` | How clearly the timing can be located; clear is not perfect timestamp ground truth |
+| `direction` / `severity` | Existing values including `unknown` | Unknown attributes remain unknown even if the general movement is understood |
+
+A reviewed revision can retain approximate boundaries or uncertain judgments.
+Signal-only labels cannot claim confident observed movement in this first contract.
+Use source `observed`, `operator_report` or `signal_review` honestly; reviewer,
+observer code, provenance and time must remain traceable. No confidence flag
+proves human correctness or independent ground truth.
+
+A normal FSS candidate has gradual input and a smooth start, one forward passage
+and a routine controlled stop, fixed phone and noted corrections. HA/HB require
+review of actual response; controller input or a chart spike alone cannot certify
+harshness. Observers use the same written rubric and retain unclear cases. Rubric
+repeatability and independent physical severity validation remain pending.
+
+Keep at most 100 ordered, nonoverlapping half-open `[start_ms,end_ms)` intervals,
+relative to original capture start, positive duration and within the recording.
+Stable interval IDs cannot repeat in a revision. Adjacent boundaries are valid;
+unmarked time is not normal by default. Overlapping/mixed-event modeling remains
+outside the initial isolated-exercise representation. No source-reference phases
+are copied onto target maneuver timelines. Filtering latency/warm-up can affect
+boundary interpretation; do not silently shift a human label's original-time bounds.
+
+Do not infer the new confidence fields from old `certainty`. Read v1 artifacts
+as v1, preserve their encrypted revisions, and require an explicit v2 review to
+supply separate judgments. A compatibility projection can say legacy/unknown;
+it cannot promote old `reviewed` into a clear-boundary or confident-movement claim.
+
+### Processing, dataset inclusion and model-use boundaries
+
+The operator does not tune cutoffs for each run. A versioned researcher profile
+pins timing, filtering, missing-data, warm-up, projection and reference behavior.
+The current **experimental** processing baseline is requested 50 Hz, 20 ms grid,
+60 ms interpolation bracket limit, 500 ms filter warm-up, second-order causal
+Butterworth with candidate 3/5/8 Hz cutoffs and a fixed vehicle frame. These values
+come from `RcMotionProcessing`, not an established RC standard or validated optimum.
+The synthetic 5 Hz profile demonstrates provenance only. Dynamic gravity removal
+and motion fidelity across remounts/rocking remain research validation tasks.
+
+Keep measured independent original streams. Reprocessing creates a new artifact;
+no smoothing of the originals, zero-filled long gaps, removed inconvenient peaks
+or per-record amplitude normalization to hide intensity. Dataset review must
+identify an owner-bound, recording-bound processing run/profile and all exact
+reference dependencies. The current server supports only bounded 30-second runs;
+longer recordings need an explicit coverage/continuity implementation before
+claiming full-recording processing/export. Labels outside a processed window do
+not magically acquire supported measurements.
+
+Dataset decisions are `pending`, `included` or `excluded`. Reasons are required
+for explicit inclusion/exclusion. Inclusion requires selected original-time
+intervals and exact processing, annotation and observation revision IDs, source
+manifest hash and policy version. Empty inclusion is invalid. Whole-recording
+inclusion cannot be inferred from a label revision or an upload state. Apply
+inclusion to usable intervals; preserve the rest and record exclusions separately.
+A contact/bump can be a deliberately reviewed confounding example, not an automatic
+reason to delete or discard the complete recording.
+
+Future **Laravel service checks**, beyond JSON shape validation, must enforce:
+
+1. Active Admin, enabled research profile, correct web session/CSRF or restricted
+   mobile token, owner/device/session/mount association and private/no-store access.
+   Assign owner/reviewer fields server-side; reject cross-account identifiers.
+2. Idempotent identities, serialized local numbering, recording/mount/context
+   consistency, revision concurrency, legal state transitions, storage bounds and
+   immutable closed snapshots. Start/end times and consumed preflight evidence
+   must match the applicable clock context; specimen IDs are not credentials.
+3. A trusted catalog version and canonical protocol fingerprint matching the
+   selected kind/code/planned assessment; no client-authored replacement protocol.
+4. Positive, ordered, nonoverlapping interval times within the actual recording,
+   unique interval IDs, reviewer provenance and explicit review outcome.
+5. Manifest/chunk/run integrity; actual processing coverage, supported sample masks,
+   warm-up/gap exclusions and valid alignment/reference evidence for that mount.
+6. Inclusion ranges contained in the selected reviewed annotations and processed
+   window, with versioned rules for uncertain labels, unknown attributes and
+   approximate boundaries. The default confirmed-target policy excludes uncertain
+   movement labels; approximate boundaries require an explicit documented policy,
+   not automatic approval. Retain research-only examples separately when unresolved.
+7. Explicit handling of stale dependencies. Updating current labels/observations
+   may require another current review, but must not rewrite an already exported
+   snapshot. A later mount invalidation must remain visible to future review;
+   it must not mutate historical originals or erase contrary evidence.
+
+Do not announce dataset inclusion, apply these checks or add dataset routes from
+schema files alone. Phase 4 owns the immutable export manifest and selected
+measurements/labels, masks, exclusions, units, protocol/reference/profile versions,
+checksums, target mapping and split assignment. The compact code, intended
+exercise/intensity, observer notes/direction, source identity and human confidence
+are metadata/targets/grouping information, **not live model inputs**. Models must
+not decode planned classes from file names. Only measured features and context
+actually available during operation can become inference inputs.
+
+### Mobile/web workflow and pilot preservation
+
+Target mobile navigation is **Collect / Recordings**, replacing historical v1 Data
+in the main flow. Retain old routes/data as required for persisted history. One
+native recording appears once, merged by immutable ID rather than duplicated for
+phone/server copies. Local originals survive verified uploads. Capture state,
+transfer state, annotation review/confidence and dataset inclusion remain separate.
+
+The collection contract uses domain `upload_state` values `local_only`, `uploading`,
+`upload_failed`, `verified`. These are not replacements for existing native
+`transfer_state` values (`uploaded` is the native receipt state) or backend original
+integrity `state`. Mapping belongs in service/read-model boundaries. A locally
+cached verified receipt must not imply a fresh server availability check. Offline
+label metadata is visibly cached/unavailable; never display a hardcoded Unlabeled
+as if it were the server's latest state. Observation sync may still be pending
+when original upload is already verified; show the specific incomplete work.
+
+Target web workflow is **Check recording -> Prepare signals -> Label and review**,
+with one shared timeline/selection and Original/Processed modes. Setup, diagnostics,
+processing/annotation history move into Details. Reopening resumes saved progress
+without refitting or auto-approving. Use existing JamJade controls, typography,
+semantic palette and card treatments; no competing component system or gradients.
+
+Existing native recordings are **Pilot history**, meaning preliminary development
+material, not useless or automatically bad data. Use Current/Pilot/All filtering
+when implemented; no deletion, original rewrites or fabricated new-session IDs.
+A new protocol-bound controlled collection still needs quality/dataset review.
+Pilot intervals may enter exploratory training after explicit review, but material
+already used to tune preprocessing/rules cannot be represented as an untouched
+final test set. Reserve final evaluation prospectively, group whole research
+sessions and shared-reference dependencies together, keep related windows/copies
+in the same split and fit learned transforms on training data only.
+
+### Write operations and server-owned values
+
+The schema pack describes **resource/snapshot shapes**, not complete HTTP write
+payloads. Do not POST the synthetic envelope, treat read-only fields as client
+authority or register guessed routes from this document. Phase 2 uses the narrower active request/Resource contracts listed in its runtime
+section. Later operations must define their authoritative DTO before clients call it. Keep new
+collection operations distinct from the existing historical v1 `/sessions` APIs.
+
+| Operation to implement | Client evidence/input | Authoritative server work |
+| --- | --- | --- |
+| Read catalog | Registered version or current catalog request | Return the trusted immutable version and its provisional/validation status |
+| Open/close research session | Stable local UUID, group/device-profile references, conditions, participant codes and event context | Authenticate/authorize, assign owner, validate references, allocation/closure and idempotency; return canonical resource |
+| Declare mount version | Session reference, stable mount UUID, reason and physical declaration | Bind to the owner/session, enforce temporal applicability and prevent automatic reuse of old alignment |
+| Synchronize preflight/context | Stable IDs, explicit consent/check evidence and binding to the existing native recording | Verify source/window/owner/mount/catalog, derive display/source/status fields, record inconclusive evidence without claiming a trusted pass |
+| Append observations | Revision/idempotency identity, base revision, actual reports/flags/method and optional notes | Set reviewer/commit time, enforce ownership and stale-write rules, encrypt the revision without modifying the original |
+| Save/review v2 labels | Explicit v2, base revision, original-time intervals and separate confidence/review choices | Preserve v1 handling, validate bounds/semantics/source, append encrypted history and set server review time |
+| Decide dataset inclusion | Base revision, selected artifact/revision IDs, policy, reason and proposed intervals | Resolve actual recording-bound provenance/coverage, enforce inclusion policy and append a decision; never accept a client `eligible=true` claim |
+
+Offline local objects can precede these synchronized resources. Define their
+write DTOs explicitly, retaining reported times separately from server commit
+times; no pending local report is dropped just because a server-created field
+does not exist yet. Parent-before-child sync, same-ID/same-content retry success,
+different-content conflict and revision concurrency need backend/native tests.
+Database owner, reviewer, identity relationships and eligibility checks cannot be
+proved by a JSON shape. Do not build a second API validation system from this
+schema; implement Laravel Form Requests/services and matching Zod/native validation.
+
+### Delivery boundaries and acceptance
+
+| Phase | Completion boundary | State after this increment |
+| --- | --- | --- |
+| 1. Contracts | Central guide, versioned catalog/resource shapes, synthetic examples and consistency/invalid-case checks | Complete as design artifacts; no active request contract changed |
+| 2. Mobile | Native-backed session/mount/preflight metadata, protocol display, compact names/guide, immediate save, observation persistence, current recording library and status sync | Pilot implementation present; rebuilt standalone APK and automated checks recorded below; Redmi installation/physical acceptance pending |
+| 3. Web | Authoritative collection read models, three-step review, separate confidence/review fields and history/pilot presentation | Pending; extend matching Laravel/Form Request/Resource/Zod/service contracts together |
+| 4. Dataset export | Stateful interval inclusion and immutable reproducible dataset snapshots with masks/provenance/grouped split boundaries | Pending |
+| 5. Verification | Physical and cross-app acceptance, including a complete normal FSS path and controlled remount checks | Pending; synthetic checks do not substitute for Redmi/RC validation |
+
+Phase 2 implements the native/recording metadata boundary and owner-bound Laravel
+services. Session closure/reopening and physical acceptance remain explicit follow-up gates.
+Plan additive schema/version changes, native atomic persistence, account isolation,
+parent-before-child sync and bounded idempotent metadata endpoints. Existing v2
+original upload must remain compatible with already installed clients. A recording
+with missing new context is shown as legacy/pilot or context-pending; it must not
+be falsely marked protocol-complete. Do not activate a partially updated Form
+Request without updating all consuming clients and error mappings.
+
+Acceptance includes repeated same-mount captures; declared remount and incorrect
+orientation; reported/suspected shift; required-sensor failure; interrupted capture;
+network drop and retry; duplicate upload protection; immediate durable save even
+with unfinished observations; matching compact names/statuses across clients;
+immutable protocol/label history; and reproducible interval-level export. Sensor
+checks cannot prove every physical fault or classify events by themselves.
+A complete first normal FSS pilot must be verified end-to-end before expanding
+collection. Cornering/swerve radius and cone spacing remain provisional.
+
+Run the design checks from `web-frontend/`:
+
+```sh
+node --test src/validations/research/collection-contract.test.mjs
+```
+
+These require the web development dependencies, PHP CLI and existing backend
+vendor autoloader for canonical-serializer parity. They use the already installed
+development Ajv validator, no new package, network, database, sample upload or
+framework test foundation. They check JSON shapes and
+selected example/catalog invariants. They do **not** establish physical accuracy,
+authorization, all cross-resource business rules, active API/Zod parity or working
+UI. Existing Form Requests/Zod schemas are deliberately not changed in Phase 1.
+
 
 ## Agreed scope and requirements
 
@@ -86,7 +656,7 @@ not an authoritative description of this codebase or a verified industry standar
 | Mobile stack | Expo SDK 54 (`~54.0.37`), React Native 0.81.5, `expo-sensors ~15.0.8`, Android-only local `modules/rc-recorder` Kotlin module | New development build required for the native recorder; Expo Go cannot capture v2 |
 | Builds | Generated Android project; development and standalone preview APK profiles | A successful build does not prove device reliability |
 | Research capture | Collect uses native independent original streams, fixed MN-82S preset, encrypted persistent collection groups/defaults/numbering, automatic phone power metadata, requested 20 ms updates and explicit native Start/Stop | Actual sensor axes/rates, lock-screen continuity, interruption and power behavior require Redmi validation |
-| Research storage and inspection | Encrypted local v2 originals, explicit chunk upload/retry and server verification; separate signal review and reference preparation; bounded saved server processing with run-specific references and explicit experimental reuse for maneuver trials | V1 list retired; no validated filter setting, reusable accepted alignment, background transfer queue, dataset export or annotation revisions; remote v2 deletion UI remains pending |
+| Research storage and inspection | Encrypted local v2 originals, explicit chunk upload/retry and server verification; separate signal review, reference preparation and revisioned interval labels; bounded saved server processing with run-specific references and explicit experimental reuse for maneuver trials | V1 list retired; no validated filter setting, reusable accepted alignment, background transfer queue or dataset export; remote v2 deletion UI remains pending |
 | Calibration | Six readiness checks and five supervised foreground exercises, summary-only evidence | Provisional settings; moving RC/reference accuracy not established |
 | Released rental GPS | Explicit foreground/background latest-location sharing, consent, pause/resume, server eligibility | No continuous rental motion collector, offline recording queue, or route-history collection in this flow |
 | Fleet website | Ongoing rentals, latest-location map, private Reverb invalidations and authorized rereads | No connected AI driving-event dashboard |
@@ -388,9 +958,9 @@ Sources: [fleet service](../backend/app/Services/FleetTrackerService.php),
 
 This section describes the **complete agreed target**. Native v2 acquisition,
 explicit resumable upload, original-signal inspection, local reference preparation,
-and bounded saved server processing runs
+bounded saved server processing runs and revisioned interval-label editing
 are implemented subsets. Automatic background transfer, full-recording processing/export,
-validated noise filtering, reviewed annotation revisions,
+validated noise filtering, formally reviewed trial annotations,
 ML, scores and reports remain pending.
 
 ```mermaid
@@ -1159,19 +1729,40 @@ no new local purge integration; access still requires fresh server authorization
 
 #### Saved combined processing runs (2026-11-04)
 
-The recording inspector separates **Signals**, **Prepare data**, **Data quality**
-and **Setup & source**. For a forward-reference capture, Signals automatically
+The current recording inspector separates **Signals**, **Prepare data**, **Labels**,
+**Data quality** and **Setup & source**. The proposed three-stage workspace is
+defined in the Phase 1 contract and is not yet implemented. For a forward-reference capture, Signals automatically
 opens the latest saved result; no result is created or accepted automatically.
 It shows one filtered chart (Forward acceleration initially, Up-axis rotation
-when switching sensors), a compact mean/absolute-peak table, and relevant
+when switching sensors), a compact mean/directional-peak table, and relevant
 experimental/short-reference warnings. **Compare before / after** adds the
 synchronized pre-filter series on demand. **Review interval** selects Whole
 window, Resting, Starting or Stopping; drag selection is still supported, with
-keyboard/touch sliders in Technical details. Saved-run selection appears only
+keyboard/touch sliders in Details. Saved-run selection appears only
 when there is more than one result; pagination appears only when needed.
 Original channels are accessible through **Original readings**, one sensor chart
 at a time, with interval statistics/timing collapsed. The duplicate top-level
 largest-gap metric was removed; it remains in Data quality.
+
+The processed table shows signed positive and negative peaks independently,
+using the same selected, matching post-warm-up rows as its mean. Acceleration
+rows are Front–back, Right–left and Up–down, with toward-front/rear, right/left
+and upward/downward labels. These describe acceleration, not travel direction.
+Rotation retains Forward/Right/Up axis names and signed peaks in rad/s.
+An absent sign is shown as None, including all-zero samples; empty selections
+retain the no-values state. Compare mode shows before/after for each peak.
+This display calculation reads existing series without changing saved processing
+artifacts, pipeline versions, APIs or original measurements.
+
+Processed **Details** keeps the selected time range, filter cutoff, reference
+recording link (or this recording for self-fitting), unchanged-mount confirmation
+for reused references, selected usable count and per-axis standard deviation.
+The fixed-reference tilt limitation remains beside these values. Nested
+**Advanced diagnostics** is collapsed by default and retains processing methods,
+grid/restart/interpolation settings, coefficients, reference intervals and IDs,
+integrity hashes, alignment matrix and cursor provenance. Compare-mode variation
+is explicitly labeled before/after. This is a presentation change; saved evidence
+and processing contracts are unchanged.
 
 **Prepare data** owns the bounded source window, automatically suggested reference
 intervals, one original-acceleration chart, **Inspect**, collapsed **Adjust intervals**,
@@ -1334,13 +1925,16 @@ Sources: [native module/service/store](../mobile-frontend/modules/rc-recorder/an
 
 ### Collection and inspection UI
 
-Keep the mobile Data / Collect navigation and shared controls. Target Collect:
+Current mobile navigation still contains Collect and historical v1 Data. The
+agreed redesign replaces Data with native Recordings; reuse the shared controls.
+Target Collect:
 hardware/session profile -> sensor/recording checks -> research reference capture ->
 manual Start/Stop -> durable local save/upload -> quality and waveform review ->
 annotation review. Saving an unlabeled recording must not require a confirmed
 normal/harsh label. Preserve observer trial notes from the first pilot.
 
-Extend the implemented v1 Admin inspector toward these target capabilities:
+Continue extending the native v2 Admin inspector toward these capabilities;
+interval labeling below is implemented, while dataset inclusion/export remain targets:
 
 - Session/trial browser, recording/upload/processing states, and quality summary.
 - Timestamped acceleration/rotation plots, axis toggles, zoom, and visible gaps.
@@ -1361,6 +1955,53 @@ The separate web reads use normal web sessions and explicit Admin access,
 reusing domain services. Future web mutations must retain CSRF protection.
 An internet-accessible demo needs an explicitly enabled
 research deployment boundary; do not make `APP_ENV=local` the public access plan.
+
+#### Native interval labels (2026-11-05)
+
+The **Labels** tab uses the existing original-acceleration chart and selection
+controls. Select an interval, add it to the draft, review its fields and explicitly
+save. Drafts survive switching between inspector tabs; leaving/reloading the page
+does not save them. Discard draft restores the last saved revision. Historical
+revisions are read only. No recording, including 037, is automatically labeled.
+
+- Intervals use milliseconds relative to the original recording start and half-open
+  boundaries `[start_ms, end_ms)`. Up to 100 ordered, positive-duration,
+  nonoverlapping intervals may be saved, contained within the recording. Adjacent
+  boundaries are allowed; unmarked time stays unlabeled. This first phase-label
+  representation cannot express overlapping events and is not the final ML taxonomy.
+- Movement: stationary, acceleration, straight driving (`driving`), braking,
+  left turn, right turn, swerving or other. Direction is forward, reverse, unknown
+  or not applicable; assessment is normal, harsh, unknown or not applicable.
+  Stationary requires not applicable for both; moving intervals require values or
+  unknown. These are human annotations, not inferred travel direction or AI events.
+- Source records direct observation, operator report or signals only. Certainty
+  records reviewed or uncertain/approximate; signals-only or unknown assessments
+  must remain uncertain. Approximate retrospective timing must not be presented
+  as an independently timestamped observer annotation. Notes are nullable, up to
+  1,000 characters. New selections start uncertain with unknown assessments.
+- Save appends an encrypted whole-recording label snapshot in
+  `rc_annotation_revisions`, with reviewer, revision, version
+  `rc-phase-labels-v1`, original manifest fingerprint and canonical content
+  fingerprint. Original manifests/chunks and saved processing runs are unchanged.
+  The additive migration is
+  `2026_11_05_000001_create_rc_annotation_revisions.php`; no mobile build is needed.
+- GET/POST `/admin/rc-research/native-recordings/{recording}/annotations`, GET
+  `.../annotations/history` and GET `.../annotations/{revision}` retain active Admin,
+  enabled research profile, owner, session/CSRF and private/no-store boundaries.
+  History returns at most 10 metadata rows per page, with a separately bounded
+  revision read. Writes require verified original manifest integrity, recording
+  locking and `base_revision`; stale drafts return 409. Identical current content
+  is retry-safe. Writes are throttled to 10/minute, and revisions capped at 1,000.
+- `StoreRcAnnotationsRequest` and
+  `web-frontend/src/validations/research/annotations.ts` own matching field and
+  semantic rules. Access, integrity, actual duration and revision conflicts are
+  server-authoritative. UI controls display seconds and submit milliseconds.
+  Clearing all intervals saves a new unlabeled revision and retains prior history.
+- List and Data quality status derive from the latest interval snapshot: no
+  intervals means unlabeled; any uncertain interval means uncertain; otherwise
+  reviewed. **Reviewed describes the saved intervals, not complete timeline
+  coverage, accepted calibration, training eligibility or model accuracy.** No
+  dataset approval/export, learned threshold, classification or score is added.
 Keep research streams separate from rental setup evidence, customer records,
 location history, and ordinary significant-event lists.
 
@@ -1470,7 +2111,7 @@ the report increment without widening research tokens to unrelated mobile APIs.
 | Increment | Deliverable | Evidence required |
 | --- | --- | --- |
 | 1. Recording contract/service | Local native v2 implemented with encrypted durable files, metadata, explicit lifecycle and recovery; compiled development APK | Actual independent timestamps, exportable recordings, screen-lock and interruption tests on Redmi remain required |
-| 2. Inspection workflow | V1/native v2 original review, explicit resumable upload, verified files, channel windows and unlabeled states implemented; annotation revisions and automatic transfer pending | Real trials visible and traceable; authorization/corruption/retry checks exercised; physical recovery and broader network-failure testing remain |
+| 2. Inspection workflow | Native v2 original review, explicit resumable upload, verified files, channel windows and revisioned interval annotations implemented; automatic transfer pending | Real trials visible and traceable; authorization/corruption/retry checks exercised; physical recovery, annotation review and broader network-failure testing remain |
 | 3. Reproducible processing | Local diagnostics and saved bounded server synchronization/filtering/projection with explicit experimental forward-reference reuse implemented; quality approval, accepted calibration, features/export remain pending | Original data preserved; plots reviewed; live/offline parity and rate comparisons |
 | 4. Dataset/model | Reviewed annotations, split sessions, baseline/model evaluation, versioned bundle | Held-out metrics, normal reverse/confounder tests, uncertainty and limits reported |
 | 5. Live AI/report | Server-owned event ingestion, admin alerts, deduplication, finalization, score and notification | End-to-end delay, offline recovery, no duplicate deductions, incomplete-report handling, recipient access |
@@ -1483,6 +2124,214 @@ and hosting capacity are experimental or implementation decisions, not establish
 
 ## Verification and historical evidence
 
+- **2026-11-06 collection redesign Phase 1:** Consolidated the agreed structure,
+  naming, fixed mounting, maneuver protocols, preflight evidence, observation and
+  annotation judgments, processing provenance, inclusion rules and delivery gates
+  in this guide. Added the design-only `rc-collection-v1` resource schema,
+  provisional nine-code protocol catalog and explicitly synthetic linked specimen.
+  Added **44 design-contract checks**; all **111 research/schema/render checks**
+  passed, including parity with Laravel's existing canonical protocol serializer.
+  Full web lint and TypeScript checks passed; the final new test file also passed
+  focused lint. JSON/local-link review and `git diff --check` passed. Application
+  production builds, Android builds, migrations and runtime endpoint/physical
+  tests were not needed or performed for this definitions-only increment.
+  No active Form Request, Resource, frontend form/service, native recorder,
+  database record, original recording or existing annotation was changed by
+  Phase 1. Phases 2–5, API wiring, UI changes and physical validation remain pending.
+- **2026-11-05 guided annotation of 037:** Following the earlier unlabeled check,
+  the user saved four approximate operator-report intervals. The last authorized
+  read confirmed **revision 5**, state `uncertain`: stationary **1.502–5.994 s**,
+  forward normal acceleration **6.155–6.719 s**, forward normal braking
+  **9.996–10.534 s**, and stationary **11.500–15.225 s**. The existing 5 Hz run's
+  main Forward extrema at **6.34 / 10.20 s** fall inside the respective labeled
+  intervals. This is chart-assisted retrospective annotation, not independent
+  timestamped ground truth, an accepted alignment, approved dataset or trained
+  model. Unmarked time remains unlabeled. The original v1 annotation semantics
+  are preserved; these records have not been converted to the new v2 design.
+
+- **2026-11-05 label insertion crash:** A user screenshot showed an undefined
+  `start_ms` read in AnnotationForm after adding an interval. Structural field-array
+  changes can render before the watched interval array updates. The existing
+  form now keeps its watch subscription for edits but reads current form values
+  for rendering and insertion order. This follows the installed React Hook Form
+  7.76.0 behavior and its [watch/subscription guidance](https://react-hook-form.com/docs/usewatch).
+  Five focused server-render regression checks exercise the actual form with
+  delayed watch notifications across first insertion, middle insertion, removal,
+  sorting/clearing and snapshot reset. All five fail with the old value read and
+  pass with the fix. All **67 web research/schema/render checks**, lint,
+  TypeScript, the production build and `git diff --check` passed. Browser visual
+  and interactive confirmation remain pending under the disabled browser setting.
+  Existing charts/form controls and Laravel/Zod label contracts are unchanged;
+  no backend command, migration, mobile build or saved-label rewrite is needed.
+
+- **2026-11-05 interval-label editor:** Added the native Labels tab, separate
+  encrypted interval snapshots and read-only revision history. Existing
+  SignalTimeline/SignalSelectionControls, NativeSignalWindow, shared labeled form
+  controls, TablePagination, ResearchState and appToast were reused. Laravel
+  `StoreRcAnnotationsRequest` and the web `annotations.ts` Zod schema were compared
+  for fields, bounds, ordering and source/certainty semantics; actual duration,
+  ownership, integrity and revision conflicts remain server checks. The additive
+  annotation migration was applied locally. A read-only database check confirmed
+  037 remained verified with **zero annotation revisions**. Focused tests cover
+  encryption, immutable originals/history, source/certainty validation, full bounded
+  notes payloads, stale writes, retry identity, owner/role/profile/authentication,
+  corrupt manifests and cross-recording revision isolation. **81 focused backend
+  tests / 368 assertions**, **985 full backend tests / 5,860 assertions**, Pint,
+  **62 web research/schema checks**, lint, TypeScript and the production web build
+  passed. Browser use is disabled in Work settings: populated/empty/error/loading,
+  responsive layout and submission-toast behavior were reviewed in source, but
+  could not be exercised visually. Those browser checks remain pending. No actual
+  trial labels, original streams, processing results or mobile builds were changed.
+
+- **2026-11-05 unchanged-mount maneuver 037 using 036:** The user uploaded
+  037 and explicitly confirmed no loosening/repositioning since 036 and one
+  normal forward start–stop without reversing. Verified/stopped **16.627 s**,
+  **833 acceleration / 828 gyro** samples, about **50.51 / 50.54 Hz**, maximum
+  gaps **29.03 / 20.79 ms**, no sequence gaps, duplicate/backward timestamps or
+  out-of-interval samples. Setup/group/sensor compatibility and source entry
+  rules passed. An authorized owner-bound service save, validated using the
+  Form Request rules and active Admin/research checks, created exactly one
+  **5 Hz** `rc-reused-fixed-frame-v1` run linked to 036. Browser verification
+  was unavailable under the previously observed Work setting; the stored
+  encrypted result was read/verified directly through Laravel. Its axes/offsets
+  exactly matched 036, while target time/config had no copied source ranges.
+  **832 grid / 818 synchronized paired / 793 filtered paired rows**; no internal
+  interpolation gaps, with unsupported edges and warm-up retained. Filtered
+  Forward extrema were **+1.483 m/s² at 6.34 s** and **-1.677 m/s² at 10.20 s**.
+  Diagnostic stationary windows 1.5–5.0 s and 13.0–16.0 s had Forward means
+  **-0.0405 / +0.0162 m/s²** (shift **+0.0567 m/s²**) and std **0.00342 /
+  0.00406 m/s²**. Right means **+0.1199 / +0.0488 m/s²** are also residual fixed-
+  frame offsets, not proof of lateral movement. The within-run shift persists
+  in this user-confirmed unchanged-mount trial; it must not be attributed solely
+  to the earlier 034 remount or treated as a learned threshold. Source and target
+  original-file hashes were unchanged. Normal driving is user-reported; no
+  observer training intervals, model, accepted calibration or gravity default
+  was added. Next task is reviewed interval labeling rather than automatically
+  accepting this run for training. Documentation review and `git diff --check`
+  passed; application code/mobile builds were unchanged.
+- **2026-11-05 fresh forward reference 036 after remount:** The user uploaded
+  036 after clarifying the remount before 034, then confirmed initial rest,
+  one forward drive and braking without reverse, fixed phone and permitted small
+  steering corrections. Verified/stopped **16.166 s**, **809 acceleration / 805
+  gyro** readings, about **50.50 / 50.54 Hz**, maximum gaps **33.98 / 19.79 ms**,
+  no sequence gaps or duplicate/backward timestamps. Automatic interval
+  suggestion refused an opposite stop; manual original-channel review identified
+  **Resting 1.00–6.00 s**, **Starting 6.25–7.00 s**, **Stopping 10.50–11.25 s**.
+  A **5 Hz** `rc-sync-filter-fixed-frame-v1` run was saved with those intervals
+  through the existing Laravel service after checking active Admin/research
+  eligibility, owner access, Form Request rules and the user's physical account.
+  Browser access was disabled by Work settings; the result was read and hash-
+  verified through the service, not visually verified in Admin. Exactly one run
+  existed and original-file hashes were unchanged. The run met the current
+  five-second source-reference entry rule; this is not accepted calibration.
+  Diagnostics: **1.014°** from phone top, **81.83%** starting variance share,
+  **0.944°** start/opposite-stop difference, no algorithm warnings, **809 grid /
+  796 paired** rows. A shorter starting window (6.25–6.75 s) changed the fitted
+  direction to **10.826°**, exposing interval sensitivity; do not select a range
+  just for a desirable angle or claim independent alignment accuracy. Chosen
+  750 ms starting range covers the initial start burst before the following
+  opposing fluctuations. Later same-mount maneuver validation remains required.
+  036 is the fresh experimental reference for subsequent unchanged-mount trials;
+  it is not retroactively assigned to 034. No application code, mobile build,
+  trained threshold, label or gravity-compensation default changed. Documentation
+  review and `git diff --check` passed.
+- **2026-11-05 revised mount account for 034:** The user clarified that **031
+  and 033 had the same mount**, but the phone was **remounted before 034**, even
+  though it appeared to be in the same position. This supersedes the earlier
+  affirmative unchanged-mount account used when saving 034's run with 031.
+  034 is not an unchanged-mount repeat of 033; its 031-based run must not be
+  treated as accepted calibration or approved training data. Numerical diagnostic
+  comparisons below remain reproducible but are confounded for same-mount
+  validation. The raw recording and immutable saved artifact are preserved;
+  this is a documentation/research provenance correction, not a changed API
+  review status or rewritten confirmation. The user then confirmed
+  033 was captured before removing the phone and 031 was the last forward
+  reference: no fresh reference was captured between the remount and 034. A
+  new reference followed by a new maneuver trial is needed for the current mount;
+  it cannot silently become 034's prior reference. Remounting can affect between-run
+  offsets/alignment; it alone does not explain the within-034 before/after shift.
+  033's same-mount evidence and independent synthetic counterexamples remain
+  limited evidence in their own scopes. Documentation review and
+  `git diff --check` passed; no application code or source data changed.
+- **2026-11-05 complementary-filter pilot not promoted:** A separate offline
+  gravity-vector complementary prototype used gyro propagation plus guarded
+  accelerometer direction correction (2 s time constant; 500 ms trailing history;
+  750 ms eligibility dwell; 0.02 rad/s gyro RMS, 0.15 m/s² magnitude and 1°
+  innovation gates; acceleration variation limit derived only from 031's rest).
+  These are experimental measurement-quality rules, not validated stationarity
+  detection or harsh thresholds. Initialization used each trial's known pre-drive
+  acceleration mean at 5 s (035 was already held pressed). 033's late Forward
+  mean improved from **+0.0266 to +0.00236 m/s²** with start/brake magnitudes
+  **0.953 / 1.515 m/s²** versus current **0.972 / 1.516**. **034 never met all
+  correction gates**: late mean **+0.1070** versus current **+0.0766 m/s²**;
+  start/brake **1.052 / 1.178** versus current **1.061 / 1.227 m/s²**. A known
+  level-device, zero-gyro, sustained **0.1 m/s²** synthetic acceleration was
+  nearly entirely absorbed by 30 s (about **99.995% attenuation**); a 1 m/s²
+  fixture remained measurable. This is a scientific failure/limitation, despite
+  twenty mechanical/synthetic checks passing (one explicitly detects that
+  counterexample). No fused before/after reduction is claimed for 035 because
+  its early window precedes fusion initialization. Candidate not promoted;
+  originals and saved runs unchanged. Avoid tuning gates just to pass known
+  pilots. Next recommendation is observer interval labeling and grouped
+  preprocessing/model comparisons; preserve fixed-frame outputs as an
+  experimental baseline and native streams for later reprocessing. No app code,
+  contract or mobile build changed. Research artifacts are in the separate local
+  workspace; documentation review and `git diff --check` passed.
+- **2026-11-05 moving-peak cross-check:** An offline gyro-only diagnostic was
+  initialized from each target's pre-drive gravity mean at 5 s, then propagated
+  without moving acceleration/gravity feedback, using midpoint angular velocity
+  and body-frame Rodrigues rotation. On 033/034 the Android gravity channel's
+  filtered Forward changes at start/brake peaks were **+0.351 / -0.469** and
+  **+0.265 / -0.430 m/s²**, whereas gyro propagation predicted **+0.0036 /
+  -0.0170** and **+0.0169 / -0.0413 m/s²**. This raises concern that the Android
+  gravity estimate absorbs driving acceleration; it does not prove true
+  acceleration. Gyro-only start/brake peaks differed from the current method by
+  **0.2–4.1%**, versus **24–35%** for direct Android-gravity subtraction. Using
+  target pre-drive gyro bias as a sensitivity check did not resolve that gap.
+  Gyro-only processing also worsened 034's late-rest Forward offset to about
+  **+0.108 m/s²** (target-bias sensitivity **+0.098**) versus current **+0.077**.
+  In the 035 release control, Android/gyro gravity-direction changes were about
+  **1.59° / 2.00°**, with **0.46°** settled disagreement. These are limited
+  method comparisons; gyro integration is not independent orientation truth and
+  Android-derived channels may share input hardware. Neither direct gravity
+  subtraction nor gyro-only propagation is promoted. Next candidate: offline
+  gyro-led orientation fusion with controlled drift correction, requiring
+  explicit validation without observer labels as runtime inputs. Thirteen
+  synthetic analysis checks and encrypted original/run inventory checks passed.
+  No app code, saved processing version, recording or mobile build changed;
+  research artifacts remain in the separate local workspace. Documentation
+  review and `git diff --check` passed.
+- **2026-11-05 offline changing-gravity experiment and Recording 035:** The user
+  attributed body rocking to the RC suspension with a rigid phone holder. A
+  separate local research experiment compared the existing fixed-rest method
+  against timestamp-aligned accelerometer minus Android gravity, offset-calibrated
+  only from 031 and using the same 50 Hz grid/5 Hz filter/fixed matrix. Matching
+  supported rows reproduced the saved PHP baseline to about 2.22e-16. On 033/034,
+  resting-shift reductions were **98.6% / 83.6%**, but starting/braking peak
+  magnitudes changed by **24–35%**. This does not establish moving acceleration
+  fidelity; gravity and platform linear estimates are not independent truth.
+  No app pipeline was changed or original/saved run overwritten.
+  Recording **035** was verified/stopped, **12.052 s**, **601 acceleration /
+  600 gyro/gravity/linear** samples at about **50.54 Hz**, with no sequence or
+  timestamp anomalies and required-channel maximum gaps below 20 ms. The user
+  confirmed wheels in place, fixed phone, **already holding the body pressed at
+  recording start**, then **release at the spike around 6–7 s**. Thus 2–5 s is
+  the held-pressure diagnostic window and 8–11 s is released/settled; there is
+  no opening unpressed baseline. The early hold has more small motion than the
+  later settled part. Gravity-direction difference was about **1.6°**. On 150
+  matched filtered rows per window, the phone-axis mean-vector shift was
+  **0.2772 m/s²** with fixed subtraction and **0.0151 m/s²** with changing gravity,
+  **94.6% lower**. This is reduction in a stationary-position mean difference,
+  not accuracy, a classifier result or a learned threshold. The release transient
+  is real RC-body motion and remains visible; its true amplitude is unverified.
+  Research annotations are chat/analysis notes, not saved training labels or
+  accepted calibration. A fresh vehicle-axis reference is still needed if the
+  mount changed; source 031's alignment validity was not established for 035.
+  Original/encrypted-run file inventories were unchanged, eight synthetic
+  analysis checks and PHP syntax check passed. Driving-peak fidelity remains
+  the next validation concern before promoting gravity compensation. Application
+  code/mobile builds were unchanged; documentation was reviewed and
+  `git diff --check` passed.
 - **2026-11-04 Recording 033 real reference reuse:** The user uploaded a
   `maneuver_trial` and confirmed one normal forward start–stop without reversing,
   with the physical phone/mount unchanged since 031. The verified/stopped upload

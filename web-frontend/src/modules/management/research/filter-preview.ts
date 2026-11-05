@@ -79,7 +79,10 @@ export function filterComparison(channel: FilteredChannel, range: ReferenceRange
     const mean = values.reduce((sum, point) => sum + point[axis]!, 0) / values.length;
     const std = Math.sqrt(values.reduce((sum, point) => sum + (point[axis]! - mean) ** 2, 0) / values.length);
     const peak = values.reduce((current, point) => !current || Math.abs(point[axis]!) > Math.abs(current[axis]!) ? point : current, null as SignalPoint | null)!;
-    return { mean, std, peak: Math.abs(peak[axis]!), peakTime: peak.time };
+    const maximum = Math.max(...values.map(point => point[axis]!));
+    const minimum = Math.min(...values.map(point => point[axis]!));
+    return { mean, std, peak: Math.abs(peak[axis]!), peakTime: peak.time,
+      positivePeak: maximum > 0 ? maximum : null, negativePeak: minimum < 0 ? minimum : null };
   };
   return { total: selected.length, paired: paired.length, warmup: selected.filter(({ index }) => channel.warmup[index]).length,
     missing: selected.filter(({ point }) => point.x === null).length,

@@ -4,6 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { z } from 'zod';
+import { collectionFixture } from '../../validation/research/collection-fixture.mjs';
 
 function load(filename, dependencies, globals = {}) {
   const exports = {};
@@ -18,6 +19,7 @@ function load(filename, dependencies, globals = {}) {
 }
 const setup = load('../../lib/research/native-recorder.ts', {});
 const validation = load('../../validation/research/native-recorder.ts', { zod: { z }, '@/lib/research/native-recorder': setup });
+const collectionValidation = load('../../validation/research/collection.ts', { zod: { z } });
 const uploadValidation = load('../../validation/research/native-upload.ts', { zod: { z } });
 const values = { recording_group_id: 'd87e0341-9f66-4a01-9f92-b2d1729486e1', surface: 'Test surface', mount_method: setup.NATIVE_MOUNT_METHOD,
   slope: 'level', recording_kind: 'maneuver_trial', consent: true };
@@ -32,6 +34,7 @@ function harness({ sdk = 33, permission = 'granted', present = true, response, r
     '@/modules/rc-recorder': { default: present ? module : null }, '@/validation/research/native-recorder': validation,
     '@/lib/research/native-recorder': setup,
     '@/validation/research/native-upload': uploadValidation,
+    '@/validation/research/collection': collectionValidation,
     'react-native': { AppState: appState, Platform: { Version: sdk }, PermissionsAndroid: {
       PERMISSIONS: { POST_NOTIFICATIONS: 'notification' }, RESULTS: { GRANTED: 'granted' },
       request: async () => { calls.push(['permission']); return request ? request() : permission; },
@@ -246,4 +249,46 @@ test('an older native module cannot claim support for saved setup groups', async
   delete h.module.groups;
   await assert.rejects(h.api.start(7, values), /updated Android development build/);
   assert.equal(h.calls.length, 0);
+});
+
+
+test('a slow status read never blocks native Stop', async () => {
+  const pending = deferred();
+  const h = harness({ response: () => pending.promise });
+  const statuses = h.api.statuses(['00000000-0000-4000-8000-000000000001']);
+  await h.api.stop();
+  assert.equal(h.calls.at(-1)[0], 'stop');
+  pending.resolve({ data: [] });
+  await statuses;
+});
+
+test('observation retries revalidate every revision identity instead of skipping by server count', async () => {
+  const context = collectionFixture(), receipts = [], paths = [];
+  const observations = [{ id: '00000000-0000-4000-8000-000000000010', revision: 1, reported_at: '2026-11-06T00:01:00Z',
+    completed_as_planned: null, source: 'operator_report', observer_code: null, flags: ['steering_corrections'], actual_stop_method: 'unknown', notes: null }];
+  const status = { context_synced: true, observation_revision: 1, annotation_state: 'uncertain', checked_at: '2026-11-06T00:02:00Z' };
+  const h = harness({ post: async (path, body) => { paths.push([path, body]); return { data: status }; } });
+  h.module.details = async () => JSON.stringify({ transfer_state: 'uploaded', transfer: { server_id: '00000000-0000-4000-8000-000000000020', manifest_sha256: context.manifest_sha256 } });
+  h.module.collection = async () => JSON.stringify({ ...context, observations });
+  h.module.collectionReceipt = async (id, receipt) => receipts.push(JSON.parse(receipt));
+  await h.api.syncCollection(context.recording_id);
+  assert.equal(paths.length, 2);
+  assert.match(paths[0][0], /context$/);
+  assert.match(paths[1][0], /observations$/);
+  assert.equal(paths[1][1].id, observations[0].id);
+  assert.equal(paths[1][1].base_revision, 0);
+  assert.deepEqual(receipts.map(v => v.observation_revision), [0, 1]);
+});
+
+test('an observation conflict keeps the verified original and leaves observations pending', async () => {
+  const context = collectionFixture(), receipts = [];
+  const h = harness({ post: async path => { if (path.endsWith('/observations')) throw new Error('Synthetic conflict');
+    return { data: { context_synced: true, observation_revision: 1, annotation_state: 'unlabeled', checked_at: '2026-11-06T00:02:00Z' } }; } });
+  h.module.details = async () => JSON.stringify({ transfer_state: 'uploaded', transfer: { server_id: '00000000-0000-4000-8000-000000000020', manifest_sha256: context.manifest_sha256 } });
+  h.module.collection = async () => JSON.stringify({ ...context, observations: [{ id: '00000000-0000-4000-8000-000000000010', revision: 1,
+    reported_at: '2026-11-06T00:01:00Z', completed_as_planned: null, source: 'operator_report', observer_code: null, flags: [], actual_stop_method: 'unknown', notes: null }] });
+  h.module.collectionReceipt = async (id, receipt) => receipts.push(JSON.parse(receipt));
+  await assert.rejects(h.api.syncCollection(context.recording_id));
+  assert.deepEqual(receipts.map(v => v.observation_revision), [0]);
+  assert.equal(h.calls.some(v => ['setTransfer', 'delete'].includes(v[0])), false);
 });

@@ -121,7 +121,7 @@ remain rad/s; original nanoseconds stay decimal strings until relative-time conv
 The detail header reuses the vehicle breadcrumb/name pattern, with the recording
 date at the right. File/capture/label status lives in Data quality; technical
 explanations are collapsed rather than repeated across the signal view.
-The inspector has four focused tabs:
+The inspector has five focused tabs:
 
 - **Signals:** the latest saved processed result opens automatically for forward
   captures and maneuver trials. One filtered vehicle-axis chart and a mean/absolute-peak table are
@@ -137,7 +137,12 @@ The inspector has four focused tabs:
   Maneuver trials instead select a compatible reviewed forward reference and
   confirm the unchanged physical phone/RC/mount; no reference phases are copied
   onto the maneuver timeline. Stationary captures retain their unsaved check here.
-- **Data quality:** integrity, capture/label state and per-channel timing diagnostics.
+- **Labels:** select an original-time interval, review movement, direction,
+  normal/harsh assessment, source, certainty and optional notes, then save an
+  encrypted revision. Unmarked time remains unlabeled. Signals-only/unknown
+  assessments must stay uncertain. Drafts survive switching tabs; history is read
+  only and labels do not approve training data.
+- **Data quality:** integrity, capture/interval-label state and per-channel timing diagnostics.
 - **Setup & source:** collection and phone/mount metadata.
 
 Standalone synchronization/filter/vehicle-projection panels were removed during
@@ -160,10 +165,18 @@ guard, not proof of calibration quality. Source originals are reverified and its
 frame recomputed server-side. No mobile build is required.
 These are experimental fixed-frame pilot outputs, without reusable accepted
 calibration, dynamic gravity tracking, dataset export, live inference or AI labels.
+Label endpoints under `.../{recording}/annotations` use the same owner-bound
+Admin session/CSRF flow. `StoreRcAnnotationsRequest` mirrors
+`src/validations/research/annotations.ts`; original integrity, duration, ownership
+and stale revision conflicts remain server rules. Apply
+`2026_11_05_000001_create_rc_annotation_revisions.php` before using Labels.
+Snapshots contain at most 100 ordered nonoverlapping intervals; history pages
+and interval lists show at most 10 items. Saving appends a revision and preserves
+originals and processing runs. No mobile installation is required.
 See the
 [central telematics guide](../docs/telematics-master-plan.md).
 Timing/statistics and cross-language processing regressions run with
-`node --test src/modules/management/research/*.test.mjs src/validations/research/processing-run.test.mjs`. The three PHP parity
+`node --test src/modules/management/research/*.test.mjs src/validations/research/*.test.mjs src/forms/research/AnnotationForm.test.mjs`. The three PHP parity
 cases also require the PHP CLI and installed `backend/vendor` dependencies;
 they process synthetic data in memory and do not connect to a database.
 

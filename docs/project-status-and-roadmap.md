@@ -1,13 +1,26 @@
 # Project status and roadmap
 
-Last reconciled for telematics: **2026-11-04**, including native v2 collection,
+Last reconciled for telematics: **2026-11-06**. Phase 1 definitions are complete;
+**Phase 2 pilot collection is implemented** in native/mobile/Laravel code, with
+Collect/Recordings, durable sessions/mount versions, consented bounded setup evidence,
+versioned protocols, compact aliases and separately saved/synced observations.
+See the [central guide](telematics-master-plan.md#phase-2-pilot-implementation-current-runtime-boundary)
+for active DTOs and limitations. Installation/physical acceptance on the Redmi,
+validated alignment/check limits, explicit server session closure/reopening,
+the three-step web review, separate v2 confidence and dataset export remain pending.
+No capture is automatically accepted for training.
+
+Current implemented telematics includes native v2 collection,
 explicit resumable upload, server verification, protected native signal review
 and stationary/forward-reference preparation with automatic interval suggestions,
 separate Signals/Prepare data tabs, and saved bounded server processing runs with run-specific
-references and experimental reuse for a separate maneuver trial. Reusable accepted
+references and experimental reuse for a separate maneuver trial, plus encrypted
+revisioned interval labels with explicit source and uncertainty. Reusable accepted
 calibration, validated filter settings, full-recording processing/export,
-AI and broader Redmi validation remain pending. Rental-release
-behavior is unchanged.
+AI and broader Redmi validation remain pending. An offline changing-gravity
+experiment reduced resting shifts but changed moving peaks; it has not replaced
+the app pipeline. See the central guide for the 035 held-press/release evidence.
+Rental-release behavior is unchanged.
 
 ## Product direction
 
@@ -42,7 +55,7 @@ during the current source review. Dated checks in other guides are not rerun her
 | Verification | Staff manually review the required Customer documents in a centered Customer Verification dialog. Customer information appears first, and each document's metadata appears above its immediately visible front/back images; wider screens show both sides together, and phones stack them. Booking minimum age is 18. Self Drive requires only approved driver's license and proof of address. License numbers use uppercase letters/digits (maximum 11, excluding display hyphens), formatted like `N03-12-123456`. License front/back images are required; proof of address requires a main image with an optional back image. Address evidence may be a recent utility bill, billing statement, or official document showing the Customer's name and current residential address. Legacy passport records are preserved but no longer required or offered for upload. |
 | Condition and maintenance | Current, Outgoing, and Incoming vehicle inspections are distinct snapshots. Maintenance plans and work records are implemented. Vehicle Management Configure provides an Admin-only shared option library with checklist-version checks and preserved historical labels; see [vehicle configuration](vehicle-configuration.md). |
 | Geofences | Website-managed default circle/polygon monitoring zones apply automatically at release for both supported rental types. Admin can add custom booking zones before release; multiple zones are frozen for rental history. Updated 2026-10-19: consent version 3 connects foreground/background latest GPS to backend crossing detection, website activity and named Customer in-app alerts. No route history is collected. Physical crossing verification and phone push remain pending; see [geofences](geofence-monitoring.md). |
-| Telematics | Existing rental setup/calibration and latest-GPS sharing are preserved. RC Collect uses native v2 recording, encrypted originals, explicit resumable chunk upload and server verification. The owner-bound Admin inspector shows original v2 signals/timing/variation. The v1 tab and old local development v1 data were retired at the user's request, with a private encrypted recovery copy. Automatic background transfer, annotation revisions, cleaning, ML, scoring and reports remain targets; broader physical validation remains pending. See the [central guide](telematics-master-plan.md). |
+| Telematics | Existing rental setup/calibration and latest-GPS sharing are preserved. RC Collect uses native v2 recording, encrypted originals, explicit resumable chunk upload and server verification. The owner-bound Admin inspector supports original signals/timing, experimental bounded saved processing and encrypted revisioned interval labels. Labels record source/uncertainty separately from training approval. The v1 tab and old local development v1 data were retired at the user's request, with a private encrypted recovery copy. Automatic background transfer, validated preprocessing, dataset export, ML, scoring and reports remain targets; broader physical validation remains pending. See the [central guide](telematics-master-plan.md). |
 | Fleet Monitoring | Ongoing-rental reads, authorized latest-location map and private Reverb invalidations are implemented. Connected AI event alerts are planned; physical end-to-end verification remains a separate gate. See [fleet baseline](telematics-master-plan.md#existing-fleet-monitoring). |
 | Database | The migration files in this checkout are the source for the current schema. ERD diagrams and audits are dated documentation snapshots, and their historical table/column counts must not be read as current runtime counts. Retention and production migration-baseline issues remain open. |
 
@@ -56,10 +69,15 @@ Payment-only issuance now creates an immutable Rental Information and Payment Re
 
 ## Telematics delivery sequence
 
+The collection-workflow redesign has its own five-phase delivery breakdown:
+**1 contracts (defined), 2 mobile, 3 web review, 4 dataset export, 5 verification**.
+This is separate from the broader capstone increments below. Contract schemas
+are design artifacts, not active endpoints or physical-validation evidence.
+
 | Increment | Status | Completion boundary |
 | --- | --- | --- |
 | Native acquisition and recording contract | Native v2 recorder/export APK, fixed preset, durable groups/numbering, phone power and short stationary/locked smoke checks | Physical axes, controlled noise characterization, longer background and interruption checks remain required |
-| Recording inspection workflow | Native v2 original-signal inspection is the active workspace; legacy v1 navigation retired | Explicit upload/retry, encrypted originals, server integrity/timing summaries and bounded native windows implemented; automatic background transfer, remote deletion UI and annotation revisions pending |
+| Recording inspection workflow | Native v2 original-signal inspection and revisioned interval-label editor are implemented; legacy v1 navigation retired | Explicit upload/retry, encrypted originals, bounded native windows and source/uncertainty-aware label revisions implemented; reviewed trial labels, automatic background transfer and remote deletion UI pending |
 | Processing and export | Reference preparation plus saved/versioned bounded server synchronization → filtering → vehicle axes, including explicit experimental reference reuse for maneuver trials; Signals opens the latest result and exposes comparison on demand | Accepted reusable alignment, full-recording/live state, dynamic gravity correction, validated filters, features and export remain pending |
 | Dataset and classifier | Agreed target | Independent observed labels/session splits, baseline comparison, held-out metrics and automatic-reverse evaluation |
 | Live events, report and score | Agreed target | Server-owned inference events, website alerts, deduplication, late-data finalization and report notification |

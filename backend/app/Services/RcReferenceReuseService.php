@@ -23,6 +23,15 @@ class RcReferenceReuseService
         if ($source->started_at->getTimestampMs() + $source->duration_ms > $target->started_at->getTimestampMs()) {
             return 'The reference must have finished before this trial started.';
         }
+        $targetBinding = $targetManifest['collection_binding'] ?? null;
+        $sourceBinding = $sourceManifest['collection_binding'] ?? null;
+        if ($targetBinding !== null || $sourceBinding !== null) {
+            if (! is_array($targetBinding) || ! is_array($sourceBinding)
+                || ($targetBinding['research_session_id'] ?? null) !== ($sourceBinding['research_session_id'] ?? null)
+                || ($targetBinding['mount_version_id'] ?? null) !== ($sourceBinding['mount_version_id'] ?? null)) {
+                return 'Capture a forward reference for this research session and mount.';
+            }
+        }
         $targetProfile = $this->profile($targetManifest);
         $sourceProfile = $this->profile($sourceManifest);
         if ($targetProfile === null || $sourceProfile === null) {
