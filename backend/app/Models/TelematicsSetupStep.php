@@ -42,6 +42,6 @@ class TelematicsSetupStep extends Model
 
     public function actor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'actor_user_id');
+        return $this->belongsTo(User::class, 'actor_user_id')->withTrashed();
     }
 }

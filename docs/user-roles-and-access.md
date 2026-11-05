@@ -60,18 +60,35 @@ The existing Admin controls the web page `/admin/personnel` and these cookie/CSR
 - `GET /admin/personnel`: paginated Staff/Driver account list, summary, and fixed role choices.
 - `POST /admin/personnel/users`: create a Staff or Driver account.
 - `PUT /admin/personnel/users/{user}`: edit account details, credentials, role, or active status.
+- `DELETE /admin/personnel/users/{user}`: soft-delete a Staff or Driver account.
 
 Personnel uses one table with an All Personnel, Staff, or Driver filter in the search card and a shared account form. All Personnel is the default view; each row shows its role. The backend response supplies the authoritative `category`, `personnelId`, and role. `PER-` identifiers are display values derived from the existing user ID, not a new identity table or persisted identifier.
 
 Names, email, optional phone, role, password, and account status are validated by `StorePersonnelRequest` / `UpdatePersonnelRequest`. The web form uses the corresponding `createPersonnelAccountSchema`. Camel-case form values are mapped to snake-case payload fields in the personnel service. Modules and permissions cannot be supplied as account fields.
 
-There are no account deletion or custom-role mutation endpoints. Account removal uses deactivation, preserving Driver assignment attribution, charges, payments, inspection signatures, and other rental history.
+Admin can delete a Staff or Driver from the Personnel row menu after confirmation.
+Deletion sets `users.deleted_at`, disables the account, revokes mobile tokens and
+rotates the remember token. Deleted personnel are excluded from the table,
+summary counts, login, editing and new assignment candidates. The user row,
+role membership, email/phone uniqueness, and linked records remain intact.
+There is no restore or permanent-delete endpoint, and no custom-role mutation
+endpoint. Admin, Customer and mixed-role accounts cannot be deleted here.
+
+Historical personnel relationships keep resolving deleted users so bookings,
+payments, charges, inspection signatures, maintenance, document reviews and
+activity attribution retain their identities. Personnel creation, updates and
+deletion record the acting Admin, target account, event and server timestamp in
+the existing activity log, within the same transaction. Update metadata records
+changed field names and a password-change flag, never password values, tokens,
+email addresses or contact values. Existing activity records remain readable;
+actions that were not previously logged are not reconstructed.
 
 ## Account status and role changes
 
 - Ordinary contact updates remain available during an assigned service.
 - A pending, confirmed, or ongoing Driver assignment blocks deactivation and Staff/Driver conversion. Reassign pre-release services or finish ongoing services first.
 - An outstanding Driver-responsible charge blocks deactivation and conversion until settled. Debt alone does not disable login, notifications, settlement, or an existing service.
+- Those same assignment and unpaid-charge safeguards block deletion, including deletion of an already inactive account.
 - An unassigned account with no outstanding Driver obligations may change between Staff and Driver.
 - Admin, Customer, and mixed-role accounts cannot be edited through Personnel.
 - Deactivation, role conversion, and password changes revoke mobile tokens and rotate the remember token. Inactive accounts are denied on authenticated mobile and management web requests. Driver roles are denied on management web requests, including stale sessions and direct permission grants.
@@ -107,4 +124,4 @@ remain separately authorized. See the [central telematics guide](telematics-mast
 
 Navigation count update verified on 2026-10-16: all 424 backend tests passed with a 512 MB PHP memory limit, PHP formatting passed, and web lint, TypeScript and the production build passed. Isolated browser fixtures exercised expanded/collapsed desktop and 390 px mobile navigation, zero/99+/unavailable states, the three verification labels, and immediate counter refresh after simulated start/cancel, document approval/rejection and toll review. The preview and scoped worker were removed. These checks did not alter live bookings, documents, or toll requests.
 
-Backend regression coverage includes fixed-role validation, Admin-only account administration, removal of role/deletion endpoints, Driver web denial, assigned-service scoping, customer-route denial, active-assignment and charge safeguards, token revocation, and migration preservation/explicit mapping requirements. Web and mobile authentication mechanisms remain cookie/CSRF and Sanctum bearer tokens respectively.
+Backend regression coverage includes fixed-role validation, Admin-only account administration, removal of custom-role endpoints, Driver web denial, assigned-service scoping, customer-route denial, active-assignment and charge safeguards, token revocation, and migration preservation/explicit mapping requirements. Personnel deletion coverage includes retained identity/history, audit actors and subjects, protected roles, repeat requests, reserved account identifiers, and transaction rollback when audit recording fails. Web and mobile authentication mechanisms remain cookie/CSRF and Sanctum bearer tokens respectively.

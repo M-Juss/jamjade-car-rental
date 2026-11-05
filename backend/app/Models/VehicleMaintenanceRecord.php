@@ -85,22 +85,22 @@ class VehicleMaintenanceRecord extends Model
 
     public function creator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withTrashed();
     }
 
     public function starter(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'started_by');
+        return $this->belongsTo(User::class, 'started_by')->withTrashed();
     }
 
     public function completer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'completed_by');
+        return $this->belongsTo(User::class, 'completed_by')->withTrashed();
     }
 
     public function canceller(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'cancelled_by');
+        return $this->belongsTo(User::class, 'cancelled_by')->withTrashed();
     }
 
     public function resultingConditionInspection(): BelongsTo

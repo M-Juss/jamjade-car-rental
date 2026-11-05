@@ -2,13 +2,27 @@
 
 use App\Enums\BookingStatus;
 use App\Enums\RentalType;
+use App\Models\Activity;
 use App\Models\Booking;
 use App\Models\BookingAdditionalCharge;
+use App\Models\BookingEvent;
+use App\Models\BookingGeofence;
+use App\Models\CustomerDocument;
+use App\Models\Geofence;
 use App\Models\Payment;
+use App\Models\TelematicsSetupStep;
+use App\Models\TelematicsTrip;
 use App\Models\User;
+use App\Models\VehicleInspection;
+use App\Models\VehicleInspectionSignature;
+use App\Models\VehicleMaintenancePlan;
+use App\Models\VehicleMaintenanceRecord;
+use App\Services\DriverAssignmentService;
+use App\Services\PersonnelService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -112,21 +126,212 @@ it('blocks non-admin personnel administration even with a direct permission', fu
     $this->actingAs($user)->getJson('/admin/personnel')->assertForbidden();
     $this->postJson('/admin/personnel/users', [])->assertForbidden();
     $this->putJson("/admin/personnel/users/{$user->id}", personnelPayload($user))->assertForbidden();
+    $this->deleteJson("/admin/personnel/users/{$user->id}")->assertForbidden();
 })->with(['staff', 'driver', 'customer']);
 
 it('blocks unauthenticated personnel access', function () {
     $this->getJson('/admin/personnel')->assertUnauthorized();
 });
 
-it('retires role editing and account deletion', function () {
-    $staff = User::factory()->create();
-    $staff->assignRole('staff');
+it('keeps custom role editing retired', function () {
     $this->actingAs($this->admin)->postJson('/staff/management/roles', [])->assertNotFound();
     $this->putJson('/staff/management/roles/1', [])->assertNotFound();
     $this->deleteJson('/staff/management/roles/1')->assertNotFound();
     $this->postJson('/admin/personnel/roles', [])->assertNotFound();
-    $this->deleteJson("/admin/personnel/users/{$staff->id}")->assertStatus(405);
+});
+
+it('adds and rolls back the deletion column without removing accounts', function () {
+    $staff = User::factory()->create();
+    $migration = require database_path('migrations/2026_11_06_000002_add_soft_deletes_to_users.php');
+    $migration->down();
+    expect(Schema::hasColumn('users', 'deleted_at'))->toBeFalse();
     $this->assertDatabaseHas('users', ['id' => $staff->id]);
+    $migration->up();
+    expect(Schema::hasColumn('users', 'deleted_at'))->toBeTrue()->and($staff->fresh()->trashed())->toBeFalse();
+});
+
+it('soft deletes personnel and retains their identity and audit records', function (string $role) {
+    $account = User::factory()->create(['password' => 'Password@123', 'remember_token' => 'old-token']);
+    $account->assignRole($role);
+    $token = $account->createToken('device')->plainTextToken;
+    $past = activity()->causedBy($account)->performedOn($account)->event('past_action')->log('Past action.');
+
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$account->id}")->assertOk();
+
+    $deleted = User::withTrashed()->findOrFail($account->id);
+    $this->assertSoftDeleted('users', ['id' => $account->id]);
+    expect(User::find($account->id))->toBeNull()
+        ->and($deleted->is_active)->toBeFalse()
+        ->and($deleted->remember_token)->not->toBe('old-token')
+        ->and($deleted->tokens()->count())->toBe(0)
+        ->and($deleted->hasRole($role))->toBeTrue()
+        ->and($deleted->email)->toBe($account->email);
+    $past = Activity::findOrFail($past->id);
+    expect($past->causer->id)->toBe($account->id)->and($past->subject->id)->toBe($account->id);
+    $audit = Activity::where('event', 'personnel_deleted')->sole();
+    expect($audit->causer_id)->toBe($this->admin->id)
+        ->and($audit->subject_id)->toBe($account->id)
+        ->and($audit->subject->trashed())->toBeTrue()
+        ->and($audit->properties->all())->toBe(['role' => $role])
+        ->and($audit->created_at)->not->toBeNull();
+    $this->getJson('/admin/personnel')->assertOk()->assertJsonCount(0, 'data.users')
+        ->assertJsonPath('data.summary.total', 0)->assertJsonPath('data.pagination.total', 0);
+    $this->deleteJson("/admin/personnel/users/{$account->id}")->assertNotFound();
+    $this->putJson("/admin/personnel/users/{$account->id}", personnelPayload($account))->assertNotFound();
+    expect(Activity::where('event', 'personnel_deleted')->count())->toBe(1);
+    $this->app['auth']->forgetGuards();
+    $this->getJson('/api/mobile/me', ['Authorization' => 'Bearer '.$token])->assertUnauthorized();
+    $this->postJson('/api/mobile/login', ['login' => $account->email, 'password' => 'Password@123'])->assertUnprocessable();
+    $this->postJson('/admin/login', ['email' => $account->email, 'password' => 'Password@123'])->assertUnprocessable();
+})->with(['staff', 'driver']);
+
+it('blocks deletion while a Driver has an active assignment', function (string $status) {
+    $driver = createDriverUser();
+    $booking = personnelServiceBooking($driver, BookingStatus::from($status));
+    $driver->createToken('device');
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$driver->id}")
+        ->assertUnprocessable()->assertJsonValidationErrors('personnel');
+    expect($driver->fresh()->is_active)->toBeTrue()->and($driver->tokens()->count())->toBe(1)
+        ->and($booking->fresh()->assignedDriver->id)->toBe($driver->id)
+        ->and(Activity::where('event', 'personnel_deleted')->exists())->toBeFalse();
+    $this->assertNotSoftDeleted('users', ['id' => $driver->id]);
+})->with(['pending', 'confirmed', 'ongoing']);
+
+it('rejects an existing Staff browser session after deletion', function () {
+    $staff = User::factory()->create(['password' => 'Password@123']);
+    $staff->assignRole('staff');
+    $this->postJson('/admin/login', ['email' => $staff->email, 'password' => 'Password@123'])->assertOk();
+    $this->getJson('/admin/me')->assertOk()->assertJsonPath('data.user.id', $staff->id);
+
+    app(PersonnelService::class)->delete($staff, $this->admin);
+    $this->app['auth']->forgetGuards();
+
+    $this->getJson('/admin/me')->assertUnauthorized();
+    $this->getJson('/admin/bookings')->assertUnauthorized();
+});
+
+it('excludes deleted Drivers from new assignment choices while retaining loaded history', function () {
+    $deletedDriver = createDriverUser();
+    $availableDriver = createDriverUser();
+    $booking = personnelServiceBooking($deletedDriver, BookingStatus::Completed);
+    app(PersonnelService::class)->delete($deletedDriver, $this->admin);
+
+    expect(app(DriverAssignmentService::class)->driverCandidates()->modelKeys())->toBe([$availableDriver->id]);
+    $history = Booking::with(['assignedDriver', 'assignment.driver'])->findOrFail($booking->id);
+    expect($history->assignedDriver->id)->toBe($deletedDriver->id)
+        ->and($history->assignedDriver->trashed())->toBeTrue()
+        ->and($history->assignment->driver->id)->toBe($deletedDriver->id);
+});
+
+it('blocks deletion for unpaid Driver charges', function () {
+    $driver = createDriverUser();
+    personnelDriverCharge($driver);
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$driver->id}")
+        ->assertUnprocessable()->assertJsonValidationErrors('personnel');
+    $this->assertNotSoftDeleted('users', ['id' => $driver->id]);
+});
+
+it('preserves paid Driver charges payments and assignment history after deletion', function () {
+    $driver = createDriverUser();
+    $charge = personnelDriverCharge($driver);
+    $payment = Payment::create([
+        'booking_id' => $charge->booking_id, 'user_id' => $driver->id, 'payment_method' => 'PayPal',
+        'status' => 'completed', 'amount' => 500, 'transaction_id' => 'DELETE-HISTORY-TEST', 'completed_at' => now(),
+    ]);
+    $charge->payments()->attach($payment->id, ['amount' => 500]);
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$driver->id}")->assertOk();
+    expect($charge->fresh()->responsibleUser->id)->toBe($driver->id)
+        ->and($payment->fresh()->user->id)->toBe($driver->id)
+        ->and($charge->booking->fresh()->assignedDriver->id)->toBe($driver->id)
+        ->and($charge->booking->assignment->driver->id)->toBe($driver->id);
+    $this->assertDatabaseHas('booking_assignments', ['booking_id' => $charge->booking_id, 'driver_id' => $driver->id]);
+    $this->assertDatabaseHas('payments', ['id' => $payment->id]);
+    $this->assertDatabaseHas('payment_charge_allocations', ['payment_id' => $payment->id]);
+});
+
+it('preserves personnel attribution on historical records', function (string $model, string $foreignKey, string $relation) {
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$staff->id}")->assertOk();
+    $record = new $model([$foreignKey => $staff->id]);
+    expect($record->{$relation}->id)->toBe($staff->id)->and($record->{$relation}->name)->toBe($staff->name);
+})->with([
+    [BookingEvent::class, 'actor_user_id', 'actor'],
+    [VehicleInspection::class, 'created_by', 'creator'],
+    [VehicleInspectionSignature::class, 'user_id', 'user'],
+    [VehicleMaintenancePlan::class, 'created_by', 'creator'],
+    [VehicleMaintenanceRecord::class, 'created_by', 'creator'],
+    [VehicleMaintenanceRecord::class, 'started_by', 'starter'],
+    [VehicleMaintenanceRecord::class, 'completed_by', 'completer'],
+    [VehicleMaintenanceRecord::class, 'cancelled_by', 'canceller'],
+    [Geofence::class, 'created_by', 'creator'],
+    [BookingGeofence::class, 'assigned_by', 'assignedBy'],
+    [TelematicsSetupStep::class, 'actor_user_id', 'actor'],
+    [TelematicsTrip::class, 'operator_user_id', 'operator'],
+    [CustomerDocument::class, 'reviewed_by', 'reviewer'],
+]);
+
+it('rolls back deletion and access revocation if the audit cannot be recorded', function () {
+    $staff = User::factory()->create(['remember_token' => 'original-token']);
+    $staff->assignRole('staff');
+    $staff->createToken('device');
+    Activity::creating(function (Activity $activity) {
+        if ($activity->event === 'personnel_deleted') {
+            throw new RuntimeException('Audit unavailable.');
+        }
+    });
+    try {
+        $this->withoutExceptionHandling();
+        expect(fn () => $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$staff->id}"))
+            ->toThrow(RuntimeException::class, 'Audit unavailable.');
+    } finally {
+        Activity::flushEventListeners();
+    }
+    $this->assertNotSoftDeleted('users', ['id' => $staff->id]);
+    expect($staff->fresh()->is_active)->toBeTrue()->and($staff->tokens()->count())->toBe(1)
+        ->and($staff->fresh()->remember_token)->toBe('original-token');
+});
+
+it('protects Admin Customer and mixed-role accounts from deletion', function (array $roles) {
+    $account = User::factory()->create();
+    $account->assignRole($roles);
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$account->id}")
+        ->assertUnprocessable()->assertJsonValidationErrors('personnel');
+    $this->assertNotSoftDeleted('users', ['id' => $account->id]);
+})->with([['roles' => ['admin']], ['roles' => ['customer']], ['roles' => ['staff', 'driver']], ['roles' => ['admin', 'staff']]]);
+
+it('denies unauthenticated and inactive Admin deletion requests', function () {
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
+    $this->deleteJson("/admin/personnel/users/{$staff->id}")->assertUnauthorized();
+    $this->admin->update(['is_active' => false]);
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$staff->id}")->assertForbidden();
+    $this->assertNotSoftDeleted('users', ['id' => $staff->id]);
+});
+
+it('keeps deleted personnel email and phone identities reserved', function () {
+    $staff = User::factory()->create(['phone_number' => '09170000123']);
+    $staff->assignRole('staff');
+    $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$staff->id}")->assertOk();
+    $this->postJson('/admin/personnel/users', [
+        ...personnelPayload($staff), 'phone_number' => $staff->phone_number,
+        'password' => 'Password@123', 'password_confirmation' => 'Password@123',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['email', 'phone_number']);
+});
+
+it('records personnel creation and updates without sensitive values in audit metadata', function () {
+    $this->actingAs($this->admin)->postJson('/admin/personnel/users', [
+        'first_name' => 'Test', 'last_name' => 'Personnel', 'email' => 'audit@example.test',
+        'role' => 'staff', 'password' => 'Password@123', 'password_confirmation' => 'Password@123',
+    ])->assertCreated();
+    $staff = User::where('email', 'audit@example.test')->sole();
+    $this->putJson("/admin/personnel/users/{$staff->id}", personnelPayload($staff, ['is_active' => false, 'password' => 'Changed@123', 'password_confirmation' => 'Changed@123']))->assertOk();
+    $created = Activity::where('event', 'personnel_created')->sole();
+    $updated = Activity::where('event', 'personnel_updated')->sole();
+    expect($created->causer_id)->toBe($this->admin->id)->and($created->subject_id)->toBe($staff->id)
+        ->and($updated->properties['password_changed'])->toBeTrue()
+        ->and($updated->properties['is_active'])->toBeFalse()
+        ->and($updated->properties->toJson())->not->toContain('Changed@123', 'audit@example.test', $staff->password);
 });
 
 it('protects Admin Customer and mixed-role accounts from personnel mutations', function (string $role) {

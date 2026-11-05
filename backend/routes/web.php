@@ -181,4 +181,5 @@ Route::prefix('admin/personnel')->name('personnel.')->middleware(['auth', 'activ
     Route::get('/', [PersonnelController::class, 'index'])->name('index');
     Route::post('/users', [PersonnelController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [PersonnelController::class, 'update'])->name('users.update');
+    Route::delete('/users/{user}', [PersonnelController::class, 'destroy'])->name('users.destroy');
 });

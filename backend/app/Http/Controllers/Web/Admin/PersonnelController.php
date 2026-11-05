@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Personnel\DeletePersonnelRequest;
 use App\Http\Requests\Admin\Personnel\ListPersonnelRequest;
 use App\Http\Requests\Admin\Personnel\StorePersonnelRequest;
 use App\Http\Requests\Admin\Personnel\UpdatePersonnelRequest;
@@ -40,14 +41,21 @@ class PersonnelController extends Controller
     public function store(StorePersonnelRequest $request): JsonResponse
     {
         return $this->created('Personnel account created successfully.', [
-            'user' => new PersonnelResource($this->personnel->create($request->validated())),
+            'user' => new PersonnelResource($this->personnel->create($request->validated(), $request->user())),
         ]);
     }
 
     public function update(UpdatePersonnelRequest $request, User $user): JsonResponse
     {
         return $this->success('Personnel account updated successfully.', [
-            'user' => new PersonnelResource($this->personnel->update($user, $request->validated())),
+            'user' => new PersonnelResource($this->personnel->update($user, $request->validated(), $request->user())),
         ]);
+    }
+
+    public function destroy(DeletePersonnelRequest $request, User $user): JsonResponse
+    {
+        $this->personnel->delete($user, $request->user());
+
+        return $this->success('Personnel account deleted successfully.');
     }
 }

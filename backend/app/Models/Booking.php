@@ -155,7 +155,7 @@ class Booking extends Model
             'id',
             'id',
             'driver_id'
-        );
+        )->withTrashed();
     }
 
     public function terms(): HasOne

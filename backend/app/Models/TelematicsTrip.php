@@ -65,7 +65,7 @@ class TelematicsTrip extends Model
 
     public function operator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'operator_user_id');
+        return $this->belongsTo(User::class, 'operator_user_id')->withTrashed();
     }
 
     public function events(): HasMany

@@ -1,5 +1,5 @@
 import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
-import { apiGet, apiPost, apiPut } from "@/services/http";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/services/http";
 import type { PersonnelAccountFormValues } from "@/validations/personnel/schemas";
 import type { PersonnelFilter, PersonnelResponse, PersonnelUser } from "./types";
 
@@ -43,4 +43,8 @@ export async function createPersonnel(values: PersonnelAccountFormValues) {
 export async function updatePersonnel(id: number, values: PersonnelAccountFormValues) {
   const response = await apiPut<{ user: PersonnelUser }>(`/admin/personnel/users/${id}`, accountPayload(values));
   return response.data.user;
+}
+
+export async function deletePersonnel(id: number) {
+  await apiDelete<null>(`/admin/personnel/users/${id}`);
 }

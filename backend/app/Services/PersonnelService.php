@@ -43,9 +43,9 @@ class PersonnelService
         ];
     }
 
-    public function create(array $data): User
+    public function create(array $data, User $actor): User
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $actor) {
             $user = User::create([
                 ...$this->accountFields($data),
                 'password' => $data['password'],
@@ -54,13 +54,17 @@ class PersonnelService
             ]);
             $user->syncRoles([$data['role']]);
 
+            activity()->causedBy($actor)->performedOn($user)->event('personnel_created')
+                ->withProperties(['role' => $data['role'], 'is_active' => $user->is_active])
+                ->log('Personnel account created.');
+
             return $user->load('roles');
         });
     }
 
-    public function update(User $account, array $data): User
+    public function update(User $account, array $data, User $actor): User
     {
-        return DB::transaction(function () use ($account, $data) {
+        return DB::transaction(function () use ($account, $data, $actor) {
             $user = User::query()->lockForUpdate()->findOrFail($account->id);
 
             if ($user->roles()->count() !== 1 || ! $user->hasAnyRole(['staff', 'driver'])) {
@@ -103,14 +107,64 @@ class PersonnelService
                 $fields['remember_token'] = Str::random(60);
             }
 
-            $user->forceFill($fields)->save();
+            $user->forceFill($fields);
+            $changedFields = array_keys($user->getDirty());
+            $user->save();
             $user->syncRoles([$data['role']]);
 
             if ($roleChanged) {
                 $user->syncPermissions([]);
             }
 
+            activity()->causedBy($actor)->performedOn($user)->event('personnel_updated')
+                ->withProperties([
+                    'role' => $data['role'],
+                    'role_changed' => $roleChanged,
+                    'is_active' => $user->is_active,
+                    'changed_fields' => array_values(array_diff($changedFields, ['password', 'remember_token'])),
+                    'password_changed' => ! empty($data['password']),
+                ])->log('Personnel account updated.');
+
             return $user->fresh()->load('roles');
+        });
+    }
+
+    public function delete(User $account, User $actor): void
+    {
+        DB::transaction(function () use ($account, $actor) {
+            $user = User::query()->lockForUpdate()->findOrFail($account->id);
+
+            if ($user->roles()->count() !== 1 || ! $user->hasAnyRole(['staff', 'driver'])) {
+                throw ValidationException::withMessages([
+                    'personnel' => ['Only Staff and Driver accounts can be deleted.'],
+                ]);
+            }
+
+            $hasAssignment = Booking::query()
+                ->whereHas('assignment', fn (Builder $query) => $query->where('driver_id', $user->id))
+                ->whereIn('status', [BookingStatus::Pending, BookingStatus::Confirmed, BookingStatus::Ongoing])
+                ->exists();
+
+            if ($hasAssignment) {
+                throw ValidationException::withMessages([
+                    'personnel' => ['Reassign pending or confirmed services and finish ongoing services before deleting this account.'],
+                ]);
+            }
+
+            if ($this->charges->hasOutstanding($user, AdditionalChargeResponsibility::Driver)) {
+                throw ValidationException::withMessages([
+                    'personnel' => ['Settle outstanding Driver charges before deleting this account.'],
+                ]);
+            }
+
+            $role = $user->roles()->sole()->name;
+            $user->tokens()->delete();
+            $user->forceFill(['is_active' => false, 'remember_token' => Str::random(60)])->save();
+            $user->delete();
+
+            activity()->causedBy($actor)->performedOn($user)->event('personnel_deleted')
+                ->withProperties(['role' => $role])
+                ->log('Personnel account soft deleted.');
         });
     }
 

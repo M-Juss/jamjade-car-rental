@@ -6,8 +6,9 @@ import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard }
 import { TablePagination } from "@/components/common/tables/TablePagination";
 
 import { useEffect, useState } from "react";
-import { Eye, Loader2, Pencil, Plus, UserCheck, Users, X } from "lucide-react";
+import { Eye, Loader2, Pencil, Plus, Trash2, UserCheck, Users, X } from "lucide-react";
 import { PersonnelAccountForm } from "@/forms/personnel/PersonnelAccountForm";
+import { DeletePersonnelDialog } from "@/forms/personnel/DeletePersonnelDialog";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
@@ -44,6 +45,7 @@ export function PersonnelPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accountDialog, setAccountDialog] = useState<{ mode: "add" | "edit" | "view"; personnel?: PersonnelUser } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PersonnelUser | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -158,6 +160,7 @@ export function PersonnelPage() {
                       <TableCell data-label="Actions" className="px-4 py-3"><TableActionMenu label={`Open actions for ${personnel.name}`} items={[
                         { label: "View", icon: <Eye size={13} className="mr-2 text-subtle-foreground" />, onClick: () => setAccountDialog({ mode: "view", personnel }) },
                         { label: "Edit", icon: <Pencil size={13} className="mr-2 text-subtle-foreground" />, onClick: () => setAccountDialog({ mode: "edit", personnel }) },
+                        { label: "Delete", icon: <Trash2 size={13} className="mr-2" />, variant: "danger", separatorBefore: true, onClick: () => setDeleteTarget(personnel) },
                       ]} /></TableCell>
                     </TableRow>
                   ))}
@@ -169,6 +172,10 @@ export function PersonnelPage() {
       </div>
 
       {accountDialog && data && <PersonnelAccountForm key={`${accountDialog.mode}-${accountDialog.personnel?.id ?? category}`} open mode={accountDialog.mode} personnel={accountDialog.personnel} roles={data.roles} category={category === "all" ? undefined : category} onOpenChange={(open) => { if (!open) setAccountDialog(null); }} onSave={saveAccount} />}
+      {deleteTarget && <DeletePersonnelDialog key={deleteTarget.id} personnel={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={() => {
+        if (data?.users.length === 1 && page > 1) setPage((current) => current - 1);
+        refresh();
+      }} />}
     </div>
   );
 }
