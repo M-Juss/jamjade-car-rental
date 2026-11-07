@@ -114,7 +114,7 @@ export function ScheduleMaintenanceDialog({
         >
           <div className="grid flex-1 gap-6 overflow-y-auto px-6 py-5 md:grid-cols-2">
             <section className="space-y-3 md:col-span-2" aria-labelledby="maintenance-schedule-details-heading">
-              <h2 id="maintenance-schedule-details-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 id="maintenance-schedule-details-heading" className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                 Maintenance Details
               </h2>
               {isPlanSchedule ? (
@@ -185,7 +185,7 @@ export function ScheduleMaintenanceDialog({
             </section>
 
             <section className="space-y-3 border-t border-border pt-5 md:col-span-2" aria-labelledby="maintenance-schedule-dates-heading">
-              <h2 id="maintenance-schedule-dates-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 id="maintenance-schedule-dates-heading" className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                 Schedule
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
@@ -221,7 +221,7 @@ export function ScheduleMaintenanceDialog({
             </section>
 
             <section className="space-y-3 border-t border-border pt-5 md:col-span-2" aria-labelledby="maintenance-schedule-notes-heading">
-              <h2 id="maintenance-schedule-notes-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 id="maintenance-schedule-notes-heading" className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                 Notes
               </h2>
               <InputWithLabel
@@ -241,7 +241,7 @@ export function ScheduleMaintenanceDialog({
             </section>
 
             {form.formState.errors.root?.message ? (
-              <p className="text-[11px] font-medium text-destructive md:col-span-2">{form.formState.errors.root.message}</p>
+              <p className="text-xs font-medium text-destructive md:col-span-2">{form.formState.errors.root.message}</p>
             ) : null}
           </div>
           <FormDialogFooter>

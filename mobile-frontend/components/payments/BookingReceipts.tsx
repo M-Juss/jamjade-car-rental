@@ -39,7 +39,8 @@ export function BookingReceipts({ bookingReference }: { bookingReference: string
           className="min-h-control flex-row items-center gap-3 border-b border-border py-3">
           <View className="min-w-0 flex-1">
             <Text className="font-sans text-body font-semibold text-foreground">{receipt.receiptReference}</Text>
-            <Text className="font-sans mt-1 text-caption text-secondary-foreground">{receipt.purpose} · {formatReceiptDate(receipt.paidAt)}</Text>
+            <Text className="font-sans mt-1 text-caption text-foreground">{receipt.purpose}</Text>
+            <Text className="font-sans mt-0.5 text-caption text-secondary-foreground">{formatReceiptDate(receipt.paidAt)}</Text>
           </View>
           <Text className="font-sans text-body font-semibold text-foreground">{formatReceiptAmount(receipt.amount)}</Text>
           <ChevronRight accessible={false} size={18} color={themeColors.primary} />

@@ -13,6 +13,7 @@ import { suggestForwardIntervals, SUGGESTION_VERSION } from "../reference-sugges
 import { DetailsList } from "./RecordingDetails";
 import { SignalTimeline } from "./SignalTimeline";
 import { SignalSelectionControls } from "./SignalSelectionControls";
+import { useReviewSelection } from './ReviewTimelineContext';
 
 const roles = [{ key: "rest", label: "Resting" }, { key: "starting", label: "Starting" }, { key: "stopping", label: "Stopping" }] as const;
 const rangeText = (range: ReferenceRange) => `${seconds(range[0])}–${seconds(range[1])}`;
@@ -27,8 +28,7 @@ export function ForwardReferencePreview({ recordingId, acceleration, gyroscope, 
   const [ranges, setRanges] = useState<Partial<ForwardRanges>>(() => suggestion.available ? suggestion.ranges : {});
   const [adjusted, setAdjusted] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
-  const [selection, setSelection] = useState<ReferenceRange>(bounds);
-  const [cursor, setCursor] = useState(bounds[0]);
+  const { selection, setSelection, cursor, setCursor } = useReviewSelection(bounds);
   const points = useMemo(() => nativeSignalPoints(acceleration, origin), [acceleration, origin]);
   const complete = Boolean(ranges.rest && ranges.starting && ranges.stopping);
   const preview = useMemo(() => confirmed && ranges.rest && ranges.starting && ranges.stopping

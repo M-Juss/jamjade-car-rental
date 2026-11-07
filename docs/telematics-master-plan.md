@@ -13,8 +13,9 @@ diagnostic panels have been retired. Validated noise filtering, reusable accepte
 accepted vehicle alignment and AI remain pending; compilation and
 short recording tests do not establish general Redmi recording reliability.
 The [Phase 1 collection contract](#collection-workflow-redesign-phase-1-contract)
-now defines the agreed next workflow; its new fields and three-step UI are not
-active runtime behavior yet.
+defines the collection metadata design. Native/mobile pilot collection and the
+guided three-step web review are implemented subsets; dataset review/export and
+separate v2 label-confidence semantics remain pending.
 
 ## Authority and status
 
@@ -48,8 +49,9 @@ not an authoritative description of this codebase or a verified industry standar
 
 **Status, 2026-11-06:** Phase 1 definitions are complete. Phase 2 pilot collection
 is implemented in native/mobile code and the owner-bound Laravel metadata API;
-installation and physical acceptance on the Redmi remain pending. Phases 3–5 are
-not complete. Current web review still uses five tabs and `rc-phase-labels-v1`.
+the standalone app is installed on the Redmi, with limited UI checks recorded below.
+Full physical acceptance and Phases 3–5 are not complete. Web review now uses three
+ordered steps and Details, while retaining `rc-phase-labels-v1` semantics.
 No accepted alignment, approved dataset, trained model or physical verification
 is implied by a successful build or synthetic test.
 
@@ -86,6 +88,64 @@ another mount version with pending alignment. Explicit server close/reopen lifec
 operations are not exposed yet; the index selects the current block and source
 contexts retain their original session snapshots. Do not infer accepted alignment
 or a dataset boundary solely from these IDs.
+
+**Session-flow correction, 2026-11-06:** Opening a group resumes that group's
+latest locally remembered session, including after app restart. Opening the same
+session never increments its number. Each group keeps its latest session/mount
+entry in the encrypted owner index; switching groups changes the active entry.
+Create session is separate from Continue session. Explicit new-session creation
+is available only after the preceding session has recording evidence; the native
+boundary also reuses an empty latest session if called repeatedly. A first
+session for a group allocates once. Allocation failures do not advance persisted
+counters. Previously assigned numbers are not reset or reused.
+
+The selection screen identifies the active group/session separately from the
+selected group's latest session and whether it has recordings. The setup screen
+shows the active group name, session code and mount number. Create group uses
+the existing group form; Create new session is an explicit confirmed action.
+Saving a collection sidecar durably marks its session as used, so removing a
+local recording later does not make that session empty again. Existing active
+session/mount identity is imported from the prior single-current-session index;
+older replaced sessions without index entries are not reconstructed from history.
+Original recording contexts retain their existing identities.
+
+A declared remount advances a device-wide mount generation in this owner index.
+Returning to a group's older mount after a remount elsewhere keeps its session
+but allocates a pending `suspected_shift` mount version once. This prevents a
+remembered group from reviving a pre-remount frame. Setup checks still remain
+explicit, one-use and invalidated by setup actions; selecting or continuing a
+session does not collect motion or accept alignment. This local selection flow
+does not add server close/reopen lifecycle operations or an all-session browser.
+
+Verification of this correction: mobile lint/TypeScript, 280 Node checks, 39 native
+recorder tests (including repeat-open, empty-session reuse, group return/restart,
+failed allocation/activation, legacy-current import and cross-group remount cases),
+10 native network tests and the ARM64 standalone release build passed. The
+signature-matched APK was installed over the connected Redmi app without
+uninstalling or clearing data. After the user unlocked Collect, the Redmi showed
+the active group and empty session S05, with New session disabled. Continue was
+opened twice with a return to selection between them; both opened the same S05
+setup/code, without advancing the session number. Selection/setup screenshots
+were inspected, and no recorder service was active afterward. This check did not
+create a group/session, collect motion, upload, delete or renumber history.
+
+**Observation save feedback, 2026-11-06:** The native observation form now shows
+Saving… and Saved on phone beside its action; validation/storage/access failures
+remain beside that action and preserve the draft. The former screen action wrapper
+swallowed save failures into a page-top error and supplied no success feedback.
+The form now receives a confirmed local revision directly, resets its revision
+baseline on success, and disables unchanged saved reports rather than appending
+duplicate revisions on repeat taps. Native acknowledgment must match the recording,
+next revision and submitted observation values before success is shown. A separate
+details read is no longer required after writing. Local save is not upload/sync.
+
+Mobile lint/types, 286 Node checks (including local save success/failure and
+mismatched acknowledgment recovery), the standalone ARM64 build and signature
+verification passed. The update was installed over the Redmi app without data
+clearing. A read-only reopen of S05-FSS-R038 confirmed its previously saved answers
+and the disabled Saved on phone action/confirmation. No observation was invented,
+resubmitted or uploaded during that verification; recording accuracy was not
+evaluated by this feedback correction.
 
 The native, explicitly consented **Agree & check setup** action records approximately
 five seconds in the foreground with the operator's holder/top-forward/still
@@ -163,6 +223,115 @@ are still later phases.
 Runtime catalog copies are checked byte-for-byte by mobile
 `validation/research/collection.test.mjs`; keep the exact version immutable after
 physical use. Neither that check nor a protocol hash validates a physical procedure.
+
+### Mobile research UI refinement, 2026-11-06
+
+Collect/Recordings reuse mobile disclosure and upload/delete row patterns, with
+the requested compact control treatment. Header icons are plain 18px glyphs
+without circular frames. Research buttons/cards opt into shared compact density
+(44px action height, smaller corners/padding, no decorative icon circles); other
+feature defaults remain unchanged. Collect uses the same ordinary tab treatment
+as Recordings. Opened recordings and new-session/group
+views have header Back navigation, mirrored by Android Back; root tabs have no
+back arrow or duplicate module title. Nested views hide the bottom tab bar.
+Collect opens at session entry: continue the current session or start a new one
+from a collection group. It does not list historical sessions. The setup view's
+Back returns to this entry without closing or replacing the saved session.
+Its header places Refresh immediately before the rightmost Settings action;
+the notes Info icon sits beside the Session/Mount summary. Back is unavailable
+during setup checks and recording; native Stop remains independently available.
+Returning retains the library's filter and page. Leaving unsaved observations
+requires confirmation; opening sensor details retains the draft.
+
+The Info action opens Research notes (general protocol/storage/pilot/name
+explanations). Exercise instructions remain beside the exercise selector; explicit
+consent stays beside Check/Start, and failures/deletion consequences stay at the
+action. Session changes/remount declarations use a header options dialog. One
+primary collection action changes from Agree & check setup to Agree & start
+recording, with a separate native Stop & save while active; checks never auto-start
+recording. Stop remains independent of network requests.
+
+Library cards place Upload/Sync & verify and icon-only delete in a 3:1 row.
+Detailed source/label/sensor information lives inside the opened recording.
+`collectionPage(offset, filter)` adds a bounded native response with `records`,
+`total`, effective `offset`, and `limit: 10`; legacy list APIs keep their array
+shape and offset behavior. Count reflects the active filter and excludes the
+active capture. Pagination is hidden for 0–10 entries; deletion clamps an empty
+last page to the preceding page. Remote status reads no longer block native
+status polling. This requires an updated standalone APK; stored originals and
+capture/upload schemas are unchanged.
+
+Verification for this UI increment: mobile lint/type checks, 273 Node checks,
+29 native unit tests, Expo Doctor 18/18 and the standalone ARM64 release build
+passed. APK signature and bundled protocol checks passed. The updated APK was
+installed over the existing Redmi app without uninstalling it. Read-only Redmi
+UI checks confirmed the compact Collect and Recordings layouts, visible existing
+recordings, the notes dialog, and opened-recording header Back navigation to the
+library. No capture, upload or deletion was performed during these UI checks.
+These checks do not establish physical collection/calibration accuracy or replace
+operator acceptance of the layout.
+
+The subsequent approved app-only backend DNS fallback is recorded in
+[Android-only mobile scope](android-only-mobile.md#app-only-backend-dns-fallback--2026-11-06).
+A read-only vehicle API request reached Laravel over Wi-Fi after installation;
+this transport check does not validate research authorization, uploads or sensors.
+
+### Guided web review and reference order, 2026-11-06
+
+The native recording inspector now uses three ordered steps: **Check recording →
+Prepare signals → Label and review**. It reuses the existing chart, selection,
+processing and annotation forms with JamJade controls. Summary metrics are inline;
+setup, channel timing, label history and fingerprints are in Details. Reopening
+shows existing saved label/processing progress; switching steps retains the label
+draft. The bounded original window, cursor and interval selection are shared across
+original review, reference preparation, saved-result review and labeling; changing
+window clips/resets the selection when needed. No automatic refit, annotation,
+training approval or filter promotion is performed.
+
+The existing owner-bound Admin detail response now includes `review` through
+`RcRecordingReviewResource`/`RcRecordingReviewService`, mirrored by `NativeReview`.
+It includes a bounded collection summary, the latest encrypted observation's
+permitted review fields, and processing/reference progress. It does not expose
+private storage paths, owner IDs or raw preflight measurements. Existing controller
+research-enabled/owner/active-account checks remain. No write Form Request,
+processing/annotation payload, migration or original file contract changed.
+
+Reference state is explicit: `missing`, `needs_processing`, `review_required` or
+`not_required`. Matching sources must already have finished before the trial and
+pass existing phone/sensor/group/session/mount compatibility. A recorded reference
+without a root processing run is linked to its own preparation screen. An existing
+run still requires review and unchanged-mount confirmation through the established
+processing form; its presence is not accepted calibration. Missing references
+block new vehicle-axis processing controls but preserve original review and labels.
+A later reference cannot be backdated to make R038 compatible. R038 retains its
+reported neutral stop and protocol deviation; observations and interval labels are
+separate, and the v1 annotation contract still does not approve training data.
+
+For future guided captures, the native recorder now checks for an existing stopped,
+sealed, nonempty local forward-reference original bound to the active session/mount
+before a maneuver trial can start. This order check is independent of the UI and
+runs on the native recorder actor. It does not accept the physical procedure or
+produce a reusable validated frame. Collect defaults to Setup reference/FR when
+that evidence is absent, shows the prerequisite and disables maneuver actions.
+New sessions, remounts or unavailable/deleted local reference originals require a
+new local reference. Legacy unbound capture/upload contracts remain intact;
+existing originals and histories are not rewritten. A locally captured reference
+can be uploaded/prepared later, provided its actual capture precedes the trial.
+
+Verification for this increment: web lint/types, 132 Node checks and production
+build; mobile lint/types, 286 Node checks, 40 native recorder tests and ARM64 APK
+build; Expo Doctor 18/18; backend 1,051 tests / 6,281 assertions and Pint all passed.
+The backend suite used isolated SQLite memory/test storage. Browser checks on
+R038 verified corrected observations, missing-reference handling, accessible
+original labeling, retained saved labels, shared selection and the Details dialog.
+At 375 px and 1280 px the page had no horizontal overflow; temporary viewport
+overrides were cleared. Checks were read-only: no actual labels, observations or
+processing runs were created by the agent. The phone update was installed with
+matching signature and without uninstalling or clearing its data. On the unlocked
+Redmi, Collect retained S05 and opened Setup reference/Forward Reference with
+preview code S05-FR-R039 and the missing-reference prerequisite visible. No recorder
+service was active. This is not RC accuracy, background
+reliability, an approved dataset or full Phase 3/5 completion.
 
 ### Phase 2 verification, 2026-11-06
 
@@ -328,15 +497,41 @@ time. A later remount does not by itself make correctly prepared earlier recordi
 bad. If a shift's actual onset is unknown, preserve that uncertainty and review the
 affected period; the time someone reported a shift is not its proven onset.
 
+### Authorized research reset — 2026-11-06
+
+The operator explicitly requested permanent removal of the development/pilot RC
+research data before a fresh collection. The owner-scoped backend reset removed
+15 native recordings, 180 chunks, 9 processing runs, 6 annotation revisions,
+11 observation revisions, one collection context/session and 204 encrypted files,
+plus the retired v1 encrypted recovery bundle. No legacy session/trial rows remained.
+Account, booking and vehicle row counts were unchanged. Earlier evidence below
+is historical and no longer implies those originals remain available.
+
+Mobile now provides a confirmed **Delete local research data** action in Research
+notes. It clears only the authorized owner's native research directory and its
+Keystore key, including groups, sessions, local observations, originals and transfer
+receipts. Capture, setup checks and service shutdown must finish first. It preserves
+login and other application data. Server deletion is separate; this local action
+must never imply remote erasure. A reset creates new identities and restarts local
+numbering. The ARM64 standalone update built and installed over the existing package.
+After the operator signed in, the confirmed local reset completed on the Redmi.
+The recording list showed **No recordings**; after restarting, Collect retained
+**No session yet** and an unselected group. No recording or setup check was started.
+A final read-only backend check found zero rows in all ten RC research tables. Focused backend checks (30 tests), the complete
+backend suite (1,052 tests), mobile lint/types and 285 Node checks, 40 native unit
+tests and the standalone build passed; web lint/types, 44 contract checks and
+the production build passed. The build required network access to fetch the
+existing Google Font.
+
 ### Versioned exercise protocols
 
-The catalog is `rc-exercises-v1`; every definition is provisional until the
+New captures use `rc-exercises-v2`; `rc-exercises-v1` remains immutable for historical captures. Every definition is provisional until the
 applicable physical rehearsal. `SR`/`FR` are setup codes, not maneuver classes.
 Only FSS/HA/HB/LT/RT/RSS/SW appear in the ordinary exercise picker.
 
 | Code | Planned exercise | Procedure focus |
 | --- | --- | --- |
-| FSS | Forward Start-Stop | Gradual forward start and routine controlled brake |
+| FSS | Forward Start-Stop | Gradual forward start and neutral-release stop |
 | HA | Harsh Acceleration Attempt | Sharp start attempt followed by a normal stop |
 | HB | Harsh Braking Attempt | Normal start followed by a sharp brake attempt |
 | LT / RT | Left / Right Turn | One smooth turn from the RC's perspective, straighten, then stop |
@@ -351,8 +546,8 @@ label derived from a countdown. The guidance interval is not a validated
 stationarity/quality threshold. SR has no driving exercise; its initial/exercise/
 final text represents continued stationary evidence, not a command to move.
 
-For the provisional FSS straight course: pair 1–2 is A/start; pair 3–4 is B/begin
-braking; pair 5–6 is C/end of intended stopping zone. Stop between B and C and
+For the provisional FSS straight course: pair 1–2 is A/start; pair 3–4 is B/release
+to neutral; pair 5–6 is C/end of intended stopping zone. Stop between B and C and
 retain a clear buffer beyond C. For RSS, B means **release lever to neutral**;
 rehearse its stopping distance separately. Turn/swerve geometry and all cone
 spacing/radius remain provisional. Keep unmeasured dimensions null; a tile count
@@ -388,7 +583,167 @@ cornering procedure is introduced, version the catalog and define its course and
 rubric; do not invent HLT/HRT codes in one client before the shared contract changes.
 The current primary future targets still include harsh cornering.
 
+The v2 catalog uses neutral release for ordinary forward/reverse stops, including
+FR, FSS, HA recovery, turns and swerve recovery. HB explicitly attempts an applied
+opposite-lever brake while moving forward, without reversing. Stop method never
+establishes measured severity. FR still needs enough start/slowdown evidence for
+processing; a completed procedure does not guarantee a usable reference.
+
+On 2026-11-06 the operator clarified that earlier recordings used neutral release
+throughout. Treat this as retrospective operator-reported evidence, not independent
+timing truth. Do not overwrite sealed originals, old protocol snapshots, saved
+observations or labels in bulk. Review discrepancies against the actual method;
+an old protocol mismatch alone does not establish unusable sensor data. Session
+catalog version records its creation baseline; each capture independently binds
+its selected catalog version/hash, allowing v2 captures in an existing v1 session.
+
+### Mobile post-save choices — 2026-11-06
+
+After **Save observations** succeeds and the native acknowledgment is checked,
+RC Collect opens the existing-style research dialog with **Upload now**,
+**Record another** and **Stay here**. Original motion capture is already stopped
+and saved before this point; no upload or observation form gates native Stop.
+The dialog identifies the recording and discloses motion/setup/diagnostic/report
+transfer before an explicit upload click. It reuses the existing authenticated,
+resumable upload and collection-sync path without a duplicate consent dialog.
+Progress stays visible; failures retain the dialog and originals for retry.
+Only completed upload plus setup/observation sync changes the dialog to Upload
+complete. It never claims a cached receipt is a fresh transfer.
+
+Record another returns to Collect using the active group/session, including when
+observations were saved from Recordings. It creates no session, group, recording,
+setup measurement or sensor subscription. Setup checks and any missing-reference
+gate still apply. Stay here/dismiss leaves the locally saved report open. Failed
+observation saves do not open the dialog; reopening an already saved report does
+not automatically prompt. Backend/native contracts are unchanged.
+
+Mobile lint/types, all 285 existing Node checks and the final ARM64 standalone
+build passed. The Redmi was reconnected after checks and the APK installed successfully
+as an update, without uninstalling or clearing app data. Physical dialog, small-screen/keyboard and failed-upload
+UI verification remain pending. No
+recording or observation was created/modified to force a smoke test.
+
+### FSS timestamp suggestions — 2026-11-06
+
+Website Label and review now offers **Suggest intervals** only when the trusted
+collection context identifies `FSS`. It uses original accelerometer/gyroscope
+streams for one complete recording of at most 30 seconds. Partial views provide
+Load complete recording when supported. It reuses experimental quiet/run and
+phone-top projection logic in `reference-suggestions.ts`; FSS candidates permit
+250 ms event bins, while reference preparation retains its 500 ms fitting checks.
+This timing mode neither fits nor accepts a vehicle frame. Its thresholds and
+boundaries remain provisional, with no accuracy claim.
+
+Proposals contain only IDs and start/end times: quiet before, initial activity,
+the intervening span when long enough, opposite activity and quiet after when
+found. The intervening span does not establish constant speed or even continuous
+travel. Several start/stops, gaps, missing sensors or unclear signals can make
+suggestions unavailable; manual interval controls remain. Missing final quiet
+evidence stays missing. Existing labels/drafts are never replaced; overlapping
+proposals are disabled. **Use times** only selects the chart interval; the operator
+can adjust it, then chooses Label selected interval and assigns movement,
+direction, assessment, source and certainty in the existing form. Draft additions
+start with Other/Unknown/Unknown, Signals only and Uncertain. A timing-method note
+is attached when the exact proposal is used. Saving is explicit through the
+unchanged Zod/Laravel `rc-phase-labels-v1` contract. No automatic reviewed status,
+classifier, event severity, dataset approval or mobile changes are introduced.
+
+Verification: 55 focused existing/new analysis and form checks passed; an in-memory
+read-only check against R002 proposed 0.75–5.75, 6.00–6.50, 6.50–13.50,
+13.50–14.00 and 15.50–20.00 seconds without changing its labels. Browser control
+was disabled in the session, so populated responsive visual verification remains
+pending. Web lint, TypeScript, all 136 Node checks and the final production build passed. No phone reinstall is
+needed for this web-only change.
+
+### Fresh stationary control R004 — 2026-11-06
+
+`S01-SR-R004` (20.773 s, session 1/mount 1) uploaded and verified. The operator
+reported completed as planned, no flags and no stopping method applicable.
+Raw accel/gyro rates were about 50.48/50.54 Hz with no sequence gaps, duplicate or
+backward timestamps, or out-of-interval samples. Comparing 1.00–5.75 s with
+14.00–19.00 s in R002's saved reference frame, without creating a processing run,
+gave forward means 0.14603 and 0.14580 m/s² (change −0.00023 m/s²). This tests
+short-term stability, not a zero-acceleration acceptance threshold or long-term
+drift guarantee. Absolute resting offset relative to the earlier reference remains.
+
+For comparison, saved 5 Hz FSS R002 resting forward means changed from 0.0572 to
+0.1669 m/s²; R003 changed from 0.0353 to 0.1653 m/s². Both used FR-R001,
+session 1/mount 1. These support investigating post-motion resting tilt/baseline
+changes; they do not establish suspension movement as the cause or validate
+motion-time gravity correction. R003's missed final suggestion was reproduced:
+19 quiet bins existed after stopping, but comparison to the initial projected
+baseline fragmented/rejected the candidate. R003's manually reviewed final label
+13.818–19.673 s remains saved. No labels/originals/processing were changed by
+these read-only inspections. Low IMU activity alone cannot prove vehicle standstill.
+
+#### FSS final-rest timing update
+
+`fss-intervals-v2` now permits a locally quiet terminal run at a changed mean,
+without requiring a match to the initial projected baseline. This applies only
+to the FSS timing mode (250 ms event candidates); reference preparation's default
+500 ms fitting mode, saved processing, calibration and raw samples are unchanged.
+A proposal must follow the stopping candidate, satisfy the existing accelerometer
+variation, gyro RMS, neighboring-mean stability and continuous-run checks, and
+end within 750 ms of the recording boundary. That terminal margin is a provisional
+end-handling/partial-bin allowance, not a learned quality threshold. Terminal quiet
+bins are excluded from new start/stop candidate detection, preventing a shifted
+quiet plateau from becoming another event. Quiet cruise earlier in the recording
+cannot substitute for a missing terminal run. Existing gap and repeated-exercise
+refusals remain. Results contain timestamps only and still require human review.
+
+Read-only checks: R003 now proposes 15.50–19.75 s as its terminal quiet interval;
+its other four candidate times are unchanged. R002 remains available. R003's
+saved manual 13.818–19.673 s interval is not replaced; proposal boundaries differ
+because of conservative adaptive bin checks. Method-note provenance is v2 for
+new proposals; saved v1 notes retain their historical value. Synthetic tests cover
+positive/negative resting shifts, ongoing activity at the end, gaps and repeated
+exercises. Web lint, TypeScript, all 140 Node checks, the production build and
+`git diff --check` passed. No APK reinstall or saved-data migration is needed.
+
+### LT timestamp suggestions — 2026-11-06
+
+**Suggest intervals** now supports normal `LT` as well as `FSS`, using the existing
+label editor and Use times flow. Other protocols remain manual. `lt-intervals-v1`
+requires a complete recording up to 30 seconds, valid original accelerometer and
+gyroscope streams and one rest/start/stop candidate from the existing timing mode.
+It projects gyro samples around the initial gravity-up direction after removing
+the resting gyro mean. Experimental 250 ms mean bins, a six-times-rest-RMS noise
+limit (numerical floor 0.0001 rad/s) and a 750 ms minimum sustained turn identify
+one left-direction candidate. These are provisional timing settings, not learned
+normal/harsh thresholds or a reusable accepted frame.
+
+A turn overlapping the starting/stopping candidate, opposite sustained turn,
+multiple turns, missing channels or timing gaps causes manual fallback. The
+chronological proposals are quiet-before, starting, approach when at least 500 ms,
+turn, exit when at least 500 ms, stopping and quiet-after when available. Brief or
+absent phases stay absent. The operator confirmed limited space: a brief straight
+exit is acceptable for this provisional LT protocol; do not extend travel merely
+to fill a label. The 500 ms proposal cutoff is not a physical collection minimum.
+Turning that overlaps deceleration needs manual review, not forced separation. Proposal records contain only ID/time ranges: no event
+judgments, normal severity, reviewed certainty or training approval is assigned.
+Existing overlap guards, manual adjustments, unknown draft defaults and explicit
+Save labels remain. Saved labels/originals/protocol catalogs and backend DTOs are
+unchanged. New notes identify the LT timing method rather than the FSS method.
+
+A read-only in-memory R006 check proposed 1.00–6.00, 6.25–6.75, 6.75–8.25,
+8.25–12.50, 12.50–13.00, 13.00–13.50 and 16.00–20.50 s. These differ from the
+operator's saved intervals and do not replace them. Source review and synthetic
+checks cover tilted mounts, opposite/multiple/overlapping turns, missing channels,
+gaps and omitted short phases. Web lint, TypeScript, all 145 Node checks and
+the production build passed; browser visual verification remains unavailable
+because browser control is disabled.
+No APK reinstall is required for this web-only change.
+
 ### Post-run observations and separate annotation judgments
+
+SW observations and Swerving intervals support optional `initial_deviation`
+values `left`, `right`, and `unknown`. The mobile observation reports the
+first deviation of the recorded SW trial. The web label records the reviewer’s
+assessment for that interval separately. Both patterns use the Swerving
+movement class, with travel direction recorded independently. Historical
+revisions without this field display “Not recorded.” New selections may
+explicitly record “Unknown.” Existing encrypted revision payloads support this
+additive field, so the database schema and capture protocol stay the same.
 
 **Stop -> save the original immediately -> observations -> explicit upload ->
 server verification.** Save must not wait for a form, connectivity or a label.
@@ -404,8 +759,19 @@ necessarily contradict completion. `actual_stop_method` is independently reporte
 `brake_applied`, `neutral_release`, `unknown` or `not_applicable`. Do not copy the
 expected protocol method into it as observed truth. RSS's neutral stop must not
 be forced into a brake-command claim or automatically classified as harsh braking.
-The existing `other` movement can retain a slowing phase that cannot honestly be
-called braking; a later explicit deceleration taxonomy requires a version change.
+On 2026-11-06 the operator explicitly defined routine neutral-release stopping
+as **normal braking** for this RC pilot. Label an observed forward slowdown as
+`movement = braking`, `severity = normal` when supported by that operator report;
+retain `actual_stop_method = neutral_release` independently. This is an approved
+annotation convention, not proof of an applied brake command or a validated
+physical severity threshold. Chart-only judgments still retain uncertainty.
+The operator also clarified that the opposite lever can reverse wheel rotation.
+Treat that as reported behavior pending controlled verification; opposite-lever
+input does not establish harshness, and any actual reverse phase needs separate
+labeling. Do not execute or expand the existing HB exercise until its reversal
+risk and procedure have been reviewed. Preserve the already used v2 catalog and
+publish a successor for changed instructions. No live classifier is implemented.
+A dedicated deceleration class remains a future versioned taxonomy change.
 
 The future annotation contract is **`rc-phase-labels-v2`**, not a silent change to
 existing v1. Retain the original movement/direction/severity/source/notes fields
@@ -523,7 +889,7 @@ label metadata is visibly cached/unavailable; never display a hardcoded Unlabele
 as if it were the server's latest state. Observation sync may still be pending
 when original upload is already verified; show the specific incomplete work.
 
-Target web workflow is **Check recording -> Prepare signals -> Label and review**,
+The implemented web sequence is **Check recording -> Prepare signals -> Label and review**,
 with one shared timeline/selection and Original/Processed modes. Setup, diagnostics,
 processing/annotation history move into Details. Reopening resumes saved progress
 without refitting or auto-approving. Use existing JamJade controls, typography,
@@ -571,8 +937,8 @@ schema; implement Laravel Form Requests/services and matching Zod/native validat
 | Phase | Completion boundary | State after this increment |
 | --- | --- | --- |
 | 1. Contracts | Central guide, versioned catalog/resource shapes, synthetic examples and consistency/invalid-case checks | Complete as design artifacts; no active request contract changed |
-| 2. Mobile | Native-backed session/mount/preflight metadata, protocol display, compact names/guide, immediate save, observation persistence, current recording library and status sync | Pilot implementation present; rebuilt standalone APK and automated checks recorded below; Redmi installation/physical acceptance pending |
-| 3. Web | Authoritative collection read models, three-step review, separate confidence/review fields and history/pilot presentation | Pending; extend matching Laravel/Form Request/Resource/Zod/service contracts together |
+| 2. Mobile | Native-backed session/mount/preflight metadata, protocol display, compact names/guide, immediate save, observation persistence, current recording library and status sync | Pilot implementation installed on Redmi; limited UI/recording evidence recorded below; broader physical acceptance pending |
+| 3. Web | Authoritative collection read models, three-step review, separate confidence/review fields and history/pilot presentation | Owner-bound check read model, ordered review and Details implemented; separate v2 confidence/dataset-review semantics remain pending |
 | 4. Dataset export | Stateful interval inclusion and immutable reproducible dataset snapshots with masks/provenance/grouped split boundaries | Pending |
 | 5. Verification | Physical and cross-app acceptance, including a complete normal FSS path and controlled remount checks | Pending; synthetic checks do not substitute for Redmi/RC validation |
 
@@ -1212,6 +1578,14 @@ The native actor allocates and durably commits a monotonically increasing
 as `Group name · Recording 001`, `002`, etc. Failed starts can leave gaps; a number
 is not a count of completed or valid trials. Each recording still has its own
 immutable `recording_id` UUID and retains group ID/name/number in its context.
+Web/mobile lists and opened recordings present generated names record-first:
+`R031`, with separate Group `G1`, Surface `Tiles` and Slope `Level` metadata.
+These are display aliases parsed from the existing generated-name format; custom
+group names and ungrouped titles retain their text. Group numbers remain scoped
+to their saved naming conditions, while UUIDs remain authoritative identities.
+Existing `S03-FSS-R031` session/exercise codes remain visible as supporting metadata.
+Web searches for short `R031`/`G1` aliases use the existing number/group-name search.
+Native name generation, saved originals, numbering and API contracts are unchanged.
 The most recently created or used group is remembered. Reference validity and independent
 training/evaluation splits cannot be inferred from group membership alone.
 

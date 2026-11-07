@@ -6,6 +6,7 @@ import { formatPeso } from '@/lib/bookings/helpers';
 import type { Booking } from '@/types/booking';
 import { DeliveryPointMap } from './DeliveryPointMap';
 import { DeliveryLocationLink } from './DeliveryLocationLink';
+import { MetadataList } from '@/components/common/MetadataList';
 
 export function DeliveryLocationDetails({ booking }: { booking: Booking }) {
   const [estimate, setEstimate] = useState<DeliveryEstimate | null>(null);
@@ -41,9 +42,10 @@ export function DeliveryLocationDetails({ booking }: { booking: Booking }) {
       <Text className="font-sans text-caption text-secondary-foreground">Note</Text>
       <Text className="font-sans text-body text-foreground">{booking.notes}</Text>
     </View> : null}
-    {estimate ? <Text className="font-sans text-caption text-secondary-foreground">
-      Current estimate: {(estimate.distanceMeters / 1000).toFixed(2)} km · {Math.ceil(estimate.durationSeconds / 60)} min
-    </Text> : loading ? <Text className="font-sans text-caption text-secondary-foreground">Loading distance and time...</Text> : failed ? (
+    {estimate ? <MetadataList items={[
+      { label: 'Estimated distance', value: `${(estimate.distanceMeters / 1000).toFixed(2)} km` },
+      { label: 'Estimated time', value: `${Math.ceil(estimate.durationSeconds / 60)} min` },
+    ]} /> : loading ? <Text className="font-sans text-caption text-secondary-foreground">Loading distance and time...</Text> : failed ? (
       <Pressable accessibilityRole="button" className="min-h-control justify-center" onPress={() => void loadEstimate()}>
         <Text className="font-sans text-caption text-primary">Distance and time unavailable. Retry</Text>
       </Pressable>

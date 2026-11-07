@@ -6,20 +6,21 @@ import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard }
 import { TablePagination } from "@/components/common/tables/TablePagination";
 
 import { useEffect, useState } from "react";
-import { Eye, Loader2, Pencil, Plus, Trash2, UserCheck, Users, X } from "lucide-react";
+import { Eye, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
 import { PersonnelAccountForm } from "@/forms/personnel/PersonnelAccountForm";
 import { DeletePersonnelDialog } from "@/forms/personnel/DeletePersonnelDialog";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
-import { KpiCard } from "@/components/common/data-display/KpiCard";
+import { SummaryList } from "@/components/common/data-display/SummaryList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApiError, GENERIC_ERROR_MESSAGE } from "@/services/http";
 import { createPersonnel, getPersonnel, updatePersonnel, type PersonnelFilter, type PersonnelResponse, type PersonnelUser } from "@/services/personnel";
 import type { PersonnelAccountFormValues } from "@/validations/personnel/schemas";
+import styles from "./PersonnelModule.module.css";
 
 function messageFromError(error: unknown) {
   if (error instanceof ApiError) {
@@ -31,7 +32,7 @@ function messageFromError(error: unknown) {
 
 function formatDate(value?: string | null) {
   if (!value) return "Never";
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(value));
 }
 
 export function PersonnelPage() {
@@ -85,91 +86,139 @@ export function PersonnelPage() {
     refresh();
   };
 
-  const summary = data?.summary ?? { total: 0, active: 0, staff: 0, drivers: 0 };
+  const summary = data?.summary;
   const categoryLabel = category === "all" ? "Personnel" : category === "driver" ? "Driver" : "Staff";
+  const hasFilters = Boolean(searchInput || status !== "all" || category !== "all");
+  const clearFilters = () => {
+    setSearchInput("");
+    setSearch("");
+    setStatus("all");
+    setCategory("all");
+    setPage(1);
+    refresh();
+  };
 
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <ManagementPageHeading title="Personnel" description="Manage staff and driver accounts and access." />
-        <Button onClick={() => setAccountDialog({ mode: "add" })} disabled={isLoading || Boolean(error) || !data} className="h-10 rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary-hover">
+        <Button onClick={() => setAccountDialog({ mode: "add" })} disabled={isLoading || Boolean(error) || !data} className="h-11 rounded-lg px-4 text-sm hover:bg-primary-hover">
           <Plus size={15} className="mr-2" />Add {categoryLabel}
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {[
-          { label: "Total Personnel", value: summary.total, icon: Users, tone: "bg-muted text-primary" },
-          { label: "Active", value: summary.active, icon: UserCheck, tone: "bg-success-surface text-success" },
-          { label: "Staff", value: summary.staff, icon: Users, tone: "bg-muted text-primary" },
-          { label: "Drivers", value: summary.drivers, icon: Users, tone: "bg-warning-surface text-warning" },
-        ].map(({ label, value, icon, tone }) => <KpiCard key={label} label={label} value={value} icon={icon} iconClassName={tone} />)}
-      </div>
+      <SummaryList label="Personnel summary" items={[
+        { label: "personnel", value: error ? "—" : summary?.total ?? "—" },
+        { label: "active", value: error ? "—" : summary?.active ?? "—" },
+        { label: "staff", value: error ? "—" : summary?.staff ?? "—" },
+        { label: "drivers", value: error ? "—" : summary?.drivers ?? "—" },
+      ]} />
 
-      {error && (
-        <Card className="rounded-2xl border border-destructive-border bg-destructive-surface shadow-none">
-          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p role="alert" className="text-sm text-destructive">{error}</p>
-            <Button variant="outline" size="sm" onClick={refresh}>Try Again</Button>
-          </CardContent>
-        </Card>
-      )}
+      <TableCard className="gap-0 rounded-2xl border border-border py-0 shadow-none ring-0" aria-label="Personnel accounts">
+        <CardContent className="border-b border-border p-4">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <SearchInput
+              value={searchInput}
+              onValueChange={setSearchInput}
+              placeholder={`Search ${categoryLabel.toLowerCase()} accounts...`}
+              wrapperClassName="min-w-0 basis-full sm:basis-auto sm:flex-1"
+              className="h-11 rounded-lg bg-surface pl-9 text-base placeholder:text-muted-foreground sm:text-sm"
+            />
+            <FilterSelect
+              value={category}
+              onValueChange={(value) => { setIsLoading(true); setError(null); setCategory(value); setPage(1); }}
+              ariaLabel="Filter personnel by role"
+              placeholder="Role"
+              height="large"
+              className="min-w-0 flex-1 basis-36 rounded-lg bg-surface text-base text-foreground data-[size=default]:h-11 sm:w-36 sm:flex-none sm:basis-auto sm:text-sm"
+              options={[{ value: "all", label: "All roles" }, { value: "staff", label: "Staff" }, { value: "driver", label: "Drivers" }]}
+            />
+            <FilterSelect
+              value={status}
+              onValueChange={(value) => { setIsLoading(true); setError(null); setStatus(value); setPage(1); }}
+              ariaLabel="Filter personnel by status"
+              placeholder="Status"
+              height="large"
+              className="min-w-0 flex-1 basis-36 rounded-lg bg-surface text-base text-foreground data-[size=default]:h-11 sm:w-36 sm:flex-none sm:basis-auto sm:text-sm"
+              options={[{ value: "all", label: "All statuses" }, { value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]}
+            />
+            {hasFilters && <Button variant="ghost" onClick={clearFilters} className="h-11 text-sm text-muted-foreground"><X size={14} />Clear</Button>}
+          </div>
+        </CardContent>
 
-      <div className="space-y-4">
-        <Card className="rounded-lg border-0 bg-surface shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <SearchInput value={searchInput} onValueChange={setSearchInput} placeholder={`Search ${categoryLabel.toLowerCase()} accounts...`} wrapperClassName="min-w-0 basis-full sm:basis-auto sm:flex-1" className="h-10 rounded-lg pl-9 text-sm" />
-              <FilterSelect value={category} onValueChange={(value) => { setIsLoading(true); setError(null); setCategory(value); setPage(1); }} ariaLabel="Filter personnel by role" placeholder="Personnel" height="large" className="w-[170px] shrink-0 rounded-lg text-sm" options={[{ value: "all", label: "All Personnel" }, { value: "staff", label: "Staff" }, { value: "driver", label: "Driver" }]} />
-              <FilterSelect value={status} onValueChange={(value) => { setIsLoading(true); setError(null); setStatus(value); setPage(1); }} ariaLabel="Filter personnel by status" placeholder="Status" height="large" className="w-[140px] rounded-lg text-sm" options={[{ value: "all", label: "All Status" }, { value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
-              {(searchInput || status !== "all" || category !== "all") && <Button variant="outline" onClick={() => { setSearchInput(""); setSearch(""); setStatus("all"); setCategory("all"); setPage(1); refresh(); }} className="h-10 rounded-lg border-border text-[12px] text-muted-foreground"><X size={14} className="mr-2" />Clear</Button>}
-            </div>
-          </CardContent>
-        </Card>
-        <TableCard>
-          <div className="min-w-0">
-            <Table>
+        {isLoading ? (
+          <div role="status" className="flex min-h-64 items-center justify-center gap-2 px-4 py-12 text-sm text-muted-foreground">
+            <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />Loading personnel
+          </div>
+        ) : error ? (
+          <div role="alert" className="flex flex-col gap-3 bg-destructive-surface p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+            <p>{error}</p>
+            <Button variant="outline" onClick={refresh} className="h-11">Try Again</Button>
+          </div>
+        ) : !data?.users.length ? (
+          <div role="status" className="flex min-h-64 flex-col items-center justify-center gap-3 px-4 py-12 text-center text-sm text-muted-foreground">
+            <p>No {categoryLabel.toLowerCase()} accounts found.</p>
+            {hasFilters && <Button variant="outline" onClick={clearFilters} className="h-11">Clear filters</Button>}
+          </div>
+        ) : (
+          <>
+            <Table className={styles.table}>
               <colgroup>
+                <col style={{ width: "25%" }} />
                 <col style={{ width: "10%" }} />
-                <col style={{ width: "17%" }} />
-                <col style={{ width: "9%" }} />
                 <col />
-                <col style={{ width: "13%" }} />
-                <col style={{ width: "10%" }} />
-                <col style={{ width: "12%" }} />
+                <col style={{ width: "14%" }} />
+                <col style={{ width: "16%" }} />
                 <col style={{ width: "3rem" }} />
               </colgroup>
               <TableHeader>
                 <TableRow className="border-b border-border bg-background hover:bg-background">
-                  {["Personnel ID", "Name", "Role", "Email", "Contact Number", "Status", "Last Login", "Actions"].map((heading) => <TableHead key={heading} className="whitespace-normal px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{heading === "Action" || heading === "Actions" ? <span className="sr-only">Actions</span> : heading}</TableHead>)}
+                  {["Personnel", "Role", "Contact", "Status", "Last login", "Actions"].map((heading) => (
+                    <TableHead key={heading}>{heading === "Actions" ? <span className="sr-only">Actions</span> : heading}</TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? <TableRow><TableCell colSpan={8} className="py-14 text-center"><div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground"><Loader2 size={16} className="animate-spin" />Loading personnel</div></TableCell></TableRow>
-                  : error ? <TableRow><TableCell colSpan={8} className="py-14 text-center text-[12px] text-muted-foreground">Personnel accounts could not be loaded.</TableCell></TableRow>
-                  : !data?.users.length ? <TableRow><TableCell colSpan={8} className="py-14 text-center text-sm font-medium text-muted-foreground">No {categoryLabel.toLowerCase()} accounts found.</TableCell></TableRow>
-                  : data.users.map((personnel) => (
-                    <TableRow key={personnel.id} className="border-b border-background hover:bg-background">
-                      <TableCell data-label="Personnel ID" className="px-4 py-3 font-mono text-xs font-semibold text-primary">{personnel.personnelId}</TableCell>
-                      <TableCell data-label="Name" className="px-4 py-3"><p className="text-[12.5px] font-semibold text-foreground">{personnel.name}</p></TableCell>
-                      <TableCell data-label="Role" className="whitespace-normal px-4 py-3 text-[12px] text-muted-foreground">{personnel.role.label}</TableCell>
-                      <TableCell data-label="Email" className="px-4 py-3"><span className="text-[12px] text-muted-foreground">{personnel.email}</span></TableCell>
-                      <TableCell data-label="Contact Number" className="whitespace-normal px-4 py-3 text-[12px] text-muted-foreground">{personnel.phoneNumber || "Not provided"}</TableCell>
-                      <TableCell data-label="Status" className="px-4 py-3"><Badge variant="outline" className={`rounded-md px-2 py-1 text-xs font-semibold ${personnel.isActive ? "border-success-border bg-success-surface text-success" : "border-border bg-muted text-muted-foreground"}`}>{personnel.isActive ? "Active" : "Inactive"}</Badge></TableCell>
-                      <TableCell data-label="Last Login" className="whitespace-normal px-4 py-3 text-xs text-muted-foreground">{formatDate(personnel.lastLoginAt)}</TableCell>
-                      <TableCell data-label="Actions" className="px-4 py-3"><TableActionMenu label={`Open actions for ${personnel.name}`} items={[
-                        { label: "View", icon: <Eye size={13} className="mr-2 text-subtle-foreground" />, onClick: () => setAccountDialog({ mode: "view", personnel }) },
-                        { label: "Edit", icon: <Pencil size={13} className="mr-2 text-subtle-foreground" />, onClick: () => setAccountDialog({ mode: "edit", personnel }) },
+                {data.users.map((personnel) => (
+                  <TableRow key={personnel.id}>
+                    <TableCell data-label="Personnel" className={styles.personCell}>
+                      <p className="font-semibold text-foreground">{personnel.name}</p>
+                      <p className="mt-1 text-xs tabular-nums text-muted-foreground"><span className="sr-only">Personnel ID: </span>{personnel.personnelId}</p>
+                    </TableCell>
+                    <TableCell data-label="Role" className={styles.roleCell}>{personnel.role.label}</TableCell>
+                    <TableCell data-label="Contact" className={styles.contactCell}>
+                      <p><span className="sr-only">Email: </span>{personnel.email}</p>
+                      <p className="mt-1 text-xs text-muted-foreground"><span className="sr-only">Contact number: </span>{personnel.phoneNumber || "No contact number"}</p>
+                    </TableCell>
+                    <TableCell data-label="Status" className={styles.statusCell}>
+                      <Badge variant="outline" className={personnel.isActive ? "border-success-border bg-success-surface text-success" : "border-border bg-background text-muted-foreground"}>
+                        {personnel.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell data-label="Last login" className={styles.loginCell}><span className="text-xs text-muted-foreground">{formatDate(personnel.lastLoginAt)}</span></TableCell>
+                    <TableCell data-label="Actions" className={styles.actionsCell}>
+                      <TableActionMenu label={`Open actions for ${personnel.name}`} items={[
+                        { label: "View", icon: <Eye size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "view", personnel }) },
+                        { label: "Edit", icon: <Pencil size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "edit", personnel }) },
                         { label: "Delete", icon: <Trash2 size={13} className="mr-2" />, variant: "danger", separatorBefore: true, onClick: () => setDeleteTarget(personnel) },
-                      ]} /></TableCell>
-                    </TableRow>
-                  ))}
+                      ]} />
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
-          </div>
-        </TableCard>
-        {data && !error && !isLoading && <TablePagination total={data.pagination.total} page={data.pagination.currentPage} lastPage={data.pagination.lastPage} onPageChange={(nextPage) => { setIsLoading(true); setError(null); setPage(nextPage); }} label="Personnel pagination" />}
-      </div>
+            <div className="border-t border-border px-4 py-3 [&>div]:mt-0">
+              <TablePagination
+                total={data.pagination.total}
+                page={data.pagination.currentPage}
+                lastPage={data.pagination.lastPage}
+                onPageChange={(nextPage) => { setIsLoading(true); setError(null); setPage(nextPage); }}
+                label="Personnel pagination"
+              />
+            </div>
+          </>
+        )}
+      </TableCard>
 
       {accountDialog && data && <PersonnelAccountForm key={`${accountDialog.mode}-${accountDialog.personnel?.id ?? category}`} open mode={accountDialog.mode} personnel={accountDialog.personnel} roles={data.roles} category={category === "all" ? undefined : category} onOpenChange={(open) => { if (!open) setAccountDialog(null); }} onSave={saveAccount} />}
       {deleteTarget && <DeletePersonnelDialog key={deleteTarget.id} personnel={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={() => {

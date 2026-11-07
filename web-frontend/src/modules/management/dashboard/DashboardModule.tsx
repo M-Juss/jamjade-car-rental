@@ -76,7 +76,7 @@ const localizer = dateFnsLocalizer({
 
 const bookingStatusStyle: Record<DashboardCalendarEvent["status"], string> = {
   confirmed: "border-blue-200 bg-muted text-primary",
-  ongoing: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  ongoing: "border-success-border bg-success-surface text-success",
 };
 
 function messageFromError() {
@@ -120,8 +120,7 @@ function formatDateTime(value: string) {
     day: "numeric",
     year: "numeric",
     hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+    minute: "2-digit", }).format(new Date(value));
 }
 
 function moveDate(date: Date, view: View, direction: -1 | 1) {
@@ -220,9 +219,9 @@ export default function Dashboard() {
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <Card className="max-w-md rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <Card className="max-w-md rounded-2xl border border-border bg-surface shadow-none">
           <CardContent className="flex items-start gap-3 p-5">
-            <AlertCircle className="mt-0.5 size-5 shrink-0 text-rose-500" />
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
             <div>
               <p className="font-semibold text-foreground">
                 Dashboard could not be loaded
@@ -253,25 +252,21 @@ export default function Dashboard() {
       label: "Monthly Gross Receipts",
       value: formatPhilippinePeso(data.summary.monthRevenue, true),
       icon: PhilippinePeso,
-      iconClassName: "bg-muted text-primary",
     },
     {
       label: "Confirmed Bookings",
       value: data.summary.confirmedBookings.toLocaleString(),
       icon: CalendarCheck,
-      iconClassName: "bg-muted text-primary",
     },
     {
       label: "Active Rentals",
       value: data.summary.activeRentals.toLocaleString(),
       icon: Car,
-      iconClassName: "bg-emerald-50 text-emerald-600",
     },
     {
       label: "Today's Pickups",
       value: data.summary.todaysPickups.toLocaleString(),
       icon: CalendarClock,
-      iconClassName: "bg-violet-50 text-violet-600",
     },
   ];
 
@@ -287,22 +282,21 @@ export default function Dashboard() {
       <ManagementPageHeading className="shrink-0" title="Dashboard" description="View rental schedules, fleet totals, and bookings needing attention." />
 
       <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
-        {kpis.map(({ label, value, icon, iconClassName }) => (
+        {kpis.map(({ label, value, icon }) => (
           <KpiCard
             key={label}
             label={label}
             value={value}
             icon={icon}
-            iconClassName={iconClassName}
           />
         ))}
       </div>
 
       <div className={`grid min-w-0 gap-6 ${data.canManageBookings ? "xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_20rem]" : ""}`}>
-        <Card className="min-w-0 overflow-hidden rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)] lg:flex lg:min-h-0 lg:flex-1">
+        <Card className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-none lg:flex lg:min-h-0 lg:flex-1">
           <CardContent className="px-5 pb-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
             {error ? (
-              <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface px-3 py-2.5 text-[12px] text-destructive">
+              <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface px-3 py-2.5 text-sm text-destructive">
                 <span>{error}</span>
                 <Button
                   variant="ghost"
@@ -340,7 +334,7 @@ export default function Dashboard() {
                 >
                   <ChevronRight />
                 </Button>
-                <p className="ml-2 text-[13px] font-bold text-foreground">
+                <p className="ml-2 text-sm font-semibold text-foreground">
                   {periodLabel(currentDate, view)}
                 </p>
               </div>
@@ -416,11 +410,11 @@ export default function Dashboard() {
         open={Boolean(selectedEvent)}
         onOpenChange={(open) => !open && setSelectedEvent(null)}
       >
-        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-surface p-0 shadow-[0_24px_64px_rgba(0,0,0,0.14)] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-[720px]">
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-surface p-0 shadow-dialog sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-[720px]">
           <DialogHeader className="shrink-0 border-b border-border px-5 pb-4 pt-5">
             <div className="flex items-start justify-between gap-4 pr-8">
               <div>
-                <DialogTitle className="text-[15px] font-bold text-foreground">
+                <DialogTitle className="text-base font-semibold text-foreground">
                   {selectedEvent?.bookingCode}
                 </DialogTitle>
               </div>
@@ -437,19 +431,19 @@ export default function Dashboard() {
           {selectedEvent ? (
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
               <div className="space-y-4 px-5 py-4">
-                <div className="rounded-2xl border border-border bg-white p-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                <div className="border-t border-border pt-4">
+                  <p className="mb-3 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                     Customer Information
                   </p>
                   <div className="flex items-center gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-primary">
+                    <div className="flex shrink-0 items-center justify-center text-primary">
                       <UserRound size={18} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-bold text-foreground">
+                      <p className="text-sm font-semibold text-foreground">
                         {selectedEvent.customerName}
                       </p>
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         {selectedEvent.customerEmail ? (
                           <span className="flex min-w-0 max-w-full items-center gap-1.5">
                             <Mail size={11} />
@@ -467,111 +461,111 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-white p-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                <div className="border-t border-border pt-4">
+                  <p className="mb-3 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                     Rental Information
                   </p>
                   <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground">
+                      <dt className="flex items-center gap-1.5 text-xs text-subtle-foreground">
                         <Car size={12} />
                         Vehicle
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {selectedEvent.vehicleName}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[11px] text-subtle-foreground">
+                      <dt className="text-xs text-subtle-foreground">
                         Plate Number
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {selectedEvent.vehiclePlate || "Not recorded"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[11px] text-subtle-foreground">
+                      <dt className="text-xs text-subtle-foreground">
                         Rental Type
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {selectedEvent.rentalType}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[11px] text-subtle-foreground">
+                      <dt className="text-xs text-subtle-foreground">
                         Assigned Driver
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {selectedEvent.driverName || "Self-drive"}
                       </dd>
                     </div>
                   </dl>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-white p-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                <div className="border-t border-border pt-4">
+                  <p className="mb-3 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                     Schedule and Locations
                   </p>
                   <dl className="mb-3 grid lg:grid-cols-2 sm:grid-cols-1   gap-2 ">
                     <div>
-                      <dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground">
+                      <dt className="flex items-center gap-1.5 text-xs text-subtle-foreground">
                         <CalendarDays size={12} />
                         Pickup
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {formatDateTime(selectedEvent.start)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground">
+                      <dt className="flex items-center gap-1.5 text-xs text-subtle-foreground">
                         <Clock3 size={12} />
                         Return
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {formatDateTime(selectedEvent.end)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground">
+                      <dt className="flex items-center gap-1.5 text-xs text-subtle-foreground">
                         <MapPin size={12} />
                         Pickup Location
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {selectedEvent.pickupLocation || "Not recorded"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground">
+                      <dt className="flex items-center gap-1.5 text-xs text-subtle-foreground">
                         <MapPin size={12} />
                         Return Location
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {selectedEvent.returnLocation || "Not recorded"}
                       </dd>
                     </div>
                   </dl>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-white p-4">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                <div className="border-t border-border pt-4">
+                  <p className="mb-3 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                     Payment
                   </p>
                   <dl className="grid grid-cols-2 gap-3">
                     <div>
-                      <dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground">
+                      <dt className="flex items-center gap-1.5 text-xs text-subtle-foreground">
                         <PhilippinePeso size={12} />
                         Total Amount
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {formatPhilippinePeso(selectedEvent.totalAmount)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="flex items-center gap-1.5 text-[11px] text-subtle-foreground">
+                      <dt className="flex items-center gap-1.5 text-xs text-subtle-foreground">
                         <CreditCard size={12} />
                         Payment Status
                       </dt>
-                      <dd className="mt-1 text-[12.5px] font-semibold text-foreground">
+                      <dd className="mt-1 text-sm font-semibold text-foreground">
                         {selectedEvent.paymentStatus}
                       </dd>
                     </div>
@@ -579,16 +573,16 @@ export default function Dashboard() {
                 </div>
 
                 {selectedEvent.notes || selectedEvent.adminNotes ? (
-                  <div className="rounded-2xl border border-border bg-white p-4">
-                    <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                  <div className="border-t border-border pt-4">
+                    <p className="mb-3 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                       Notes
                     </p>
                     {selectedEvent.notes ? (
                       <div>
-                        <p className="text-[11px] text-subtle-foreground">
+                        <p className="text-xs text-subtle-foreground">
                           Customer Notes
                         </p>
-                        <p className="mt-1 text-[12.5px] leading-relaxed text-foreground">
+                        <p className="mt-1 text-sm leading-relaxed text-foreground">
                           {selectedEvent.notes}
                         </p>
                       </div>
@@ -601,10 +595,10 @@ export default function Dashboard() {
                             : undefined
                         }
                       >
-                        <p className="text-[11px] text-subtle-foreground">
+                        <p className="text-xs text-subtle-foreground">
                           Internal Notes
                         </p>
-                        <p className="mt-1 text-[12.5px] leading-relaxed text-foreground">
+                        <p className="mt-1 text-sm leading-relaxed text-foreground">
                           {selectedEvent.adminNotes}
                         </p>
                       </div>

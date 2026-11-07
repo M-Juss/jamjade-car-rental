@@ -11,6 +11,7 @@ import {
 export type SelectOption = {
   value: string;
   label: string;
+  description?: string;
   disabled?: boolean;
 };
 
@@ -33,9 +34,9 @@ export type SelectControlProps = {
 };
 
 const triggerHeightClasses: Record<SelectControlHeight, string> = {
-  compact: "data-[size=default]:h-8",
-  default: "data-[size=default]:h-9",
-  large: "data-[size=default]:h-10",
+  compact: "data-[size=default]:h-9",
+  default: "data-[size=default]:h-11",
+  large: "data-[size=default]:h-11",
 };
 
 export function SelectControl({
@@ -54,6 +55,7 @@ export function SelectControl({
   contentClassName,
 }: SelectControlProps) {
   const controlledValue = onValueChange ? (value ?? "") : value;
+  const selectedDescription = options.find(option => option.value === (controlledValue ?? defaultValue))?.description;
 
   return (
     <Select
@@ -67,8 +69,9 @@ export function SelectControl({
         aria-label={ariaLabel}
         aria-invalid={invalid}
         className={cn(
-          "w-full min-w-0 max-w-full rounded-xl border-border bg-background px-3 text-[12.5px] text-muted-foreground shadow-none",
+          "w-full min-w-0 max-w-full rounded-lg border-input bg-surface px-3 text-base text-foreground sm:text-sm shadow-none",
           triggerHeightClasses[height],
+          selectedDescription && "data-[size=default]:h-auto min-h-11 py-2",
           "data-[placeholder]:text-subtle-foreground focus:ring-1 focus:ring-primary",
           "disabled:cursor-not-allowed disabled:opacity-50",
           invalid && "border-destructive focus:ring-destructive/30",
@@ -76,8 +79,9 @@ export function SelectControl({
         )}
       >
         {prefix}
-        <span className="min-w-0 flex-1 truncate text-left">
+        <span className={cn("min-w-0 flex-1 text-left", selectedDescription ? "whitespace-normal" : "truncate")}>
           <SelectValue placeholder={placeholder} />
+          {selectedDescription ? <span className="block text-xs text-muted-foreground">{selectedDescription}</span> : null}
         </span>
       </SelectTrigger>
       <SelectContent
@@ -92,7 +96,8 @@ export function SelectControl({
             key={option.value}
             value={option.value}
             disabled={option.disabled}
-            className="rounded-lg text-[12.5px] text-muted-foreground"
+            description={option.description}
+            className={cn("rounded-lg py-2.5 text-sm text-foreground", option.description && "flex-col items-start gap-0.5")}
           >
             {option.label}
           </SelectItem>

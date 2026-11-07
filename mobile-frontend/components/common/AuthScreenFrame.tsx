@@ -23,7 +23,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}>
           <View className="w-full max-w-[460px] self-center px-screen">
-            <View className="mb-6 min-h-11 flex-row items-center justify-between gap-3 border-b border-border pb-3 pt-1">
+            <View className="mb-section min-h-11 flex-row items-center justify-between gap-3 border-b border-border pb-3 pt-1">
               <View
                 accessible
                 accessibilityLabel="JamJade Car Rental"
@@ -37,7 +37,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
                 />
                 <View className="shrink">
                   <Text
-                    className="font-sans text-[13px] font-bold leading-[13px] text-primary"
+                    className="font-sans text-[13px] font-semibold leading-[13px] text-primary"
                     style={{ includeFontPadding: false }}>
                     JamJade{'\n'}Car Rental
                   </Text>
@@ -47,7 +47,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
                 accessibilityRole="button"
                 accessibilityLabel="Back to welcome"
                 onPress={() => router.replace('/')}
-                className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface">
+                className="h-11 w-11 shrink-0 items-center justify-center rounded-field bg-surface">
                 <ArrowLeft size={21} color={themeColors.foreground} />
               </Pressable>
             </View>
@@ -57,7 +57,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
             <Text className="font-sans mt-2 text-center text-body text-secondary-foreground">
               {isLogin ? 'Sign in to continue your journey.' : 'Your next journey starts here.'}
             </Text>
-            <View className="mt-6 rounded-card border border-border bg-surface p-card">{children}</View>
+            <View className="mt-section rounded-card border border-border bg-surface p-card">{children}</View>
             <View className="mt-4 flex-row flex-wrap items-center justify-center">
               <Text className="font-sans text-[14px] text-secondary-foreground">
                 {isLogin ? 'New to JamJade?' : 'Already have an account?'}
@@ -93,7 +93,7 @@ export function AuthSubmitButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      className={`min-h-control items-center justify-center rounded-full bg-primary px-4 py-3 ${disabled ? 'opacity-50' : 'active:opacity-90'}`}>
+      className={`min-h-control items-center justify-center rounded-field bg-primary px-4 py-3 ${disabled ? 'opacity-50' : 'active:opacity-90'}`}>
       <Text className="font-sans text-button font-medium text-surface">{label}</Text>
     </Pressable>
   );

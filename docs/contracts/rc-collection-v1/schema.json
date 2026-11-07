@@ -496,7 +496,10 @@
           "const": "rc-collection-v1"
         },
         "catalog_version": {
-          "const": "rc-exercises-v1"
+          "enum": [
+            "rc-exercises-v1",
+            "rc-exercises-v2"
+          ]
         },
         "status": {
           "const": "provisional"
@@ -664,7 +667,10 @@
           "const": "mn82s_roof_v1"
         },
         "catalog_version": {
-          "const": "rc-exercises-v1"
+          "enum": [
+            "rc-exercises-v1",
+            "rc-exercises-v2"
+          ]
         },
         "operator_code": {
           "type": "string",
@@ -1611,7 +1617,10 @@
           ]
         },
         "catalog_version": {
-          "const": "rc-exercises-v1"
+          "enum": [
+            "rc-exercises-v1",
+            "rc-exercises-v2"
+          ]
         },
         "protocol_snapshot_sha256": {
           "type": "string",
@@ -2095,6 +2104,10 @@
             "not_applicable"
           ]
         },
+        "initial_deviation": {
+          "description": "Optional first lateral deviation reported for an SW recording.",
+          "enum": ["left", "right", "unknown"]
+        },
         "notes": {
           "anyOf": [
             {
@@ -2172,6 +2185,9 @@
             "uncertain"
           ]
         },
+        "initial_deviation": {
+          "enum": ["left", "right", "unknown"]
+        },
         "boundary_confidence": {
           "enum": [
             "clear",
@@ -2198,6 +2214,10 @@
         }
       },
       "allOf": [
+        {
+          "if": { "required": ["initial_deviation"] },
+          "then": { "properties": { "movement": { "const": "swerving" } } }
+        },
         {
           "if": {
             "properties": {

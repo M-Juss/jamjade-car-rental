@@ -9,6 +9,51 @@ Telematics and RC pipeline decisions are maintained only in the
 [central implementation guide](telematics-master-plan.md). This document records
 platform configuration and dated build verification, not an alternate AI roadmap.
 
+## App-only backend DNS fallback — 2026-11-06
+
+The user authorized Google encrypted DNS fallback inside JamJade after declining
+phone-wide Private DNS changes and a mobile-data test. The existing ngrok
+endpoint and Laravel/Next.js services were healthy, but the Wi-Fi resolver returned
+NXDOMAIN for that endpoint on both Mac and Redmi. Public resolvers returned valid
+records; an HTTPS check with correct DNS reached Laravel. A direct Redmi-to-Mac
+LAN probe timed out even though the devices shared a subnet.
+
+`mobile-frontend/modules/backend-network` uses Expo's application lifecycle hook
+to configure React Native's existing OkHttp transport before app requests. The
+Android-only config plugin derives an exact hostname allowlist from the existing
+configured HTTPS API URLs and writes generated manifest metadata. System DNS is
+always tried first. Only a failed lookup for an allowlisted backend uses Google's
+DNS-over-HTTPS JSON service, through a separate credential-free client with no
+app cookies/interceptors, no redirects, a 2.5-second call limit and a bounded
+response. `edns_client_subnet=0.0.0.0/0` avoids forwarding a client subnet to
+authoritative DNS. Google still receives the queried hostname and network IP.
+
+The fallback accepts public IPv4 answers only, rejects failed/malformed queries,
+private addresses and oversized responses, and caches positive results in memory
+up to the shortest answer/CNAME TTL with a five-minute cap. Failed lookups are not
+cached. API authorization, request mapping, TLS certificate/hostname checks and
+recording storage/upload contracts are unchanged. No phone network settings,
+new tunnel, public download link or hardcoded backend IP were introduced. Other
+network stacks that do not use React Native's OkHttp provider are not covered by
+this implementation; it is not a device-wide DNS replacement.
+
+Verification: mobile lint and TypeScript, 280 Node checks (including plugin
+allowlist/idempotence tests), 10 new native DNS regressions, 29 existing native
+recorder tests, Expo Doctor 18/18 and the ARM64 standalone release build passed.
+The APK signature matched the installed app; update installation and launch
+succeeded without uninstalling or clearing data. The read-only vehicle browser
+then generated a new mobile vehicle API request through the existing ngrok
+inspector with **200 OK** over Wi-Fi. Protected sign-in/research/upload flows are
+separate from this unauthenticated connectivity check. RC sensor accuracy and
+background reliability were not evaluated by this network change.
+
+The local internal APK is `builds/jamjade-wifi-dns-fallback.apk` in the external
+JamJade documents directory, with the normal ignored build output under
+`mobile-frontend/android/app/build/outputs/apk/release/`. Rebuild after changing
+configured API hostnames; do not edit generated allowlists manually. See the
+[mobile networking notes](../mobile-frontend/README.md) and
+[Google DoH specification](https://developers.google.com/speed/public-dns/docs/doh/json).
+
 ## Standalone Redmi test APK — 2026-11-04
 
 A local `:app:assembleRelease -PreactNativeArchitectures=arm64-v8a` build completed

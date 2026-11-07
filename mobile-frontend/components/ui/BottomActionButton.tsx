@@ -30,7 +30,7 @@ export function BottomActionButton({
 
   return (
     <View
-      className="border-t border-border bg-background/95 px-5 pt-3"
+      className="border-t border-border bg-background/95 px-screen pt-3"
       style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
       {footer}
       <View className={inline ? 'flex-row gap-3' : undefined}>
@@ -39,8 +39,8 @@ export function BottomActionButton({
           disabled={disabled}
           onPress={onPress}
           className={cx(
-            'min-h-control items-center justify-center rounded-full bg-primary',
-            inline ? 'flex-1 px-3 py-3' : 'px-5',
+            'min-h-control items-center justify-center rounded-field bg-primary',
+            inline ? 'flex-1 px-3 py-3' : 'px-4 py-3',
             disabled && 'opacity-50',
           )}>
           <Text className="font-sans text-center text-button font-medium text-surface">{label}</Text>
@@ -51,8 +51,8 @@ export function BottomActionButton({
             disabled={disabled}
             onPress={onSecondaryPress}
             className={cx(
-              'min-h-control items-center justify-center rounded-full border border-border bg-surface',
-              inline ? 'flex-1 px-3 py-3' : 'mt-3 px-5',
+              'min-h-control items-center justify-center rounded-field border border-border bg-surface',
+              inline ? 'flex-1 px-3 py-3' : 'mt-3 px-4 py-3',
             )}>
             <Text className="font-sans text-center text-[14px] font-semibold text-foreground">{secondaryLabel}</Text>
           </Pressable>

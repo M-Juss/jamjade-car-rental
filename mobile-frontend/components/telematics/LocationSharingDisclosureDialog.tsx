@@ -19,7 +19,7 @@ export function LocationSharingDisclosureDialog({ visible, policy, onCancel, onA
         <View className="flex-row items-center gap-2 border-b border-border p-card">
           <Info size={21} color={themeColors.primary} accessible={false} />
           <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-section font-semibold text-foreground">Before sharing location</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-full bg-background"><X size={20} color={themeColors.foreground} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-field bg-background"><X size={20} color={themeColors.foreground} /></Pressable>
         </View>
         <ScrollView className="shrink" contentContainerClassName="gap-4 p-card" showsVerticalScrollIndicator>
           <Text className="font-sans text-body leading-6 text-foreground">JamJade staff can see your rental’s latest location. On With Assigned Driver rentals, the booking Customer can see it too. Start only while safely parked.</Text>

@@ -147,7 +147,7 @@ export function MaintenancePlanDialog({
         <form onSubmit={submit} noValidate className="flex min-h-0 flex-1 flex-col">
           <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
             <section className="space-y-3" aria-labelledby="maintenance-plan-details-heading">
-              <h2 id="maintenance-plan-details-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 id="maintenance-plan-details-heading" className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                 Plan Details
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
@@ -196,7 +196,7 @@ export function MaintenancePlanDialog({
 
             <section className="space-y-4 border-t border-border pt-5" aria-labelledby="maintenance-plan-schedule-heading">
               <div>
-                <h2 id="maintenance-plan-schedule-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                <h2 id="maintenance-plan-schedule-heading" className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                   Schedule
                 </h2>
                 <div className="mt-3">
@@ -221,7 +221,7 @@ export function MaintenancePlanDialog({
 
               {triggerType !== "date" ? (
                 <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                  <h3 className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                     Mileage Schedule
                   </h3>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -263,7 +263,7 @@ export function MaintenancePlanDialog({
 
               {triggerType !== "mileage" ? (
                 <div className="space-y-3 rounded-2xl border border-border bg-background p-4">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle-foreground">
+                  <h3 className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                     Date Schedule
                   </h3>
                   <div className="grid gap-4 md:grid-cols-2">
@@ -311,7 +311,7 @@ export function MaintenancePlanDialog({
             </section>
 
             <section className="space-y-3 border-t border-border pt-5" aria-labelledby="maintenance-plan-notes-heading">
-              <h2 id="maintenance-plan-notes-heading" className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              <h2 id="maintenance-plan-notes-heading" className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">
                 Notes
               </h2>
               <TextAreaWithLabel
@@ -324,7 +324,7 @@ export function MaintenancePlanDialog({
             </section>
 
             {form.formState.errors.root?.message ? (
-              <p className="text-[11px] font-medium text-destructive">
+              <p className="text-xs font-medium text-destructive">
                 {form.formState.errors.root.message}
               </p>
             ) : null}

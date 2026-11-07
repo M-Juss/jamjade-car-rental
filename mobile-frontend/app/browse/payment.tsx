@@ -278,13 +278,13 @@ function PaymentScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="px-5 pb-8 pt-2">
+        <View className="px-screen pb-8 pt-2">
           <View className="flex-row items-center gap-3">
             <Pressable
               accessibilityLabel="Restart booking"
               accessibilityRole="button"
               onPress={restartBooking}
-              className="h-12 w-12 items-center justify-center rounded-full bg-surface">
+              className="h-12 w-12 items-center justify-center rounded-field bg-surface">
               <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
             <View className="min-w-0 flex-1">
@@ -292,15 +292,15 @@ function PaymentScreen() {
             </View>
           </View>
 
-          <View className="mt-5">
+          <View className="mt-section">
             <BookingStepper step={3} />
           </View>
 
-          <View className="mt-5">
+          <View className="mt-section">
             <SelectedVehicleSummary vehicle={vehicle} />
           </View>
 
-          <View className="mt-5 gap-3">
+          <View className="mt-section gap-3">
             {isDownPaymentAvailable ? (
               <PaymentChoiceCard
                 title="Down Payment"
@@ -317,7 +317,7 @@ function PaymentScreen() {
                 }}
               />
             ) : (
-              <Text className="font-sans rounded-[22px] border border-border bg-muted px-4 py-3 text-[12px] font-semibold leading-5 text-[#536888]">
+              <Text className="font-sans rounded-card border border-border bg-muted px-4 py-3 text-[12px] font-semibold leading-5 text-[#536888]">
                 Full payment is required because the rental starts in less than{' '}
                 {DOWN_PAYMENT_MINIMUM_LEAD_DAYS} days. The down-payment option appears when the rental date is
                 at least {DOWN_PAYMENT_MINIMUM_LEAD_DAYS} days from today.
@@ -339,7 +339,7 @@ function PaymentScreen() {
             />
           </View>
 
-          <View className="mt-5 rounded-card border border-border bg-surface p-card ">
+          <View className="mt-section rounded-card border border-border bg-surface p-card">
             <View className="flex-row items-start justify-between gap-4">
               <View className="min-w-0 flex-1">
                 <Text className="font-sans text-[18px] font-semibold text-foreground">PayPal Sandbox</Text>
@@ -368,7 +368,7 @@ function PaymentScreen() {
               disabled={isProcessing}
               onPress={() => void handlePayPalCheckout()}
               className={cx(
-                'mt-5 min-h-control flex-row items-center justify-center gap-3 rounded-full bg-[#0070BA]',
+                'mt-section min-h-control flex-row items-center justify-center gap-3 rounded-field bg-[#0070BA]',
                 isProcessing && 'opacity-65',
               )}>
               {isProcessing ? (

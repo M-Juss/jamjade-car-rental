@@ -183,7 +183,7 @@ export function BasicInfoForm() {
             }}
           />
 
-          <View className="gap-4 rounded-card border border-border bg-surface p-4 ">
+          <View className="gap-4 rounded-card border border-border bg-surface p-4">
             <Controller
               control={control}
               name="firstName"

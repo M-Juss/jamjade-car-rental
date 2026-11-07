@@ -1,75 +1,99 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ClipboardList, Gauge } from 'lucide-react-native';
+import { BookOpen, Check, ClipboardList, Info, RefreshCcw } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, Text, View } from 'react-native';
 
-import { ActionButton, InfoRow, SectionCard } from '@/components/bookings';
+import { ActionButton, SectionCard } from '@/components/bookings';
 import { SelectWithLabel } from '@/components/common/SelectWithLabel';
+import { MetadataList } from '@/components/common/MetadataList';
+import { ResearchIconButton } from '@/components/research/ResearchControls';
+import { themeColors } from '@/constants/theme';
 import { ExerciseGuide } from '@/components/research/ExerciseGuide';
 import { exerciseCatalog, type CollectionState, type ExerciseProtocol, type SetupEvidence } from '@/lib/research/collection';
 import type { NativeGroupCatalog, NativePhonePower } from '@/lib/research/native-recorder';
 import { collectionExerciseFormSchema, collectionSessionFormSchema, type ExerciseCode } from '@/validation/research/collection';
 
-export function CollectionSessionForm({ catalog, busy, onOpen, onNewGroup, onCancel }: {
-  catalog: NativeGroupCatalog; busy: boolean; onOpen: (id: string) => Promise<void>; onNewGroup: () => void; onCancel?: () => void;
+export function CollectionSessionForm({ catalog, collection, initialGroupId, busy, onOpen, onNewSession, onNewGroup }: {
+  catalog: NativeGroupCatalog; collection: CollectionState; initialGroupId: string | null; busy: boolean; onOpen: (id: string) => Promise<void>; onNewSession: (id: string) => void; onNewGroup: () => void;
 }) {
-  const { control, handleSubmit, formState: { isSubmitting } } = useForm<{ group_id: string }>({ resolver: zodResolver(collectionSessionFormSchema),
-    defaultValues: { group_id: catalog.selected_group_id ?? catalog.groups[0]?.id ?? '' } });
-  return <SectionCard title="Start a session" icon={ClipboardList}><View className="gap-4">
-    <Controller control={control} name="group_id" render={({ field, fieldState }) => <SelectWithLabel label="Collection group" value={field.value} options={catalog.groups.map(group => ({ value: group.id, label: group.name }))}
+  const { control, handleSubmit, watch, formState: { isSubmitting } } = useForm<{ group_id: string }>({ resolver: zodResolver(collectionSessionFormSchema),
+    defaultValues: { group_id: initialGroupId ?? collection.session?.recording_group_id ?? catalog.selected_group_id ?? catalog.groups[0]?.id ?? '' } });
+  const groupId = watch('group_id');
+  const latest = collection.group_sessions?.[groupId];
+  const currentGroup = catalog.groups.find(group => group.id === collection.session?.recording_group_id);
+  return <SectionCard density="compact" title="Collection" icon={ClipboardList}><View className="gap-3">
+    {collection.session && <View className="gap-1 border-b border-border pb-3">
+      <Text className="font-sans text-caption text-secondary-foreground">Active collection</Text>
+      <Text className="font-sans text-body font-semibold text-foreground">{currentGroup?.name ?? 'Group unavailable'}</Text>
+      <Text className="font-sans text-caption text-secondary-foreground">Session S{String(collection.session.session_number).padStart(2, '0')}</Text>
+    </View>}
+    <Controller control={control} name="group_id" render={({ field, fieldState }) => <SelectWithLabel label="Group" value={field.value} options={catalog.groups.map(group => ({ value: group.id, label: group.name }))}
       onValueChange={field.onChange} disabled={busy || isSubmitting} error={fieldState.error?.message} />} />
-    <ActionButton label="Open session" variant="primary" disabled={busy || isSubmitting} onPress={() => void handleSubmit(v => onOpen(v.group_id))()} />
-    <ActionButton label="New group" disabled={busy} onPress={onNewGroup} />
-    {onCancel && <ActionButton label="Keep current session" disabled={busy} onPress={onCancel} />}
+    <Text className="font-sans text-caption text-secondary-foreground">{latest
+      ? `Latest session S${String(latest.session.session_number).padStart(2, '0')} · ${latest.session_has_recordings ? 'Has recordings' : 'No recordings yet'}`
+      : 'No session yet'}</Text>
+    <ActionButton density="compact" label={latest ? `Continue session ${String(latest.session.session_number).padStart(2, '0')}` : 'Create session'} variant="primary" disabled={busy || isSubmitting} onPress={() => void handleSubmit(v => onOpen(v.group_id))()} />
+    <View className="flex-row gap-2">
+      <View className="flex-1"><ActionButton density="compact" label="Create group" disabled={busy || isSubmitting} onPress={onNewGroup} /></View>
+      {latest && <View className="flex-1"><ActionButton density="compact" label="New session" disabled={busy || isSubmitting || !latest.session_has_recordings} onPress={() => onNewSession(groupId)} /></View>}
+    </View>
   </View></SectionCard>;
 }
 
-export function CollectionSetupForm({ collection, nextNumber, busy, checking, evidence, phonePower, onCheck, onStart, onRemount, onNewSession }: {
-  collection: CollectionState; nextNumber: number; busy: boolean; checking: boolean; evidence?: SetupEvidence | null; phonePower?: NativePhonePower;
-  onCheck: () => Promise<void>; onStart: (code: ExerciseCode) => Promise<void>; onRemount: () => void; onNewSession: () => void;
+export function CollectionSetupForm({ collection, groupName, nextNumber, busy, checking, evidence, phonePower, onNotes, onCheck, onStart }: {
+  collection: CollectionState; groupName: string; nextNumber: number; busy: boolean; checking: boolean; evidence?: SetupEvidence | null; phonePower?: NativePhonePower;
+  onNotes: () => void; onCheck: () => Promise<void>; onStart: (code: ExerciseCode) => Promise<void>;
 }) {
-  const [references, setReferences] = useState(false), [confirmed, setConfirmed] = useState(false), [guide, setGuide] = useState<ExerciseProtocol | null>(null);
-  const { control, watch, setValue, handleSubmit } = useForm<{ protocol_code: ExerciseCode }>({ resolver: zodResolver(collectionExerciseFormSchema), defaultValues: { protocol_code: 'FSS' } });
+  const [references, setReferences] = useState(!collection.forward_reference_recorded), [confirmed, setConfirmed] = useState(false), [guide, setGuide] = useState<ExerciseProtocol | null>(null);
+  const { control, watch, setValue, handleSubmit } = useForm<{ protocol_code: ExerciseCode }>({ resolver: zodResolver(collectionExerciseFormSchema), defaultValues: { protocol_code: collection.forward_reference_recorded ? 'FSS' : 'FR' } });
   const selectedCode = watch('protocol_code');
   const protocol = exerciseCatalog.protocols.find(p => p.code === selectedCode)!;
   useEffect(() => { setConfirmed(false); }, [collection.mount?.id]);
   const session = collection.session, mount = collection.mount;
   if (!session || !mount) return null;
   const validEvidence = evidence?.mount_version_id === mount.id ? evidence : null;
-  return <View className="gap-4">
-    <SectionCard title={`Session ${String(session.session_number).padStart(2, '0')} · Mount ${mount.mount_number}`} icon={ClipboardList}>
-      <InfoRow label="Conditions" value={`${session.conditions.surface} · ${session.conditions.slope}`} />
-      <InfoRow label="Phone" value="Redmi Note 8 Pro" />
-      <InfoRow label="Mount" value="Roof · Adjustable screw" />
-      {phonePower && <InfoRow label="Phone battery" value={`${phonePower.battery_percent ?? '—'}%${phonePower.battery_saver ? ' · Battery Saver on' : ''}`} />}
-      <View className="mt-3 gap-2"><ActionButton label="Phone remounted / moved" disabled={busy || checking} onPress={onRemount} /><ActionButton label="New session" disabled={busy || checking} onPress={onNewSession} /></View>
+  const measured = !checking && validEvidence?.result === 'inconclusive';
+  const needsReference = protocol.recording_kind === 'maneuver_trial' && !collection.forward_reference_recorded;
+  return <View className="gap-3">
+    <View className="flex-row items-start gap-1">
+      <View className="min-w-0 flex-1">
+        <Text className="font-sans mb-1 text-body font-semibold text-foreground">{groupName}</Text>
+        <MetadataList items={[
+          { label: 'Active session', value: `S${String(session.session_number).padStart(2, '0')}` },
+          { label: 'Mount', value: mount.mount_number },
+        ]} />
+      </View>
+      <ResearchIconButton icon={Info} label="Research notes" onPress={onNotes} />
+    </View>
+    <SectionCard density="compact" title={`S${String(session.session_number).padStart(2, '0')}-${selectedCode}-R${String(nextNumber).padStart(3, '0')}`} icon={ClipboardList}>
+      <View className="gap-3">
+        {!collection.forward_reference_recorded && <Text className="font-sans text-caption text-warning">Capture a forward reference for this mount before a maneuver trial.</Text>}
+        <SelectWithLabel label="Purpose" options={[{ value: 'maneuver', label: 'Maneuver trial' }, { value: 'reference', label: 'Setup reference' }]} value={references ? 'reference' : 'maneuver'} disabled={busy || checking}
+          onValueChange={value => { const next = value === 'reference'; setReferences(next); setValue('protocol_code', next ? 'FR' : 'FSS'); }} />
+        <Controller control={control} name="protocol_code" render={({ field, fieldState }) => <SelectWithLabel label="Exercise" value={field.value} onValueChange={field.onChange} disabled={busy || checking} error={fieldState.error?.message}
+          options={exerciseCatalog.protocols.filter(p => references ? p.recording_kind !== 'maneuver_trial' : p.recording_kind === 'maneuver_trial').map(p => ({ value: p.code, label: p.label, description: p.code }))} />} />
+        <Pressable accessibilityRole="button" onPress={() => setGuide(protocol)} className="min-h-control flex-row items-center gap-2">
+          <BookOpen size={18} color={themeColors.primary} /><Text className="font-sans text-body font-semibold text-primary">Protocol & course</Text>
+        </Pressable>
+        <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: confirmed, disabled: busy || checking }} disabled={busy || checking}
+          className="min-h-control flex-row items-center gap-3 border-t border-border py-3" onPress={() => setConfirmed(v => !v)}>
+          <View className={`h-6 w-6 items-center justify-center rounded-md border ${confirmed ? 'border-primary bg-primary' : 'border-border bg-surface'}`}>{confirmed && <Check size={16} color={themeColors.surface} />}</View>
+          <Text className="font-sans flex-1 text-body text-foreground">Holder locked, top facing forward, and RC still.</Text>
+        </Pressable>
+        {checking ? <Text accessibilityLiveRegion="polite" className="font-sans text-body text-primary">Checking… keep still</Text> : validEvidence && <View className="flex-row items-center gap-2">
+          <View className="min-w-0 flex-1">
+            <Text accessibilityLiveRegion="polite" className={`font-sans text-caption font-medium ${measured ? 'text-warning' : 'text-destructive'}`}>{measured ? 'Measured' : 'Check failed'}</Text>
+            <Text className="font-sans text-caption text-secondary-foreground">{measured ? 'Pilot only; alignment pending.' : 'Try again.'}</Text>
+          </View>
+          {measured && <ResearchIconButton icon={RefreshCcw} label="Repeat setup check" disabled={busy || !confirmed} onPress={() => void onCheck()} />}
+        </View>}
+        {phonePower?.battery_saver && <Text className="font-sans text-caption text-warning">Battery Saver is on.</Text>}
+        <Text className="font-sans text-caption text-secondary-foreground">{measured ? 'Records motion and phone diagnostics locally, including with the screen locked.' : 'Measures motion for five seconds.'}</Text>
+        <ActionButton density="compact" label={measured ? 'Agree & start recording' : checking ? 'Checking…' : 'Agree & check setup'} variant="primary" disabled={busy || checking || !confirmed || needsReference}
+          onPress={() => { if (measured) void handleSubmit(v => onStart(v.protocol_code))(); else void onCheck(); }} />
+      </View>
     </SectionCard>
-    <SectionCard title="1. Choose exercise" icon={ClipboardList}><View className="gap-4">
-      <SelectWithLabel label="Purpose" options={[{ value: 'maneuver', label: 'Maneuver trial' }, { value: 'reference', label: 'Setup reference' }]} value={references ? 'reference' : 'maneuver'} disabled={busy || checking}
-        onValueChange={value => { const next = value === 'reference'; setReferences(next); setValue('protocol_code', next ? 'FR' : 'FSS'); }} />
-      <Controller control={control} name="protocol_code" render={({ field, fieldState }) => <SelectWithLabel label="Planned exercise" value={field.value} onValueChange={field.onChange} disabled={busy || checking} error={fieldState.error?.message}
-        options={exerciseCatalog.protocols.filter(p => references ? p.recording_kind !== 'maneuver_trial' : p.recording_kind === 'maneuver_trial').map(p => ({ value: p.code, label: `${p.code} · ${p.label}` }))} />} />
-      <InfoRow label="Next recording" value={`S${String(session.session_number).padStart(2, '0')}-${selectedCode}-R${String(nextNumber).padStart(3, '0')}`} />
-      <ActionButton label="View protocol & course" onPress={() => setGuide(protocol)} />
-    </View></SectionCard>
-    <SectionCard title="2. Check setup" icon={Gauge}><View className="gap-3">
-      <Text className="font-sans text-body text-foreground">Screen up, camera/notch toward the RC front. Keep the RC still on the setup area.</Text>
-      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: confirmed, disabled: busy || checking }} disabled={busy || checking}
-        className="min-h-control flex-row items-center gap-3 rounded-field border border-border px-3 py-3" onPress={() => setConfirmed(v => !v)}>
-        <Text className="font-sans text-body font-semibold text-primary">{confirmed ? '☑' : '☐'}</Text><Text className="font-sans flex-1 text-body text-foreground">Holder locked, phone top forward, RC still</Text>
-      </Pressable>
-      <Text className="font-sans text-caption text-secondary-foreground">This check measures motion for five seconds. No recording or upload starts.</Text>
-      <ActionButton label={checking ? 'Checking… keep still' : 'Agree & check setup'} disabled={busy || checking || !confirmed} onPress={() => void onCheck()} />
-      {validEvidence && <View className="gap-2 border-t border-border pt-3">
-        <Text accessibilityLiveRegion="polite" className={`font-sans text-body font-semibold ${validEvidence.result === 'failed' ? 'text-destructive' : 'text-warning'}`}>{validEvidence.result === 'failed' ? 'Check failed · retry before recording' : 'Measured · pilot only'}</Text>
-        <InfoRow label="Delivered rate" value={`Accel ${validEvidence.measurements.accelerometer.rate_hz?.toFixed(1) ?? '—'} · Gyro ${validEvidence.measurements.gyroscope.rate_hz?.toFixed(1) ?? '—'} Hz`} />
-        <InfoRow label="Gyro RMS" value={`${validEvidence.measurements.gyroscope.rms?.toFixed(4) ?? '—'} rad/s`} />
-        <Text className="font-sans text-caption text-secondary-foreground">Tilt and stability limits are unvalidated. Alignment remains pending; keep a forward reference for this mount.</Text>
-      </View>}
-    </View></SectionCard>
-    <Text className="font-sans text-caption text-secondary-foreground">Recording saves motion and phone diagnostics locally, including with the screen locked. Upload is separate.</Text>
-    <ActionButton label="Agree & start pilot recording" variant="primary" disabled={busy || checking || !confirmed || validEvidence?.result !== 'inconclusive'} onPress={() => void handleSubmit(v => onStart(v.protocol_code))()} />
     <ExerciseGuide protocol={guide} onClose={() => setGuide(null)} />
   </View>;
 }

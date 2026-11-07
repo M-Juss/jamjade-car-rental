@@ -19,12 +19,19 @@ function load(file, dependencies) {
   return exports;
 }
 const schema = load("../../validations/research/annotations.ts", { zod });
+const metadata = load("../../components/common/data-display/MetadataList.tsx", {
+  "react/jsx-runtime": jsx, "@/lib/utils": { cn: (...values) => values.filter(Boolean).join(' ') },
+});
+const timeline = load("../../modules/management/research/components/ReviewTimelineContext.tsx", {
+  react: React, "react/jsx-runtime": jsx,
+  "../review-workflow": load("../../modules/management/research/review-workflow.ts", {}),
+});
 const interval = (start, end, movement = "stationary") => ({ start_ms: start, end_ms: end, movement,
   direction: "not_applicable", severity: "not_applicable", certainty: "uncertain", source: "operator_report", notes: "" });
 
 // A structural field-array update changes its rows before the watch subscription
 // publishes. Exercise the actual form renderer during that intermediate render.
-function harness(current, watched) {
+function harness(current, watched, protocolCode) {
   const handlers = new Map();
   const form = { control: {}, formState: { errors: {}, isSubmitting: false, isDirty: true },
     getValues: name => { assert.equal(name, "intervals"); return current; },
@@ -51,6 +58,8 @@ function harness(current, watched) {
     "@/components/common/tables/TablePagination": { TablePagination: empty },
     "@/lib/table-pagination": { TABLE_PAGE_SIZE: 10 },
     "@/components/common/forms/FormFieldError": { FormFieldError: empty },
+    "@/components/common/data-display/MetadataList": metadata,
+    "@/modules/management/research/components/ReviewTimelineContext": timeline,
     "@/lib/toast": { appToast: {} }, "@/services/http": { ApiError: class extends Error {} },
     "@/services/research/annotations.service": { saveAnnotations: empty },
     "@/validations/research/annotations": schema,
@@ -59,12 +68,14 @@ function harness(current, watched) {
     },
     "@/modules/management/research/components/SignalTimeline": { SignalTimeline: empty },
     "@/modules/management/research/components/SignalSelectionControls": { SignalSelectionControls: empty },
+    "@/modules/management/research/lt-interval-suggestions": { suggestLtIntervals: () => ({ available: false }), LT_TIMING_VERSION: "lt-intervals-v1" },
+    "@/modules/management/research/fss-interval-suggestions": { suggestFssIntervals: () => ({ available: false }), overlapsLabel: () => false, FSS_TIMING_VERSION: "fss-intervals-v1" },
     "@/modules/management/research/native-analysis": { nativeSignalPoints: () => [] },
     "@/modules/management/research/recording-analysis": { seconds: ms => `${ms / 1000}s`, humanize: value => value },
   };
   const { AnnotationForm } = load("./AnnotationForm.tsx", dependencies);
   const render = () => renderToStaticMarkup(React.createElement(AnnotationForm, {
-    record: { id: "synthetic", duration_ms: 5000 }, origin: "0", saved: null, onSaved: empty, onReload: empty,
+    protocolCode, record: { id: "synthetic", duration_ms: 5000 }, origin: "0", saved: null, onSaved: empty, onReload: empty,
   }));
   return { render, handlers };
 }
@@ -114,4 +125,17 @@ test("resetting to saved intervals displays the new snapshot rather than the pre
   assert.match(html, /3s–4s/);
   assert.match(html, /braking/);
   assert.doesNotMatch(html, /0s–1s/);
+});
+
+
+test("only FSS and LT expose timestamp suggestions; manual additions keep unknown judgments", () => {
+  for (const code of ["FSS", "LT"]) assert.match(harness([], [], code).render(), /Suggest intervals/);
+  for (const code of [undefined, "FR", "RSS", "HA", "HB", "RT", "SW"]) assert.doesNotMatch(harness([], [], code).render(), /Suggest intervals/);
+  const current = [], view = harness(current, [], "FSS");
+  view.render(); view.handlers.get("Label selected interval")();
+  assert.equal(current[0].movement, "other");
+  assert.equal(current[0].direction, "unknown");
+  assert.equal(current[0].severity, "unknown");
+  assert.equal(current[0].certainty, "uncertain");
+  assert.equal(current[0].source, "signal_review");
 });

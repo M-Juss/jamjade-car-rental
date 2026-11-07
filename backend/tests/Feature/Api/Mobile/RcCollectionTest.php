@@ -55,7 +55,7 @@ beforeEach(function () {
     $this->admin->assignRole('admin');
     $this->token = $this->admin->createToken('research', ['rc-research'], now()->addHour())->plainTextToken;
     [$this->manifest, $this->payloads] = collectionOriginalFixture();
-    $protocol = collect(app(RcCollectionService::class)->catalog()['protocols'])->firstWhere('code', 'FSS');
+    $protocol = collect(app(RcCollectionService::class)->catalog('rc-exercises-v1')['protocols'])->firstWhere('code', 'FSS');
     $hash = hash('sha256', RcNativeProtocol::canonical($protocol));
     $sessionId = (string) Str::uuid();
     $mountId = (string) Str::uuid();
@@ -116,6 +116,67 @@ it('preserves independently synced observation history and detects stale writes'
     $changed['base_revision'] = 1;
     $this->postJson($this->observationUrl, $changed)->assertOk()->assertJsonPath('data.observation_revision', 2);
     expect(RcObservationRevision::count())->toBe(2)->and(DB::table('rc_observation_revisions')->value('payload'))->not->toContain('steering_corrections');
+});
+
+it('syncs initial deviation only on a bound swerve and keeps observation retries immutable', function () {
+    $report = [...$this->observation, 'initial_deviation' => 'left'];
+    $this->postJson($this->contextUrl, $this->input)->assertOk();
+    $this->postJson($this->observationUrl, $report)->assertUnprocessable()->assertJsonValidationErrors('initial_deviation');
+
+    $manifest = $this->manifest;
+    $manifest['recording_id'] = (string) Str::uuid();
+    $manifest['context']['recording_number'] = 39;
+    $protocol = collect(app(RcCollectionService::class)->catalog('rc-exercises-v1')['protocols'])->firstWhere('code', 'SW');
+    $binding = &$manifest['collection_binding'];
+    $binding['preflight_id'] = (string) Str::uuid();
+    $binding['protocol_code'] = 'SW';
+    $binding['protocol_sha256'] = hash('sha256', RcNativeProtocol::canonical($protocol));
+    $json = json_encode($manifest, JSON_THROW_ON_ERROR);
+    $id = $this->postJson('/api/mobile/rc-research/native-recordings', ['manifest_json' => $json])->assertOk()->json('data.id');
+    $url = "/api/mobile/rc-research/native-recordings/$id";
+    foreach ($this->payloads as $channel => $payload) {
+        $this->postJson("$url/chunks", ['channel' => $channel, 'chunk_index' => 0, 'payload' => $payload])->assertOk();
+    }
+    $this->postJson("$url/finalize")->assertOk();
+    $context = [...$this->input, 'recording_id' => $manifest['recording_id'], 'manifest_sha256' => hash('sha256', $json),
+        'capture_number' => 39, 'protocol_code' => 'SW', 'protocol_sha256' => $binding['protocol_sha256']];
+    $context['preflight']['id'] = $binding['preflight_id'];
+    $this->postJson("$url/context", $context)->assertOk();
+    $this->postJson("$url/observations", [...$report, 'initial_deviation' => 'forward'])
+        ->assertUnprocessable()->assertJsonValidationErrors('initial_deviation');
+    $this->postJson("$url/observations", $report)->assertOk()->assertJsonPath('data.observation_revision', 1);
+    $this->postJson("$url/observations", $report)->assertOk()->assertJsonPath('data.observation_revision', 1);
+    $this->postJson("$url/observations", [...$report, 'initial_deviation' => 'right'])->assertConflict();
+    $this->withHeader('Authorization', '')->actingAs($this->admin, 'web')
+        ->getJson("/admin/rc-research/native-recordings/$id")->assertOk()
+        ->assertJsonPath('data.review.observation.initial_deviation', 'left');
+});
+
+it('exposes owner-bound collection review and latest observations without internal setup measurements', function () {
+    $this->postJson($this->contextUrl, $this->input)->assertOk();
+    $this->observation['completed_as_planned'] = false;
+    $this->observation['actual_stop_method'] = 'neutral_release';
+    $this->postJson($this->observationUrl, $this->observation)->assertOk();
+    $this->withHeader('Authorization', '')->actingAs($this->admin, 'web')
+        ->getJson('/admin/rc-research/native-recordings/'.$this->recordId)->assertOk()
+        ->assertJsonPath('data.review.collection.session_number', 2)
+        ->assertJsonPath('data.review.collection.preflight_result', 'inconclusive')
+        ->assertJsonPath('data.review.observation.completed_as_planned', false)
+        ->assertJsonPath('data.review.observation.actual_stop_method', 'neutral_release')
+        ->assertJsonPath('data.review.processing.reference_status', 'missing')
+        ->assertJsonPath('data.review.processing.saved_runs', 0)
+        ->assertJsonMissingPath('data.review.collection.preflight.measurements')
+        ->assertJsonMissingPath('data.review.observation.user_id');
+    $other = User::factory()->create(['is_active' => true]);
+    $other->assignRole('admin');
+    $this->actingAs($other, 'web')->getJson('/admin/rc-research/native-recordings/'.$this->recordId)->assertNotFound();
+});
+
+it('keeps missing collection and observation evidence explicit in web review', function () {
+    $this->withHeader('Authorization', '')->actingAs($this->admin, 'web')
+        ->getJson('/admin/rc-research/native-recordings/'.$this->recordId)->assertOk()
+        ->assertJsonPath('data.review.collection', null)->assertJsonPath('data.review.observation', null)
+        ->assertJsonPath('data.review.processing.reference_status', 'missing');
 });
 
 it('rejects invalid or fabricated setup evidence', function (string $field, mixed $value) {
@@ -199,4 +260,17 @@ it('does not reuse setup evidence for another original recording', function () {
     $input = array_merge($this->input, ['recording_id' => $manifest['recording_id'], 'capture_number' => 39, 'manifest_sha256' => hash('sha256', $json)]);
     $this->postJson("/api/mobile/rc-research/native-recordings/$recordId/context", $input)->assertConflict();
     expect(RcCollectionContext::count())->toBe(1);
+});
+
+it('keeps v1 snapshots immutable and rejects substituting v2 instructions on an old original', function () {
+    $old = app(RcCollectionService::class)->catalog('rc-exercises-v1');
+    $new = app(RcCollectionService::class)->catalog();
+    expect(collect($old['protocols'])->firstWhere('code', 'FSS')['expected_stop_method'])->toBe('brake_applied')
+        ->and(collect($new['protocols'])->firstWhere('code', 'FSS')['expected_stop_method'])->toBe('neutral_release');
+    $this->postJson($this->contextUrl, $this->input)->assertOk();
+    $input = $this->input;
+    $input['catalog_version'] = 'rc-exercises-v2';
+    $input['protocol_sha256'] = hash('sha256', RcNativeProtocol::canonical(collect($new['protocols'])->firstWhere('code', 'FSS')));
+    $this->postJson($this->contextUrl, $input)->assertUnprocessable();
+    expect(RcCollectionContext::first()->payload['protocol_snapshot']['expected_stop_method'])->toBe('brake_applied');
 });

@@ -220,11 +220,11 @@ export function UpdateConditionDialog({
               <div className="grid gap-5 p-4 sm:p-6">
                 <section className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
                   <div className="mb-4 flex items-start gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-primary">
+                    <span className="flex shrink-0 items-center justify-center text-primary">
                       <RefreshCw size={17} />
                     </span>
                     <div>
-                      <h2 className="text-sm font-bold text-foreground">Update details</h2>
+                      <h2 className="text-sm font-semibold text-foreground">Update details</h2>
                       <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
                         Select the operational reason for replacing the accepted current snapshot.
                       </p>

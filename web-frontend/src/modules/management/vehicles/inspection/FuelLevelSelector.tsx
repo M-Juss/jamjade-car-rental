@@ -15,7 +15,7 @@ export function FuelLevelSelector({
     <div id="condition-fuel-level" tabIndex={-1} className="scroll-mt-4 outline-none">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground">Fuel Level</span>
-        <span className="text-xs font-bold text-foreground">
+        <span className="text-xs font-semibold text-foreground">
           {value === null ? "Select a level" : value === 0 ? "Empty (0/8)" : `${value}/8`}
         </span>
       </div>
@@ -26,7 +26,7 @@ export function FuelLevelSelector({
           aria-checked={value === 0}
           aria-label="Empty, 0 out of 8 fuel level"
           disabled={disabled}
-          className={`min-h-11 w-12 shrink-0 rounded-lg border px-1 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+          className={`min-h-11 w-12 shrink-0 rounded-lg border px-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
             value === 0
               ? "border-primary bg-primary text-primary-foreground"
               : "border-border bg-surface text-muted-foreground hover:border-primary/60"
@@ -47,7 +47,7 @@ export function FuelLevelSelector({
                 aria-checked={value === fuelLevel}
                 aria-label={`${fuelLevel} out of 8 fuel level`}
                 disabled={disabled}
-                className={`min-h-11 min-w-0 rounded-md border px-0.5 text-[11px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                className={`min-h-11 min-w-0 rounded-md border px-0.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                   filled
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-surface text-muted-foreground hover:border-primary/60"
@@ -60,7 +60,7 @@ export function FuelLevelSelector({
           })}
         </div>
       </div>
-      <div className="mt-1.5 flex justify-between pl-14 text-[10px] font-semibold text-muted-foreground">
+      <div className="mt-1.5 flex justify-between pl-14 text-xs font-semibold text-muted-foreground">
         <span>Low</span>
         <span>Full</span>
       </div>

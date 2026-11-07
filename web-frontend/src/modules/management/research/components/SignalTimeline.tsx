@@ -26,8 +26,8 @@ export function SignalTimeline({ title, unit, points, domain, selection, observe
   const dragStart = useRef<number | null>(null);
   const [visible, setVisible] = useState({ x: initialAxes.includes("x") || initialAxes.length === 0, y: initialAxes.includes("y"), z: initialAxes.includes("z") });
   const config = Object.fromEntries(axes.flatMap(axis => [
-    [axis.key, { label: `${comparison ? "Before · " : ""}${frameLabel} ${axisLabels[axis.key]}`, color: axis.color }],
-    ...(comparison ? [[`after_${axis.key}`, { label: `${comparison.label} · ${frameLabel} ${axisLabels[axis.key]}`, color: axis.color }]] : []),
+    [axis.key, { label: `${comparison ? "Before " : ""}${frameLabel} ${axisLabels[axis.key]}`, color: axis.color }],
+    ...(comparison ? [[`after_${axis.key}`, { label: `${comparison.label} ${frameLabel} ${axisLabels[axis.key]}`, color: axis.color }]] : []),
   ]));
   const chartPoints = useMemo(() => {
     if (!comparison) return points;
@@ -47,7 +47,7 @@ export function SignalTimeline({ title, unit, points, domain, selection, observe
         disabled={visible[axis.key] && Object.values(visible).filter(Boolean).length === 1}
         onClick={() => setVisible(values => ({ ...values, [axis.key]: !values[axis.key] }))}><svg width="16" height="6" aria-hidden="true"><line x1="0" x2="16" y1="3" y2="3" stroke={axis.color} strokeWidth="2" strokeDasharray={axis.dash} /></svg>{axisLabels[axis.key]}</Button>)}</div>
     </div>
-    {comparison && <p className="mb-2 text-xs text-muted-foreground">Before: dashed · {comparison.label}: solid</p>}
+    {comparison && <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>Before: dashed</span><span>{comparison.label}: solid</span></div>}
     <ChartContainer config={config} className="h-48 w-full aspect-auto sm:h-52" aria-label={`${title}. Use the shared interval controls or drag to inspect an interval.`}>
       <LineChart data={chartPoints} syncId={syncId} syncMethod="value" margin={{ top: 8, right: 12, left: -16, bottom: 0 }}
         onClick={(event) => { const time = timeFromEvent(event); if (time !== null) onCursor(time); }}

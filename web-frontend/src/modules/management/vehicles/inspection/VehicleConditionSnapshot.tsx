@@ -18,8 +18,7 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("en-PH", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "Asia/Manila",
-  }).format(new Date(value));
+    timeZone: "Asia/Manila", }).format(new Date(value));
 }
 
 export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapshotProps) {
@@ -31,12 +30,12 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
   ];
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-background p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          <p className="text-xs font-semibold normal-case tracking-normal text-primary">
             {inspection.typeLabel ?? formatInspectionType(inspection.type)} inspection
           </p>
-          <p className="mt-1 text-sm font-bold text-foreground">
+          <p className="mt-1 text-sm font-semibold text-foreground">
             Finalized {formatDate(inspection.finalizedAt)}
           </p>
         </div>
@@ -50,7 +49,7 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
 
       {inspection.type === "condition_update" && (
         <section className="rounded-xl border border-border bg-muted p-4">
-          <h3 className="text-sm font-bold text-foreground">Condition Update Record</h3>
+          <h3 className="text-sm font-semibold text-foreground">Condition Update Record</h3>
           <div className="mt-3 grid gap-3 text-xs sm:grid-cols-2">
             <div>
               <p className="text-muted-foreground">Reason</p>
@@ -62,7 +61,7 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
               <p className="text-muted-foreground">Based on</p>
               <p className="mt-1 font-semibold text-foreground">
                 {inspection.basedOnInspection
-                  ? `${inspection.basedOnInspection.typeLabel} · ${formatDate(inspection.basedOnInspection.finalizedAt)}`
+                  ? <>{inspection.basedOnInspection.typeLabel}<span className="mt-0.5 block font-normal text-muted-foreground">{formatDate(inspection.basedOnInspection.finalizedAt)}</span></>
                   : inspection.basedOnInspectionId
                     ? `Inspection #${inspection.basedOnInspectionId}`
                     : "Not recorded"}
@@ -78,26 +77,26 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
         </section>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-primary"><Gauge size={17} /></span>
-          <div><p className="text-xs text-muted-foreground">Odometer</p><p className="font-bold text-foreground">{inspection.odometer.toLocaleString()} km</p></div>
+      <div className="grid gap-4 border-b border-border py-4 sm:grid-cols-2">
+        <div className="flex items-center gap-3">
+          <span className="flex shrink-0 items-center justify-center text-muted-foreground"><Gauge size={17} /></span>
+          <div><p className="text-xs text-muted-foreground">Odometer</p><p className="font-semibold text-foreground">{inspection.odometer.toLocaleString()} km</p></div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-primary"><Fuel size={17} /></span>
-          <div><p className="text-xs text-muted-foreground">Fuel level</p><p className="font-bold text-foreground">{inspection.fuelLevel}/8</p></div>
+        <div className="flex items-center gap-3">
+          <span className="flex shrink-0 items-center justify-center text-muted-foreground"><Fuel size={17} /></span>
+          <div><p className="text-xs text-muted-foreground">Fuel level</p><p className="font-semibold text-foreground">{inspection.fuelLevel}/8</p></div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {(["exterior", "interior", "equipment"] as const).map((category) => (
-          <section key={category} className="min-w-0 rounded-xl border border-border bg-surface p-4">
-            <h3 className="text-sm font-bold text-foreground">{VEHICLE_CHECKLIST_CATEGORY_LABELS[category]}</h3>
+          <section key={category} className="min-w-0 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold text-foreground">{VEHICLE_CHECKLIST_CATEGORY_LABELS[category]}</h3>
             <div className="mt-3 grid gap-2">
               {(inspection.checklist?.[category] ?? []).map((item) => (
-                <div key={item.key} className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-background px-3 py-2">
+                <div key={item.key} className="flex min-w-0 items-start justify-between gap-3 border-b border-border py-2.5 last:border-b-0">
                   <span className="min-w-0 flex-1 text-xs font-medium text-foreground [overflow-wrap:anywhere]">{item.label}</span>
-                  <span className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-bold ${item.value ? "text-success" : "text-destructive"}`}>
+                  <span className={`flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold ${item.value ? "text-success" : "text-destructive"}`}>
                     {item.value ? <Check size={14} /> : <X size={14} />}
                     {item.value ? "Yes" : "No"}
                   </span>
@@ -109,17 +108,17 @@ export function VehicleConditionSnapshot({ inspection }: VehicleConditionSnapsho
       </div>
 
       <section>
-        <h3 className="mb-3 text-sm font-bold text-foreground">Vehicle Body Issues</h3>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Vehicle Body Issues</h3>
         <VehicleBodyInspection value={inspection.markers ?? []} mode="readonly" />
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-4">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-foreground"><MessageSquareText size={15} className="text-primary" /> Comments / Other Issues</h3>
+      <section className="border-t border-border pt-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><MessageSquareText size={15} className="text-primary" /> Comments / Other Issues</h3>
           <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{inspection.comments || "No additional comments."}</p>
       </section>
       <div className={`grid gap-3 ${signatureGroups.length > 1 ? "sm:grid-cols-2" : ""}`}>
-        {signatureGroups.map((group) => <section key={group.title} className="min-w-0 rounded-xl border border-border bg-surface p-4">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-foreground"><PenLine size={15} className="text-primary" /> {group.title}</h3>
+        {signatureGroups.map((group) => <section key={group.title} className="min-w-0 border-t border-border pt-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground"><PenLine size={15} className="text-primary" /> {group.title}</h3>
           {group.signatures.map((signature) => (
             <div key={signature.id} className="mt-2 text-xs text-muted-foreground">
               <p className="font-semibold text-foreground">{signature.signerName}</p>

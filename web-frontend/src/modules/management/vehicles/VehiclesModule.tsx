@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
@@ -45,10 +45,10 @@ import { managementPath } from "@/modules/management/shell/config/module-registr
 import { useManagementPortal } from "@/modules/management/shell/context/ManagementSessionProvider";
 
 const statusStyle: Record<string, string> = {
-  Available: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Available: "bg-success-surface text-success border-success-border",
   Rented: "bg-muted text-primary border-blue-200",
-  Maintenance: "bg-amber-50 text-amber-700 border-amber-200",
-  Unavailable: "bg-slate-100 text-slate-600 border-slate-200",
+  Maintenance: "bg-warning-surface text-warning border-warning-border",
+  Unavailable: "bg-background text-muted-foreground border-border",
 };
 
 function getStatusLabel(vehicle: VehicleRecord) {
@@ -181,12 +181,12 @@ export default function Vehicle() {
     <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-background min-h-screen">
       {/* ================= HEADER ================= */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <ManagementPageHeading title="Vehicle Management" description="Manage vehicle details, availability, and condition." />
+        <ManagementPageHeading title="Vehicles" description="Manage vehicle details, availability, and condition." />
         <div className="flex w-full gap-2 sm:w-auto">
-        {portal === "admin" ? <Button type="button" variant="outline" className="h-10 flex-1 rounded-xl text-[13px] sm:flex-none" onClick={() => setConfigurationOpen(true)}><Settings2 size={15} />Configure</Button> : null}
+        {portal === "admin" ? <Button type="button" variant="outline" className="h-10 flex-1 rounded-xl text-sm sm:flex-none" onClick={() => setConfigurationOpen(true)}><Settings2 size={15} />Configure</Button> : null}
         <Button
           onClick={() => setVehicleFormOpen(true)}
-          className="rounded-xl bg-primary hover:bg-primary-hover text-white text-[13px] font-semibold h-10 px-4 shadow-[0_4px_14px_rgba(52,110,246,0.28)] transition-all duration-200 flex-1 sm:flex-none"
+          className="rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-semibold h-10 px-4 shadow-none transition-all duration-200 flex-1 sm:flex-none"
         >
           <Plus size={15} className="mr-2" />
           Add Vehicle
@@ -196,9 +196,8 @@ export default function Vehicle() {
       {portal === "admin" ? <VehicleConfigurationDialog open={configurationOpen} onOpenChange={setConfigurationOpen} /> : null}
 
       {/* ================= TOOLBAR ================= */}
-      <div>
-        <Card className="rounded-2xl border-0 shadow-[0_2px_12px_rgba(0,0,0,0.05)] bg-white">
-          <CardContent className="px-4">
+      <TableCard>
+          <CardContent className="border-b border-border p-4">
             <div className="flex flex-wrap gap-2.5 items-center">
               <SearchInput
                 value={search}
@@ -247,17 +246,13 @@ export default function Vehicle() {
               />
             </div>
           </CardContent>
-        </Card>
-      </div>
 
       {/* ================= VEHICLE TABLE ================= */}
-      <div>
         {error && (
-          <div className="mb-3 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[12.5px] font-medium text-rose-700">
+          <div className="mb-3 rounded-xl border border-destructive-border bg-destructive-surface px-4 py-3 text-sm font-medium text-destructive">
             {error}
           </div>
         )}
-        <TableCard>
           <div className="min-w-0">
             <Table>
               <colgroup>
@@ -284,7 +279,7 @@ export default function Vehicle() {
                   ].map((h) => (
                     <TableHead
                       key={h}
-                      className="text-left text-[10.5px] font-semibold text-subtle-foreground uppercase tracking-wider px-4 py-3 whitespace-normal"
+                      className="text-left text-xs font-semibold text-subtle-foreground normal-case tracking-normal px-4 py-3 whitespace-normal"
                     >
                       {h === "Actions" ? <span className="sr-only">Actions</span> : h}
                     </TableHead>
@@ -296,7 +291,7 @@ export default function Vehicle() {
                   <TableRow>
                     <TableCell
                       colSpan={8}
-                      className="text-center py-12 text-[13px] text-subtle-foreground"
+                      className="text-center py-12 text-sm text-subtle-foreground"
                     >
                       Loading vehicles...
                     </TableCell>
@@ -307,7 +302,7 @@ export default function Vehicle() {
                   <TableRow>
                     <TableCell
                       colSpan={8}
-                      className="text-center py-12 text-[13px] text-subtle-foreground"
+                      className="text-center py-12 text-sm text-subtle-foreground"
                     >
                       No vehicles found.
                     </TableCell>
@@ -334,29 +329,29 @@ export default function Vehicle() {
                               "🚗"
                             )}
                           </div>
-                          <span className="text-[12.5px] font-semibold text-foreground whitespace-normal">
+                          <span className="text-sm font-semibold text-foreground whitespace-normal">
                             {v.plateNumber ? `${v.name} ${v.plateNumber}` : v.name}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell data-label="Brand" className="px-4 py-3 text-[12px] text-muted-foreground">
+                      <TableCell data-label="Brand" className="px-4 py-3 text-sm text-muted-foreground">
                         {v.brand}
                       </TableCell>
-                      <TableCell data-label="Transmission" className="px-4 py-3 text-[12px] text-muted-foreground">
+                      <TableCell data-label="Transmission" className="px-4 py-3 text-sm text-muted-foreground">
                         {v.transmission}
                       </TableCell>
-                      <TableCell data-label="Model" className="px-4 py-3 text-[12px] text-muted-foreground">
+                      <TableCell data-label="Model" className="px-4 py-3 text-sm text-muted-foreground">
                         {v.model}
                       </TableCell>
-                      <TableCell data-label="Seats" className="px-4 py-3 text-[12px] text-muted-foreground">
+                      <TableCell data-label="Seats" className="px-4 py-3 text-sm text-muted-foreground">
                         {v.seats}
                       </TableCell>
-                      <TableCell data-label="Price/Day" className="px-4 py-3 text-[12.5px] font-semibold text-foreground">
+                      <TableCell data-label="Price/Day" className="px-4 py-3 text-sm font-semibold text-foreground">
                         ₱{v.pricePerDay.toLocaleString()}
                       </TableCell>
                       <TableCell data-label="Status" className="px-4 py-3">
                         <span
-                          className={`text-[10.5px] font-semibold px-2.5 py-1 rounded-lg border ${statusStyle[getStatusLabel(v)] ?? statusStyle.Unavailable}`}
+                          className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${statusStyle[getStatusLabel(v)] ?? statusStyle.Unavailable}`}
                         >
                           {getStatusLabel(v)}
                         </span>
@@ -404,9 +399,8 @@ export default function Vehicle() {
             </Table>
           </div>
 
-        </TableCard>
-        {!isLoading && !error && <TablePagination total={filtered.length} page={currentPage} lastPage={totalPages} onPageChange={setPage} label="Vehicles pagination" />}
-      </div>
+        {!isLoading && !error && filtered.length > 0 && <div className="border-t border-border px-4 py-3 [&>div]:mt-0"><TablePagination total={filtered.length} page={currentPage} lastPage={totalPages} onPageChange={setPage} label="Vehicles pagination" /></div>}
+      </TableCard>
 
       <AlertDialog
         open={Boolean(deleteTarget)}
@@ -414,12 +408,12 @@ export default function Vehicle() {
           if (!open && !isDeleting) setDeleteTarget(null);
         }}
       >
-        <AlertDialogContent className="max-w-[400px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
+        <AlertDialogContent className="max-w-[400px] rounded-2xl border border-border shadow-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[16px] font-bold text-foreground">
+            <AlertDialogTitle className="text-base font-semibold text-foreground">
               Delete Vehicle
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-1 text-[13px] text-muted-foreground">
+            <AlertDialogDescription className="mt-1 text-sm text-muted-foreground">
               This action cannot be undone. The vehicle and all its data will be
               permanently removed.
             </AlertDialogDescription>

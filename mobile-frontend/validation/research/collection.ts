@@ -11,7 +11,7 @@ const stats = z.object({ count: z.number().int().min(2).max(100000), rejected_co
 }).strict();
 export const sessionSchema = z.object({ id: uuid, device_profile_id: uuid, session_number: z.number().int().min(1).max(999999999),
   recording_group_id: uuid, opened_at: time, conditions: z.object({ surface: z.string().min(1).max(100), slope: z.enum(['level', 'uphill', 'downhill']) }).strict(),
-  preset_id: z.literal('mn82s_roof_v1'), catalog_version: z.literal('rc-exercises-v1'), operator_code: z.string().regex(/^OP[0-9]{2,4}$/),
+  preset_id: z.literal('mn82s_roof_v1'), catalog_version: z.enum(['rc-exercises-v1', 'rc-exercises-v2']), operator_code: z.string().regex(/^OP[0-9]{2,4}$/),
 }).strict();
 const mountSchema = z.object({ id: uuid, research_session_id: uuid, mount_number: z.number().int().min(1).max(999999),
   reason: z.enum(['initial', 'remounted', 'repositioned', 'suspected_shift']), created_at: time,
@@ -26,7 +26,7 @@ const preflightSchema = z.object({ id: uuid, mount_version_id: uuid, clock_conte
 }).strict();
 export const collectionContextSchema = z.object({ contract_version: z.literal('rc-collection-v1'), recording_id: uuid, manifest_sha256: hash,
   session: sessionSchema, mount: mountSchema, preflight: preflightSchema, capture_number: z.number().int().min(1).max(999999999),
-  protocol_code: exerciseCodeSchema, catalog_version: z.literal('rc-exercises-v1'), protocol_sha256: hash,
+  protocol_code: exerciseCodeSchema, catalog_version: z.enum(['rc-exercises-v1', 'rc-exercises-v2']), protocol_sha256: hash,
 }).strict().superRefine((v, ctx) => {
   const p = v.preflight;
   if (v.mount.research_session_id !== v.session.id || p.mount_version_id !== v.mount.id) ctx.addIssue({ code: 'custom', path: ['mount'], message: 'Mount does not match this session.' });
@@ -35,10 +35,12 @@ export const collectionContextSchema = z.object({ contract_version: z.literal('r
   if (Date.parse(p.consented_at) > Date.parse(p.started_at) || Date.parse(v.session.opened_at) > Date.parse(v.mount.created_at) || Date.parse(v.mount.created_at) > Date.parse(p.started_at)) ctx.addIssue({ code: 'custom', path: ['preflight'], message: 'Setup times are out of order.' });
 });
 export const observationFlags = ['steering_corrections', 'unexpected_reverse', 'unexpected_turn', 'bump', 'cone_contact', 'phone_shift', 'holder_loose', 'interrupted', 'not_sure'] as const;
+export const initialDeviations = ['left', 'right', 'unknown'] as const;
 export const observationInputSchema = z.object({ base_revision: z.number().int().min(0).max(99),
   completed_as_planned: z.boolean().nullable(), source: z.enum(['observed', 'operator_report', 'signal_review']),
   observer_code: z.string().regex(/^OB[0-9]{2,4}$/).nullable(), flags: z.array(z.enum(observationFlags)).max(9).refine(v => new Set(v).size === v.length),
   actual_stop_method: z.enum(['brake_applied', 'neutral_release', 'unknown', 'not_applicable']), notes: z.string().max(1000).nullable(),
+  initial_deviation: z.enum(initialDeviations).optional(),
 }).strict().refine(v => v.source !== 'observed' || v.observer_code !== null, { path: ['observer_code'], message: 'Select the observer code.' });
 export const observationUploadSchema = observationInputSchema.safeExtend({ id: uuid, reported_at: time });
 export const collectionSessionFormSchema = z.object({ group_id: uuid });

@@ -49,7 +49,7 @@ export function TelematicsDrawer({ tab, onTab, expanded, onExpand, unread, summa
 
   return <Animated.View className="absolute bottom-0 self-center" style={{ top, width: Math.min(560, width - 2 * Math.max(insets.left, insets.right)) }}>
     <View accessibilityRole="tablist" className="flex-row gap-1 px-screen">
-      {tabs.map((item) => <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: tab === item.key }} accessibilityLabel={`${item.label}${item.key === 'activity' && unread ? `, ${unread} unread` : ''}`} onPress={() => onTab(item.key)} className={`min-h-[46px] min-w-0 flex-1 items-center justify-center rounded-t-field border border-b-0 border-border px-1 py-2 ${expanded ? (tab === item.key ? 'bg-surface' : 'bg-muted') : 'bg-transparent'}`}>
+      {tabs.map((item) => <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: tab === item.key }} accessibilityLabel={`${item.label}${item.key === 'activity' && unread ? `, ${unread} unread` : ''}`} onPress={() => onTab(item.key)} className={`min-h-control min-w-0 flex-1 items-center justify-center rounded-t-field border border-b-0 border-border px-1 py-2 ${expanded ? (tab === item.key ? 'bg-surface' : 'bg-muted') : 'bg-transparent'}`}>
         <Text numberOfLines={2} className={`font-sans text-center text-[13px] font-semibold leading-4 ${tab === item.key ? 'text-primary' : 'text-secondary-foreground'}`}>{item.label}{item.key === 'activity' && unread ? ` (${unread > 99 ? '99+' : unread})` : ''}</Text>
       </Pressable>)}
     </View>

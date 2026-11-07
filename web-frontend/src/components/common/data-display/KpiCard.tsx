@@ -7,7 +7,6 @@ type KpiCardProps = Omit<ComponentProps<typeof Card>, "children"> & {
   label: string;
   value: ReactNode;
   icon: LucideIcon;
-  iconClassName?: string;
   description?: ReactNode;
 };
 
@@ -15,7 +14,6 @@ export function KpiCard({
   label,
   value,
   icon: Icon,
-  iconClassName,
   description,
   className,
   ...props
@@ -23,32 +21,24 @@ export function KpiCard({
   return (
     <Card
       className={cn(
-        "h-full min-h-24 rounded-2xl border border-border bg-surface py-0 shadow-[0_4px_14px_rgba(23,49,95,0.05)] ring-0",
+        "h-full rounded-2xl border border-border bg-surface py-0 shadow-none",
         className,
       )}
       {...props}
     >
-      <CardContent className="flex h-full items-center gap-3 p-4">
-        <div
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-primary sm:size-11",
-            iconClassName,
-          )}
-        >
-          <Icon className="size-5" strokeWidth={2.2} aria-hidden="true" />
-        </div>
-
+      <CardContent className="flex h-full items-start justify-between gap-3 p-5">
         <div className="min-w-0">
-          <p className="break-words text-2xl font-bold leading-none tracking-tight text-foreground">
-            {value}
-          </p>
-          <p className="mt-1 text-xs font-medium leading-tight text-muted-foreground">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {label}
+          </p>
+          <p className="mt-2 break-words text-2xl font-semibold leading-tight tracking-tight text-foreground tabular-nums">
+            {value}
           </p>
           {description ? (
             <p className="mt-1 text-xs leading-tight text-subtle-foreground">{description}</p>
           ) : null}
         </div>
+        <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" strokeWidth={1.8} aria-hidden="true" />
       </CardContent>
     </Card>
   );

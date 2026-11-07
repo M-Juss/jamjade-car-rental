@@ -44,7 +44,7 @@ export function DocumentVerificationListScreen({
         title="Documents"
       />
 
-      <View className="mt-5 rounded-card border border-border bg-surface px-4 ">
+      <View className="mt-section rounded-card border border-border bg-surface px-4">
         {CUSTOMER_DOCUMENT_DEFINITIONS.map((document, index) => (
           <DocumentRequirementRow
             definition={document}

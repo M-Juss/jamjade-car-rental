@@ -199,7 +199,7 @@ export default function FleetTracker() {
                   : "No ongoing rentals."}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="divide-y divide-border">
                 {page.rentals.map((rental) => (
                   <FleetVehicleCard
                     key={rental.id}

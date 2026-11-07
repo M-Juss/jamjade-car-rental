@@ -28,7 +28,7 @@ export function FleetMapPlaceholder({
   className,
 }: FleetMapPlaceholderProps) {
   return (
-    <div className={`relative min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-background p-4 ${className ?? ""}`}>
+    <div className={`relative min-h-[320px] overflow-hidden rounded-2xl border border-border bg-background p-4 ${className ?? ""}`}>
       <div className="absolute inset-4 rounded-xl border border-dashed border-slate-300 bg-surface" />
 
       {showGeofence && (
@@ -48,13 +48,13 @@ export function FleetMapPlaceholder({
               style={{ top: `${top}%`, left: `${left}%` }}
               aria-label={`Select ${vehicle.carName}`}
             >
-              <span className={`block h-4 w-4 rounded-full ring-4 ring-white shadow-md ${markerClasses[vehicle.status]}`} />
+              <span className={`block h-4 w-4 rounded-full ring-4 ring-white shadow-none ${markerClasses[vehicle.status]}`} />
             </button>
           );
         })}
       </div>
 
-      <div className="absolute left-7 top-7 z-20 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
+      <div className="absolute left-7 top-7 z-20 rounded-xl border border-border bg-surface/90 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
         Map preview
       </div>
 

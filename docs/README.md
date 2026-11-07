@@ -26,7 +26,8 @@ Its [Phase 1 collection contract](telematics-master-plan.md#collection-workflow-
 defines the agreed RC workflow redesign. The linked JSON catalog/schema/examples
 remain machine-checked design artifacts. The central guide’s Phase 2 runtime
 boundary records the implemented pilot collection flow and narrower authoritative
-write DTOs; Redmi physical acceptance and the web workflow redesign remain pending.
+write DTOs; the three-step web review is implemented, while broader Redmi physical
+acceptance, v2 label confidence/dataset decisions and export remain pending.
 
 | Guide | Read when | Current boundary |
 | --- | --- | --- |
@@ -55,6 +56,7 @@ write DTOs; Redmi physical acceptance and the web workflow redesign remain pendi
 
 | Task | Read first |
 | --- | --- |
+| Website visual hierarchy, shared controls, responsive records or public presentation | [Web interface refinement](web-ui-refinement.md), then `web-frontend/AGENTS.md` and the affected domain guide |
 | Telematics, native sensors, RC data, calibration, GPS, fleet alerts, AI, score or reports | [Central telematics guide](telematics-master-plan.md), then the applicable linked source files |
 | Android configuration or native builds | [Android-only scope](android-only-mobile.md), application `AGENTS.md`, and exact installed Expo SDK documentation |
 | Monitoring zones or crossing events | [Geofence monitoring](geofence-monitoring.md) and [existing telematics boundaries](telematics-master-plan.md#existing-rental-and-handover-boundaries) |

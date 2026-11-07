@@ -7,7 +7,15 @@ export type NativeRecording = { id: string; client_recording_id: string; name: s
   state: "incomplete" | "verified"; capture_state: "stopped" | "interrupted"; duration_ms: number; started_at: string;
   verified_at: string | null; manifest_sha256: string; expected_chunks: number; received_chunks: number;
   summary: Partial<Record<NativeChannel, NativeStatistics>> | null; annotation_state: "unlabeled" | "reviewed" | "uncertain"; protocol_version: 2 };
-export type NativeInspection = { recording: NativeRecording; processing: null; reference: null;
+export type NativeReview = {
+  collection: { display_code: string; session_number: number; mount_number: number; protocol_code: string;
+    expected_stop_method: string; preflight_result: string } | null;
+  observation: { revision: number; completed_as_planned: boolean | null; source: string; observer_code: string | null;
+    flags: string[]; actual_stop_method: string; initial_deviation?: 'left' | 'right' | 'unknown'; notes: string | null; reported_at: string } | null;
+  processing: { reference_status: 'not_required' | 'missing' | 'needs_processing' | 'review_required';
+    reference_recording: { id: string; name: string } | null; saved_runs: number; latest_run_id: string | null };
+};
+export type NativeInspection = { recording: NativeRecording; processing: null; reference: null; review: NativeReview;
   manifest: { started_elapsed_ns: string; source: "android_sensor_manager_v2"; coordinate_frame: "android_device_natural";
     context: { recording_kind: string; recording_group_id?: string; recording_group_name?: string; surface: string; slope: string; rc_model?: string; mount_method: string; mount_orientation: string };
     device?: { model?: string; native_adapter_version?: string };

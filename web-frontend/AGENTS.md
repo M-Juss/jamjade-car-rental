@@ -58,6 +58,7 @@ Start discovery in these locations, then inspect the closest feature-specific im
 - Dashboard KPI cards and dashboard content cards: `src/modules/management/dashboard/DashboardModule.tsx`
 - Analytics KPI cards, chart cards, and reporting tables: `src/modules/management/reports/ReportsModule.tsx`
 - Management page headers, filters, summary cards, tables, and states: `src/modules/management/bookings/BookingsModule.tsx`, `src/modules/management/personnel/PersonnelModule.tsx`, and `src/modules/management/vehicles/VehiclesModule.tsx`
+- The approved web-wide visual refinement uses compact operational totals from `src/components/common/data-display/SummaryList.tsx`, bordered records surfaces, sentence-case table headers, readable secondary text, and responsive rows. Dashboard and Reports retain `KpiCard` for actual metrics, with quiet bare icons. Personnel keeps its grouped name/ID and email/phone layout. Apply these shared rules throughout the website, including login, detail views and dialogs; the public landing page and its marketing components are excluded for the mock-defense demo. Do not add demo/development labels there as part of this work. Preserve services, validation, permissions and business workflows. See `../docs/web-ui-refinement.md`.
 - Canonical form-dialog shell and actions: `src/components/common/forms/FormDialogLayout.tsx`
 - Complex form-body composition: `src/forms/personnel/PersonnelAccountForm.tsx`, `src/forms/vehicle/details/CreateVehicleDialog.tsx`, and `src/forms/vehicle/details/EditVehicleForm.tsx`
 - Navigation shell and role layouts: `src/modules/management/shell/`, `src/app/admin/layout.tsx`, and `src/app/staff/layout.tsx`
@@ -66,13 +67,22 @@ This list is a discovery map, not permission to copy blindly. The closest equiva
 
 ## Current Feature Boundaries
 
+- Native RC Research review uses Check recording → Prepare signals → Label and
+  review, with setup/timing/history under Details. Reuse its shared timeline
+  context and owner-bound `NativeReview` read model. Missing earlier references
+  disable new vehicle-axis processing while preserving original review/labels;
+  captured/prepared references and saved v1 labels never imply training approval.
+  FSS and normal-LT timestamp suggestions select chart ranges without assigning event judgments
+  or changing saved labels. Keep full-recording bounds, gap/multiple-run refusal,
+  overlap guards and explicit manual review/save in that flow.
+
 - Vehicle choice lists and inspection definitions come from the Laravel configuration library. Read `../docs/vehicle-configuration.md` before changing Configure, vehicle option selection, or checklist templates. Do not restore form-local option management or duplicate the backend checklist in TypeScript.
 
 Keep these ownership and authorization boundaries aligned with the current routes and services:
 
 - The booking surface is composed by `src/modules/management/bookings/BookingsModule.tsx`. Data and mutations belong to `src/services/booking/`; action sequencing belongs to `booking-next-action.ts` and `booking-workflow.ts`; form bodies and workflow dialogs belong to `src/forms/booking/`; booking-specific display pieces belong beside the module under `src/modules/management/bookings/components/`. Keep route files under `src/app/admin/booking/` and `src/app/staff/booking/` as composition and access boundaries.
 - The admin pricing page is labeled Pricing Settings and shows Late Return Rates and Delivery Pricing together without tabs. Garage address and coordinates are not shown or submitted by this screen. Late-return prices, rate snapshots, receipt/review, and attention states are documented in `../docs/late-return-workflow.md`; follow its contract before changing this flow.
-- Delivery pricing is admin-only. `DeliveryPricingModule`, `src/forms/delivery/DeliveryPricingForm.tsx`, and `src/services/delivery/delivery.service.ts` edit only minimum fee, included distance and per-kilometre rate, preserving the backend garage point. Laravel automatically chooses one driving estimate; there is no Toll Reviews queue. Actual tolls use the existing Additional Charges flow after Incoming Inspection. Preserve historical accepted delivery/toll amounts. See `../docs/delivery-pricing.md`.
+- Fee pricing is admin-only. `DeliveryPricingModule` composes `src/forms/pricing/FeePricingForm.tsx`: one locked card, Configure, then Save/Cancel for labeled late-return and delivery sections. `src/validations/pricing/schemas.ts` validates all five fields before either existing save service runs. Separate APIs may partially succeed; keep confirmed values, retain failed edits/errors, and retry only changed groups. `src/services/delivery/delivery.service.ts` edits only minimum fee, included distance and per-kilometre rate, preserving the backend garage point. Laravel automatically chooses one driving estimate; there is no Toll Reviews queue. Actual tolls use the existing Additional Charges flow after Incoming Inspection. Preserve historical accepted delivery/toll amounts. See `../docs/delivery-pricing.md`.
 - Geofence library mutations and booking monitoring-zone mutations are admin-only even though staff may have read or operational booking access. A booking may carry multiple default or custom monitoring circles/polygons before release. `Start Rental` freezes all booking zones and alert settings into the release snapshot; do not read editable defaults for a released rental, and do not make zone configuration or containment a setup or release gate. See `../docs/geofence-monitoring.md`.
 - Verification presents the current two requirements: `Driver's License` and UI `Proof of Address`. The API/storage key for the second is `proof_of_billing`; this is a naming boundary, not a third document. Passport is a legacy record that may remain readable but must not be offered for new uploads. Keep document labels and mapping in `src/services/verification/` synchronized with the mobile definitions and Laravel document contract.
 - Geofence editors use `src/lib/google-maps.ts` as the shared `@googlemaps/js-api-loader` singleton. New map consumers must call `loadGoogleMaps` and use `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; do not add another `setOptions`/loader instance. Fleet Monitoring now uses the same loader and advanced markers; preserve that singleton integration.
@@ -114,6 +124,8 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 ## Component Rules
 
 ### KPI And Summary Cards
+
+- Use `SummaryList` for operational counts; reserve `KpiCard` for dashboard and report metrics. Do not add a card and colored icon tile for every count.
 
 - A KPI added to an existing KPI group must be another entry in that group's data model and must use the same map/render path as its siblings.
 - Match the existing group's `Card` and `CardContent`, grid breakpoints, gap, radius, border, shadow, padding, icon container, icon size and stroke, value typography, label typography, ordering, animation, and loading behavior.
@@ -186,7 +198,7 @@ Existing misplaced files are technical debt, not precedent for new placement. Mo
 - Use solid `primary` for blue branding and primary actions. Replace gradient treatments within the affected scope and preserve established non-gradient component styling; do not add new decorative glows. Follow the root presentation rules and use the existing branding sync script when updating shared artwork.
 - Reuse the closest semantic status treatment for statuses with the same meaning.
 - Do not add raw color values or one-off shadows when an existing token or exact established pattern fits.
-- Do not create slightly different versions of an existing radius, border, or shadow. Exact consistency is preferred over visual approximation.
+- Use bordered cards without decorative shadows. Reserve the semantic `shadow-dialog` token for elevated dialogs, sheets and menus. Keep established radii and spacing consistent.
 - If a repeated raw value in existing code must be reused, first consider whether the scoped change should replace the affected repeated instances with a shared token or component.
 
 ### Layout, Responsiveness, And Motion

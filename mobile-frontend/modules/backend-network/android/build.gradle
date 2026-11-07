@@ -1,0 +1,19 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.jamjade.network'
+version = '1.0.0'
+
+android {
+  namespace 'com.jamjade.network'
+  defaultConfig { versionCode 1; versionName '1.0.0' }
+}
+
+dependencies {
+  implementation 'com.facebook.react:react-android'
+  implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+  testImplementation 'junit:junit:4.13.2'
+  testImplementation 'org.json:json:20230227'
+}

@@ -45,7 +45,7 @@ export function DocumentReviewBadge({ status }: { status: DocumentVerificationSt
 
   return (
     <View className={cx('rounded-full border px-2.5 py-1.5', style.background, style.border)}>
-      <Text className={cx('font-sans', 'text-[11px] font-semibold ', style.text)}>
+      <Text className={cx('font-sans', 'text-[11px] font-semibold', style.text)}>
         {getDocumentStatusLabel(status)}
       </Text>
     </View>
@@ -75,7 +75,7 @@ export function DocumentRequirementRow({
       accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
       className={cx('flex-row items-center gap-3 py-3.5', !isLast && 'border-b border-[#EEF2FF]')}>
-      <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
+      <View className="h-11 w-11 items-center justify-center rounded-field bg-muted">
         <Icon size={20} color={profileColors.brand} strokeWidth={2.35} />
       </View>
       <View className="min-w-0 flex-1">

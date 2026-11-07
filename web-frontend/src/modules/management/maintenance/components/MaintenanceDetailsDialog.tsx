@@ -28,7 +28,7 @@ function currency(value: number) {
 function Detail({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{label}</p>
+      <p className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">{label}</p>
       <div className="mt-1 text-xs font-semibold leading-5 text-foreground">{value || "—"}</div>
     </div>
   );
@@ -57,7 +57,7 @@ export function MaintenanceDetailsDialog({
               <Detail label="Status" value={<MaintenanceStatusBadge value={record.status} label={record.statusLabel} />} />
             </section>
             <section>
-              <h3 className="mb-3 text-sm font-bold text-foreground">Schedule and Actual Work</h3>
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Schedule and Actual Work</h3>
               <div className="grid gap-4 border-y border-border py-4 sm:grid-cols-3">
                 <Detail label="Scheduled Start Date" value={formatDateOnly(record.scheduledStart)} />
                 <Detail label="Expected End Date" value={formatDateOnly(record.scheduledEnd)} />
@@ -69,7 +69,7 @@ export function MaintenanceDetailsDialog({
             </section>
             {(record.description || record.workPerformed || record.notes || record.cancellationReason) ? (
               <section>
-                <h3 className="mb-3 text-sm font-bold text-foreground">Work and Notes</h3>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">Work and Notes</h3>
                 <div className="grid gap-4 border-y border-border py-4 sm:grid-cols-2">
                   {record.description ? <Detail label="Description" value={<p className="whitespace-pre-wrap">{record.description}</p>} /> : null}
                   {record.workPerformed ? <Detail label="Work Performed" value={<p className="whitespace-pre-wrap">{record.workPerformed}</p>} /> : null}
@@ -80,7 +80,7 @@ export function MaintenanceDetailsDialog({
             ) : null}
             {(record.status === "completed" || record.odometerAtStart != null || record.odometerAtCompletion != null) ? (
               <section>
-                <h3 className="mb-3 text-sm font-bold text-foreground">Completion Evidence</h3>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">Completion Evidence</h3>
                 <div className="grid gap-4 border-y border-border py-4 sm:grid-cols-4">
                   <Detail label="Starting Odometer" value={record.odometerAtStart != null ? `${record.odometerAtStart.toLocaleString()} km` : undefined} />
                   <Detail label="Completion Odometer" value={record.odometerAtCompletion != null ? `${record.odometerAtCompletion.toLocaleString()} km` : undefined} />

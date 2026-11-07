@@ -85,7 +85,7 @@ export function PaymentReceiptScreen({ receiptId, orderId, bookingReference }: {
         <View className="w-full max-w-[560px] self-center px-screen pb-3" style={{ paddingTop: insets.top + 10 }}>
           <View className="mb-3 min-h-12 flex-row items-center gap-3">
             <Pressable accessibilityRole="button" accessibilityLabel="Back to booking" onPress={viewBooking}
-              className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
+              className="h-11 w-11 items-center justify-center rounded-field border border-border bg-surface">
               <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
             <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-title font-semibold text-foreground">Payment receipt</Text>

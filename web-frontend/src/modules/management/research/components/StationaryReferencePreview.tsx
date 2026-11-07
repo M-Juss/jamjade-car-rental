@@ -18,7 +18,7 @@ export function StationaryReferencePreview({ acceleration, gyroscope, origin, se
   const [preview, setPreview] = useState<ReturnType<typeof stationaryReferencePreview> | null>(null);
   return <section className="space-y-4 border-t border-border pt-5" aria-labelledby={`${id}-title`}>
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h3 id={`${id}-title`} className="text-sm font-semibold">Stationary reference · preview</h3>
+      <h3 id={`${id}-title`} className="text-sm font-semibold">Stationary reference preview</h3>
       <p className="text-xs text-muted-foreground">{seconds(selection[0])}–{seconds(selection[1])}</p>
     </div>
     <label htmlFor={`${id}-confirmed`} className="flex min-h-11 cursor-pointer items-center gap-3 text-xs font-medium">
@@ -35,9 +35,9 @@ export function StationaryReferencePreview({ acceleration, gyroscope, origin, se
             <DetailsList items={[
               ["Resting acceleration XYZ (m/s²)", vector(preview.acceleration.mean)],
               ["Magnitude (m/s²)", preview.magnitude.toFixed(4)],
-              ["Estimated up · unit XYZ", vector(preview.upUnit, 5)],
+              ["Estimated up (unit XYZ)", vector(preview.upUnit, 5)],
               ["Std. deviation XYZ (m/s²)", vector(preview.acceleration.std)],
-              ["Direction change · first vs second half", preview.directionChangeDegrees === null ? "Unavailable" : `${preview.directionChangeDegrees.toFixed(3)}°`],
+              ["Direction change between halves", preview.directionChangeDegrees === null ? "Unavailable" : `${preview.directionChangeDegrees.toFixed(3)}°`],
             ]} />
           </div>
           <div className="space-y-3 rounded-xl border border-border p-4">

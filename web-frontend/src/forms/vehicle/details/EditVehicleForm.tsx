@@ -151,7 +151,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
       <div className="flex items-center gap-2">
         <button
           onClick={() => router.push(vehiclePath)}
-          className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground hover:text-primary transition-colors duration-150 group"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors duration-150 group"
         >
           <ChevronLeft
             size={15}
@@ -160,15 +160,15 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
           Vehicle Management
         </button>
         <span className="text-border text-sm">/</span>
-        <span className="text-[12.5px] font-semibold text-foreground">
+        <span className="text-sm font-semibold text-foreground">
           {vehicleName || "Vehicle"}
         </span>
       </div>
 
       <div>
-        <Card className="rounded-2xl border-0 shadow-[0_2px_16px_rgba(0,0,0,0.06)] bg-white overflow-hidden">
+        <Card className="rounded-2xl border border-border shadow-none bg-surface overflow-hidden">
           <CardHeader className="flex flex-col items-stretch justify-between gap-3 border-b border-border px-5 pb-3 pt-5 sm:flex-row sm:items-center">
-            <CardTitle className="flex items-center gap-2 text-[16px] font-bold text-foreground">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
               <Car size={16} className="text-primary" /> {vehicleName || "Vehicle"}
             </CardTitle>
             {!isLoading && !error && (
@@ -186,11 +186,11 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
 
           <CardContent className="p-5 md:p-6 space-y-6">
             {isLoading ? (
-              <div className="rounded-2xl border border-dashed border-border p-8 text-center text-[13px] font-medium text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm font-medium text-muted-foreground">
                 Loading vehicle...
               </div>
             ) : error ? (
-              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-8 text-center text-[13px] font-medium text-rose-700">
+              <div className="rounded-2xl border border-destructive-border bg-destructive-surface p-8 text-center text-sm font-medium text-destructive">
                 {error}
               </div>
             ) : (
@@ -202,16 +202,16 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
               >
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                <div className="flex shrink-0 items-center justify-center text-primary">
                   <ImageIcon size={12} className="text-primary" />
                 </div>
-                <h3 className="text-[12.5px] font-bold text-foreground">Image Gallery</h3>
+                <h3 className="text-sm font-semibold text-foreground">Image Gallery</h3>
               </div>
 
               {images.length > 0 ? (
                 <VehicleImageGallery images={images} alt={form.name ?? "Vehicle"} />
               ) : (
-                <div className="rounded-2xl border border-dashed border-border p-6 text-center text-[12.5px] font-medium text-muted-foreground">
+                <div className="rounded-2xl border border-dashed border-border p-6 text-center text-sm font-medium text-muted-foreground">
                   No images uploaded.
                 </div>
               )}
@@ -221,10 +221,10 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
 
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                <div className="flex shrink-0 items-center justify-center text-primary">
                   <Car size={12} className="text-primary" />
                 </div>
-                <h3 className="text-[12.5px] font-bold text-foreground">Basic Information</h3>
+                <h3 className="text-sm font-semibold text-foreground">Basic Information</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -234,7 +234,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   error={errors.name?.message}
                   {...register("name")}
                   wrapperClassName="sm:col-span-2"
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                 />
 
                 <div>
@@ -251,8 +251,8 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                         shouldValidate: true,
                       });
                     }}
-                    labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                    triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
+                    labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                    triggerClassName="text-base sm:text-sm rounded-xl border-border bg-background"
                   />
                 </div>
 
@@ -261,7 +261,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   label="Model"
                   error={errors.model?.message}
                   {...register("model")}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                 />
 
                 <InputWithLabel
@@ -270,7 +270,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   error={errors.plate_number?.message}
                   placeholder="e.g. ABC 1234"
                   {...register("plate_number")}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                 />
 
                 <InputWithLabel
@@ -280,7 +280,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   type="number"
                   error={errors.price_per_day?.message}
                   {...register("price_per_day")}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                 />
 
                 <TextAreaWithLabel
@@ -290,7 +290,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   {...register("description")}
                   wrapperClassName="sm:col-span-2"
                   rows={3}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                   textareaClassName="min-h-[92px]"
                 />
               </div>
@@ -300,10 +300,10 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
 
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                <div className="flex shrink-0 items-center justify-center text-primary">
                   <Settings2 size={12} className="text-primary" />
                 </div>
-                <h3 className="text-[12.5px] font-bold text-foreground">Specifications</h3>
+                <h3 className="text-sm font-semibold text-foreground">Specifications</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -314,7 +314,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   type="number"
                   error={errors.seats?.message}
                   {...register("seats")}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                 />
 
                 <InputWithLabel
@@ -322,7 +322,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                   label="Color"
                   error={errors.color?.message}
                   {...register("color")}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                 />
 
                 <div>
@@ -339,8 +339,8 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                         shouldValidate: true,
                       });
                     }}
-                    labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                    triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
+                    labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                    triggerClassName="text-base sm:text-sm rounded-xl border-border bg-background"
                   />
                 </div>
 
@@ -358,8 +358,8 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                         shouldValidate: true,
                       });
                     }}
-                    labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                    triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
+                    labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                    triggerClassName="text-base sm:text-sm rounded-xl border-border bg-background"
                   />
                 </div>
               </div>
@@ -388,14 +388,14 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 variant="outline"
                 onClick={() => router.push(`${vehiclePath}/${vehicleId}`)}
                 disabled={isSubmitting || !configuration}
-                className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-[13px] font-medium hover:bg-background"
+                className="flex-1 rounded-xl border-border text-muted-foreground h-10 text-sm font-medium hover:bg-background"
               >
                 <X size={14} className="mr-2" /> Discard
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting || !configuration}
-                className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-white h-10 text-[13px] font-semibold shadow-[0_4px_14px_rgba(52,110,246,0.28)] disabled:cursor-not-allowed disabled:opacity-70"
+                className="flex-1 rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground h-10 text-sm font-semibold shadow-none disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Save size={14} className="mr-2" /> {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>

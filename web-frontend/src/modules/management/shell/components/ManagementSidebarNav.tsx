@@ -65,7 +65,7 @@ function compactTooltip(label: string) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+      className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-none transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
     >
       {label}
     </span>
@@ -151,7 +151,7 @@ function ManagementSidebarNavContent({
         onClick={onNavigate}
         className={`group relative flex w-full items-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
           nested
-            ? "min-h-9 gap-2 px-3 text-[13px] font-medium"
+            ? "min-h-9 gap-2 px-3 text-sm font-medium"
             : collapsed
               ? "min-h-11 justify-center px-0"
               : "min-h-11 gap-3 px-3 text-sm"
@@ -224,27 +224,27 @@ function ManagementSidebarNavContent({
               }`}
             >
               <Avatar className="size-8">
-                <AvatarFallback className="bg-muted text-[11px] font-semibold text-primary">{initials(user?.name)}</AvatarFallback>
+                <AvatarFallback className="bg-muted text-xs font-semibold text-primary">{initials(user?.name)}</AvatarFallback>
               </Avatar>
               {!collapsed ? (
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-foreground">{user?.name ?? "Account"}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{roleLabel ?? user?.email ?? ""}</span>
+                  <span className="block truncate text-sm font-semibold text-foreground">{user?.name ?? "Account"}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{roleLabel ?? user?.email ?? ""}</span>
                 </span>
               ) : compactTooltip(user?.name ? `Account: ${user.name}` : "Account")}
               {!collapsed ? <span aria-hidden="true" className="text-lg leading-none text-muted-foreground">⋯</span> : null}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align={collapsed ? "start" : "end"} sideOffset={8} className="w-56 rounded-lg border-border p-1 shadow-sm">
+          <DropdownMenuContent side="top" align={collapsed ? "start" : "end"} sideOffset={8} className="w-56 rounded-lg border-border p-1 shadow-none">
             <DropdownMenuLabel className="px-2 py-1.5">
               <span className="block truncate text-xs font-semibold text-foreground">{user?.name ?? "Account"}</span>
-              <span className="block truncate pt-0.5 text-[11px] font-normal text-muted-foreground">{user?.email ?? ""}</span>
+              <span className="block truncate pt-0.5 text-xs font-normal text-muted-foreground">{user?.email ?? ""}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {isFullAccessManager ? (
               <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
                 <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="min-h-9 gap-2 px-2 text-[13px]">
+                  <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="min-h-9 gap-2 px-2 text-sm">
                     <UserRound size={16} aria-hidden="true" />
                     Profile
                   </DropdownMenuItem>
@@ -278,7 +278,7 @@ function ManagementSidebarNavContent({
             ) : null}
             <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
               <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(event) => event.preventDefault()} variant="destructive" className="min-h-9 gap-2 px-2 text-[13px]">
+                <DropdownMenuItem onSelect={(event) => event.preventDefault()} variant="destructive" className="min-h-9 gap-2 px-2 text-sm">
                   <LogOut size={16} aria-hidden="true" />
                   Log Out
                 </DropdownMenuItem>

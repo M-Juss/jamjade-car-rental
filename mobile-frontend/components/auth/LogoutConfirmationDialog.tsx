@@ -30,21 +30,19 @@ export function LogoutConfirmationDialog({
       onRequestClose={onCancel}
       transparent
       visible={visible}>
-      <View className="flex-1 justify-center bg-foreground/35 px-5">
+      <View className="flex-1 justify-center bg-foreground/35 px-screen">
         <Pressable accessibilityRole="button" className="absolute inset-0" onPress={onCancel} />
         <Pressable
           accessibilityRole="alert"
-          className="rounded-card border border-border bg-background p-5 "
+          className="rounded-card border border-border bg-background p-card"
           onPress={(event) => event.stopPropagation()}
           style={{ marginBottom: Math.max(insets.bottom * 0.35, 0) }}>
           <View className="flex-row items-start gap-3">
-            <View className="h-12 w-12 items-center justify-center rounded-full bg-destructive-surface">
-              <LogOut color={themeColors.destructive} size={21} strokeWidth={2.5} />
-            </View>
+            <View className="pt-1"><LogOut color={themeColors.destructive} size={20} strokeWidth={2} /></View>
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-[20px] font-semibold text-foreground">Log out?</Text>
               <Text className="font-sans mt-1 text-[13px] font-normal leading-5 text-secondary-foreground">
-                Are you sure you want to end your {accountLabel} session on this device?
+                End your {accountLabel} session on this device?
               </Text>
               {warning ? <Text className="font-sans mt-2 text-caption text-secondary-foreground">{warning}</Text> : null}
             </View>
@@ -54,24 +52,24 @@ export function LogoutConfirmationDialog({
               disabled={isLoading}
               hitSlop={8}
               onPress={onCancel}
-              className="h-9 w-9 items-center justify-center rounded-full bg-surface">
+              className="h-11 w-11 items-center justify-center rounded-field">
               <X color={themeColors.subtleForeground} size={18} strokeWidth={2.5} />
             </Pressable>
           </View>
 
-          <View className="mt-6 flex-row gap-3">
+          <View className="mt-section flex-row gap-3">
             <Pressable
               accessibilityRole="button"
               disabled={isLoading}
               onPress={onCancel}
-              className="min-h-[50px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
+              className="min-h-control flex-1 items-center justify-center rounded-field border border-border bg-surface">
               <Text className="font-sans text-[13px] font-semibold text-foreground">Cancel</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               disabled={isLoading}
               onPress={onConfirm}
-              className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-destructive">
+              className="min-h-control flex-1 items-center justify-center rounded-field bg-destructive">
               {isLoading ? (
                 <Text className="font-sans text-[13px] font-semibold text-surface">Logging out...</Text>
               ) : (

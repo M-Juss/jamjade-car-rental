@@ -134,7 +134,7 @@ export default function RemainingBalancePaymentScreen() {
               accessibilityRole="button"
               accessibilityLabel="Go back"
               onPress={() => router.back()}
-              className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
+              className="h-12 w-12 items-center justify-center rounded-field border border-border bg-surface">
               <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
             <View className="min-w-0 flex-1">
@@ -153,7 +153,7 @@ export default function RemainingBalancePaymentScreen() {
               onPay={() => void payBalance()}
             />
           ) : (
-            <View className="mt-5 rounded-[24px] border border-destructive-border bg-destructive-surface p-5">
+            <View className="mt-section rounded-card border border-destructive-border bg-destructive-surface p-card">
               <Text className="font-sans text-[14px] font-medium text-destructive">
                 {error ?? 'Booking not found.'}
               </Text>

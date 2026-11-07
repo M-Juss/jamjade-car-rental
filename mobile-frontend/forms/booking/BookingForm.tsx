@@ -74,7 +74,7 @@ function getMaximumReturnDate(rentalDate: string, unavailableDateRanges: Vehicle
 
 function Section({ children, title }: { title: string; children: ReactNode }) {
   return (
-    <View className="mt-5">
+    <View className="mt-section">
       <View className="mb-3">
         <Text accessibilityRole="header" className="font-sans text-[18px] font-semibold text-foreground">{title}</Text>
       </View>
@@ -167,7 +167,7 @@ function SelectableCard({
                   event.stopPropagation();
                   showInfo();
                 }}
-                className="h-11 w-11 items-center justify-center rounded-full bg-surface">
+                className="h-11 w-11 items-center justify-center rounded-field bg-surface">
                 <browseIcons.Info size={18} color={themeColors.primary} />
               </Pressable>
             </View>
@@ -195,7 +195,7 @@ function SelectableCard({
                 top: tooltipPosition.top,
                 width: tooltipPosition.width,
               }}
-              className="rounded-[18px] px-5 py-4 shadow-black/30">
+              className="rounded-card px-screen py-4 shadow-black/30">
               <View
                 style={{
                   backgroundColor: themeColors.foreground,
@@ -478,12 +478,12 @@ export function BookingForm() {
             className="flex-1"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            <View className="px-5 pb-6 pt-2">
+            <View className="px-screen pb-6 pt-2">
               <View className="flex-row items-center gap-3">
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => router.back()}
-                  className="h-12 w-12 items-center justify-center rounded-full bg-surface">
+                  className="h-12 w-12 items-center justify-center rounded-field bg-surface">
                   <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
                 </Pressable>
                 <View className="min-w-0 flex-1">
@@ -491,11 +491,11 @@ export function BookingForm() {
                 </View>
               </View>
 
-              <View className="mt-5">
+              <View className="mt-section">
                 <BookingStepper step={1} />
               </View>
 
-              <View className="mt-5">
+              <View className="mt-section">
                 <SelectedVehicleSummary vehicle={vehicle} />
               </View>
 
@@ -530,7 +530,7 @@ export function BookingForm() {
                     onChange={handleDeliveryTimeChange}
                     pickupDate={rentalDate}
                   />
-                  <View className="rounded-2xl bg-muted p-4">
+                  <View className="rounded-card bg-muted p-4">
                     <Text className="font-sans text-[12px] font-normal text-secondary-foreground">
                       Number of days
                     </Text>
@@ -565,7 +565,7 @@ export function BookingForm() {
                   />
                 </View>
                 {errors.driverOption ? (
-                  <View className="mt-3 rounded-[24px] border border-[#FFCACA] bg-[#FFF5F5] p-4">
+                  <View className="mt-3 rounded-card border border-[#FFCACA] bg-[#FFF5F5] p-4">
                     <Text className="font-sans text-[13px] font-medium leading-5 text-destructive">
                       {errors.driverOption.message}
                     </Text>
@@ -598,11 +598,11 @@ export function BookingForm() {
                     </View>
 
                     {isGaragePickup ? (
-                      <View className="mt-5 border-t border-border pt-5">
+                      <View className="mt-section border-t border-border pt-5">
                         <GarageLocationLink />
                       </View>
                     ) : (
-                      <View className="mt-5 border-t border-border pt-5">
+                      <View className="mt-section border-t border-border pt-5">
                         <DeliveryRouteForm
                           key={vehicle.id}
                           vehicleId={vehicle.id} start={`${rentalDate} ${deliveryTime}`} end={`${returnDate} ${deliveryTime}`} coverage={ownerDriverCoverage}
@@ -668,7 +668,7 @@ export function BookingForm() {
                     onPress={handleSubmit(onSubmit, () => {
                       toast.showToast('Check the highlighted booking details.');
                     })}
-                    className="mt-6 min-h-control items-center justify-center rounded-full bg-primary">
+                    className="mt-section min-h-control items-center justify-center rounded-field bg-primary">
                     <Text className="font-sans text-[16px] font-semibold text-surface">Review Booking</Text>
                   </Pressable>
                 </>

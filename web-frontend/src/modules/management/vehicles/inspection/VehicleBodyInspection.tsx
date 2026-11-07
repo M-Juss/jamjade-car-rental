@@ -114,7 +114,7 @@ export function VehicleBodyInspection({
         return (
           <section key={panel} aria-labelledby={`vehicle-panel-${panel}`} className="grid gap-3">
             <div>
-              <h3 id={`vehicle-panel-${panel}`} className="text-sm font-bold uppercase tracking-wide text-foreground">
+              <h3 id={`vehicle-panel-${panel}`} className="text-sm font-semibold normal-case tracking-normal text-foreground">
                 {panelLabel(panel)}
               </h3>
               {!readonly && (

@@ -1,4 +1,4 @@
-import { PhilippinePeso, ShieldAlert } from 'lucide-react-native';
+import { ShieldAlert } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { themeColors } from '@/constants/theme';
@@ -11,17 +11,14 @@ export function SettlementPaymentCard({ summary, isProcessing, message, onPay }:
   onPay: () => void;
 }) {
   return (
-    <View className="mt-5 rounded-card border border-border bg-surface p-card">
+    <View className="mt-section rounded-card border border-border bg-surface p-card">
       <View className="flex-row items-center gap-3">
-        <View className="h-14 w-14 shrink-0 items-center justify-center rounded-field bg-muted">
-          <PhilippinePeso size={29} color={themeColors.primary} strokeWidth={2.3} />
-        </View>
         <View className="min-w-0 flex-1">
-          <Text className="font-sans text-[32px] font-bold leading-[38px] text-foreground" adjustsFontSizeToFit minimumFontScale={0.7} numberOfLines={1}>
-            {formatPaymentAmount(summary.amount)}
-          </Text>
-          <Text className="font-sans mt-0.5 text-[13px] font-medium text-secondary-foreground">
+          <Text className="font-sans text-caption text-secondary-foreground">
             {summary.amountLabel}
+          </Text>
+          <Text className="font-sans mt-1 text-title font-semibold text-foreground">
+            {formatPaymentAmount(summary.amount)}
           </Text>
         </View>
       </View>
@@ -65,7 +62,7 @@ export function SettlementPaymentCard({ summary, isProcessing, message, onPay }:
       {message ? <Text accessibilityRole="alert" className="font-sans mt-4 text-caption leading-5 text-foreground">{message}</Text> : null}
 
       {summary.amount > 0 ? (
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: isProcessing, busy: isProcessing }} disabled={isProcessing} onPress={onPay} className={`mt-5 min-h-control items-center justify-center rounded-full bg-primary px-4 ${isProcessing ? 'opacity-60' : 'active:opacity-90'}`}>
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: isProcessing, busy: isProcessing }} disabled={isProcessing} onPress={onPay} className={`mt-section min-h-control items-center justify-center rounded-field bg-primary px-4 ${isProcessing ? 'opacity-60' : 'active:opacity-90'}`}>
           {isProcessing ? <ActivityIndicator color={themeColors.surface} /> : (
             <Text className="font-sans text-button font-medium text-surface">{summary.buttonLabel}</Text>
           )}

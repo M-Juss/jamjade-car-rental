@@ -197,10 +197,10 @@ export function PersonnelAccountForm({
               {errors.root?.message && <p role="alert" className="text-sm text-destructive">{errors.root.message}</p>}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="flex shrink-0 items-center justify-center text-primary">
                     <User size={12} className="text-primary" />
                   </div>
-                  <h3 className="text-[12.5px] font-bold text-foreground">
+                  <h3 className="text-sm font-semibold text-foreground">
                     Personal Information
                   </h3>
                 </div>
@@ -215,7 +215,7 @@ export function PersonnelAccountForm({
                       placeholder="e.g. Maria"
                       disabled={isViewMode || isSubmitting}
                       maxLength={80}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       inputClassName={isViewMode ? "disabled:opacity-100" : undefined}
                       {...firstNameField}
                       onChange={(event) => {
@@ -235,7 +235,7 @@ export function PersonnelAccountForm({
                       placeholder="e.g. Santos"
                       disabled={isViewMode || isSubmitting}
                       maxLength={80}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       inputClassName={isViewMode ? "disabled:opacity-100" : undefined}
                       {...lastNameField}
                       onChange={(event) => {
@@ -255,7 +255,7 @@ export function PersonnelAccountForm({
                       maxLength={11}
                       placeholder="09XX XXX XXXX"
                       disabled={isViewMode || isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       inputClassName={isViewMode ? "disabled:opacity-100" : undefined}
                       {...phoneNumberField}
                       onChange={(event) => {
@@ -272,10 +272,10 @@ export function PersonnelAccountForm({
 
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="flex shrink-0 items-center justify-center text-primary">
                     <KeyRound size={12} className="text-primary" />
                   </div>
-                  <h3 className="text-[12.5px] font-bold text-foreground">
+                  <h3 className="text-sm font-semibold text-foreground">
                     Login Credentials
                   </h3>
                 </div>
@@ -293,7 +293,7 @@ export function PersonnelAccountForm({
                       maxLength={160}
                       placeholder="personnel@jamjade.com"
                       disabled={isViewMode || isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       inputClassName={isViewMode ? "disabled:opacity-100" : undefined}
                       {...register("email")}
                     />
@@ -313,7 +313,7 @@ export function PersonnelAccountForm({
                           maxLength={255}
                           placeholder="Enter password"
                           disabled={isSubmitting}
-                          labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                          labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                           {...register("password")}
                         />
                         <FormFieldError message={errors.password?.message} />
@@ -330,7 +330,7 @@ export function PersonnelAccountForm({
                           maxLength={255}
                           placeholder="Confirm password"
                           disabled={isSubmitting}
-                          labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                          labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                           {...register("passwordConfirmation")}
                         />
                         <FormFieldError
@@ -339,7 +339,7 @@ export function PersonnelAccountForm({
                       </div>
 
                       {mode === "edit" && (
-                        <p className="sm:col-span-2 -mt-3 text-[11px] text-subtle-foreground">
+                        <p className="sm:col-span-2 -mt-3 text-xs text-subtle-foreground">
                           Leave both password fields blank to keep the current password.
                         </p>
                       )}
@@ -352,10 +352,10 @@ export function PersonnelAccountForm({
 
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="flex shrink-0 items-center justify-center text-primary">
                     <ShieldCheck size={12} className="text-primary" />
                   </div>
-                  <h3 className="text-[12.5px] font-bold text-foreground">
+                  <h3 className="text-sm font-semibold text-foreground">
                     Account Role and Status
                   </h3>
                 </div>
@@ -380,8 +380,8 @@ export function PersonnelAccountForm({
                         })
                       }
                       disabled={isViewMode || isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                      triggerClassName={`text-[12.5px] rounded-xl border-border bg-background ${
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                      triggerClassName={`text-sm rounded-xl border-border bg-background ${
                         isViewMode ? "disabled:opacity-100" : ""
                       }`}
                     />
@@ -411,8 +411,8 @@ export function PersonnelAccountForm({
                         )
                       }
                       disabled={isViewMode || isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                      triggerClassName={`text-[12.5px] rounded-xl border-border bg-background ${
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                      triggerClassName={`text-sm rounded-xl border-border bg-background ${
                         isViewMode ? "disabled:opacity-100" : ""
                       }`}
                     />
@@ -429,7 +429,7 @@ export function PersonnelAccountForm({
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isSubmitting}
-                className="border-border text-[13px] font-medium text-muted-foreground hover:bg-background"
+                className="border-border text-sm font-medium text-muted-foreground hover:bg-background"
               >
                 {isViewMode ? "Close" : "Cancel"}
               </Button>
@@ -437,7 +437,7 @@ export function PersonnelAccountForm({
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
+                  className="bg-primary text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Save size={14} className="mr-2" />
                   {isSubmitting

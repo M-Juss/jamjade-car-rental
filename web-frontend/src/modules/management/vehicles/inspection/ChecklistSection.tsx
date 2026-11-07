@@ -26,7 +26,7 @@ export function ChecklistSection({
 
   return (
     <section className="min-w-0">
-      <h3 className="text-sm font-bold text-foreground">
+      <h3 className="text-sm font-semibold text-foreground">
         {VEHICLE_CHECKLIST_CATEGORY_LABELS[category]}
       </h3>
       <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -34,7 +34,7 @@ export function ChecklistSection({
           <div
             key={key}
             data-item={`condition-checklist-${category}-${key}`}
-            className="flex min-h-11 min-w-0 flex-wrap items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground transition-colors hover:border-primary/50 has-disabled:cursor-not-allowed has-disabled:opacity-60"
+            className="flex min-h-11 min-w-0 flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 has-disabled:cursor-not-allowed has-disabled:opacity-60"
           >
             <Checkbox
               id={`condition-checklist-${category}-${key}`}

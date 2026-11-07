@@ -12,7 +12,7 @@ import { GeofenceMapEditor } from "./GeofenceMapEditor";
 function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{label}</p>
+      <p className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">{label}</p>
       <div className="mt-1 text-xs font-semibold leading-5 text-foreground">{value}</div>
     </div>
   );

@@ -64,7 +64,7 @@ export function TelematicsCalibration({ handover, consent, busy, recording, live
       <Text accessibilityLiveRegion="polite" className="font-sans mt-3 text-section font-semibold text-foreground">{preparing ? 'Preparing sensors' : evaluating ? 'Checking recording' : recording ? 'Recording motion' : definition?.title ?? 'Refresh setup to continue'}</Text>
       <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">{preparing ? 'Keep parked. Wait for Recording motion before moving.' : evaluating ? 'Recording finished. Keep parked while the result is checked.' : recording ? 'Keep the phone mounted and untouched. Follow staff directions and stop safely. Recording ends when the movement is captured.' : definition?.guidance}</Text>
       {recording || pending ? (
-        <View className="mt-5 gap-4">
+        <View className="mt-section gap-4">
           <ActivityIndicator color={themeColors.primary} size="large" />
           {!evaluating ? <ActionButton label={preparing ? 'Cancel' : 'Stop recording'} onPress={onCancel} /> : null}
         </View>

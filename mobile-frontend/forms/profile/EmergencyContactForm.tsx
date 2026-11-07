@@ -136,7 +136,7 @@ export function EmergencyContactForm() {
           totalSteps={3}
         />
 
-        <View className="mt-7 gap-4 rounded-card border border-border bg-surface p-4 ">
+        <View className="mt-7 gap-4 rounded-card border border-border bg-surface p-4">
           <Controller
             control={control}
             name="name"

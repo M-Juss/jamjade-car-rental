@@ -51,6 +51,7 @@
   --color-destructive-surface: var(--destructive-surface);
   --color-destructive-border: var(--destructive-border);
   --color-primary-hover: var(--primary-hover);
+  --shadow-dialog: var(--dialog-shadow);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -74,8 +75,8 @@
   --secondary: #eef4ff;
   --secondary-foreground: var(--foreground);
   --muted: #eef4ff;
-  --muted-foreground: #6c7a96;
-  --subtle-foreground: #91a0b8;
+  --muted-foreground: #586b89;
+  --subtle-foreground: #64748b;
   --accent: #eef4ff;
   --accent-foreground: var(--primary);
   --destructive: #d92d20;
@@ -90,7 +91,7 @@
   --warning-surface: #fff9e8;
   --warning-border: #ffe7a6;
   --border: #dde8ff;
-  --input: #dde8ff;
+  --input: #8192ad;
   --ring: var(--primary);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -98,6 +99,7 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
+  --dialog-shadow: 0 20px 56px color-mix(in srgb, var(--foreground) 16%, transparent);
   --sidebar: var(--surface);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -149,10 +151,8 @@
   border-bottom: 1px solid var(--border);
   padding: 10px 4px;
   color: var(--muted-foreground);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .dashboard-calendar .rbc-month-row + .rbc-month-row,
@@ -170,7 +170,7 @@
 .dashboard-calendar .rbc-date-cell {
   padding: 6px 8px;
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -192,7 +192,7 @@
   border-radius: 7px;
   padding: 2px 5px;
   box-shadow: none;
-  font-size: 9.5px;
+  font-size: 12px;
 }
 
 .dashboard-calendar .rbc-event-label {
@@ -217,14 +217,14 @@
 .dashboard-calendar .rbc-show-more {
   padding: 1px 5px;
   color: var(--primary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .dashboard-calendar .rbc-time-header-gutter,
 .dashboard-calendar .rbc-label {
   color: var(--subtle-foreground);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 @media (max-width: 767px) {
@@ -244,17 +244,20 @@
   padding: 0.75rem 0.5rem;
 }
 .management-table th {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--subtle-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--muted-foreground);
+}
+.management-table td {
+  font-size: 0.875rem;
 }
 .management-table thead tr {
   background: var(--background);
 }
 .management-table tbody tr {
-  border-color: var(--background);
+  border-color: var(--border);
 }
 .management-table tbody tr:hover {
   background: var(--background);
@@ -263,10 +266,10 @@
   height: auto;
   min-height: 1.5rem;
   max-width: 100%;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 0.25rem 0.625rem;
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 500;
   line-height: 1.4;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -283,16 +286,17 @@
   }
   .management-table,
   .management-table tbody { display: block; }
-  .management-table tbody { padding: 1rem; }
+  .management-table tbody { padding: 0; }
   .management-table tbody tr {
     display: block;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    background: var(--background);
-    padding: 0.75rem;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface);
+    padding: 1rem;
   }
-  .management-table tbody tr + tr { margin-top: 0.75rem; }
-  .management-table tbody tr:last-child { border-bottom-width: 1px; }
+  .management-table tbody tr + tr { margin-top: 0; }
+  .management-table tbody tr:last-child { border-bottom-width: 0; }
   .management-table td { display: block; padding: 0.375rem 0; }
   .management-table td[data-label] {
     display: grid;
@@ -303,8 +307,21 @@
   .management-table td[data-label]::before {
     content: attr(data-label);
     color: var(--muted-foreground);
-    font-size: 11px;
+    font-size: 0.75rem;
     font-weight: 400;
   }
   .management-table td > * { min-width: 0; }
+}
+
+@media (pointer: coarse) {
+  [data-slot="button"],
+  [data-slot="select-trigger"],
+  [data-slot="input"],
+  button[aria-haspopup="menu"] {
+    min-height: 2.75rem;
+  }
+  [data-slot="button"][data-size^="icon"],
+  button[aria-haspopup="menu"] {
+    min-width: 2.75rem;
+  }
 }

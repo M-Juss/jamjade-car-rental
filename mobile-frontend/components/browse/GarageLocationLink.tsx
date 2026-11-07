@@ -24,7 +24,7 @@ export function GarageLocationLink() {
         accessibilityLabel="View Jamjade Garage on Google Maps"
         onPress={() => void openMaps()}
         className="min-h-control flex-row items-center gap-3 rounded-card border border-border bg-surface p-4 active:opacity-70">
-        <View className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted">
+        <View className="h-11 w-11 shrink-0 items-center justify-center rounded-field bg-muted">
           <MapPin accessible={false} size={21} color={themeColors.primary} strokeWidth={2.35} />
         </View>
         <View className="min-w-0 flex-1">

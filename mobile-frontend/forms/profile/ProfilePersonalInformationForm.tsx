@@ -139,7 +139,7 @@ export function ProfilePersonalInformationForm({
           }}
         />
 
-        <View className="mt-4 rounded-card border border-border bg-surface p-4 ">
+        <View className="mt-4 rounded-card border border-border bg-surface p-4">
           <Controller
             control={control}
             name="firstName"
@@ -226,11 +226,11 @@ export function ProfilePersonalInformationForm({
           />
         </View>
 
-        <View className="mt-5 flex-row gap-3">
+        <View className="mt-section flex-row gap-3">
           <Pressable
             accessibilityRole="button"
             onPress={onClose}
-            className="min-h-[50px] flex-1 items-center justify-center rounded-full border border-border bg-surface px-4">
+            className="min-h-control flex-1 items-center justify-center rounded-field border border-border bg-surface px-4">
             <Text className="font-sans text-[13px] font-semibold text-foreground">Cancel</Text>
           </Pressable>
           <Pressable
@@ -239,7 +239,7 @@ export function ProfilePersonalInformationForm({
             onPress={handleSubmit(onSubmit, () => {
               showToast('Check the highlighted personal information fields.');
             })}
-            className="min-h-[50px] flex-1 items-center justify-center rounded-full bg-primary px-4 ">
+            className="min-h-control flex-1 items-center justify-center rounded-field bg-primary px-4">
             <Text className="font-sans text-[13px] font-semibold text-surface">
               {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Text>

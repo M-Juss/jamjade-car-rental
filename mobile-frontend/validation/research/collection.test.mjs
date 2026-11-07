@@ -11,7 +11,7 @@ const exports = {};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('./collection.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, { exports, require: name => { assert.equal(name, 'zod'); return { z }; } });
-const { collectionContextSchema, observationInputSchema } = exports;
+const { collectionContextSchema, observationInputSchema, observationUploadSchema } = exports;
 test('metadata preserves integer nanosecond subtraction beyond JavaScript safe integers', () => {
   assert.equal(collectionContextSchema.safeParse(fixture()).success, true);
 });
@@ -33,6 +33,10 @@ test('observations preserve uncertainty and need independent observer provenance
   assert.equal(observationInputSchema.safeParse({ ...input, source: 'observed' }).success, false);
   assert.equal(observationInputSchema.safeParse({ ...input, flags: ['bump', 'bump'] }).success, false);
   assert.equal(observationInputSchema.safeParse({ ...input, actual_stop_method: 'harsh' }).success, false);
+  const upload = { ...input, id: id(1), reported_at: '2026-11-07T00:00:00Z' };
+  assert.equal(observationUploadSchema.parse({ ...upload, initial_deviation: 'right' }).initial_deviation, 'right');
+  assert.equal(observationUploadSchema.safeParse({ ...upload, initial_deviation: 'forward' }).success, false);
+  assert.equal('initial_deviation' in observationUploadSchema.parse(upload), false);
 });
 
 test('all deployed protocol snapshots match the approved provisional catalog byte for byte', () => {
@@ -41,4 +45,24 @@ test('all deployed protocol snapshots match the approved provisional catalog byt
   for (const path of ['assets/research/rc-exercises-v1.json', 'modules/rc-recorder/android/src/main/assets/rc-exercises-v1.json', '../backend/resources/research/rc-exercises-v1.json', '../web-frontend/src/modules/management/research/rc-exercises-v1.json']) {
     assert.equal(readFileSync(new URL(path, root), 'utf8'), canonical);
   }
+});
+
+test('v2 deploys consistently while preserving historical v1 instructions', () => {
+  const root = new URL('../../', import.meta.url);
+  const canonical = readFileSync(new URL('../docs/contracts/rc-collection-v1/catalog-v2.json', root), 'utf8');
+  for (const path of ['assets/research/rc-exercises-v2.json', 'modules/rc-recorder/android/src/main/assets/rc-exercises-v2.json', '../backend/resources/research/rc-exercises-v2.json', '../web-frontend/src/modules/management/research/rc-exercises-v2.json']) {
+    assert.equal(readFileSync(new URL(path, root), 'utf8'), canonical);
+  }
+  const catalog = JSON.parse(canonical);
+  for (const code of ['FSS', 'FR', 'HA', 'LT', 'RT', 'RSS', 'SW']) assert.equal(catalog.protocols.find(p => p.code === code).expected_stop_method, 'neutral_release');
+  assert.equal(catalog.protocols.find(p => p.code === 'HB').planned_assessment, 'harsh_attempt');
+  assert.equal(catalog.protocols.find(p => p.code === 'HB').expected_stop_method, 'brake_applied');
+  const old = JSON.parse(readFileSync(new URL('assets/research/rc-exercises-v1.json', root), 'utf8'));
+  assert.equal(old.protocols.find(p => p.code === 'FSS').expected_stop_method, 'brake_applied');
+  const input = fixture(); input.catalog_version = 'rc-exercises-v2';
+  assert.equal(collectionContextSchema.safeParse(input).success, true); // Existing session is preserved.
+  input.session.catalog_version = 'rc-exercises-v2';
+  assert.equal(collectionContextSchema.safeParse(input).success, true);
+  input.catalog_version = 'rc-exercises-v99';
+  assert.equal(collectionContextSchema.safeParse(input).success, false);
 });

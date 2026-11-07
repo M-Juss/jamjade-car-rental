@@ -70,6 +70,22 @@ it('rejects stale drafts and keeps the winning snapshot', function () {
     $this->getJson($this->url)->assertOk()->assertJsonPath('data.intervals.0.notes', 'Synthetic note');
 });
 
+it('keeps swerve deviation separate from travel direction and preserves legacy revisions', function () {
+    $swerve = [...$this->interval, 'movement' => 'swerving', 'direction' => 'forward', 'severity' => 'unknown', 'certainty' => 'uncertain'];
+    $legacy = $this->postJson($this->url, ['base_revision' => 0, 'intervals' => [$swerve]])
+        ->assertOk()->assertJsonMissingPath('data.intervals.0.initial_deviation')->json('data.id');
+    foreach (['forward', null] as $invalid) {
+        $this->postJson($this->url, ['base_revision' => 1, 'intervals' => [[...$swerve, 'initial_deviation' => $invalid]]])
+            ->assertUnprocessable()->assertJsonValidationErrors('intervals.0.initial_deviation');
+    }
+    $this->postJson($this->url, ['base_revision' => 1, 'intervals' => [[...$this->interval, 'initial_deviation' => 'left']]])
+        ->assertUnprocessable()->assertJsonValidationErrors('intervals.0.initial_deviation');
+    $this->postJson($this->url, ['base_revision' => 1, 'intervals' => [[...$swerve, 'initial_deviation' => 'right']]])
+        ->assertOk()->assertJsonPath('data.intervals.0.direction', 'forward')->assertJsonPath('data.intervals.0.initial_deviation', 'right');
+    $this->getJson($this->url)->assertOk()->assertJsonPath('data.intervals.0.initial_deviation', 'right');
+    $this->getJson($this->url.'/'.$legacy)->assertOk()->assertJsonMissingPath('data.intervals.0.initial_deviation');
+});
+
 it('preserves half-open adjacent intervals, uncertainty and unlabeled gaps', function () {
     $this->postJson($this->url, ['base_revision' => 0, 'intervals' => [$this->interval,
         [...$this->interval, 'start_ms' => 1000, 'end_ms' => 2000, 'movement' => 'acceleration', 'direction' => 'forward', 'severity' => 'normal', 'certainty' => 'uncertain', 'source' => 'signal_review']]])

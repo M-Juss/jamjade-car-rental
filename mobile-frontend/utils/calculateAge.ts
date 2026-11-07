@@ -108,3 +108,17 @@ export function formatDisplayDate(value: string) {
     year: 'numeric',
   }).format(date);
 }
+
+export function formatNumericDate(value: string) {
+  const date = parseDateKey(value);
+
+  if (!date) {
+    return value;
+  }
+
+  return [
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+    date.getFullYear(),
+  ].join('/');
+}

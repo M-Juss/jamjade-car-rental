@@ -6,10 +6,10 @@ import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard }
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { CheckCircle2, Clock, Eye, FileCheck, ShieldCheck, Users, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, FileCheck, ShieldCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,7 +18,7 @@ import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
 import { TablePagination } from "@/components/common/tables/TablePagination";
-import { KpiCard } from "@/components/common/data-display/KpiCard";
+import { SummaryList } from "@/components/common/data-display/SummaryList";
 import { appToast } from "@/lib/toast";
 import { RejectDocumentDialog } from "@/forms/verification/RejectDocumentDialog";
 import { approveVerification, getSelfDriveCustomer, getSelfDriveCustomers, type SelfDriveCustomer, type SelfDriveCustomerPage, type SelfDriveReviewStatus, type VerificationRecord } from "@/services/verification";
@@ -45,12 +45,12 @@ function ReviewStatusBadge({ customer }: { customer: SelfDriveCustomer }) {
   const isIncomplete = customer.reviewStatus === "documents_required" && customer.documentCounts.missing < customer.requiredDocumentCount;
   const label = isIncomplete ? "Incomplete" : meta.label;
   const className = isIncomplete ? reviewStatus.pending_review.className : meta.className;
-  return <Badge variant="outline" className={`h-auto min-h-6 max-w-full whitespace-normal rounded-lg px-2.5 py-1 text-center text-[10.5px] font-semibold [overflow-wrap:anywhere] ${className}`}>{label}</Badge>;
+  return <Badge variant="outline" className={`h-auto min-h-6 max-w-full whitespace-normal rounded-lg px-2.5 py-1 text-center text-xs font-semibold [overflow-wrap:anywhere] ${className}`}>{label}</Badge>;
 }
 
 function formatDate(value?: string | null) {
   if (!value) return "Not provided";
-  return new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Manila" }).format(new Date(value));
 }
 
 export default function SelfDriveVerificationModule() {
@@ -134,14 +134,14 @@ export default function SelfDriveVerificationModule() {
       <div className="space-y-5">
         <ManagementPageHeading title="Self-Drive Verification" description="Review customer documents for self-drive approval." />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <KpiCard label="Customers" value={result?.summary.total ?? "—"} icon={Users} />
-          <KpiCard label="Eligible for Self Drive" value={result?.summary.eligible ?? "—"} icon={ShieldCheck} />
-          <KpiCard label="Not Eligible" value={result?.summary.notEligible ?? "—"} icon={Clock} />
-        </div>
+        <SummaryList label="Verification summary" items={[
+          { label: "customers", value: result?.summary.total ?? "—" },
+          { label: "eligible for self drive", value: result?.summary.eligible ?? "—" },
+          { label: "not eligible", value: result?.summary.notEligible ?? "—" },
+        ]} />
 
-        <Card className="rounded-2xl border-0 bg-surface shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-          <CardContent className="flex flex-wrap items-center gap-2.5 p-4">
+        <TableCard>
+          <CardContent className="flex flex-wrap items-center gap-2.5 border-b border-border p-4">
             <SearchInput value={searchInput} onValueChange={setSearchInput} placeholder="Search customer name, email, or phone number..." wrapperClassName="min-w-[220px] flex-1" />
             <FilterSelect
               value={eligibility}
@@ -156,24 +156,20 @@ export default function SelfDriveVerificationModule() {
               ]}
             />
           </CardContent>
-        </Card>
-
-        <div>
-          <TableCard>
-            <div className="grid gap-3 p-4 md:hidden">
+            <div className="grid divide-y divide-border md:hidden">
               {isLoading ? (
-                <p className="py-10 text-center text-[12px] text-muted-foreground">Loading customers...</p>
+                <p className="py-10 text-center text-sm text-muted-foreground">Loading customers...</p>
               ) : loadError ? (
-                <div className="py-10 text-center text-[12px] text-muted-foreground">Customers could not be loaded. <Button variant="outline" onClick={refresh}>Retry</Button></div>
+                <div className="py-10 text-center text-sm text-muted-foreground">Customers could not be loaded. <Button variant="outline" onClick={refresh}>Retry</Button></div>
               ) : !result?.customers.length ? (
-                <p className="py-10 text-center text-[12px] text-muted-foreground">No customers found. Try a different search or eligibility filter.</p>
+                <p className="py-10 text-center text-sm text-muted-foreground">No customers found. Try a different search or eligibility filter.</p>
               ) : result.customers.map((item) => (
-                <div key={item.id} className="rounded-xl border border-border bg-background p-3.5">
+                <div key={item.id} className="min-w-0 bg-surface p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="min-w-0 break-words text-[12.5px] font-semibold text-foreground">{item.name}</p>
+                    <p className="min-w-0 break-words text-sm font-semibold text-foreground">{item.name}</p>
                     <ReviewStatusBadge customer={item} />
                   </div>
-                  <dl className="mt-3 space-y-1.5 border-t border-border pt-3 text-[12px]">
+                  <dl className="mt-3 space-y-1.5 border-t border-border pt-3 text-sm">
                     {[["Email", item.email], ["Phone Number", item.contactNumber || "No phone number"], ["Self Drive", item.canSelfDrive ? "Yes" : "No"]].map(([label, value]) => (
                       <div key={label} className="flex items-start justify-between gap-3">
                         <dt className="shrink-0 text-muted-foreground">{label}</dt>
@@ -200,7 +196,7 @@ export default function SelfDriveVerificationModule() {
                 <TableHeader>
                   <TableRow className="border-b border-border bg-background hover:bg-background">
                     {["Customer", "Email", "Phone Number", "Review Status", "Self Drive", ""].map((heading) => (
-                      <TableHead key={heading} className="whitespace-normal break-words px-2 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{heading || <span className="sr-only">Actions</span>}</TableHead>
+                      <TableHead key={heading} className="whitespace-normal break-words px-2 py-3 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">{heading || <span className="sr-only">Actions</span>}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
@@ -221,11 +217,11 @@ export default function SelfDriveVerificationModule() {
                     </TableCell></TableRow>
                   ) : result.customers.map((item) => (
                     <TableRow key={item.id} className="border-b border-background transition-colors hover:bg-background">
-                      <TableCell className="px-2 py-3 text-[12.5px] font-semibold text-foreground">{item.name}</TableCell>
-                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">{item.email}</TableCell>
-                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">{item.contactNumber || "No phone number"}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm font-semibold text-foreground">{item.name}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm text-muted-foreground">{item.email}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm text-muted-foreground">{item.contactNumber || "No phone number"}</TableCell>
                       <TableCell className="px-2 py-3"><ReviewStatusBadge customer={item} /></TableCell>
-                      <TableCell className="px-2 py-3 text-[12px] font-semibold text-foreground">{item.canSelfDrive ? "Yes" : "No"}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm font-semibold text-foreground">{item.canSelfDrive ? "Yes" : "No"}</TableCell>
                       <TableCell className="px-2 py-3">
                         <TableActionMenu label={`Open actions for ${item.name}`} items={[{
                           label: "View customer", icon: <Eye size={13} className="mr-2" />, onClick: () => openCustomer(item.id),
@@ -236,11 +232,10 @@ export default function SelfDriveVerificationModule() {
                 </TableBody>
               </Table>
             </div>
-          </TableCard>
-          {result && !loadError && !isLoading && (
-            <TablePagination total={result.total} page={result.currentPage} lastPage={result.lastPage} onPageChange={(nextPage) => { setIsLoading(true); setLoadError(false); setPage(nextPage); }} />
+          {result && result.total > 0 && !loadError && !isLoading && (
+            <div className="border-t border-border px-4 py-3 [&>div]:mt-0"><TablePagination total={result.total} page={result.currentPage} lastPage={result.lastPage} onPageChange={(nextPage) => { setIsLoading(true); setLoadError(false); setPage(nextPage); }} /></div>
           )}
-        </div>
+        </TableCard>
       </div>
 
       <Dialog open={selectedId !== null} onOpenChange={(open) => { if (!open) { setSelectedId(null); setCustomer(null); } }}>
@@ -254,7 +249,7 @@ export default function SelfDriveVerificationModule() {
                   <section aria-label="Customer information" className="space-y-3 rounded-xl border border-border bg-background p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 space-y-1">
-                        <h2 className="break-words text-base font-bold text-foreground">{customer.name}</h2>
+                        <h2 className="break-words text-base font-semibold text-foreground">{customer.name}</h2>
                         <p className="break-all text-xs text-muted-foreground">{customer.email}</p>
                         <p className="text-xs text-muted-foreground">{customer.contactNumber || "No contact number"}</p>
                       </div>
@@ -268,7 +263,7 @@ export default function SelfDriveVerificationModule() {
                     <section key={type} aria-label={documentLabels[type] ?? type} className="space-y-4 rounded-xl border border-border p-4">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <h2 className="text-sm font-bold text-foreground">{documentLabels[type] ?? type}</h2>
+                          <h2 className="text-sm font-semibold text-foreground">{documentLabels[type] ?? type}</h2>
                           {document ? <VerificationStatusBadge status={document.status} /> : <Badge variant="outline">Missing</Badge>}
                         </div>
                         {document ? (
@@ -276,7 +271,7 @@ export default function SelfDriveVerificationModule() {
                             <div><dt className="text-muted-foreground">Submitted</dt><dd className="mt-1 text-foreground">{formatDate(document.submittedAt)}</dd></div>
                             {document.documentNumber && <div><dt className="text-muted-foreground">Document number</dt><dd className="mt-1 break-words text-foreground">{document.documentNumber}</dd></div>}
                             {document.expiresAt && <div><dt className="text-muted-foreground">Expires</dt><dd className="mt-1 text-foreground">{formatDate(document.expiresAt)}</dd></div>}
-                            {document.reviewedBy && <div><dt className="text-muted-foreground">Reviewed by</dt><dd className="mt-1 break-words text-foreground">{document.reviewedBy} · {formatDate(document.reviewedAt)}</dd></div>}
+                            {document.reviewedBy && <><div><dt className="text-muted-foreground">Reviewed by</dt><dd className="mt-1 break-words text-foreground">{document.reviewedBy}</dd></div><div><dt className="text-muted-foreground">Reviewed</dt><dd className="mt-1 text-foreground">{formatDate(document.reviewedAt)}</dd></div></>}
                             {document.rejectionComment && <div className="sm:col-span-2"><dt className="text-muted-foreground">Rejection reason</dt><dd className="mt-1 break-words text-destructive">{document.rejectionComment}</dd></div>}
                           </dl>
                         ) : <p className="text-xs text-muted-foreground">Not submitted</p>}

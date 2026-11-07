@@ -14,14 +14,14 @@ export function AccountFormActions({
   onCancel: () => void;
 }) {
   return (
-    <View className="mt-5 gap-2">
+    <View className="mt-section gap-2">
       <AuthSubmitButton disabled={isSubmitting} label={isSubmitting ? 'Saving…' : label} onPress={onSubmit} />
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled: isSubmitting }}
         disabled={isSubmitting}
         onPress={onCancel}
-        className="min-h-control items-center justify-center rounded-full">
+        className="min-h-control items-center justify-center rounded-field">
         <Text className="font-sans text-button font-medium text-secondary-foreground">Cancel</Text>
       </Pressable>
     </View>

@@ -43,7 +43,7 @@ export function VehicleIssueEditor({
 
   return (
     <div className="rounded-xl border border-primary/30 bg-muted/40 p-4">
-      <h4 className="text-sm font-bold text-foreground">Point {pointNumber}</h4>
+      <h4 className="text-sm font-semibold text-foreground">Point {pointNumber}</h4>
       <div className="mt-3 grid gap-3">
         <div>
           <SelectWithLabel

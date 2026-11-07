@@ -1,6 +1,7 @@
 "use client";
 
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
+import { Button } from "@/components/ui/button";
 import { Mail, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FieldErrors, useForm } from "react-hook-form";
@@ -98,7 +99,7 @@ export function LoginForm() {
       <InputWithLabel
         id="email"
         type="email"
-        inputClassName="h-11 text-sm"
+        inputClassName="h-11 text-base sm:text-sm"
         autoCapitalize="none"
         autoComplete="email"
         maxLength={160}
@@ -112,7 +113,7 @@ export function LoginForm() {
       <InputWithLabel
         id="password"
         type="password"
-        inputClassName="h-11 text-sm"
+        inputClassName="h-11 text-base sm:text-sm"
         autoComplete="current-password"
         maxLength={255}
         icon={<Lock size={20} />}
@@ -122,13 +123,13 @@ export function LoginForm() {
         {...formRegister("password")}
       />
 
-      <button
+      <Button
         type="submit"
         disabled={isSubmitting}
-        className="mt-1 min-h-11 rounded-sm border bg-primary hover:bg-primary-hover px-4 py-2 text-white"
+        className="mt-1 h-11"
       >
         {isSubmitting ? "Logging in..." : "Login"}
-      </button>
+      </Button>
     </form>
   );
 }

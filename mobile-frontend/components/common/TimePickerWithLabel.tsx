@@ -79,7 +79,7 @@ function TimeOption({
       disabled={disabled}
       onPress={onPress}
       className={cx(
-        'min-h-[44px] items-center justify-center rounded-2xl border px-3',
+        'min-h-[44px] items-center justify-center rounded-card border px-3',
         disabled
           ? 'border-border bg-muted opacity-45'
           : isSelected
@@ -210,12 +210,12 @@ export function TimePickerWithLabel({
             onPress={() => setIsOpen(false)}
           />
           <View
-            className="rounded-t-sheet bg-background px-5 pt-4"
+            className="rounded-t-sheet bg-background px-screen pt-4"
             style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
             <View className="mb-4 items-center">
               <View className="h-1.5 w-12 rounded-full bg-border" />
             </View>
-            <View className="mb-5 flex-row items-start justify-between gap-3">
+            <View className="mb-section flex-row items-start justify-between gap-3">
               <View className="min-w-0 flex-1">
                 <Text className="font-sans text-[22px] font-semibold text-foreground">{label}</Text>
                 <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
@@ -291,7 +291,7 @@ export function TimePickerWithLabel({
               </View>
             </View>
 
-            <View className="mt-5 rounded-[22px] border border-border bg-surface px-4 py-3">
+            <View className="mt-section rounded-card border border-border bg-surface px-4 py-3">
               <Text className="font-sans text-center text-[12px] font-medium text-secondary-foreground">
                 Selected time
               </Text>
@@ -306,7 +306,7 @@ export function TimePickerWithLabel({
               disabled={isUnavailable(selectedHour, selectedMinute, selectedPeriod)}
               onPress={handleApply}
               className={cx(
-                'mt-4 min-h-[56px] items-center justify-center rounded-full bg-primary',
+                'mt-4 min-h-control items-center justify-center rounded-field bg-primary',
                 isUnavailable(selectedHour, selectedMinute, selectedPeriod) && 'opacity-50',
               )}>
               <Text className="font-sans text-[15px] font-semibold text-surface">Apply Time</Text>

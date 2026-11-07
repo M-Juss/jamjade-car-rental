@@ -40,7 +40,7 @@ export function OnboardingHeader({
             accessibilityState={{ disabled: backDisabled }}
             disabled={backDisabled}
             onPress={onBackPress ?? (() => router.back())}
-            className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface">
+            className="h-11 w-11 items-center justify-center rounded-field border border-border bg-surface">
             <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
           </Pressable>
         ) : null}
@@ -61,7 +61,7 @@ export function OnboardingHeader({
         {navigationTitle && showBack ? (
           <View className="h-11 w-11" />
         ) : Icon ? (
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-muted">
+          <View className="h-11 w-11 items-center justify-center">
             <Icon size={22} color={themeColors.primary} strokeWidth={2.45} />
           </View>
         ) : null}
@@ -73,7 +73,7 @@ export function OnboardingHeader({
         </View>
       ) : null}
 
-      <Text className="font-sans mt-5 text-title font-semibold text-foreground">{title}</Text>
+      <Text className="font-sans mt-section text-title font-semibold text-foreground">{title}</Text>
       {subtitle ? <Text className="font-sans mt-2 text-body text-secondary-foreground">{subtitle}</Text> : null}
     </View>
   );

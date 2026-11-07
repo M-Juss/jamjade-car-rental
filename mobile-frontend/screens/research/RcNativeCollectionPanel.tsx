@@ -1,21 +1,23 @@
-import { Activity, ClipboardList, Database, RefreshCcw } from 'lucide-react-native';
+import { Activity, ArrowLeft, BookOpen, ChevronRight, Info, RefreshCcw, Settings2 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, AppState, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton, InfoRow, SectionCard } from '@/components/bookings';
 import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
-import { SelectWithLabel } from '@/components/common/SelectWithLabel';
-import { AbbreviationGuide, ExerciseGuide } from '@/components/research/ExerciseGuide';
+import { RecordingLibrary } from '@/components/research/RecordingLibrary';
+import { ResearchDialog, ResearchIconButton } from '@/components/research/ResearchControls';
+import { ResearchNotes, ExerciseGuide } from '@/components/research/ExerciseGuide';
 import { NativeRecordingDetails } from '@/components/research/NativeRecordingDetails';
+import { RecordingSavedDialog } from '@/components/research/RecordingSavedDialog';
+import { RecordingMetadata } from '@/components/research/RecordingMetadata';
 import { floatingTabBarContentPadding } from '@/constants/layout';
 import { themeColors } from '@/constants/theme';
 import { CollectionSessionForm, CollectionSetupForm } from '@/forms/research/CollectionSetupForm';
 import { NativeCollectionGroupForm } from '@/forms/research/NativeRecordingForm';
 import { ObservationForm } from '@/forms/research/ObservationForm';
-import { exerciseCatalog, recordingTitle, type CollectionState, type CollectionStatus, type ExerciseProtocol } from '@/lib/research/collection';
+import { exerciseCatalog, recordingDisplay, type CollectionState, type CollectionStatus, type ExerciseProtocol } from '@/lib/research/collection';
 import { NATIVE_MOUNT_METHOD, type NativeRecorderState, type NativeRecording, type NativeCollectionGroup, type NativeGroupCatalog } from '@/lib/research/native-recorder';
-import { formatRentalDate } from '@/lib/telematics/rental-card';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/services/http';
 import { NativeRecorderError, nativeRecorder } from '@/services/telematics/native-recorder';
@@ -24,16 +26,21 @@ import type { NativeCollectionGroupInput } from '@/validation/research/native-re
 
 import type { RcResearchTab } from './RcResearchTabs';
 
-export function RcNativeCollectionPanel({ active, mode, onRecordingChange }: { active: boolean; mode: RcResearchTab; onRecordingChange: (recording: boolean) => void }) {
+export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingChange, onOpenedViewChange }: { onCollect: () => void; onOpenedViewChange: (opened: boolean) => void; active: boolean; mode: RcResearchTab; onRecordingChange: (recording: boolean) => void }) {
   const { user } = useAuth(), insets = useSafeAreaInsets();
   const [state, setState] = useState<NativeRecorderState | null>(null), [records, setRecords] = useState<NativeRecording[]>([]);
   const [groups, setGroups] = useState<NativeGroupCatalog | null>(null), [collection, setCollection] = useState<CollectionState>({});
   const [selected, setSelected] = useState<NativeRecording | null>(null), [details, setDetails] = useState(false);
-  const [sessionForm, setSessionForm] = useState(false), [groupForm, setGroupForm] = useState(false), [guide, setGuide] = useState<ExerciseProtocol | null>(null), [abbreviations, setAbbreviations] = useState(false);
+  const [sessionForm, setSessionForm] = useState(true), [groupForm, setGroupForm] = useState(false), [guide, setGuide] = useState<ExerciseProtocol | null>(null), [notes, setNotes] = useState(false), [options, setOptions] = useState(false), [dirty, setDirty] = useState(false);
+  const [sessionGroupId, setSessionGroupId] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const statusRevision = useRef(0);
+  const continueCollection = useRef(false);
   const [offset, setOffset] = useState(0), [filter, setFilter] = useState<'all' | 'current' | 'pilot'>('all');
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
-  const [progress, setProgress] = useState<string | null>(null), [statuses, setStatuses] = useState<Record<string, CollectionStatus>>({}), [onlineStatus, setOnlineStatus] = useState(false);
+  const [afterSave, setAfterSave] = useState<{ record: NativeRecording; uploaded: boolean } | null>(null);
+  const [progress, setProgress] = useState<{ id: string; label: string } | null>(null), [statuses, setStatuses] = useState<Record<string, CollectionStatus>>({}), [onlineStatus, setOnlineStatus] = useState(false);
   const mounted = useRef(true), working = useRef(false), querying = useRef<Promise<void> | null>(null), previousActive = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; void nativeRecorder.cancelCheck(); }; }, []);
   useEffect(() => { onRecordingChange(Boolean(state?.active || state?.checking)); }, [onRecordingChange, state?.active, state?.checking]);
@@ -47,14 +54,16 @@ export function RcNativeCollectionPanel({ active, mode, onRecordingChange }: { a
         previousActive.current = next.active;
         if (mounted.current) { setState(next); if (ended && next.current) { setSelected(next.current); setDetails(false); } }
         if ((withList || ended) && !next.active) {
-          const saved = await nativeRecorder.listCollection(offset, filter), catalog = await nativeRecorder.groups();
+          const page = nativeRecorder.pagingAvailable ? await nativeRecorder.collectionPage(offset, filter) : null;
+          const saved = page?.records ?? await nativeRecorder.listCollection(offset, filter), catalog = await nativeRecorder.groups();
           const context = nativeRecorder.collectionAvailable && !next.active && !next.checking ? await nativeRecorder.collectionAction({ action: 'current' }) : null;
           if (!mounted.current) return;
-          setRecords(saved); setGroups(catalog); if (context) setCollection(context);
-          try {
-            const result = await nativeRecorder.statuses(saved.filter(r => r.state !== 'unavailable').map(r => r.recording_id));
-            if (mounted.current) { setStatuses(Object.fromEntries(result.map(r => [r.client_recording_id, r]))); setOnlineStatus(true); }
-          } catch { if (mounted.current) { setStatuses({}); setOnlineStatus(false); } }
+          setRecords(saved); setGroups(catalog); if (page) { setTotal(page.total); if (page.offset !== offset) setOffset(page.offset); } if (context) setCollection(context);
+          const revision = ++statusRevision.current;
+          setOnlineStatus(false);
+          void nativeRecorder.statuses(saved.filter(r => r.state !== 'unavailable').map(r => r.recording_id)).then(result => {
+            if (mounted.current && revision === statusRevision.current) { setStatuses(Object.fromEntries(result.map(r => [r.client_recording_id, r]))); setOnlineStatus(true); }
+          }).catch(() => { if (mounted.current && revision === statusRevision.current) { setStatuses({}); setOnlineStatus(false); } });
         }
       } catch { if (mounted.current) setError('Recorder access is unavailable. Connect and verify access again.'); }
       finally { if (mounted.current) setLoading(false); }
@@ -75,7 +84,11 @@ export function RcNativeCollectionPanel({ active, mode, onRecordingChange }: { a
     const timer = setInterval(() => { if (AppState.currentState === 'active' && user && nativeRecorder.isAuthorized(user.id)) void refresh(false); }, 1000);
     return () => clearInterval(timer);
   }, [active, refresh, user]);
-  useEffect(() => { setSelected(null); setDetails(false); }, [mode]);
+  useEffect(() => {
+    setSelected(null); setDetails(false); setDirty(false); setGroupForm(false);
+    setSessionForm(!continueCollection.current); continueCollection.current = false;
+    setSessionGroupId(null); setAfterSave(null);
+  }, [mode]);
 
   const run = async (action: () => Promise<void>) => {
     if (working.current) return false;
@@ -91,7 +104,7 @@ export function RcNativeCollectionPanel({ active, mode, onRecordingChange }: { a
   };
   const createGroup = async (values: NativeCollectionGroupInput) => {
     let result: NativeCollectionGroup | null = null;
-    await run(async () => { result = await nativeRecorder.createGroup(values); setGroups(await nativeRecorder.groups()); setGroupForm(false); setSessionForm(true); });
+    await run(async () => { result = await nativeRecorder.createGroup(values); setSessionGroupId(result.id); setGroups(await nativeRecorder.groups()); setGroupForm(false); setSessionForm(true); });
     return result;
   };
   const start = async (code: ExerciseCode) => {
@@ -113,18 +126,22 @@ export function RcNativeCollectionPanel({ active, mode, onRecordingChange }: { a
       setError('Could not stop here. Use Stop in the recording notification.');
     }).finally(() => { if (mounted.current) setStopping(false); });
   };
+  const performUpload = async (record: NativeRecording) => {
+    if (!user) return false;
+    return run(async () => {
+      setProgress({ id: record.recording_id, label: 'Uploading…' });
+      try {
+        await nativeRecorder.upload(user.id, record.recording_id, (sent, total) => setProgress({ id: record.recording_id, label: `Uploading ${sent}/${total || '…'}` }));
+        setProgress({ id: record.recording_id, label: 'Syncing…' });
+        if (nativeRecorder.collectionAvailable) await nativeRecorder.syncCollection(record.recording_id);
+        if (selected?.recording_id === record.recording_id) setSelected(await nativeRecorder.details(record.recording_id));
+      } finally { setProgress(null); }
+    });
+  };
   const upload = (record: NativeRecording) => {
     if (!user) return;
     Alert.alert('Upload recording & observations?', 'Send motion readings, setup checks, phone diagnostics and saved observations to your private Admin inspector. The phone original stays.', [
-      { text: 'Cancel', style: 'cancel' }, { text: 'Upload', onPress: () => void run(async () => {
-        setProgress('Uploading original…');
-        try {
-          await nativeRecorder.upload(user.id, record.recording_id, (sent, total) => setProgress(`Uploading ${sent}/${total || '…'}`));
-          setProgress('Syncing collection details…');
-          if (nativeRecorder.collectionAvailable) await nativeRecorder.syncCollection(record.recording_id);
-          if (selected?.recording_id === record.recording_id) setSelected(await nativeRecorder.details(record.recording_id));
-        } finally { setProgress(null); }
-      }) },
+      { text: 'Cancel', style: 'cancel' }, { text: 'Upload', onPress: () => void performUpload(record) },
     ]);
   };
   const current = state?.active ? state.current : selected;
@@ -132,66 +149,146 @@ export function RcNativeCollectionPanel({ active, mode, onRecordingChange }: { a
   const group = groups?.groups.find(g => g.id === collection.session?.recording_group_id);
   const latest = current?.collection?.observations?.at(-1);
 
+  const setupOpened = mode === 'collect' && Boolean(collection.session && collection.mount) && !sessionForm && !groupForm && !selected && !state?.active;
+  const navigationBlocked = busy || Boolean(state?.active || state?.checking);
+  const opened = Boolean(selected || groupForm || setupOpened || state?.active);
+  const goBack = useCallback(() => {
+    if (navigationBlocked) return;
+    if (details) { setDetails(false); return; }
+    const leave = () => {
+      if (selected) { setSelected(null); setDirty(false); }
+      else if (groupForm) { setGroupForm(false); setSessionForm(true); }
+      else setSessionForm(true);
+    };
+    if (dirty) Alert.alert('Discard unsaved observations?', 'The original recording is already saved.', [
+      { text: 'Keep editing', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: leave },
+    ]); else leave();
+  }, [navigationBlocked, details, dirty, groupForm, selected]);
+  useEffect(() => { onOpenedViewChange(opened); }, [onOpenedViewChange, opened]);
+  useEffect(() => {
+    if (!active || !opened) return;
+    const listener = BackHandler.addEventListener('hardwareBackPress', () => { goBack(); return true; });
+    return () => listener.remove();
+  }, [active, goBack, opened]);
+  const remove = (record: NativeRecording) => Alert.alert('Delete phone copy?', 'Permanently removes this original and its local observations. Server copies stay. Unuploaded data cannot be recovered.', [
+    { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void run(async () => { await nativeRecorder.remove(record.recording_id); setSelected(null); setDirty(false); }) },
+  ]);
+  const remount = () => {
+    setOptions(false);
+    Alert.alert('Phone remounted?', 'Requires new setup checks and a fresh forward reference.', [
+      { text: 'Cancel', style: 'cancel' }, { text: 'Confirm remount', onPress: () => void run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'mount', reason: 'remounted' })); }) },
+    ]);
+  };
+  const newSession = (groupId = collection.session?.recording_group_id) => {
+    if (!groupId) return;
+    setOptions(false);
+    const latest = collection.group_sessions?.[groupId];
+    if (latest && !latest.session_has_recordings) {
+      void run(async () => {
+        setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: groupId }));
+        setSessionGroupId(groupId); setSessionForm(false);
+      });
+      return;
+    }
+    const groupName = groups?.groups.find(group => group.id === groupId)?.name ?? 'Selected group';
+    Alert.alert('Create a new session?', `${groupName}\nStarts a new collection block. Saved recordings stay in their original sessions.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Create session', onPress: () => void run(async () => {
+        setCollection(await nativeRecorder.collectionAction({ action: 'new_session', group_id: groupId }));
+        setSessionGroupId(groupId);
+        setSessionForm(false);
+      }) },
+    ]);
+  };
+
   return <View className="flex-1">
-    <View className="w-full max-w-[640px] flex-row items-center justify-between self-center px-screen pb-3">
-      <Text accessibilityRole="header" className="font-sans text-section font-semibold text-foreground">{mode === 'collect' ? 'Collect' : 'Recordings'}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Refresh recordings" disabled={busy} className="min-h-control min-w-control items-center justify-center" onPress={() => void refresh(true)}><RefreshCcw size={20} color={themeColors.primary} /></Pressable>
+    <View className="w-full max-w-[640px] flex-row items-center gap-1 self-center px-screen">
+      {opened ? <ResearchIconButton icon={ArrowLeft} label={details ? 'Back to recording' : selected ? mode === 'recordings' ? 'Back to recordings' : 'Back to collection' : 'Back to session selection'} onPress={goBack} disabled={navigationBlocked} /> : null}
+      <View className="flex-1" />
+      {!setupOpened && <ResearchIconButton icon={Info} label="Research notes" onPress={() => setNotes(true)} />}
+      {!selected && !groupForm && !state?.active && <ResearchIconButton icon={RefreshCcw} label="Refresh recordings" disabled={busy} onPress={() => void refresh(true)} />}
+      {setupOpened && <ResearchIconButton icon={Settings2} label="Session options" onPress={() => setOptions(true)} disabled={navigationBlocked} />}
     </View>
-    <KeyboardFormScrollView contentContainerClassName="w-full max-w-[640px] self-center px-screen pt-1" contentContainerStyle={{ paddingBottom: floatingTabBarContentPadding + insets.bottom }}>
-      <View className="gap-4">
+    <KeyboardFormScrollView key={selected ? `record-${selected.recording_id}` : groupForm ? 'group' : sessionForm ? 'session' : mode} contentContainerClassName="w-full max-w-[640px] self-center px-screen pt-1" contentContainerStyle={{ paddingBottom: opened ? insets.bottom + 20 : floatingTabBarContentPadding + insets.bottom }}>
+      <View className="gap-2">
         {loading && <ActivityIndicator accessibilityLabel="Loading recorder" color={themeColors.primary} />}
-        {error && <View className="gap-3"><Text accessibilityRole="alert" className="font-sans text-body text-destructive">{error}</Text><ActionButton label="Verify access" disabled={busy} onPress={() => void run(async () => { if (user) await nativeRecorder.authorize(user.id); })} /></View>}
-        {!nativeRecorder.collectionAvailable && <SectionCard title="Android update required" icon={Activity}><Text className="font-sans text-body text-secondary-foreground">Install the updated standalone APK for guided collection. Existing phone recordings are kept.</Text></SectionCard>}
+        {error && <View className="gap-2"><Text accessibilityRole="alert" className="font-sans text-body text-destructive">{error}</Text><ActionButton density="compact" label="Verify access" disabled={busy} onPress={() => void run(async () => { if (user) await nativeRecorder.authorize(user.id); })} /></View>}
+        {!nativeRecorder.collectionAvailable && <Text className="font-sans text-body text-secondary-foreground">Install the updated Android APK for guided collection.</Text>}
         {state?.error && <Text accessibilityRole="alert" className="font-sans text-body text-destructive">{state.error}</Text>}
-        {state?.active && <SectionCard title={state.preparing ? 'Preparing sensors' : recordingTitle(state.current ?? {})} icon={Activity}>
-          <Text accessibilityLiveRegion="polite" className="font-sans mb-3 text-section font-semibold text-foreground">{((state.current?.duration_ms ?? 0) / 1000).toFixed(1)} s</Text>
-          {currentProtocol && <><Text className="font-sans mb-3 text-body text-foreground">Rest ~5 s → {currentProtocol.steps.find(s => s.stage === 'exercise')?.instruction} → settle & rest ~5 s</Text><ActionButton label="View protocol" onPress={() => setGuide(currentProtocol)} /></>}
-          <View className="mt-3"><ActionButton label={stopping ? 'Saving…' : 'Stop & save'} variant="primary" disabled={stopping} onPress={stop} /></View>
+        {state?.active && <SectionCard density="compact" title={state.preparing ? 'Preparing sensors' : recordingDisplay(state.current ?? {}).title} icon={Activity}>
+          {state.current ? <RecordingMetadata recording={state.current} className="mb-3" /> : null}
+          <Text accessibilityLiveRegion="polite" className="font-sans mb-3 text-title font-semibold text-foreground">{((state.current?.duration_ms ?? 0) / 1000).toFixed(1)} s</Text>
+          {currentProtocol && <><Text className="font-sans mb-2 text-body text-foreground">Rest ~5 s → {currentProtocol.steps.find(s => s.stage === 'exercise')?.instruction} → settle & rest ~5 s</Text>
+            <Pressable accessibilityRole="button" onPress={() => setGuide(currentProtocol)} className="min-h-control flex-row items-center gap-2"><BookOpen size={18} color={themeColors.primary} /><Text className="font-sans text-body font-semibold text-primary">Protocol</Text></Pressable></>}
+          <ActionButton density="compact" label={stopping ? 'Saving…' : 'Stop & save'} variant="primary" disabled={stopping} onPress={stop} />
         </SectionCard>}
         {mode === 'collect' && !state?.active && !selected && groups && nativeRecorder.collectionAvailable && <>
-          {groupForm ? <NativeCollectionGroupForm disabled={busy} catalog={groups} onCreate={async values => { await createGroup(values); }} onCancel={() => setGroupForm(false)} />
-            : !collection.session || !collection.mount || sessionForm ? <CollectionSessionForm catalog={groups} busy={busy} onOpen={async id => { await run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: id })); setSessionForm(false); setSelected(null); }); }} onNewGroup={() => setGroupForm(true)} onCancel={collection.session ? () => setSessionForm(false) : undefined} />
-              : <CollectionSetupForm collection={collection} nextNumber={group?.next_recording_number ?? 1} busy={busy} checking={state?.checking ?? false} evidence={state?.setup_check} phonePower={state?.phone_power}
-                onNewSession={() => setSessionForm(true)} onRemount={() => Alert.alert('Declare a new mount?', 'This keeps the session and requires fresh setup checks and a forward reference.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Phone remounted', onPress: () => void run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'mount', reason: 'remounted' })); }) }])}
-                onCheck={async () => { await run(() => nativeRecorder.beginCheck()); }} onStart={start} />}
+          {groupForm ? <NativeCollectionGroupForm disabled={busy} catalog={groups} onCreate={async values => { await createGroup(values); }} />
+            : !collection.session || !collection.mount || sessionForm ? <CollectionSessionForm catalog={groups} collection={collection} initialGroupId={sessionGroupId} busy={busy} onNewSession={newSession} onOpen={async id => { await run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: id })); setSessionGroupId(id); setSessionForm(false); }); }} onNewGroup={() => setGroupForm(true)} />
+              : <CollectionSetupForm key={collection.mount?.id} collection={collection} groupName={group?.name ?? 'Group unavailable'} nextNumber={group?.next_recording_number ?? 1} busy={busy} checking={state?.checking ?? false} evidence={state?.setup_check} phonePower={state?.phone_power}
+                onNotes={() => setNotes(true)} onCheck={async () => { await run(() => nativeRecorder.beginCheck()); }} onStart={start} />}
         </>}
-        {current && !state?.active && <View className="gap-3">
-          <SectionCard title={recordingTitle(current)} icon={ClipboardList}><InfoRow label="Original" value={`${((current.duration_ms ?? 0) / 1000).toFixed(1)} s · ${current.state}`} />
-            <ActionButton label={details ? 'Hide sensor details' : 'Sensor details'} onPress={() => setDetails(v => !v)} />
-            {currentProtocol && <View className="mt-2"><ActionButton label="View saved protocol" onPress={() => setGuide(currentProtocol)} /></View>}
+        {current && !state?.active && <View>
+          <View style={{ display: details ? 'none' : 'flex' }} className="gap-3">
+          <SectionCard density="compact" title={recordingDisplay(current).title} icon={Activity}>
+            <RecordingMetadata recording={current} className="mb-3" />
+            <InfoRow label="Original" value={current.state} />
+            <InfoRow label="Duration" value={`${((current.duration_ms ?? 0) / 1000).toFixed(1)} s`} />
+            <InfoRow label="Upload" value={current.transfer_state === 'uploaded' ? <View className="items-end gap-0.5"><Text className="font-sans text-body font-medium text-foreground">Verified</Text><Text className="font-sans text-caption text-secondary-foreground">Saved receipt</Text></View> : current.transfer_state.replaceAll('_', ' ')} />
+            <InfoRow label="Labels" value={statuses[current.recording_id]?.annotation_state ?? (current.collection?.sync ? <View className="items-end gap-0.5"><Text className="font-sans text-body font-medium text-foreground">{current.collection.sync.annotation_state}</Text><Text className="font-sans text-caption text-secondary-foreground">Cached</Text></View> : 'Unavailable')} />
+            <Pressable accessibilityRole="button" onPress={() => setDetails(true)} className="min-h-control flex-row items-center gap-2 border-t border-border"><Text className="font-sans flex-1 text-body text-primary">Sensor & setup details</Text><ChevronRight size={18} color={themeColors.primary} /></Pressable>
+            {currentProtocol && <Pressable accessibilityRole="button" onPress={() => setGuide(currentProtocol)} className="min-h-control flex-row items-center gap-2"><Text className="font-sans flex-1 text-body text-primary">Saved protocol</Text><ChevronRight size={18} color={themeColors.primary} /></Pressable>}
           </SectionCard>
-          {current.collection && <ObservationForm key={`${current.recording_id}-${latest?.revision ?? 0}`} latest={latest} disabled={busy}
-            onSave={async values => { await run(async () => { await nativeRecorder.saveObservation(current.recording_id, values); setSelected(await nativeRecorder.details(current.recording_id)); }); }} />}
+          {current.collection && <ObservationForm key={current.recording_id} latest={latest} isSwerve={current.collection.protocol_code === 'SW'} disabled={busy} onDirtyChange={setDirty}
+            onSave={async values => {
+              if (working.current) throw new NativeRecorderError('Another action is finishing. Try again.');
+              working.current = true; setBusy(true);
+              try {
+                const saved = await nativeRecorder.saveObservation(current.recording_id, values);
+                const revision = saved.observations!.at(-1)!;
+                setSelected(record => record?.recording_id === current.recording_id ? { ...record, collection: saved } : record);
+                setDirty(false);
+                setError(null); setAfterSave({ record: { ...current, collection: saved }, uploaded: false });
+                void refresh(true);
+                return revision;
+              } finally { working.current = false; if (mounted.current) setBusy(false); }
+            }} />}
+          </View>
           {details && <NativeRecordingDetails recording={current} />}
-          <ActionButton label="Close recording" disabled={busy} onPress={() => setSelected(null)} />
         </View>}
-        {mode === 'recordings' && <SectionCard title="On this phone" icon={Database}><View className="gap-3">
-          <ActionButton label="Abbreviation guide" onPress={() => setAbbreviations(true)} />
-          <SelectWithLabel label="Collection" value={filter} onValueChange={v => { setOffset(0); setFilter(v as typeof filter); }} options={[{ value: 'all', label: 'All recordings' }, { value: 'current', label: 'Current collection' }, { value: 'pilot', label: 'Pilot history' }]} disabled={busy} />
-          <Text className="font-sans text-caption text-secondary-foreground">{onlineStatus ? 'Server status checked' : 'Server status unavailable · saved receipts shown'}</Text>
-          {!records.length && <Text className="font-sans text-body text-secondary-foreground">No recordings on this page.</Text>}
-          {records.map(record => {
-            const server = statuses[record.recording_id], cache = record.collection?.sync;
-            const observationCount = record.collection?.observations?.length ?? 0;
-            const labels = server ? server.annotation_state : cache ? `${cache.annotation_state} (cached)` : 'Unavailable';
-            return <View key={record.recording_id} className="gap-2 border-b border-border pb-4">
-              <Pressable accessibilityRole="button" disabled={busy || Boolean(state?.active)} onPress={() => void run(async () => { setSelected(await nativeRecorder.details(record.recording_id)); setDetails(false); })}>
-                <Text className="font-sans text-body font-semibold text-primary">{recordingTitle(record)}</Text>
-                <Text className="font-sans mt-1 text-caption text-secondary-foreground">{record.started_at_utc ? formatRentalDate(record.started_at_utc) : 'Time unavailable'} · {((record.duration_ms ?? 0) / 1000).toFixed(1)} s</Text>
-              </Pressable>
-              <Text className="font-sans text-caption text-secondary-foreground">{record.transfer_state === 'uploaded' ? 'Original verified (saved receipt)' : record.transfer_state === 'upload_failed' ? 'Original upload incomplete' : 'Original on phone'}{record.collection ? ' · Pilot' : ' · Pilot history'}</Text>
-              <Text className="font-sans text-caption text-secondary-foreground">Labels · {labels}</Text>
-              {record.collection_error && <Text className="font-sans text-caption text-destructive">Collection details cannot be read. Original retained.</Text>}
-              {record.collection && <Text className="font-sans text-caption text-secondary-foreground">{server?.context_synced || cache?.context_synced ? 'Setup synced' : 'Setup pending sync'} · {observationCount === 0 ? 'Observations not recorded' : (server?.observation_revision ?? 0) > observationCount ? 'Newer observations on server · review needed' : `Observations ${cache?.observation_revision ?? 0}/${observationCount} synced`}</Text>}
-              {['stopped', 'interrupted'].includes(record.state) && nativeRecorder.uploadAvailable && <ActionButton label={busy && progress ? progress : record.transfer_state === 'uploaded' ? 'Sync & verify' : 'Upload recording'} disabled={busy || Boolean(state?.active || state?.checking)} onPress={() => upload(record)} />}
-              {!['recording', 'preparing'].includes(record.state) && <ActionButton label="Delete phone copy" variant="danger" disabled={busy || Boolean(state?.active)} onPress={() => Alert.alert('Delete phone copy?', 'Permanently removes this original and its local observations. Server copies are kept. Unuploaded data cannot be recovered.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void run(async () => { await nativeRecorder.remove(record.recording_id); setSelected(null); }) }])} />}
-            </View>;
-          })}
-          <View className="flex-row gap-3"><ActionButton className="flex-1" label="Previous" disabled={offset === 0 || busy} onPress={() => setOffset(v => Math.max(0, v - 10))} /><ActionButton className="flex-1" label="Next" disabled={records.length < 10 || offset >= 90 || busy} onPress={() => setOffset(v => v + 10)} /></View>
-        </View></SectionCard>}
+        {mode === 'recordings' && !opened && (nativeRecorder.pagingAvailable ? <RecordingLibrary records={records} total={total} offset={offset} filter={filter} statuses={statuses} busy={busy} blocked={Boolean(state?.active || state?.checking)} progress={progress}
+          onFilter={value => { statusRevision.current++; setOffset(0); setFilter(value); }} onPage={value => { statusRevision.current++; setOffset(value); }}
+          onOpen={record => void run(async () => { setSelected(await nativeRecorder.details(record.recording_id)); setDetails(false); })} onUpload={upload} onDelete={remove} />
+          : <Text className="font-sans text-body text-secondary-foreground">Install the updated Android APK for the recording library.</Text>)}
       </View>
     </KeyboardFormScrollView>
+    <RecordingSavedDialog record={afterSave?.record ?? null} uploaded={afterSave?.uploaded ?? false} busy={busy}
+      error={error}
+      progress={progress?.id === afterSave?.record.recording_id ? progress?.label : undefined}
+      onClose={() => setAfterSave(null)}
+      onAnother={() => {
+        setAfterSave(null); setSelected(null); setDetails(false); setDirty(false); setSessionForm(false); setGroupForm(false);
+        if (mode !== 'collect') { continueCollection.current = true; onCollect(); }
+      }}
+      onUpload={() => { if (afterSave) void performUpload(afterSave.record).then(ok => {
+        if (ok && mounted.current) setAfterSave(value => value?.record.recording_id === afterSave.record.recording_id ? { ...value, uploaded: true } : value);
+      }); }} />
     <ExerciseGuide protocol={guide} onClose={() => setGuide(null)} onStop={state?.active ? stop : undefined} />
-    <AbbreviationGuide visible={abbreviations} onClose={() => setAbbreviations(false)} />
+    <ResearchNotes visible={notes} onClose={() => setNotes(false)} onReset={!busy && !state?.active && !state?.checking ? () => {
+      Alert.alert('Delete local research data?', 'Permanently deletes this account’s recordings, observations, groups and sessions on this phone. Server copies are separate. This cannot be undone.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete permanently', style: 'destructive', onPress: () => void run(async () => {
+          await nativeRecorder.collectionAction({ action: 'reset_local_research', confirmation: 'DELETE_LOCAL_RC_RESEARCH' });
+          statusRevision.current++; setStatuses({}); setRecords([]); setSelected(null); setCollection({}); setGroups(null);
+          setOffset(0); setFilter('all'); setSessionGroupId(null); setSessionForm(true); setGroupForm(false); setDirty(false); setNotes(false);
+          await refresh(true);
+        }) },
+      ]);
+    } : undefined} />
+    <ResearchDialog visible={options} title="Session options" icon={Settings2} onClose={() => setOptions(false)}>
+      <Pressable accessibilityRole="button" disabled={busy || Boolean(state?.checking)} className="min-h-control justify-center" onPress={remount}><Text className="font-sans text-body text-foreground">Phone remounted / moved</Text></Pressable>
+      {collection.session_has_recordings && <Pressable accessibilityRole="button" disabled={busy || Boolean(state?.checking)} className="min-h-control justify-center border-t border-border" onPress={() => newSession()}><Text className="font-sans text-body text-foreground">Create new session</Text></Pressable>}
+      <Text className="font-sans text-caption text-secondary-foreground">{onlineStatus ? 'Server status checked' : 'Server status unavailable; saved receipts may be cached.'}</Text>
+    </ResearchDialog>
   </View>;
 }

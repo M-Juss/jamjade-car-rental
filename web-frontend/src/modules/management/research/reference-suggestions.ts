@@ -29,20 +29,20 @@ function stats(points: SignalPoint[]) {
     rms: Math.sqrt(vectors.reduce((sum, v) => sum + dot(v, v), 0) / vectors.length) };
 }
 type Bin = { range: ReferenceRange; accel: ReturnType<typeof stats>; gyro: ReturnType<typeof stats>; quiet: boolean; level: number };
-function runs(bins: (Bin | null)[], matches: (bin: Bin) => boolean): ReferenceRange[] {
+function runs(bins: (Bin | null)[], matches: (bin: Bin) => boolean, minimumMs = MIN_SECTION_MS): ReferenceRange[] {
   const result: ReferenceRange[] = [];
   let current: ReferenceRange | null = null;
   for (const bin of bins) {
     if (bin && matches(bin)) {
       if (!current) current = [...bin.range]; else current[1] = bin.range[1];
-    } else if (current) { if (current[1] - current[0] >= MIN_SECTION_MS) result.push(current); current = null; }
+    } else if (current) { if (current[1] - current[0] >= minimumMs) result.push(current); current = null; }
   }
-  if (current && current[1] - current[0] >= MIN_SECTION_MS) result.push(current);
+  if (current && current[1] - current[0] >= minimumMs) result.push(current);
   return result;
 }
 
 /** Only proposes sections of one rest/start/stop pilot. Operator review remains mandatory. */
-export function suggestForwardIntervals(acceleration: NativeEvent[], gyroscope: NativeEvent[], origin: string, bounds: ReferenceRange) {
+export function suggestForwardIntervals(acceleration: NativeEvent[], gyroscope: NativeEvent[], origin: string, bounds: ReferenceRange, minimumEventMs: 250 | 500 = 500) {
   try {
     if (!bounds.every(Number.isFinite) || bounds[0] < 0 || bounds[1] - bounds[0] < 2500 || bounds[1] - bounds[0] > 30000) {
       throw new Error("Load at least 2.5 seconds, up to 30 seconds, to suggest reference sections.");
@@ -81,6 +81,11 @@ export function suggestForwardIntervals(acceleration: NativeEvent[], gyroscope: 
       bin.quiet = bin.accel.variation <= accelLimit && bin.gyro.rms <= gyroLimit && stableMean;
     }
     const quietRuns = runs(bins, bin => bin.quiet);
+    // FSS timing only: a locally stable terminal segment can settle at a new
+    // baseline. Permit at most 750 ms of end handling/partial-bin exclusion.
+    // Quiet IMU readings remain a proposal, never proof of standstill.
+    const terminalQuiet = minimumEventMs === 250
+      ? quietRuns.filter(range => bounds[1] - range[1] <= 3 * BIN_MS).at(-1) : undefined;
     const anchor = quietRuns[0];
     if (!anchor) throw new Error("No clear resting section found. Review the signal and select intervals manually.");
     const resting = channelReference(acceleration, epoch, ...anchor, "Accelerometer");
@@ -89,14 +94,17 @@ export function suggestForwardIntervals(acceleration: NativeEvent[], gyroscope: 
     const meanLevel = dot(resting.summary.mean, top);
     const levelLimit = Math.max(1e-6, 6 * Math.sqrt(restingValues.reduce((sum, v) => sum + (v - meanLevel) ** 2, 0) / restingValues.length));
     for (const bin of usable) bin.level = dot(bin.accel.mean, top) - meanLevel;
-    const active = (bin: Bin) => !bin.quiet || Math.abs(bin.level) > 3 * levelLimit;
-    const positive = runs(bins, bin => bin.range[0] >= anchor[1] && active(bin) && bin.level > levelLimit);
+    const active = (bin: Bin) => (!terminalQuiet || bin.range[1] <= terminalQuiet[0])
+      && (!bin.quiet || Math.abs(bin.level) > 3 * levelLimit);
+    const positive = runs(bins, bin => bin.range[0] >= anchor[1] && active(bin) && bin.level > levelLimit, minimumEventMs);
     const first = positive[0];
     if (!first) throw new Error("No clear forward-start section found. Check the mount and review the intervals manually.");
-    const negative = runs(bins, bin => bin.range[0] >= first[1] && active(bin) && bin.level < -levelLimit);
+    const negative = runs(bins, bin => bin.range[0] >= first[1] && active(bin) && bin.level < -levelLimit, minimumEventMs);
     const last = negative.at(-1);
     if (!last) throw new Error("No clear opposite stopping section found. Review the intervals manually.");
-    const after = runs(bins, bin => bin.quiet && Math.abs(bin.level) <= 3 * levelLimit && bin.range[0] >= last[1])[0];
+    const after = minimumEventMs === 250
+      ? terminalQuiet && terminalQuiet[0] >= last[1] ? terminalQuiet : undefined
+      : runs(bins, bin => bin.quiet && Math.abs(bin.level) <= 3 * levelLimit && bin.range[0] >= last[1])[0];
     // A quiet cruise between the first start and the last stop is not a second trial.
     const repeated = negative.some(stop => positive.some(start => start[0] >= stop[1] && start[1] <= last[0]
       && quietRuns.some(quiet => quiet[0] >= stop[1] && quiet[1] <= start[0])));
@@ -106,9 +114,13 @@ export function suggestForwardIntervals(acceleration: NativeEvent[], gyroscope: 
     const ranges: ForwardRanges = { rest: [Math.max(before[0], before[1] - MAX_REST_MS), before[1]],
       starting: [first[0], Math.min(first[1], first[0] + MAX_EVENT_MS)],
       stopping: [Math.max(last[0], last[1] - MAX_EVENT_MS), last[1]] };
-    const check = forwardReferencePreview(acceleration, gyroscope, origin, ranges, bounds);
-    if (!check.available) throw new Error(check.reason);
-    if (check.angleFromPhoneTop >= 90 || check.phases[2].forwardMean >= 0) throw new Error("The suggested start and stop are inconsistent. Review them manually.");
+    // Reference preparation still requires its existing 500 ms fitting checks.
+    // Short FSS timing proposals do not fit or certify a new coordinate frame.
+    if (minimumEventMs === 500) {
+      const check = forwardReferencePreview(acceleration, gyroscope, origin, ranges, bounds);
+      if (!check.available) throw new Error(check.reason);
+      if (check.angleFromPhoneTop >= 90 || check.phases[2].forwardMean >= 0) throw new Error("The suggested start and stop are inconsistent. Review them manually.");
+    }
     return { available: true as const, ranges, quietAfter: after ?? null,
       diagnostics: { accelLimit, gyroLimit, levelLimit, binMs: BIN_MS },
       notes: after ? [] : ["No continuous quiet section after braking."] };

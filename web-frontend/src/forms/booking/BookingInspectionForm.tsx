@@ -105,8 +105,8 @@ export function BookingInspectionForm({ onClose, booking, type, personnelName, o
           <VehicleConditionForm value={values.condition} errors={errors.condition} personnelName={personnelName} disabled={isSubmitting}
             inspectionPurpose={type} onChange={(condition) => setValue("condition", condition, { shouldDirty: true })}
             operatorSignature={<section id="operator-signature" tabIndex={-1} className="min-w-0 scroll-mt-4 rounded-2xl border border-border bg-surface p-4 outline-none">
-            <div className="mb-2 flex items-start gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted text-primary"><PenLine size={17} /></span>
-              <h2 className="text-sm font-bold text-foreground">{operatorLabel} Signature</h2></div>
+            <div className="mb-2 flex items-start gap-3"><span className="flex shrink-0 items-center justify-center text-primary"><PenLine size={17} /></span>
+              <h2 className="text-sm font-semibold text-foreground">{operatorLabel} Signature</h2></div>
             <SignaturePad value={values.operator_signature_data} disabled={isSubmitting} onChange={(value) => setValue("operator_signature_data", value, { shouldDirty: true })} />
             {errors.operator_signature_data?.message ? <p className="mt-2 text-xs font-medium text-destructive">{errors.operator_signature_data.message}</p> : null}
           </section>} />

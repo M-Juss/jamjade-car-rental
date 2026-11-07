@@ -6,8 +6,8 @@ import { getAnnotations, type AnnotationRevision } from "@/services/research/ann
 import type { NativeInspection } from "@/services/research/native-types";
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import { humanize } from "../recording-analysis";
-import { AnnotationHistory } from "./AnnotationHistory";
 import { ResearchState } from "./ResearchState";
+import { MetadataList } from "@/components/common/data-display/MetadataList";
 
 export function NativeAnnotations({ inspection, onState }: { inspection: NativeInspection; onState: (state: AnnotationRevision["state"]) => void }) {
   const [saved, setSaved] = useState<AnnotationRevision | null>(null);
@@ -24,11 +24,10 @@ export function NativeAnnotations({ inspection, onState }: { inspection: NativeI
   const reload = () => { setLoading(true); setRevision(v => v + 1); };
   if (loading || error) return <ResearchState loading={loading} error={error} onRetry={reload} />;
   return <div className="space-y-4">
-    {saved && <p className="text-xs text-muted-foreground">Revision {saved.revision} · {humanize(saved.state)} · {formatReturnDateTime(saved.created_at)}</p>}
+    {saved && <MetadataList className="sm:grid-cols-3" items={[{ label: 'Revision', value: saved.revision }, { label: 'State', value: humanize(saved.state) }, { label: 'Saved', value: formatReturnDateTime(saved.created_at) }]} />}
     <AnnotationForm key={`${revision}:${saved?.id ?? "new"}`} record={inspection.recording} origin={inspection.manifest.started_elapsed_ns} saved={saved}
+      protocolCode={inspection.review.collection?.protocol_code}
       onSaved={value => { setSaved(value); onState(value.state); }} onReload={reload} />
-    <details className="text-xs"><summary className="min-h-9 cursor-pointer font-medium text-primary">Label history</summary>
-      <div className="mt-3"><AnnotationHistory key={saved?.id ?? "new"} recordingId={inspection.recording.id} /></div>
-    </details>
+
   </div>;
 }

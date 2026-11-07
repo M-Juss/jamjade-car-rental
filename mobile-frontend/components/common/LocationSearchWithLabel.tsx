@@ -153,7 +153,7 @@ export function LocationSearchWithLabel({
       </Text>
       <View
         className={cx(
-          'min-h-[56px] flex-row items-center rounded-[24px] border bg-surface px-4',
+          'min-h-control flex-row items-center rounded-field border bg-surface px-4',
           error
             ? 'border-destructive-border bg-destructive-surface'
             : 'border-border',
@@ -186,7 +186,7 @@ export function LocationSearchWithLabel({
 
       {showSuggestions ? (
         <View
-          className="overflow-hidden rounded-[24px] border border-border bg-surface "
+          className="overflow-hidden rounded-card border border-border bg-surface"
           style={{ elevation: 8, zIndex: 30 }}
         >
           {suggestions.map((suggestion, index) => (

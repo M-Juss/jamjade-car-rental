@@ -20,7 +20,6 @@ type NotificationCategory = MobileNotificationRecord['category'];
 
 type CategoryConfig = {
   icon: LucideIcon;
-  iconWrapClass: string;
   iconColor: string;
 };
 
@@ -31,27 +30,22 @@ function cx(...classes: (string | false | null | undefined)[]) {
 const categoryConfig: Record<NotificationCategory, CategoryConfig> = {
   booking: {
     icon: CalendarCheck,
-    iconWrapClass: 'bg-muted',
     iconColor: themeColors.primary,
   },
   payment: {
     icon: CreditCard,
-    iconWrapClass: 'bg-success-surface',
     iconColor: themeColors.success,
   },
   vehicle: {
     icon: Car,
-    iconWrapClass: 'bg-muted',
     iconColor: themeColors.primary,
   },
   trip: {
     icon: Navigation,
-    iconWrapClass: 'bg-warning-surface',
     iconColor: themeColors.warning,
   },
   system: {
     icon: FileText,
-    iconWrapClass: 'bg-muted',
     iconColor: themeColors.mutedForeground,
   },
 };
@@ -101,14 +95,10 @@ function NotificationCard({
       accessibilityLabel={`Open notification: ${notification.title}${notification.isRead ? '' : ', unread'}`}
       onPress={() => onOpen(notification)}
       className={cx(
-        'min-h-[84px] flex-row items-center gap-3 border-b border-border px-4 py-2',
+        'min-h-control flex-row items-start gap-3 border-b border-border px-card py-3',
         !notification.isRead && 'bg-muted/45',
       )}>
-      <View
-        className={cx(
-          'h-10 w-10 self-center items-center justify-center rounded-full',
-          category.iconWrapClass,
-        )}>
+      <View className="pt-1">
         <Icon size={19} color={category.iconColor} strokeWidth={2.35} />
       </View>
 
@@ -149,8 +139,8 @@ function NotificationDetailRow({ label, value }: { label: string; value?: string
 
   return (
     <View className="flex-row items-start justify-between gap-4 border-b border-border py-3">
-      <Text className="font-sans w-[112px] text-[11px] font-normal text-secondary-foreground">{label}</Text>
-      <Text className="font-sans min-w-0 flex-1 text-right text-[13px] font-medium leading-5 text-foreground">
+      <Text className="font-sans min-w-0 flex-1 text-caption text-secondary-foreground">{label}</Text>
+      <Text className="font-sans max-w-[58%] shrink text-right text-body text-foreground">
         {value}
       </Text>
     </View>
@@ -200,7 +190,7 @@ export function NotificationDetailModal({
         />
 
         <View
-          className="max-h-[88%] rounded-t-sheet bg-background px-5 pt-4"
+          className="max-h-[88%] rounded-t-sheet bg-background px-screen pt-4"
           style={{ paddingBottom: insets.bottom + 18 }}>
           <View
             {...sheetPanResponder.panHandlers}
@@ -217,7 +207,7 @@ export function NotificationDetailModal({
               {notification.fullMessage}
             </Text>
 
-            <View className="mt-5 rounded-card border border-border bg-surface px-4">
+            <View className="mt-section rounded-card border border-border bg-surface px-4">
               <NotificationDetailRow label="Date" value={formatDateTime(notification.createdAt)} />
               {detailRows.map((row) => (
                 <NotificationDetailRow key={row.label} {...row} />
@@ -227,9 +217,9 @@ export function NotificationDetailModal({
             <Pressable
               accessibilityRole="button"
               onPress={() => onAction(notification)}
-              className="mt-5 min-h-[54px] flex-row items-center justify-center gap-2 rounded-full bg-primary px-4">
+              className="mt-section min-h-control flex-row items-center justify-center gap-2 rounded-field bg-primary px-4 py-3">
               <Info size={18} color={themeColors.surface} strokeWidth={2.5} />
-              <Text className="font-sans text-[14px] font-semibold text-surface" numberOfLines={1}>
+              <Text className="font-sans shrink text-center text-button font-medium text-surface">
                 {actionLabel}
               </Text>
             </Pressable>
@@ -242,15 +232,13 @@ export function NotificationDetailModal({
 
 function NotificationEmptyState() {
   return (
-    <View className="items-center rounded-[32px] border border-dashed border-border bg-surface p-8">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <Bell size={30} color={themeColors.primary} strokeWidth={2.25} />
-      </View>
+    <View className="items-center rounded-card border border-border bg-surface px-card py-6">
+      <Bell size={24} color={themeColors.primary} strokeWidth={2} />
       <Text className="font-sans mt-4 text-center text-[20px] font-semibold text-foreground">
         No notifications found
       </Text>
       <Text className="font-sans mt-2 text-center text-[14px] font-normal leading-5 text-secondary-foreground">
-        You are all caught up. New updates will appear here.
+        New updates will appear here.
       </Text>
     </View>
   );
@@ -271,7 +259,7 @@ function NotificationSkeletonCard() {
 
 function NotificationLoadingState() {
   return (
-    <View className="overflow-hidden rounded-2xl border border-border bg-surface">
+    <View className="overflow-hidden rounded-card border border-border bg-surface">
       {[1, 2, 3, 4].map((item) => (
         <NotificationSkeletonCard key={item} />
       ))}
@@ -367,10 +355,10 @@ export function NotificationFeed({
             ) : null}
           </View>
           {loadError ? (
-            <View className="mb-2 rounded-[24px] border border-destructive-border bg-destructive-surface p-4">
+            <View className="mb-2 rounded-card border border-destructive-border bg-destructive-surface p-4">
               <Text accessibilityRole="alert" className="font-sans text-[13px] font-medium text-destructive">{loadError}</Text>
               <Pressable accessibilityRole="button" accessibilityLabel="Retry loading notifications" onPress={retry}
-                className="mt-3 min-h-control items-center justify-center rounded-full border border-border bg-surface px-4">
+                className="mt-3 min-h-control items-center justify-center rounded-field border border-border bg-surface px-4">
                 <Text className="font-sans text-[13px] font-semibold text-primary">Retry</Text>
               </Pressable>
             </View>
@@ -378,7 +366,7 @@ export function NotificationFeed({
           {actionError ? <Text accessibilityRole="alert" className="font-sans mb-2 text-[13px] font-medium text-destructive">{actionError}</Text> : null}
         </>}
         renderItem={({ item, index }) => (
-          <View className={cx('overflow-hidden border-x border-border bg-surface', index === 0 && 'rounded-t-2xl border-t', index === notifications.length - 1 && 'rounded-b-2xl')}>
+          <View className={cx('overflow-hidden border-x border-border bg-surface', index === 0 && 'rounded-t-card border-t', index === notifications.length - 1 && 'rounded-b-card')}>
             <NotificationCard notification={item} onOpen={onOpen} />
           </View>
         )}

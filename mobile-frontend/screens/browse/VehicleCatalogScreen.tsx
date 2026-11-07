@@ -95,7 +95,7 @@ function GuestCatalogHeader() {
           accessibilityRole="button"
           hitSlop={8}
           onPress={() => router.replace('/' as Href)}
-          className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
+          className="h-12 w-12 items-center justify-center rounded-field border border-border bg-surface">
           <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.5} />
         </Pressable>
 
@@ -112,7 +112,7 @@ function GuestCatalogHeader() {
           accessibilityLabel="Sign in to JamJade"
           accessibilityRole="button"
           onPress={() => router.push('/login' as Href)}
-          className="min-h-12 flex-row items-center gap-2 rounded-full bg-primary px-4">
+          className="min-h-12 flex-row items-center gap-2 rounded-field bg-primary px-4">
           <LogIn size={17} color={themeColors.surface} strokeWidth={2.6} />
           <Text className="font-sans text-[13px] font-semibold text-surface">Sign In</Text>
         </Pressable>
@@ -163,7 +163,7 @@ export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
           />
         }
         showsVerticalScrollIndicator={false}>
-        <View className="px-5" style={{ paddingBottom: bottomPadding, paddingTop: insets.top + 10 }}>
+        <View className="w-full max-w-[560px] self-center px-screen" style={{ paddingBottom: bottomPadding, paddingTop: insets.top + 10 }}>
           {mode === 'guest' ? <GuestCatalogHeader /> : <CustomerTabHeader title="Browse Cars" showLogout />}
 
           <View className="mt-2">
@@ -175,11 +175,10 @@ export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
             />
           </View>
 
-          <View className="mt-5 flex-row items-center justify-between">
+          <View className="mt-section">
             <Text className="font-sans text-[13px] font-semibold text-foreground">
               {vehicles.length} available vehicles
             </Text>
-            <Text className="font-sans text-[12px] font-medium text-secondary-foreground">Live fleet</Text>
           </View>
 
           <View className="mt-4 gap-3">

@@ -34,7 +34,7 @@ export default function ManagementSidebar({
             className="group relative flex size-11 items-center justify-center rounded-lg text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Image src="/JamJadeLogo-solid.png" alt="" width={36} height={36} sizes="36px" className="object-contain" />
-            <span role="tooltip" className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <span role="tooltip" className="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-none transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
               Expand navigation
             </span>
           </button>

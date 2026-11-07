@@ -13,7 +13,7 @@ import type { LocationConsentInput, LocationMonitoringPolicy } from '@/validatio
 
 const labels: Record<LocationSharingPhase, string> = {
   idle: 'Not sharing', starting: 'Starting location sharing', waiting: 'Waiting for GPS',
-  sharing: 'Sharing location', paused: 'Sharing paused', offline: 'Offline · sharing stopped', error: 'Sharing interrupted',
+  sharing: 'Sharing location', paused: 'Sharing paused', offline: 'Sharing stopped while offline', error: 'Sharing interrupted',
 };
 
 export function RentalLocationMonitoring({ bookingCode }: { bookingCode: string }) {

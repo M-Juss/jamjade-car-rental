@@ -226,12 +226,12 @@ export function DatePickerInput({
         <View className="flex-1 justify-end bg-black/35">
           <Pressable accessibilityRole="button" className="flex-1" onPress={() => setIsCalendarOpen(false)} />
           <View
-            className="rounded-t-sheet bg-background px-5 pt-4"
+            className="rounded-t-sheet bg-background px-screen pt-4"
             style={{ paddingBottom: Math.max(insets.bottom + 18, 28) }}>
             <View className="mb-4 items-center">
               <View className="h-1.5 w-12 rounded-full bg-border" />
             </View>
-            <View className="mb-5 flex-row items-center gap-3">
+            <View className="mb-section flex-row items-center gap-3">
               <View className="min-w-0 flex-1">
                 <Text className="font-sans text-[22px] font-semibold text-foreground">{label}</Text>
                 <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">

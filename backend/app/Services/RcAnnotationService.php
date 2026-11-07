@@ -27,7 +27,8 @@ class RcAnnotationService
                 }
                 $items[] = ['start_ms' => (float) $item['start_ms'], 'end_ms' => (float) $item['end_ms'],
                     'movement' => $item['movement'], 'direction' => $item['direction'], 'severity' => $item['severity'],
-                    'certainty' => $item['certainty'], 'source' => $item['source'], 'notes' => $item['notes'] ?? ''];
+                    'certainty' => $item['certainty'], 'source' => $item['source'], 'notes' => $item['notes'] ?? '',
+                    ...array_intersect_key($item, ['initial_deviation' => true])];
             }
             $fingerprint = hash('sha256', RcNativeProtocol::canonical(['version' => 'rc-phase-labels-v1',
                 'manifest_sha256' => $record->manifest_sha256, 'intervals' => $items]));

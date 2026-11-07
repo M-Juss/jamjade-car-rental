@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Fence, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MetadataList } from "@/components/common/data-display/MetadataList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { GeofenceTemplateDialog } from "@/forms/geofence/GeofenceTemplateDialog";
@@ -43,8 +44,12 @@ export function BookingMonitoringZones({ booking, onUpdated }: { booking: Bookin
       <CardContent className="space-y-3 px-4 pb-4">
         {(booking.monitoringZones ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No monitoring zones.</p> : null}
         {(booking.monitoringZones ?? []).map((zone, index) => <div key={zone.id ?? `default-${index}`} className="space-y-2 rounded-xl bg-background p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-foreground">{zone.name}</p><Badge variant="secondary">{zone.scope === "default" ? "Default" : "Booking only"}{zone.frozenAt ? " · Saved" : ""}</Badge></div>
-          <p className="text-xs text-muted-foreground">{zone.geometryType === "circle" ? `Circle · ${zone.radiusMeters?.toLocaleString()} m` : `Polygon · ${zone.polygonCoordinates?.length ?? 0} points`} · Alerts: {[zone.notifyOnEnter && "entry", zone.notifyOnExit && "exit"].filter(Boolean).join(" and ") || "recorded only"}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-foreground">{zone.name}</p><div className="flex flex-wrap items-center gap-2"><Badge variant="secondary">{zone.scope === "default" ? "Default" : "Booking only"}</Badge>{zone.frozenAt ? <span className="text-xs text-muted-foreground">Saved</span> : null}</div></div>
+          <MetadataList items={[
+            { label: 'Shape', value: zone.geometryType === 'circle' ? 'Circle' : 'Polygon' },
+            zone.geometryType === 'circle' ? { label: 'Radius', value: `${zone.radiusMeters?.toLocaleString()} m` } : { label: 'Points', value: zone.polygonCoordinates?.length ?? 0 },
+            { label: 'Alerts', value: [zone.notifyOnEnter && 'entry', zone.notifyOnExit && 'exit'].filter(Boolean).join(' and ') || 'recorded only' },
+          ]} />
           {booking.canManageMonitoringZones && zone.scope === "custom" && zone.id ? <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { setEditing(zone); setEditorOpen(true); }}><Pencil size={13} />Edit</Button><Button type="button" size="sm" variant="outline" onClick={() => setDeleting(zone)}><Trash2 size={13} />Remove</Button></div> : null}
         </div>)}
         <div className="space-y-2 border-t border-border pt-3"><p className="text-xs font-semibold text-foreground">Recent zone activity</p>

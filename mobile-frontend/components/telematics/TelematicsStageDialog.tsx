@@ -16,7 +16,7 @@ export function TelematicsStageDialog({ title, visible, busy = false, onClose, a
       <View accessibilityViewIsModal className="max-h-full w-full max-w-[560px] self-center overflow-hidden rounded-sheet border border-border bg-surface">
         <View className="flex-row items-center gap-3 border-b border-border px-card py-2">
           <Text accessibilityRole="header" className="font-sans flex-1 text-section font-semibold text-foreground">{title}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Close ${title}`} accessibilityState={{ disabled: busy }} disabled={busy} onPress={onClose} className="h-11 w-11 items-center justify-center rounded-full bg-muted disabled:opacity-50">
+          <Pressable accessibilityRole="button" accessibilityLabel={`Close ${title}`} accessibilityState={{ disabled: busy }} disabled={busy} onPress={onClose} className="h-11 w-11 items-center justify-center rounded-field bg-muted disabled:opacity-50">
             <X size={20} color={themeColors.foreground} />
           </Pressable>
         </View>

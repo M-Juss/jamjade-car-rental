@@ -21,7 +21,7 @@ export function CalibrationDisclosureDialog({ visible, disabled, rcDemo, onCance
           <View className="flex-row items-center gap-2 border-b border-border p-card">
             <Info size={21} color={themeColors.primary} accessible={false} />
             <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-section font-semibold text-foreground">Before calibration</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-full bg-background">
+            <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-field bg-background">
               <X size={20} color={themeColors.foreground} />
             </Pressable>
           </View>

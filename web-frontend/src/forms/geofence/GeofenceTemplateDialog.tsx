@@ -136,7 +136,7 @@ export function GeofenceTemplateDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <InputWithLabel id="geofence-name" label="Geofence Name" required placeholder="Monitoring zone name" error={form.formState.errors.name?.message} {...form.register("name")} />
               <fieldset className="space-y-2">
-                <legend className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Boundary Shape</legend>
+                <legend className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">Boundary Shape</legend>
                 <div className="grid grid-cols-2 gap-2">
                   <Button type="button" variant={geometryType === "circle" ? "default" : "outline"} onClick={() => form.setValue("geometryType", "circle", { shouldDirty: true })}><Circle className="size-4" />Circle</Button>
                   <Button type="button" variant={geometryType === "polygon" ? "default" : "outline"} onClick={() => form.setValue("geometryType", "polygon", { shouldDirty: true })}><Fence className="size-4" />Polygon</Button>
@@ -157,7 +157,7 @@ export function GeofenceTemplateDialog({
               onClosePolygon={closePolygon}
               onOpenPolygon={openPolygon}
             />
-            <p className="shrink-0 text-[11px] leading-5 text-muted-foreground">
+            <p className="shrink-0 text-xs leading-5 text-muted-foreground">
               {geometryType === "circle"
                 ? "Click the map to set the center, or enter coordinates below. Set a radius to preview the circle."
                 : polygonClosed
@@ -173,7 +173,7 @@ export function GeofenceTemplateDialog({
             ) : (
               <div className="flex shrink-0 flex-col gap-2">
                 <div className="flex shrink-0 items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Boundary Points ({fields.length})</p>
+                  <p className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">Boundary Points ({fields.length})</p>
                   <div className="flex gap-2">
                     <Button type="button" size="sm" variant="outline" disabled={!fields.length} onClick={() => fields.length && remove(fields.length - 1)}><Minus className="size-3.5" />Undo</Button>
                     <Button type="button" size="sm" variant="outline" disabled={!fields.length} onClick={() => replace([])}><Trash2 className="size-3.5" />Clear</Button>

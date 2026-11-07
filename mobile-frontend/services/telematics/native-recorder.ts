@@ -40,6 +40,7 @@ function moduleOrThrow() {
 export const nativeRecorder = {
   available: nativeModule !== null && typeof nativeModule.groups === 'function' && typeof nativeModule.createGroup === 'function',
   collectionAvailable: nativeModule !== null && typeof nativeModule.collectionAction === 'function' && typeof nativeModule.beginCheck === 'function',
+  pagingAvailable: nativeModule !== null && typeof nativeModule.collectionPage === 'function',
   uploadAvailable: nativeModule !== null && typeof nativeModule.exportManifest === 'function'
     && typeof nativeModule.exportChunk === 'function' && typeof nativeModule.setTransfer === 'function',
   async authorize(ownerId: number) {
@@ -87,6 +88,10 @@ export const nativeRecorder = {
   async stop() { await moduleOrThrow().stop(); },
   async status(): Promise<NativeRecorderState> { return JSON.parse(await moduleOrThrow().status()); },
   async list(offset = 0): Promise<NativeRecording[]> { return JSON.parse(await moduleOrThrow().list(offset)); },
+  async collectionPage(offset: number, filter: 'all' | 'current' | 'pilot'): Promise<{ records: NativeRecording[]; total: number; offset: number; limit: number }> {
+    if (!this.pagingAvailable) throw new NativeRecorderError('Install the updated Android app for the recording library.');
+    return JSON.parse(await moduleOrThrow().collectionPage(offset, filter));
+  },
   async listCollection(offset: number, filter: 'all' | 'current' | 'pilot'): Promise<NativeRecording[]> {
     if (!this.collectionAvailable) return this.list(offset);
     return JSON.parse(await moduleOrThrow().listCollection(offset, filter));
@@ -160,7 +165,7 @@ export const nativeRecorder = {
       throw error;
     } finally { uploading.delete(id); }
   },
-  async collectionAction(values: { action: 'current' } | { action: 'open'; group_id: string } | { action: 'mount'; reason: 'remounted' | 'repositioned' | 'suspected_shift' }): Promise<CollectionState> {
+  async collectionAction(values: { action: 'reset_local_research'; confirmation: 'DELETE_LOCAL_RC_RESEARCH' } | { action: 'current' } | { action: 'open' | 'new_session'; group_id: string } | { action: 'mount'; reason: 'remounted' | 'repositioned' | 'suspected_shift' }): Promise<CollectionState> {
     const revision = accessRevision;
     return mutate(async () => { checkRevision(revision); return JSON.parse(await moduleOrThrow().collectionAction(JSON.stringify(values))); });
   },
@@ -173,7 +178,19 @@ export const nativeRecorder = {
   async saveObservation(id: string, values: ObservationInput): Promise<RecordingCollection> {
     nativeUploadIdSchema.parse(id);
     const input = observationInputSchema.parse(values), revision = accessRevision;
-    return mutate(async () => { checkRevision(revision); return JSON.parse(await moduleOrThrow().saveObservation(id, JSON.stringify(input))); });
+    return mutate(async () => {
+      checkRevision(revision);
+      const saved: RecordingCollection = JSON.parse(await moduleOrThrow().saveObservation(id, JSON.stringify(input)));
+      checkRevision(revision);
+      const latest = saved.observations?.at(-1);
+      if (saved.recording_id !== id || !latest || latest.revision !== input.base_revision + 1 ||
+        latest.completed_as_planned !== input.completed_as_planned || latest.source !== input.source ||
+        latest.observer_code !== input.observer_code || latest.actual_stop_method !== input.actual_stop_method ||
+        latest.initial_deviation !== input.initial_deviation || latest.notes !== input.notes || JSON.stringify(latest.flags) !== JSON.stringify(input.flags)) {
+        throw new NativeRecorderError('Saved observations could not be confirmed. Reopen the recording.');
+      }
+      return saved;
+    });
   },
   async statuses(ids: string[]): Promise<CollectionStatus[]> {
     if (!ids.length) return [];

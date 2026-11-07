@@ -133,8 +133,27 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
       .put("device_profile_id", java.util.UUID.randomUUID().toString()).put("next_session_number", 1)
     return readDocument(file, "$ownerHash/collection")
   }
-  fun workflow() = CollectionWorkflow(::workflowIndex) { value ->
-    key(true); writeDocument(File(root, "collection.rc2"), "$ownerHash/collection", value)
+  fun workflow(): CollectionWorkflow {
+    // Inspect bounded encrypted metadata once per operation, never sensor chunks.
+    val recordedSessions by lazy {
+      directories().mapNotNull { dir ->
+        val file = File(dir, "collection.rc2")
+        if (file.exists() || File(file.path + ".bak").exists()) collection(dir.name)?.optJSONObject("session")?.getString("id") else null
+      }.toSet()
+    }
+    return CollectionWorkflow(::workflowIndex, { value ->
+      key(true); writeDocument(File(root, "collection.rc2"), "$ownerHash/collection", value)
+    }, { it in recordedSessions })
+  }
+  fun hasForwardReference(sessionId: String, mountId: String): Boolean = directories().any { dir ->
+    try { ForwardReferenceEligibility.matches(readManifest(dir.name), sessionId, mountId) }
+    catch (_: Exception) { false } // An unreadable original never satisfies collection order.
+  }
+  fun collectionState(): JSONObject {
+    val value = workflow().current()
+    val sessionId = value.optJSONObject("session")?.optString("id")
+    val mountId = value.optJSONObject("mount")?.optString("id")
+    return value.put("forward_reference_recorded", sessionId != null && mountId != null && hasForwardReference(sessionId, mountId))
   }
   fun collection(id: String): JSONObject? {
     readManifest(id)
@@ -145,24 +164,29 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
   fun saveCollection(id: String, document: JSONObject) {
     readManifest(id)
     writeDocument(File(directory(id), "collection.rc2"), "$ownerHash/$id/collection", document)
+    document.optJSONObject("session")?.let { workflow().recordingSaved(it.getString("id")) }
   }
 
-  fun list(offset: Int, activeId: String?, filter: String = "all"): JSONArray {
+  fun list(offset: Int, activeId: String?, filter: String = "all"): JSONArray = page(offset, activeId, filter, false).getJSONArray("records")
+
+  fun page(offset: Int, activeId: String?, filter: String, clamp: Boolean = true): JSONObject {
     require(filter in setOf("all", "current", "pilot"))
     require(offset in 0..MAX_RECORDINGS)
     val results = JSONArray()
-    directories().filter { dir ->
+    val eligible = directories().filter { dir ->
       if (dir.name == activeId) false else if (filter == "all") true else {
         val hasContext = try { collection(dir.name)?.has("session") == true } catch (_: Exception) { false }
         if (filter == "current") hasContext else !hasContext
       }
-    }.drop(offset).take(10).forEach { dir ->
+    }
+    val effectiveOffset = if (clamp) RecordingPagination.offset(eligible.size, offset) else offset
+    eligible.drop(effectiveOffset).take(RecordingPagination.LIMIT).forEach { dir ->
       val record = try { if (dir.name == activeId) readManifest(dir.name) else recover(dir.name) } catch (_: Exception) {
         JSONObject().put("recording_id", dir.name).put("state", "unavailable").put("end_reason", "key_or_file_unavailable")
       }
       results.put(summary(record))
     }
-    return results
+    return JSONObject().put("records", results).put("total", eligible.size).put("offset", effectiveOffset).put("limit", RecordingPagination.LIMIT)
   }
 
   fun summary(record: JSONObject): JSONObject {
@@ -273,6 +297,12 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
       .put("last_verified_elapsed_ns", latest.toString()).put("ended_elapsed_ns", JSONObject.NULL))
     writeManifest(id, manifest)
     return manifest
+  }
+
+  fun resetResearch() {
+    check(root.deleteRecursively() && !root.exists()) { "Research files could not be completely deleted. Try again." }
+    KeyStore.getInstance("AndroidKeyStore").apply { load(null); deleteEntry(keyAlias) }
+    check(root.mkdirs()) { "Research storage could not be reopened" }
   }
 
   fun delete(id: String) {

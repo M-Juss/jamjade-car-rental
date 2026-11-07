@@ -1,11 +1,12 @@
 import { z } from "zod/v3";
+import { feePricingSchema } from "@/validations/pricing/schemas";
 
 const money = (min: number, max: number) => z.string().trim().min(1, "Amount is required.")
   .regex(/^\d+(?:\.\d{1,2})?$/, "Use no more than two decimal places.")
   .refine((value) => Number(value) >= min && Number(value) <= max, `Enter an amount between ${min} and ${max}.`);
-export const lateReturnPricingSchema = z.object({
-  small_vehicle_hourly_rate: money(0.01, 1_000_000),
-  large_vehicle_hourly_rate: money(0.01, 1_000_000),
+export const lateReturnPricingSchema = feePricingSchema.pick({
+  small_vehicle_hourly_rate: true,
+  large_vehicle_hourly_rate: true,
 });
 export type LateReturnPricingValues = z.infer<typeof lateReturnPricingSchema>;
 

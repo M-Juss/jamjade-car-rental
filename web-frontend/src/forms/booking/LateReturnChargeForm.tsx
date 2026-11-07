@@ -34,7 +34,7 @@ export function LateReturnChargeForm({ booking, onCancel, onSaved, onBusyChange,
   };
   return <form noValidate className="flex min-h-0 flex-auto flex-col overflow-hidden" onSubmit={form.handleSubmit(submit, () => appToast.error("Check the late charge amount and adjustment reason."))}>
     <div data-workflow-body className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="space-y-3 p-4 sm:p-5">
-      <h2 data-workflow-heading tabIndex={-1} className="text-sm font-bold text-foreground">Review Late Return Charge</h2>
+      <h2 data-workflow-heading tabIndex={-1} className="text-sm font-semibold text-foreground">Review Late Return Charge</h2>
       <LateReturnSummary booking={booking} />
       <p className="text-xs leading-5 text-muted-foreground">Approve the calculated charge or enter an adjustment. Enter zero to waive it. A waiver, changed amount, or legacy rate requires a reason. Saving records this review once.</p>
       {existingCharges.length ? <p className="text-xs text-warning">A late charge is already recorded. Review its total; this action preserves the existing charge and payment history.</p> : null}

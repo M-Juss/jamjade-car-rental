@@ -45,7 +45,7 @@ export function FilterSelect<T extends string>({
         ) : undefined
       }
       triggerClassName={cn(
-        "w-full rounded-xl border-border bg-background text-[12.5px]",
+        "w-full rounded-lg border-input bg-surface text-base sm:text-sm",
         className,
       )}
       contentClassName={contentClassName}

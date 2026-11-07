@@ -17,7 +17,7 @@ export function TelematicsSetupResults({ steps, onRepeatSetup, disabled, default
         accessibilityState={{ expanded, disabled }}
         disabled={disabled}
         accessibilityLabel={expanded ? 'Hide setup results' : 'View setup results'}
-        className="min-h-[52px] flex-row items-center gap-3 p-card"
+        className="min-h-control flex-row items-center gap-3 p-card"
         onPress={() => setExpanded((value) => !value)}>
         <Text className="font-sans min-w-0 flex-1 text-body font-medium text-foreground">Setup results</Text>
         <Chevron size={20} color={themeColors.mutedForeground} />

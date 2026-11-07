@@ -28,7 +28,7 @@ export function TelematicsRentalSelector({
         <View className="max-h-[85%] w-full max-w-[560px] self-center rounded-t-sheet bg-background px-screen pt-4" style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
           <View className="mb-4 flex-row items-center gap-3">
             <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-title font-semibold text-foreground">Choose rental</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close rental selection" className="h-11 w-11 items-center justify-center rounded-full bg-surface" onPress={onClose}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close rental selection" className="h-11 w-11 items-center justify-center rounded-field bg-surface" onPress={onClose}>
               <X size={20} color={themeColors.foreground} />
             </Pressable>
           </View>
@@ -45,7 +45,7 @@ export function TelematicsRentalSelector({
                   <Text className="font-sans min-w-0 flex-1 text-body font-semibold text-foreground">{rental.vehicleName}</Text>
                   {rental.id === selectedCode ? <CheckCircle2 size={20} color={themeColors.primary} /> : null}
                 </View>
-                <Text className="font-sans mt-1 text-caption text-secondary-foreground">{rental.id} · {rental.rentalDate}</Text>
+                <View className="mt-1 gap-0.5"><Text className="font-sans text-caption text-foreground">{rental.id}</Text><Text className="font-sans text-caption text-secondary-foreground">{rental.rentalDate}</Text></View>
                 <View className="mt-3 self-start"><BookingStatusBadge status={rental.status} compact /></View>
               </Pressable>
             ))}

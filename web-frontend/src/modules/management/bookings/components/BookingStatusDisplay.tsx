@@ -37,13 +37,13 @@ export function BookingStatusDisplay({ booking, className }: Props) {
 
   return (
     <div className={cn("flex max-w-44 flex-col items-start gap-1.5", className)}>
-      <span className={cn("inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold [overflow-wrap:anywhere]", bookingStatusStyle[booking.statusKey])}>
+      <span className={cn("inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-xs font-semibold [overflow-wrap:anywhere]", bookingStatusStyle[booking.statusKey])}>
         {booking.adminStatus}
       </span>
       {note && (
-        <p className={cn("flex max-w-full items-start gap-1 whitespace-normal text-[10.5px] font-medium leading-4", overdue ? "text-destructive" : needsAttention ? "text-warning" : "text-muted-foreground")}>
+        <p className={cn("flex max-w-full items-start gap-1 whitespace-normal text-xs font-medium leading-4", overdue ? "text-destructive" : needsAttention ? "text-warning" : "text-muted-foreground")}>
           {needsAttention && <AlertCircle aria-hidden="true" className="mt-0.5 size-3 shrink-0" />}
-          <span>{note}{duration ? ` · ${duration}` : ""}</span>
+          <span>{note}{duration ? <span className="mt-0.5 block font-normal">{duration}</span> : null}</span>
         </p>
       )}
     </div>

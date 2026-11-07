@@ -34,7 +34,7 @@ import { ChangePasswordForm } from '@/forms/account/ChangePasswordForm';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { CUSTOMER_DOCUMENT_DEFINITIONS, hasDocumentDraft } from '@/lib/customer/document-verification';
 import { getCustomerFullName, getCustomerInitials, useCustomer } from '@/lib/customer/customer-store';
-import { formatDisplayDate } from '@/utils/calculateAge';
+import { formatDisplayDate, formatNumericDate } from '@/utils/calculateAge';
 import { useAuth } from '@/providers/AuthProvider';
 
 function valueOrMissing(value?: string | number | null) {
@@ -118,7 +118,7 @@ export default function ProfileScreen() {
 
           <View className="mt-4">
             <ProfileKpiGrid
-              joinedDate={formatDisplayDate(customer.joinedAt)}
+              joinedDate={formatNumericDate(customer.joinedAt)}
               successfulBookings={customer.successfulBookings}
               totalSpent={customer.totalSpent}
             />
@@ -198,7 +198,7 @@ export default function ProfileScreen() {
                   />
                 ) : null}
                 {customer.isBelow18 ? (
-                  <View className="rounded-[20px] border border-warning-border bg-warning-surface px-4 py-3">
+                  <View className="rounded-card border border-warning-border bg-warning-surface px-4 py-3">
                     <Text className="font-sans text-[12px] font-medium leading-5 text-warning">
                       Booking is unavailable because JamJade only accepts bookings from customers aged 18 or
                       older.

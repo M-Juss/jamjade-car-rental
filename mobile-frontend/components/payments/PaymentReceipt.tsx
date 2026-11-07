@@ -11,7 +11,7 @@ export function PaymentReceipt({ receipt }: { receipt: CustomerReceipt }) {
     <View>
       <View className="items-center rounded-card bg-success-surface p-card">
         <Text className="font-sans text-center text-caption font-medium text-foreground">JamJade Car Rental</Text>
-        <Text className="font-sans text-center text-[30px] font-bold leading-[38px] text-foreground">
+        <Text className="font-sans text-center text-[30px] font-semibold leading-[38px] text-foreground">
           {formatReceiptAmount(receipt.amount)}
         </Text>
         <View className="flex-row items-center justify-center gap-1.5">

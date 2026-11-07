@@ -79,8 +79,8 @@ export function RescheduleMaintenanceDialog({
         <form onSubmit={form.handleSubmit(save, () => appToast.error("Check the highlighted reschedule fields."))} noValidate className="flex min-h-0 flex-1 flex-col">
           <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-5 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-background p-3 sm:col-span-2">
-              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{record.vehicle?.name}</p>
-              <p className="mt-1 text-sm font-bold text-foreground">{record.title}</p>
+              <p className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">{record.vehicle?.name}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{record.title}</p>
             </div>
             <Controller
               control={form.control}
@@ -96,7 +96,7 @@ export function RescheduleMaintenanceDialog({
                 <MaintenanceScheduleDateField {...field} id="maintenance-reschedule-end" label="Expected End Date" required min={dateLimits.end} error={fieldState.error?.message} />
               )}
             />
-            {form.formState.errors.root?.message ? <p className="text-[11px] font-medium text-destructive sm:col-span-2">{form.formState.errors.root.message}</p> : null}
+            {form.formState.errors.root?.message ? <p className="text-xs font-medium text-destructive sm:col-span-2">{form.formState.errors.root.message}</p> : null}
           </div>
           <FormDialogFooter>
             <Button type="button" variant="outline" onClick={close}>Cancel</Button>

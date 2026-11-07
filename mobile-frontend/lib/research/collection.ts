@@ -1,10 +1,13 @@
-import catalog from '@/assets/research/rc-exercises-v1.json';
+import catalog from '@/assets/research/rc-exercises-v2.json';
+import { recordingPresentation } from './recording-presentation';
 import type { CollectionContextInput, ObservationInput, ResearchSession } from '@/validation/research/collection';
 
 export const exerciseCatalog = catalog;
 export type ExerciseProtocol = typeof catalog.protocols[number];
 export type ObservationRevision = Omit<ObservationInput, 'base_revision'> & { id: string; revision: number; reported_at: string };
-export type CollectionState = { session?: ResearchSession; mount?: CollectionContextInput['mount'] };
+export type CollectionState = { session?: ResearchSession; mount?: CollectionContextInput['mount']; session_has_recordings?: boolean;
+  forward_reference_recorded?: boolean;
+  group_sessions?: Record<string, { session: ResearchSession; session_has_recordings: boolean }> };
 export type SetupEvidence = Omit<CollectionContextInput['preflight'], 'result' | 'checks' | 'measurements'> & {
   result: 'failed' | 'inconclusive'; measurements: Record<'accelerometer' | 'gyroscope', {
     count: number; rejected_count: number; mean: number[] | null; std: number[] | null; rms: number | null; rate_hz: number | null; max_gap_ms: number | null;
@@ -22,4 +25,8 @@ export const observationFlagLabels: Record<ObservationInput['flags'][number], st
 };
 export function recordingTitle(record: { context?: { name?: string }; collection?: RecordingCollection | null }) {
   return record.collection?.display_code ?? record.context?.name ?? 'Unavailable recording';
+}
+
+export function recordingDisplay(record: { context?: { name?: string; surface?: string }; collection?: RecordingCollection | null }) {
+  return recordingPresentation({ name: record.context?.name, displayCode: record.collection?.display_code, surface: record.context?.surface });
 }

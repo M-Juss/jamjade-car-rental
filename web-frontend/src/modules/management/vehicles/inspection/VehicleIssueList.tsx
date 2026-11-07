@@ -32,12 +32,12 @@ export function VehicleIssueList({
       {markers.map((marker) => {
         const content = (
           <>
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-destructive text-xs font-bold text-white">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-destructive text-xs font-semibold text-primary-foreground">
               {marker.sequenceNumber}
             </span>
             <span className="min-w-0 text-left">
-              <span className="block text-xs font-bold text-foreground">
-                Point {marker.sequenceNumber} · {VEHICLE_ISSUE_TYPE_LABELS[marker.issueType]}
+              <span className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-foreground">
+                <span className="font-normal text-muted-foreground">Point {marker.sequenceNumber}</span><span>{VEHICLE_ISSUE_TYPE_LABELS[marker.issueType]}</span>
               </span>
               <span className="mt-0.5 block break-words text-xs leading-5 text-muted-foreground">
                 {marker.description}

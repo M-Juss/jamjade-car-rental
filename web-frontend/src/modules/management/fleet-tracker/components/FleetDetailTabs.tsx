@@ -12,11 +12,11 @@ type FleetDetailTabsProps = {
 export function FleetDetailTabs({ vehicle }: FleetDetailTabsProps) {
   return (
     <Tabs defaultValue="overview" className="flex h-full min-h-0 w-full flex-col gap-4 overflow-hidden">
-      <TabsList className="h-auto w-full shrink-0 justify-start overflow-x-auto rounded-xl border border-border bg-white/60 p-1">
-        <TabsTrigger value="overview" className="text-[12px]">Overview</TabsTrigger>
-        <TabsTrigger value="logs" className="text-[12px]">Driving Logs</TabsTrigger>
-        <TabsTrigger value="geofence" className="text-[12px]">Geofencing</TabsTrigger>
-        <TabsTrigger value="behavior" className="text-[12px]">Driver Behavior</TabsTrigger>
+      <TabsList className="h-auto w-full shrink-0 justify-start overflow-x-auto rounded-xl border border-border bg-surface/60 p-1">
+        <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
+        <TabsTrigger value="logs" className="text-sm">Driving Logs</TabsTrigger>
+        <TabsTrigger value="geofence" className="text-sm">Geofencing</TabsTrigger>
+        <TabsTrigger value="behavior" className="text-sm">Driver Behavior</TabsTrigger>
       </TabsList>
 
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">
@@ -75,14 +75,14 @@ function InfoCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-xl border-slate-200 bg-slate-50/70 shadow-none">
+    <Card className="rounded-xl border-border bg-slate-50/70 shadow-none">
       <CardContent className="min-h-20 p-4">
-        <p className="text-[10px] font-medium leading-none text-muted-foreground">{label}</p>
+        <p className="text-xs font-medium leading-none text-muted-foreground">{label}</p>
         <div className="mt-1 flex min-w-0 items-center gap-1">
           {icon ? <span className="text-primary">{icon}</span> : null}
-          <p className="truncate text-[12px] font-semibold leading-tight text-foreground" title={value}>{value}</p>
+          <p className="truncate text-sm font-semibold leading-tight text-foreground" title={value}>{value}</p>
         </div>
-        {subValue ? <p className="mt-0.5 truncate text-[10px] leading-none text-muted-foreground" title={subValue}>{subValue}</p> : null}
+        {subValue ? <p className="mt-0.5 truncate text-xs leading-none text-muted-foreground" title={subValue}>{subValue}</p> : null}
       </CardContent>
     </Card>
   );
@@ -90,10 +90,10 @@ function InfoCard({
 
 function MetricCard({ label, value, highlighted = false }: { label: string; value: string; highlighted?: boolean }) {
   return (
-    <Card className={`rounded-xl border-slate-200 shadow-none ${highlighted ? "bg-muted" : "bg-slate-50/70"}`}>
+    <Card className={`rounded-xl border-border shadow-none ${highlighted ? "bg-muted" : "bg-slate-50/70"}`}>
       <CardContent className="p-4">
-        <p className="truncate text-[10px] font-medium leading-none text-muted-foreground">{label}</p>
-        <p className={`mt-1 text-[13px] font-bold leading-none ${highlighted ? "text-primary" : "text-foreground"}`}>{value}</p>
+        <p className="truncate text-xs font-medium leading-none text-muted-foreground">{label}</p>
+        <p className={`mt-1 text-sm font-semibold leading-none ${highlighted ? "text-primary" : "text-foreground"}`}>{value}</p>
       </CardContent>
     </Card>
   );

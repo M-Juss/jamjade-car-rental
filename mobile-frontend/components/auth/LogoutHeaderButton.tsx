@@ -22,7 +22,7 @@ export function LogoutHeaderButton() {
         accessibilityState={{ disabled: isLoggingOut, busy: isLoggingOut }}
         disabled={isLoggingOut}
         onPress={open}
-        className="h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface active:opacity-70">
+        className="h-11 w-11 shrink-0 items-center justify-center rounded-field border border-border bg-surface active:opacity-70">
         {isLoggingOut ? (
           <ActivityIndicator color={themeColors.foreground} size="small" />
         ) : (

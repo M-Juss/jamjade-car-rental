@@ -33,7 +33,7 @@ export function SearchInput({
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
         className={cn(
-          "h-9 rounded-xl border-border bg-background pl-8 text-[12.5px] focus-visible:ring-1 focus-visible:ring-primary",
+          "h-11 rounded-lg border-input bg-surface pl-9 text-base sm:text-sm focus-visible:ring-1 focus-visible:ring-primary",
           endAdornment && "pr-9",
           className,
         )}

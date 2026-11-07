@@ -1,0 +1,100 @@
+/* Personnel groups identity and contact details within the shared table system. */
+.table[data-slot="table"] td {
+  padding: 1.125rem 0.75rem;
+  vertical-align: top;
+  font-size: 0.875rem;
+}
+
+.table[data-slot="table"] th:first-child,
+.table[data-slot="table"] td:first-child {
+  padding-left: 1rem;
+}
+
+.table[data-slot="table"] tbody tr {
+  border-color: var(--border);
+}
+
+.table[data-slot="table"] .actionsCell {
+  padding-left: 0;
+  padding-right: 0.5rem;
+}
+
+@media (width < 48rem) {
+  .table[data-slot="table"] tbody {
+    padding: 0;
+  }
+
+  .table[data-slot="table"] tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem 0.75rem;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface);
+    padding: 1rem;
+  }
+
+  .table[data-slot="table"] tbody tr + tr {
+    margin-top: 0;
+  }
+
+  .table[data-slot="table"] tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .table[data-slot="table"] td,
+  .table[data-slot="table"] td:first-child,
+  .table[data-slot="table"] td[data-label] {
+    display: block;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .table[data-slot="table"] td[data-label]::before {
+    display: none;
+  }
+
+  .personCell {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .roleCell {
+    grid-column: 1;
+    grid-row: 2;
+    color: var(--muted-foreground);
+  }
+
+  .contactCell {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .statusCell {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: right;
+  }
+
+  .table[data-slot="table"] .loginCell {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    padding-top: 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  .table[data-slot="table"] td.loginCell::before {
+    display: inline;
+    content: attr(data-label) " · ";
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+  }
+
+  .table[data-slot="table"] .actionsCell {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0;
+  }
+
+  }

@@ -14,9 +14,11 @@ use Illuminate\Validation\ValidationException;
 
 class RcCollectionService
 {
-    public function catalog(): array
+    public function catalog(string $version = 'rc-exercises-v2'): array
     {
-        return json_decode(file_get_contents(resource_path('research/rc-exercises-v1.json')), true, 32, JSON_THROW_ON_ERROR);
+        abort_unless(in_array($version, ['rc-exercises-v1', 'rc-exercises-v2'], true), 422, 'Unsupported exercise protocol version.');
+
+        return json_decode(file_get_contents(resource_path("research/{$version}.json")), true, 32, JSON_THROW_ON_ERROR);
     }
 
     private function hash(array $value): string
@@ -27,7 +29,7 @@ class RcCollectionService
     public function context(RcNativeRecording $record, array $input): RcCollectionContext
     {
         abort_unless($record->state === 'verified', 409, 'Verify the original recording before syncing collection details.');
-        $protocol = collect($this->catalog()['protocols'])->firstWhere('code', $input['protocol_code']);
+        $protocol = collect($this->catalog($input['catalog_version'])['protocols'])->firstWhere('code', $input['protocol_code']);
         if (! hash_equals($this->hash($protocol), $input['protocol_sha256']) || $input['manifest_sha256'] !== $record->manifest_sha256
             || $input['recording_id'] !== $record->client_recording_id) {
             throw ValidationException::withMessages(['protocol_code' => 'Protocol or original recording identity does not match.']);
@@ -98,6 +100,11 @@ class RcCollectionService
 
         return DB::transaction(function () use ($record, $input) {
             RcNativeRecording::whereKey($record->id)->lockForUpdate()->firstOrFail();
+            if (isset($input['initial_deviation']) && ($record->collectionContext()->first()?->payload['protocol_code'] ?? null) !== 'SW') {
+                throw ValidationException::withMessages([
+                    'initial_deviation' => 'Initial deviation is available for swerve recordings only.',
+                ]);
+            }
             $existing = RcObservationRevision::find($input['id']);
             if ($existing) {
                 abort_unless($existing->recording_id === $record->id && hash_equals($existing->content_sha256, $this->hash($input)), 409, 'Observation identity already has different content.');

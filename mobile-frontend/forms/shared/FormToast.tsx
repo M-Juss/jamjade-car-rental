@@ -120,10 +120,10 @@ export function FormToast({
   return (
     <View
       pointerEvents="box-none"
-      className="absolute left-0 right-0 z-50 px-5"
+      className="absolute left-0 right-0 z-50 px-screen"
       style={{ top: safeAreaTopHandled ? 10 : Math.max(insets.top + 10, 22) }}>
       <View
-        className="flex-row items-center gap-3 rounded-[18px] border px-4 py-3.5 "
+        className="flex-row items-center gap-3 rounded-card border px-4 py-3.5"
         style={{
           backgroundColor: config.backgroundColor,
           borderColor: config.borderColor,

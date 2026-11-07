@@ -1,3 +1,4 @@
+import { MetadataList } from '@/components/common/MetadataList';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -188,9 +189,10 @@ export function DeliveryRouteForm({
       {locked && selected && (
         <View className="gap-2 border-t border-border pt-4">
           {estimate?.quoteId === selected.id ? (
-            <Text className="font-sans text-caption text-secondary-foreground">
-              Current estimate: {(estimate.distanceMeters / 1000).toFixed(2)} km · {Math.ceil(estimate.durationSeconds / 60)} min
-            </Text>
+            <MetadataList items={[
+              { label: 'Estimated distance', value: `${(estimate.distanceMeters / 1000).toFixed(2)} km` },
+              { label: 'Estimated time', value: `${Math.ceil(estimate.durationSeconds / 60)} min` },
+            ]} />
           ) : null}
           <View className="flex-row flex-wrap items-center justify-between gap-2">
             <Text className="font-sans text-body text-foreground">Delivery fee</Text>

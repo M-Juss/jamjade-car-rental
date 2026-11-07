@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
+import { useReviewSelection, useReviewTimeline } from './ReviewTimelineContext';
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { TablePagination } from "@/components/common/tables/TablePagination";
+import { MetadataList } from "@/components/common/data-display/MetadataList";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getProcessingRun, getProcessingRuns } from "@/services/research/processing-runs.service";
@@ -65,8 +67,8 @@ export function ProcessingRuns({ recordingId, initialResult, viewControl }: { re
   const savedControl = listing && listing.runs.length > 0 && !listError ? <div className="flex min-w-0 items-center gap-2 sm:ml-auto">
     {listing.total > 1 ? <FilterSelect height="compact" ariaLabel="Saved processing run" className="w-full sm:w-64" placeholder="Saved result" value={selectedId ?? detail?.run.id ?? ""}
       disabled={listLoading} onValueChange={id => { setDetailLoading(true); setDetailError(null); setDetail(null); setSelectedId(id); setRetry(v => v + 1); }}
-      options={listing.runs.map(run => ({ value: run.id, label: `${run.cutoff_hz} Hz · ${formatReturnDateTime(run.created_at)}` }))} />
-      : <p className="text-xs text-muted-foreground">{listing.runs[0].cutoff_hz} Hz · {formatReturnDateTime(listing.runs[0].created_at)}</p>}
+      options={listing.runs.map(run => ({ value: run.id, label: `${run.cutoff_hz} Hz`, description: formatReturnDateTime(run.created_at) }))} />
+      : <div className="text-xs"><p className="font-medium">{listing.runs[0].cutoff_hz} Hz</p><p className="mt-0.5 text-muted-foreground">{formatReturnDateTime(listing.runs[0].created_at)}</p></div>}
     <Button size="icon" variant="ghost" className="rounded-xl" disabled={listLoading} aria-label="Refresh saved results" onClick={() => { setListLoading(true); setRevision(v => v + 1); }}>
       <RefreshCw className={`size-4 ${listLoading ? "animate-spin" : ""}`} aria-hidden="true" />
     </Button>
@@ -81,7 +83,7 @@ export function ProcessingRuns({ recordingId, initialResult, viewControl }: { re
           {listing.lastPage > 1 && <TablePagination page={listing.page} lastPage={listing.lastPage} total={listing.total} onPageChange={value => {
             setListLoading(true); setDetail(null); setSelectedId(null); setDetailError(null); autoOpen.current = true; setPage(value);
           }} label="Processing runs pagination" />}
-        </> : <p className="py-8 text-center text-sm text-muted-foreground">No processed result yet. Open Prepare data to create one.</p>}
+        </> : <p className="py-8 text-center text-sm text-muted-foreground">No saved processing result.</p>}
     {detailLoading ? <p role="status" className="text-xs text-muted-foreground">Loading processed readings...</p>
       : detailError ? <div role="alert" className="space-y-2"><p className="text-sm text-destructive">{denied(detailError) ? "Research access is unavailable." : "The processing result could not be loaded or verified."}</p>
         {!denied(detailError) && <Button size="sm" variant="outline" onClick={() => { setDetailLoading(true); setRetry(v => v + 1); }}>Try again</Button>}</div>
@@ -91,8 +93,13 @@ export function ProcessingRuns({ recordingId, initialResult, viewControl }: { re
 
 function ProcessingRunResult({ detail: { run, result }, viewControl, savedControl }: { detail: ProcessingDetail; viewControl: ReactNode; savedControl: ReactNode }) {
   const bounds: ReferenceRange = [result.config.start_ms, result.config.end_ms];
-  const [selection, setSelection] = useState<ReferenceRange>(bounds);
-  const [cursor, setCursor] = useState(bounds[0]);
+  const shared = useReviewTimeline();
+  const setStart = shared?.setStart, setWindowSize = shared?.setWindowSize;
+  useEffect(() => {
+    setStart?.(result.config.start_ms);
+    setWindowSize?.(result.config.end_ms - result.config.start_ms);
+  }, [result.config.start_ms, result.config.end_ms, setStart, setWindowSize]);
+  const { selection, setSelection, cursor, setCursor } = useReviewSelection(bounds);
   const [channel, setChannel] = useState<"acceleration" | "gyroscope">("acceleration");
   const [compare, setCompare] = useState(false);
   const signals = result.signals[channel];
@@ -132,10 +139,10 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
     <div className="space-y-3 rounded-xl border border-border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">{rangeText(selection)}</h3>
-        <p className="text-xs text-muted-foreground">{comparison.paired} readings{comparison.warmup > 0 ? ` · ${comparison.warmup} warm-up` : ""}{comparison.missing > 0 ? ` · ${comparison.missing} missing` : ""}</p>
+        <MetadataList className="sm:grid-cols-3" items={[{ label: 'Readings', value: comparison.paired }, ...(comparison.warmup > 0 ? [{ label: 'Warm-up', value: comparison.warmup }] : []), ...(comparison.missing > 0 ? [{ label: 'Missing', value: comparison.missing }] : [])]} />
       </div>
       {comparison.paired === 0 ? <p className="text-xs text-muted-foreground">No values after warm-up.</p> : <Table>
-        {compare && <caption className="pb-2 text-left text-xs text-muted-foreground">Before / after · matching readings</caption>}
+        {compare && <caption className="pb-2 text-left text-xs text-muted-foreground">Matching readings before / after filtering</caption>}
         <TableHeader><TableRow><TableHead>Axis</TableHead><TableHead>Mean ({unit})</TableHead><TableHead>Positive peak ({unit})</TableHead><TableHead>Negative peak ({unit})</TableHead></TableRow></TableHeader>
         <TableBody>{comparison.axes.map(axis => <TableRow key={axis.axis}><TableCell className="font-medium">{channel === "acceleration" ? accelerationAxes[axis.axis].label : labels[axis.axis]}</TableCell>
           <TableCell className="tabular-nums">{metric(axis, "mean")}</TableCell>
@@ -157,11 +164,12 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
         <DetailsList items={[
           ["Time range", rangeText(selection)], ["Filter", `${run.cutoff_hz} Hz`],
           ["Reference", origin ? <Link className="text-primary underline-offset-4 hover:underline" href={`/admin/research/native/${origin.recording_id}`}>{origin.recording_name}</Link> : "This recording"],
-          ...(origin ? [["Phone mount", "Unchanged · confirmed by operator"] as [string, string]] : []),
+          ...(origin ? [["Phone mount", "Operator confirmed unchanged mount"] as [string, string]] : []),
           ["Usable readings", comparison.paired.toLocaleString()],
         ]} />
         <div className="space-y-3">
-          <h4 className="font-medium">Standard deviation ({unit}){compare ? " · before / after" : ""}</h4>
+          <h4 className="font-medium">Standard deviation ({unit})</h4>
+          {compare ? <p className="text-muted-foreground">Before / after filtering</p> : null}
           <DetailsList items={comparison.axes.map(axis => [channel === "acceleration" ? accelerationAxes[axis.axis].label : labels[axis.axis], metric(axis, "std")])} />
         </div>
         <p className="leading-relaxed text-muted-foreground">Fixed reference; phone tilt can affect acceleration.</p>

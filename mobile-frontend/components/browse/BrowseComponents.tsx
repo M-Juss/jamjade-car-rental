@@ -5,6 +5,7 @@ import {
   Camera,
   Car,
   Check,
+  ChevronRight,
   CircleAlert,
   CircleCheck,
   CreditCard,
@@ -76,7 +77,7 @@ export function VehicleImage({
     return (
       <View className={cx(className, 'items-center justify-center bg-muted')}>
         <Car size={34} color={themeColors.subtleForeground} strokeWidth={2.1} />
-        <Text className="font-sans mt-2 text-[11px] font-black uppercase tracking-[0.5px] text-subtle-foreground">
+        <Text className="font-sans mt-2 text-caption text-secondary-foreground">
           No image
         </Text>
       </View>
@@ -106,7 +107,7 @@ export function SearchInput({
   onFilterPress: () => void;
 }) {
   return (
-    <View className="min-h-[56px] flex-row items-center rounded-full border border-border bg-surface px-4 ">
+    <View className="min-h-control flex-row items-center rounded-field border border-border bg-surface px-4">
       <Search size={20} color={themeColors.subtleForeground} strokeWidth={2.3} />
       <TextInput
         value={value}
@@ -120,7 +121,7 @@ export function SearchInput({
         accessibilityLabel={activeFilterCount > 0 ? `Open filters, ${activeFilterCount} active` : 'Open filters'}
         hitSlop={8}
         onPress={onFilterPress}
-        className="h-10 w-10 items-center justify-center rounded-full bg-muted">
+        className="h-11 w-11 items-center justify-center rounded-field">
         <SlidersHorizontal size={18} color={primary} strokeWidth={2.5} />
         {activeFilterCount > 0 && (
           <View className="absolute -right-0.5 -top-0.5 h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1">
@@ -136,7 +137,7 @@ export function FeatureBadge({ label, tone = 'light' }: { label: string; tone?: 
   return (
     <View
       className={cx(
-        'min-h-11 flex-1 items-center justify-center rounded-field border px-2 py-2',
+        'min-w-0 flex-1 items-center justify-center rounded-field border px-2 py-2',
         tone === 'light' && 'border-border bg-muted',
         tone === 'dark' && 'border-surface/25 bg-surface/15',
       )}>
@@ -166,28 +167,26 @@ export function VehicleCard({
         accessibilityRole="button"
         accessibilityLabel={`View ${vehicleTitle} details`}
         onPress={onPress}
-        className="aspect-square w-full overflow-hidden rounded-[24px] border border-border bg-surface p-3 shadow-sm shadow-foreground/5 active:opacity-90">
+        className="w-full overflow-hidden rounded-card border border-border bg-surface p-card active:opacity-90">
         <View className="min-h-11 justify-center pl-1 pr-14">
           <Text className="font-sans text-[18px] font-semibold leading-[22px] text-foreground" numberOfLines={2}>
             {vehicleTitle}
           </Text>
         </View>
 
-        <View className="min-h-0 flex-1 overflow-hidden rounded-2xl">
+        <View className="mt-2 aspect-[16/9] w-full overflow-hidden rounded-field">
           <VehicleImage uri={vehicle.cardImage} resizeMode="contain" className="h-full w-full" />
         </View>
 
-        <View className="mt-2 min-h-14 flex-row items-center gap-2 rounded-full bg-muted p-1.5 pl-4">
+        <View className="mt-3 flex-row flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
           <Text
-            adjustsFontSizeToFit
-            minimumFontScale={0.75}
-            numberOfLines={1}
-            className="font-sans min-w-0 flex-1 text-[20px] font-semibold text-foreground">
+            className="font-sans shrink text-[20px] font-semibold text-foreground">
             {formatPeso(vehicle.pricePerDay)}
             <Text className="text-[12px] font-medium text-muted-foreground">/day</Text>
           </Text>
-          <View className="min-h-11 shrink-0 items-center justify-center rounded-full bg-primary px-5 py-2.5">
-            <Text className="font-sans text-[14px] font-medium leading-5 text-surface">View Details</Text>
+          <View className="flex-row items-center gap-1">
+            <Text className="font-sans text-caption font-medium text-primary">View details</Text>
+            <ChevronRight size={16} color={primary} />
           </View>
         </View>
       </Pressable>
@@ -197,7 +196,7 @@ export function VehicleCard({
         accessibilityLabel={isBookmarked ? `Remove ${vehicleTitle} bookmark` : `Bookmark ${vehicleTitle}`}
         accessibilityState={{ selected: isBookmarked }}
         onPress={onBookmarkPress}
-        className="absolute right-3 top-3 z-10 h-11 w-11 items-center justify-center rounded-full bg-muted active:opacity-70">
+        className="absolute right-3 top-3 z-10 h-11 w-11 items-center justify-center rounded-field active:opacity-70">
         <Heart
           size={21}
           color={isBookmarked ? themeColors.primary : themeColors.foreground}
@@ -229,8 +228,8 @@ export function SortSheet({
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <Pressable className="flex-1 justify-end bg-foreground/45" onPress={onClose}>
-        <Pressable className="rounded-t-sheet bg-surface px-5 pb-7 pt-4">
-          <View className="mb-5 h-1.5 w-12 self-center rounded-full bg-border" />
+        <Pressable className="rounded-t-sheet bg-surface px-screen pb-7 pt-4">
+          <View className="mb-section h-1.5 w-12 self-center rounded-full bg-border" />
           <Text className="font-sans mb-3 text-[22px] font-semibold text-foreground">Sort vehicles</Text>
           {options.map((option) => {
             const isSelected = selected === option.value;
@@ -244,7 +243,7 @@ export function SortSheet({
                   onClose();
                 }}
                 className={cx(
-                  'mt-2 min-h-[56px] flex-row items-center justify-between rounded-2xl border px-4',
+                  'mt-2 min-h-control flex-row items-center justify-between rounded-card border px-4',
                   isSelected ? 'border-primary bg-muted' : 'border-border bg-surface',
                 )}>
                 <Text className="font-sans text-[15px] font-semibold text-foreground">{option.label}</Text>
@@ -291,7 +290,7 @@ export function SelectedVehicleSummary({ vehicle }: { vehicle: Vehicle }) {
       <VehicleImage
         accessibilityLabel={vehicleTitle}
         uri={vehicle.cardImage}
-        className="h-[104px] w-[104px] self-center rounded-[22px]"
+        className="h-[104px] w-[104px] self-center rounded-card"
       />
       <View className="min-w-0 flex-1 gap-3 py-1">
         <Text className="font-sans text-[18px] font-semibold leading-[22px] text-foreground">
@@ -332,7 +331,7 @@ export function RequiredDocumentsCard({
 }) {
   if (driverOption === 'owners_driver') {
     return (
-      <View className="rounded-card border border-border bg-background p-5">
+      <View className="rounded-card border border-border bg-background p-card">
         <View className="flex-row gap-3">
           <ShieldCheck size={22} color={primary} strokeWidth={2.35} />
           <View className="min-w-0 flex-1">
@@ -352,7 +351,7 @@ export function RequiredDocumentsCard({
       accessibilityState={{ checked: acknowledged }}
       onPress={onToggleAcknowledged}
       className={cx(
-        'rounded-card border p-5',
+        'rounded-card border p-card',
         acknowledged ? 'border-primary bg-muted' : 'border-border bg-surface',
       )}>
       <View className="flex-row items-start gap-3">
@@ -393,7 +392,7 @@ export function OptionalServiceCard({
       accessibilityState={{ checked: isSelected }}
       onPress={onToggle}
       className={cx(
-        'rounded-[24px] border p-4',
+        'rounded-card border p-4',
         isSelected ? 'border-primary bg-muted' : 'border-border bg-surface',
       )}>
       <View className="flex-row items-start gap-3">
@@ -425,7 +424,7 @@ function BreakdownRow({ label, value, strong = false }: { label: string; value: 
 
 export function PriceBreakdownCard({ breakdown }: { breakdown: PriceBreakdown }) {
   return (
-    <View className="rounded-card border border-border bg-surface p-5 ">
+    <View className="rounded-card border border-border bg-surface p-card">
       <View className="mb-2 flex-row items-center gap-2">
         <CreditCard size={21} color={primary} strokeWidth={2.35} />
         <Text className="font-sans text-[18px] font-semibold text-foreground">Price Breakdown</Text>
@@ -459,10 +458,8 @@ export function EmptyState({
   subtitle?: string;
 }) {
   return (
-    <View className="items-center rounded-[32px] border border-dashed border-[#C8D4E8] bg-surface p-8">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-muted">
-        <Car size={30} color={primary} strokeWidth={2.25} />
-      </View>
+    <View className="items-center rounded-card border border-border bg-surface px-card py-6">
+      <Car size={24} color={primary} strokeWidth={2} />
       <Text className="font-sans mt-4 text-center text-[20px] font-semibold text-foreground">{title}</Text>
       <Text className="font-sans mt-2 text-center text-[14px] font-normal leading-5 text-secondary-foreground">{subtitle}</Text>
     </View>
@@ -471,17 +468,16 @@ export function EmptyState({
 
 export function LoadingState() {
   return (
-    <View className="gap-5">
+    <View className="gap-section">
       {[1, 2].map((item) => (
-        <View key={item} className="h-[410px] overflow-hidden rounded-[32px] bg-muted">
-          <View className="absolute bottom-0 left-0 right-0 gap-3 p-5">
-            <View className="h-8 w-3/4 rounded-full bg-surface/70" />
-            <View className="h-4 w-1/2 rounded-full bg-surface/60" />
-            <View className="mt-8 flex-row gap-2">
-              <View className="h-[68px] flex-1 rounded-2xl bg-surface/60" />
-              <View className="h-[68px] flex-1 rounded-2xl bg-surface/60" />
-              <View className="h-[68px] flex-1 rounded-2xl bg-surface/60" />
-            </View>
+        <View key={item} className="overflow-hidden rounded-card border border-border bg-surface p-card">
+          <View className="min-h-11 justify-center">
+            <View className="h-6 w-3/4 rounded-field bg-muted" />
+          </View>
+          <View className="mt-2 aspect-[16/9] w-full rounded-field bg-muted" />
+          <View className="mt-3 flex-row justify-between border-t border-border pt-3">
+            <View className="h-6 w-1/3 rounded-field bg-muted" />
+            <View className="h-6 w-1/4 rounded-field bg-muted" />
           </View>
         </View>
       ))}
@@ -502,13 +498,11 @@ export function ErrorState({
 }) {
   return (
     <View className="flex-1 items-center justify-center bg-background px-6">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-destructive-surface">
-        <CircleAlert size={31} color={themeColors.destructive} strokeWidth={2.3} />
-      </View>
+      <CircleAlert size={24} color={themeColors.destructive} strokeWidth={2} />
       <Text className="font-sans mt-4 text-center text-[22px] font-semibold text-foreground">{title}</Text>
       <Text className="font-sans mt-2 text-center text-[14px] font-normal leading-5 text-secondary-foreground">{subtitle}</Text>
       {onAction && (
-        <Pressable onPress={onAction} className="mt-6 min-h-[52px] items-center justify-center rounded-full bg-primary px-7">
+        <Pressable onPress={onAction} className="mt-section min-h-control items-center justify-center rounded-field bg-primary px-7">
           <Text className="font-sans text-[15px] font-semibold text-surface">{actionLabel}</Text>
         </Pressable>
       )}

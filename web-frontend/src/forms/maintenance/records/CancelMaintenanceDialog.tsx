@@ -49,7 +49,7 @@ export function CancelMaintenanceDialog({
 
   return (
     <AlertDialog open={Boolean(record)} onOpenChange={(open) => { if (!open) close(); }}>
-      <AlertDialogContent className="max-w-[460px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
+      <AlertDialogContent className="max-w-[460px] rounded-2xl border border-border shadow-dialog">
         <form onSubmit={form.handleSubmit(save, () => appToast.error("Check the cancellation reason."))} noValidate>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Maintenance?</AlertDialogTitle>

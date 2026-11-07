@@ -20,7 +20,10 @@ const stationary = load("./stationary-reference.ts", { "./native-analysis": nati
 const { stationaryReferencePreview } = stationary;
 const forward = load("./forward-reference.ts", { "./stationary-reference": stationary });
 const { forwardReferencePreview } = forward;
-const { suggestForwardIntervals } = load("./reference-suggestions.ts", { "./stationary-reference": stationary, "./forward-reference": forward });
+const suggestions = load("./reference-suggestions.ts", { "./stationary-reference": stationary, "./forward-reference": forward });
+const { suggestForwardIntervals } = suggestions;
+const { suggestLtIntervals } = load("./lt-interval-suggestions.ts", { "./reference-suggestions": suggestions, "./stationary-reference": stationary, "./forward-reference": forward });
+const { suggestFssIntervals, overlapsLabel } = load("./fss-interval-suggestions.ts", { "./reference-suggestions": suggestions });
 const { vehicleAxisPreview, vehicleAxisIntervalStats } = load("./vehicle-axis-preview.ts", { "./stationary-reference": stationary, "./native-analysis": native });
 const synchronized = load("./synchronization-preview.ts", { "./stationary-reference": stationary });
 const { synchronizationPreview, synchronizationCounts } = synchronized;
@@ -754,4 +757,132 @@ test("filtering refuses malformed, irregular or unmatched grids and unsupported 
   assert.equal(result.available, true, result.reason);
   assert.equal(result.acceleration.segments, 0);
   assert.equal(filterComparison(result.acceleration, [0, 1000]).missing, 51);
+});
+
+
+test("FSS timing drafts contain times only and never apply labels", () => {
+  const accel = stream([0, 0, 9.81]).map((e, i) => ({ ...e, values: [0, i >= 50 && i < 90 ? 0.9 : i >= 175 && i < 215 ? -0.8 : 0, 9.81] }));
+  const gyro = stream([0.001, 0.002, 0.003]);
+  const before = JSON.stringify([accel, gyro]);
+  const value = suggestFssIntervals("FSS", accel, gyro, origin, [0, 5000], 5000);
+  assert.equal(value.available, true, value.reason);
+  assert.ok(value.intervals.length >= 4);
+  let end = 0;
+  for (const item of value.intervals) {
+    assert.deepEqual(Object.keys(item).sort(), ["id", "range"]);
+    assert.ok(item.range[0] >= end && item.range[1] > item.range[0] && item.range[1] <= 5000);
+    end = item.range[1];
+  }
+  assert.equal(JSON.stringify([accel, gyro]), before);
+  for (const code of ["FR", "RSS", "HA", undefined]) assert.equal(suggestFssIntervals(code, accel, gyro, origin, [0, 5000], 5000).available, false);
+  assert.equal(suggestFssIntervals("FSS", accel, gyro, origin, [0, 5000], 10000).available, false);
+  assert.equal(suggestFssIntervals("FSS", accel, [], origin, [0, 5000], 5000).available, false);
+});
+
+test("timing proposals do not overlap saved or draft labels; adjacent bounds are valid", () => {
+  assert.equal(overlapsLabel([1000, 2000], [{ start_ms: 900, end_ms: 1100 }]), true);
+  assert.equal(overlapsLabel([1000, 2000], [{ start_ms: 1000, end_ms: 2000 }]), true);
+  assert.equal(overlapsLabel([1000, 2000], [{ start_ms: 0, end_ms: 1000 }, { start_ms: 2000, end_ms: 3000 }]), false);
+});
+
+
+test("FSS can propose a short stopping pulse without weakening reference fitting", () => {
+  const accel = stream([0, 0, 9.81]).map((e, i) => ({ ...e, values: [0, i >= 50 && i < 90 ? 0.9 : i >= 175 && i < 187 ? -0.8 : 0, 9.81] }));
+  const gyro = stream([0.001, 0.002, 0.003]);
+  const result = suggestFssIntervals("FSS", accel, gyro, origin, [0, 5000], 5000);
+  assert.equal(result.available, true, result.reason);
+  assert.equal(suggest(accel, gyro).available, false);
+});
+
+
+for (const shift of [0.15, -0.15]) test(`FSS final quiet proposal tolerates a shifted baseline (${shift}) without changing reference mode`, () => {
+  const accel = stream([0, 0, 9.81]).map((e, i) => ({ ...e, values: [0, i >= 50 && i < 90 ? 0.9 : i >= 150 && i < 175 ? -0.8 : i >= 180 ? shift : 0, 9.81] }));
+  const gyro = stream([0.001, 0.002, 0.003]);
+  const snapshot = JSON.stringify([accel, gyro]);
+  const result = suggestFssIntervals("FSS", accel, gyro, origin, [0, 5000], 5000);
+  assert.equal(result.available, true, result.reason);
+  assert.equal(result.intervals.length, 5);
+  assert.ok(result.intervals.at(-1).range[0] >= 3500);
+  assert.ok(result.intervals.at(-1).range[1] >= 4750);
+  assert.ok(result.intervals.at(-2).range[1] <= result.intervals.at(-1).range[0]);
+  assert.ok(result.intervals.at(-2).range[1] <= 4000); // Exclude the stable plateau; allow the settling transition.
+  assert.equal(JSON.stringify([accel, gyro]), snapshot);
+  const reference = suggest(accel, gyro);
+  assert.ok(!reference.available || reference.quietAfter === null);
+});
+
+test("FSS does not reuse an earlier quiet cruise when the recording ends with sustained activity", () => {
+  const accel = stream([0, 0, 9.81]).map((e, i) => ({ ...e, values: [i >= 200 ? 0.4 * Math.sin(i) : 0,
+    i >= 50 && i < 90 ? 0.9 : i >= 150 && i < 175 ? -0.8 : 0, 9.81] }));
+  const result = suggestFssIntervals("FSS", accel, stream([0.001, 0.002, 0.003]), origin, [0, 5000], 5000);
+  assert.equal(result.available, true, result.reason);
+  assert.equal(result.intervals.length, 4);
+  assert.match(result.notes.join(" "), /No continuous quiet section/);
+});
+
+test("FSS still refuses time gaps and repeated exercises with shifted final rest", () => {
+  const { accel, gyro } = syntheticForward();
+  const sparse = accel.filter((_, i) => i < 150 || i > 170).map((e, sequence) => ({ ...e, sequence }));
+  assert.equal(suggestFssIntervals("FSS", sparse, gyro, origin, [0, 5000], 5000).available, false);
+  const repeated = Array.from({ length: 501 }, (_, sequence) => {
+    const source = accel[sequence % 250]; return { ...source, ...event(sequence * 20000000, source.values), sequence };
+  });
+  const result = suggestFssIntervals("FSS", repeated, stream([0.001, 0.002, 0.003], 501), origin, [0, 10000], 10000);
+  assert.equal(result.available, false);
+  assert.match(result.reason, /Several start\/stop/);
+});
+
+
+function leftTrial(sign = 1, count = 351) {
+  const accel = stream([0, 0, 9.81], count).map((e, i) => ({ ...e, values: [0, i >= 50 && i < 90 ? 0.9 : i >= 275 && i < 300 ? -0.8 : 0, 9.81] }));
+  const gyro = stream([0.001, 0.002, 0.003], count).map((e, i) => ({ ...e, values: [0.001, 0.002, 0.003 + (i >= 150 && i < 225 ? sign * 0.4 : 0)] }));
+  return { accel, gyro };
+}
+
+test("LT timing separates approach, turn and exit without assigning labels or changing originals", () => {
+  const { accel, gyro } = leftTrial(); const before = JSON.stringify([accel, gyro]);
+  const r = suggestLtIntervals("LT", accel, gyro, origin, [0, 7000], 7000);
+  assert.equal(r.available, true, r.reason); assert.equal(r.intervals.length, 7);
+  let end = 0; for (const item of r.intervals) {
+    assert.deepEqual(Object.keys(item).sort(), ["id", "range"]);
+    assert.ok(item.range[0] >= end && item.range[1] > item.range[0]); end = item.range[1];
+  }
+  assert.deepEqual(Array.from(r.intervals[3].range), [3000, 4500]);
+  assert.equal(JSON.stringify([accel, gyro]), before);
+});
+
+test("LT refuses opposite turns, missing gyroscope, unsupported protocols and partial windows", () => {
+  const { accel, gyro } = leftTrial(-1);
+  assert.equal(suggestLtIntervals("LT", accel, gyro, origin, [0, 7000], 7000).available, false);
+  const normal = leftTrial();
+  for (const code of ["FSS", "RT", "SW", undefined]) assert.equal(suggestLtIntervals(code, normal.accel, normal.gyro, origin, [0, 7000], 7000).available, false);
+  assert.equal(suggestLtIntervals("LT", normal.accel, [], origin, [0, 7000], 7000).available, false);
+  assert.equal(suggestLtIntervals("LT", normal.accel, normal.gyro, origin, [0, 5000], 7000).available, false);
+});
+
+test("LT refuses several turns and overlapping turn/start instead of inventing separate phases", () => {
+  const { accel, gyro } = leftTrial();
+  const multiple = gyro.map((e, i) => ({ ...e, values: [0.001, 0.002, 0.003 + (i >= 100 && i < 145 || i >= 175 && i < 220 ? 0.4 : 0)] }));
+  assert.equal(suggestLtIntervals("LT", accel, multiple, origin, [0, 7000], 7000).available, false);
+  const overlap = gyro.map((e, i) => ({ ...e, values: [0.001, 0.002, 0.003 + (i >= 50 && i < 150 ? 0.4 : 0)] }));
+  assert.equal(suggestLtIntervals("LT", accel, overlap, origin, [0, 7000], 7000).available, false);
+});
+
+test("LT yaw timing follows gravity up on a tilted phone and refuses a source gap", () => {
+  const { accel, gyro } = leftTrial(); const angle = 0.17;
+  const rotate = stream => stream.map(e => ({ ...e, values: [e.values[0], Math.cos(angle) * e.values[1] - Math.sin(angle) * e.values[2], Math.sin(angle) * e.values[1] + Math.cos(angle) * e.values[2]] }));
+  const result = suggestLtIntervals("LT", rotate(accel), rotate(gyro), origin, [0, 7000], 7000);
+  assert.equal(result.available, true, result.reason);
+  assert.deepEqual(Array.from(result.intervals[3].range), [3000, 4500]);
+  const sparse = gyro.filter((_, i) => i < 160 || i > 175).map((e, sequence) => ({ ...e, sequence }));
+  assert.equal(suggestLtIntervals("LT", accel, sparse, origin, [0, 7000], 7000).available, false);
+});
+
+test("LT omits an absent straight approach rather than inventing duration", () => {
+  const { accel, gyro } = leftTrial();
+  const immediateTurn = gyro.map((e, i) => ({ ...e, values: [0.001, 0.002, 0.003 + (i >= 100 && i < 225 ? 0.4 : 0)] }));
+  const result = suggestLtIntervals("LT", accel, immediateTurn, origin, [0, 7000], 7000);
+  assert.equal(result.available, true, result.reason);
+  assert.equal(result.intervals.length, 6);
+  assert.ok(result.intervals.every(item => item.range[1] > item.range[0]));
 });

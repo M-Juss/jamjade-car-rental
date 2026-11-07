@@ -1,15 +1,15 @@
 {
-  "screenPadding": 20,
-  "cardPadding": 16,
-  "sectionGap": 20,
+  "screenPadding": 16,
+  "cardPadding": 14,
+  "sectionGap": 16,
   "controlHeight": 48,
   "tabBarHeight": 60,
   "tabBarLift": 12,
   "floatingGap": 8,
-  "radius": { "card": 22, "field": 14, "sheet": 28 },
+  "radius": { "card": 14, "field": 10, "sheet": 18 },
   "type": {
-    "title": [26, 32],
-    "section": [17, 22],
+    "title": [24, 30],
+    "section": [16, 22],
     "body": [15, 22],
     "caption": [13, 18],
     "button": [15, 20]

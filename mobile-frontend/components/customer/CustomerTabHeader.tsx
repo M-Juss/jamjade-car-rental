@@ -21,12 +21,11 @@ export function CustomerTabHeader({
         <Image
           source={require('@/assets/images/JamJadeLogo-solid.png')}
           accessibilityLabel="JamJade Car Rental"
-          style={{ height: 56, width: 56, marginTop: -2, marginBottom: -6, flexShrink: 0 }}
+          style={{ height: 40, width: 40, flexShrink: 0 }}
           resizeMode="contain"
         />
         <Text
-          className="font-sans min-w-0 flex-1 text-[22px] font-semibold leading-[28px] text-foreground"
-          numberOfLines={1}>
+          className="font-sans min-w-0 flex-1 text-title font-semibold text-foreground">
           {title}
         </Text>
         {showLogout ? <LogoutHeaderButton /> : null}

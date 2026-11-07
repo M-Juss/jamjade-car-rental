@@ -9,16 +9,12 @@ import { BookingStatusDisplay } from "./components/BookingStatusDisplay";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import {
-  Activity,
-  CalendarCheck,
-  CheckCircle2,
-  Clock,
   Eye,
   ArrowRight,
   UserRound,
   XCircle,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import {
@@ -29,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { TableActionMenu, type TableActionMenuItem } from "@/components/common/tables/TableActionMenu";
 import { TablePagination } from "@/components/common/tables/TablePagination";
-import { KpiCard } from "@/components/common/data-display/KpiCard";
+import { SummaryList } from "@/components/common/data-display/SummaryList";
 import { appToast } from "@/lib/toast";
 import { CancelBookingDialog } from "@/forms/booking/CancelBookingDialog";
 import { BookingDetailsDialog } from "@/forms/booking/BookingDetailsDialog";
@@ -47,10 +43,10 @@ import {
 
 const paymentStatusStyle: Record<PaymentStatus, string> = {
   unpaid: "bg-background text-muted-foreground border-border",
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  partial: "bg-amber-50 text-amber-700 border-amber-200",
-  paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  failed: "bg-rose-50 text-rose-600 border-rose-200",
+  pending: "bg-warning-surface text-warning border-warning-border",
+  partial: "bg-warning-surface text-warning border-warning-border",
+  paid: "bg-success-surface text-success border-success-border",
+  failed: "bg-destructive-surface text-destructive border-destructive-border",
   refunded: "bg-violet-50 text-violet-700 border-violet-200",
 };
 
@@ -145,16 +141,16 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
   const count = (status: BookingStatus) => statusCounts[status] ?? 0;
   const summaryCards = group === "history"
     ? [
-        { label: "Total", value: count("completed") + count("cancelled") + count("rejected"), icon: CalendarCheck, color: "text-primary", background: "bg-muted" },
-        { label: "Completed", value: count("completed"), icon: CheckCircle2, color: "text-success", background: "bg-success-surface" },
-        { label: "Cancelled", value: count("cancelled"), icon: XCircle, color: "text-destructive", background: "bg-destructive-surface" },
-        { label: "Rejected", value: count("rejected"), icon: XCircle, color: "text-destructive", background: "bg-destructive-surface" },
+        { label: "Total", value: count("completed") + count("cancelled") + count("rejected") },
+        { label: "Completed", value: count("completed") },
+        { label: "Cancelled", value: count("cancelled") },
+        { label: "Rejected", value: count("rejected") },
       ]
     : [
-        { label: "Total", value: count("pending") + count("confirmed") + count("ongoing") + count("returned"), icon: CalendarCheck, color: "text-primary", background: "bg-muted" },
-        { label: "Active", value: count("ongoing") + count("confirmed"), icon: Activity, color: "text-success", background: "bg-success-surface" },
-        { label: "Pending", value: count("pending"), icon: Clock, color: "text-warning", background: "bg-warning-surface" },
-        { label: "Returned", value: count("returned"), icon: CheckCircle2, color: "text-primary", background: "bg-muted" },
+        { label: "Total", value: count("pending") + count("confirmed") + count("ongoing") + count("returned") },
+        { label: "Active", value: count("ongoing") + count("confirmed") },
+        { label: "Pending", value: count("pending") },
+        { label: "Returned", value: count("returned") },
       ];
 
   const handleBookingUpdated = useCallback((updatedBooking: BookingRecord) => {
@@ -221,32 +217,21 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <ManagementPageHeading
-          title={group === "history" ? "Booking History" : "Booking Management"}
+          title={group === "history" ? "Booking History" : "Bookings"}
           description={group === "history" ? "Review completed, cancelled, and rejected bookings." : "Manage reservations, payments, handovers, and returns."}
         />
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[12.5px] font-medium text-rose-700">
+        <div className="rounded-xl border border-destructive-border bg-destructive-surface px-4 py-3 text-sm font-medium text-destructive">
           {error}
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {summaryCards.map(({ label, value, icon, color, background }) => (
-          <KpiCard
-            key={label}
-            label={label}
-            value={value}
-            icon={icon}
-            iconClassName={`${background} ${color}`}
-          />
-        ))}
-      </div>
+      <SummaryList label="Booking summary" items={summaryCards.map(({ label, value }) => ({ label, value: isLoading ? "—" : value }))} />
 
-      <div>
-        <Card className="rounded-2xl border-0 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-          <CardContent className="p-4">
+      <TableCard>
+          <CardContent className="border-b border-border p-4">
             <div className="flex flex-wrap items-center gap-2.5">
               <SearchInput
                 value={searchInput}
@@ -297,38 +282,33 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
               />
             </div>
           </CardContent>
-        </Card>
-      </div>
-
-      <div>
-        <TableCard>
           {/* Card layout on small screens; the table takes over from md */}
-          <div className="grid gap-3 p-4 md:hidden">
+          <div className="grid divide-y divide-border md:hidden">
             {isLoading ? (
-              <p className="py-10 text-center text-[12px] text-muted-foreground">Loading {group === "history" ? "history" : "bookings"}...</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">Loading {group === "history" ? "history" : "bookings"}...</p>
             ) : error ? (
-              <p className="py-10 text-center text-[12px] text-muted-foreground">Could not load records.</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">Could not load records.</p>
             ) : bookings.length === 0 ? (
-              <p className="py-10 text-center text-[12px] text-muted-foreground">No {group === "history" ? "historical" : "current"} bookings found.</p>
+              <p className="py-10 text-center text-sm text-muted-foreground">No {group === "history" ? "historical" : "current"} bookings found.</p>
             ) : (
               bookings.map((booking) => (
-                <div key={booking.backendId} className="rounded-xl border border-border bg-background p-3.5">
+                <div key={booking.backendId} className="min-w-0 bg-surface p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-mono text-[12px] font-semibold text-primary">{booking.bookingCode}</p>
-                      <p className="mt-1 truncate text-[12.5px] font-semibold text-foreground">
+                      <p className="break-words font-mono text-sm font-semibold text-primary">{booking.bookingCode}</p>
+                      <p className="mt-1 break-words text-sm font-semibold text-foreground">
                         {booking.customer?.name || "Customer"}
                       </p>
                     </div>
                     <div className="flex max-w-[50%] shrink-0 flex-col items-end gap-2">
                       <BookingStatusDisplay booking={booking} className="items-end text-right" />
-                      <span className={`inline-flex whitespace-nowrap rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
+                      <span className={`inline-flex whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
                         {booking.paymentStatus}
                       </span>
                     </div>
                   </div>
 
-                  <div className="mt-3 space-y-1.5 border-t border-border pt-3 text-[12px]">
+                  <div className="mt-3 space-y-1.5 border-t border-border pt-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-muted-foreground">Vehicle</span>
                       <span className="truncate font-medium text-foreground">
@@ -382,7 +362,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
               <TableHeader>
                 <TableRow className="border-b border-border bg-background hover:bg-background">
                   {["Booking ID", "Customer", "Vehicle", "Driver", "Pickup", "Status", "Payment", "Total", ""].map((heading) => (
-                    <TableHead key={heading} className="whitespace-normal break-words px-2 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">
+                    <TableHead key={heading} className="whitespace-normal break-words px-2 py-3 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">
                       {heading || <span className="sr-only">Actions</span>}
                     </TableHead>
                   ))}
@@ -391,47 +371,47 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
+                    <TableCell colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
                       Loading {group === "history" ? "history" : "bookings"}...
                     </TableCell>
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
+                    <TableCell colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
                       Could not load records.
                     </TableCell>
                   </TableRow>
                 ) : bookings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-12 text-center text-[12px] text-muted-foreground">
+                    <TableCell colSpan={9} className="py-12 text-center text-sm text-muted-foreground">
                       No {group === "history" ? "historical" : "current"} bookings found.
                     </TableCell>
                   </TableRow>
                 ) : (
                   bookings.map((booking) => (
                     <TableRow key={booking.backendId} className="border-b border-background transition-colors hover:bg-background">
-                      <TableCell className="px-2 py-3 font-mono text-[12px] font-semibold text-primary">{booking.bookingCode}</TableCell>
-                      <TableCell className="px-2 py-3 text-[12.5px] font-semibold text-foreground">{booking.customer?.name || "Customer"}</TableCell>
-                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">
+                      <TableCell className="px-2 py-3 font-mono text-sm font-semibold text-primary">{booking.bookingCode}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm font-semibold text-foreground">{booking.customer?.name || "Customer"}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm text-muted-foreground">
                         {[booking.brand, booking.vehicleName, booking.model]
                           .filter(Boolean)
                           .join(" ") || "Vehicle unavailable"}
                       </TableCell>
-                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">
+                      <TableCell className="px-2 py-3 text-sm text-muted-foreground">
                         {booking.driverOption === "self_drive"
                           ? "Self drive"
                           : booking.assignedDriver?.name || "Not assigned"}
                       </TableCell>
-                      <TableCell className="px-2 py-3 text-[12px] text-muted-foreground">{booking.rentalDate || "Not provided"}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm text-muted-foreground">{booking.rentalDate || "Not provided"}</TableCell>
                       <TableCell className="px-2 py-3">
                         <BookingStatusDisplay booking={booking} />
                       </TableCell>
                       <TableCell className="px-2 py-3">
-                        <span className={`inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-[10.5px] font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
+                        <span className={`inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-xs font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
                           {booking.paymentStatus}
                         </span>
                       </TableCell>
-                      <TableCell className="px-2 py-3 text-[12px] font-semibold text-foreground">{peso(booking.totalAmount)}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm font-semibold text-foreground">{peso(booking.totalAmount)}</TableCell>
                       <TableCell className="px-2 py-3">
                         <TableActionMenu
                           label={`Open actions for ${booking.bookingCode}`}
@@ -444,11 +424,10 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
               </TableBody>
             </Table>
           </div>
-        </TableCard>
-        {!error && !isLoading ? (
-          <TablePagination total={total} page={page} lastPage={lastPage} onPageChange={(nextPage) => { setIsLoading(true); setError(null); setPage(nextPage); }} />
+        {!error && !isLoading && total > 0 ? (
+          <div className="border-t border-border px-4 py-3 [&>div]:mt-0"><TablePagination total={total} page={page} lastPage={lastPage} onPageChange={(nextPage) => { setIsLoading(true); setError(null); setPage(nextPage); }} /></div>
         ) : null}
-      </div>
+      </TableCard>
 
       {selectedBooking ? (
         <BookingDetailsDialog

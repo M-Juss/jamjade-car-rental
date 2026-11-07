@@ -74,7 +74,7 @@ export function ChangeEmailForm({
     <ProfileFormSheet title="Change email" visible={visible} onClose={close}>
       <KeyboardFormScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text className="font-sans mb-4 text-body text-secondary-foreground">
-          This is the email you use to sign in. Confirm your current password to change it.
+          Confirm your current password to change your sign-in email.
         </Text>
         <View className="gap-4 rounded-card border border-border bg-surface p-card">
           <Controller

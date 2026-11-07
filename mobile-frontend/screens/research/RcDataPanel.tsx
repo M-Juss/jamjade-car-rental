@@ -79,7 +79,7 @@ export function RcDataPanel({ active, revision }: { active: boolean; revision: n
           onPress={() => setSelected(trial)} className="flex-row items-center gap-3 rounded-card border border-border bg-surface p-card active:bg-muted">
           <View className="min-w-0 flex-1 gap-1"><Text className="font-sans text-section font-semibold text-foreground">{trial.session.name}</Text>
             <Text className="font-sans text-body text-secondary-foreground">{movementLabel(trial.observed_movement, trial.observed_intensity)}</Text>
-            <Text className="font-sans text-caption text-secondary-foreground">{formatRentalDate(trial.created_at)} · {(trial.summary.duration_ms / 1000).toFixed(1)} s</Text>
+            <View className="flex-row flex-wrap justify-between gap-x-4 gap-y-1"><Text className="font-sans shrink text-caption text-secondary-foreground">{formatRentalDate(trial.created_at)}</Text><Text className="font-sans text-caption text-secondary-foreground">{(trial.summary.duration_ms / 1000).toFixed(1)} s</Text></View>
           </View><ChevronRight size={20} color={themeColors.primary} />
         </Pressable>)}
         {lastPage > 1 ? <View className="gap-3">

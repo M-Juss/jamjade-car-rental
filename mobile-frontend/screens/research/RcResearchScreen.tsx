@@ -19,6 +19,7 @@ export function RcResearchScreen() {
   const [state, setState] = useState<'checking' | 'ready' | 'error'>('checking');
   const [retry, setRetry] = useState(0);
   const [tab, setTab] = useState<RcResearchTab>('collect');
+  const [opened, setOpened] = useState(false);
   const [recording, setRecording] = useState(false);
   const verified = useRef(false);
   const logout = useLogoutConfirmation();
@@ -56,14 +57,14 @@ export function RcResearchScreen() {
         <ActionButton label="Retry" onPress={() => setRetry(value => value + 1)} />
       </View> : null}
       <View className="flex-1" style={{ display: state === 'ready' ? 'flex' : 'none' }}>
-        <RcNativeCollectionPanel active={state === 'ready'} mode={tab} onRecordingChange={setRecording} />
+        <RcNativeCollectionPanel onCollect={() => setTab('collect')} active={state === 'ready'} mode={tab} onRecordingChange={setRecording} onOpenedViewChange={setOpened} />
       </View>
-      <RcResearchTabs
+      {!opened && <RcResearchTabs
         selectedTab={tab}
         onTabChange={setTab}
         onLogout={logout.open}
         isLoggingOut={logout.isLoggingOut}
-      />
+      />}
       <LogoutConfirmationDialog
         accountLabel="admin"
         warning={recording ? 'Recording will stop. Saved recordings stay on this phone.' : undefined}

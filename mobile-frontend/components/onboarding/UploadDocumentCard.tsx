@@ -51,14 +51,14 @@ export function UploadDocumentCard({
   return (
     <View
       className={cx(
-        'rounded-[24px] border bg-surface p-4 ',
+        'rounded-card border bg-surface p-card',
         error ? 'border-destructive-border' : 'border-border',
         disabled && 'opacity-75',
       )}>
       <View className="flex-row items-start gap-3">
         <View
           className={cx(
-            'h-11 w-11 items-center justify-center rounded-full',
+            'h-8 w-8 items-center justify-center rounded-field',
             hasPreview ? 'bg-success-surface' : 'bg-muted',
           )}>
           {hasPreview ? (
@@ -81,8 +81,8 @@ export function UploadDocumentCard({
         disabled={disabled}
         onPress={handlePickImage}
         className={cx(
-          'mt-4 overflow-hidden rounded-[22px] border border-dashed',
-          error ? 'border-destructive-border bg-destructive-surface' : 'border-[#BFD1FF] bg-background',
+          'mt-3 overflow-hidden rounded-field border border-dashed',
+          error ? 'border-destructive-border bg-destructive-surface' : 'border-border bg-background',
         )}>
         {hasPreview && isUploading ? (
           <View className="h-[170px] w-full items-center justify-center bg-muted">
@@ -96,15 +96,10 @@ export function UploadDocumentCard({
             className="h-[170px] w-full bg-muted"
           />
         ) : (
-          <View className="min-h-[150px] items-center justify-center px-5 py-6">
-            <View className="h-12 w-12 items-center justify-center rounded-full bg-surface">
-              <Upload size={22} color={themeColors.primary} strokeWidth={2.45} />
-            </View>
+          <View className="min-h-[104px] items-center justify-center px-4 py-4">
+            <Upload size={22} color={themeColors.primary} strokeWidth={2} />
             <Text className="font-sans mt-3 text-center text-[14px] font-semibold text-foreground">
               Choose image
-            </Text>
-            <Text className="font-sans mt-1 text-center text-[11px] font-normal leading-4 text-secondary-foreground">
-              Tap here to open your gallery or photos.
             </Text>
           </View>
         )}
@@ -119,7 +114,7 @@ export function UploadDocumentCard({
         <Text
           className={cx(
             'font-sans',
-            'min-w-0 flex-1 text-[11px] font-medium leading-4',
+            'min-w-0 flex-1 text-caption',
             error ? 'text-destructive' : 'text-secondary-foreground',
           )}>
           {error || helperText || 'Use a clear, well-lit image. Maximum file size is 5 MB.'}
@@ -129,7 +124,7 @@ export function UploadDocumentCard({
             accessibilityLabel={`Remove ${label}`}
             accessibilityRole="button"
             onPress={() => onChange('')}
-            className="h-8 w-8 items-center justify-center rounded-full border border-destructive-border bg-destructive-surface">
+            className="h-11 w-11 items-center justify-center rounded-field border border-destructive-border bg-destructive-surface">
             <Trash2 size={15} color={themeColors.destructive} strokeWidth={2.45} />
           </Pressable>
         ) : null}

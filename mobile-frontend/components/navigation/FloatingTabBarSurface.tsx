@@ -86,17 +86,13 @@ const styles = StyleSheet.create({
   barSurface: {
     backgroundColor: themeColors.surface,
     borderColor: themeColors.border,
-    borderRadius: 24,
+    borderRadius: mobileLayout.radius.card,
     borderWidth: 1,
     bottom: 0,
     height: BAR_HEIGHT,
     left: 0,
     position: 'absolute',
     right: 0,
-    shadowColor: themeColors.foreground,
-    shadowOffset: { height: 3, width: 0 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
   },
   tabButton: {
     alignItems: 'center',

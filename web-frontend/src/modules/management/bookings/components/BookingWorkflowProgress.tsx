@@ -13,7 +13,7 @@ export function BookingWorkflowProgress({ booking, phase, action }: {
     <ol aria-label="Booking workflow progress" className="flex min-w-0 items-center gap-x-3 overflow-x-auto">
       {steps.map((step, index) => <li key={step.key} aria-current={step.key === active ? "step" : undefined}
         className={cn("flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground", step.key === active && "font-semibold text-primary")}>
-        {step.done ? <CheckCircle2 size={14} className="shrink-0 text-success" aria-hidden="true" /> : step.key === active ? <span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] text-primary-foreground">{index + 1}</span> : <Circle size={14} className="shrink-0" aria-hidden="true" />}
+        {step.done ? <CheckCircle2 size={14} className="shrink-0 text-success" aria-hidden="true" /> : step.key === active ? <span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{index + 1}</span> : <Circle size={14} className="shrink-0" aria-hidden="true" />}
         <span className="sr-only sm:not-sr-only">{step.label}</span><span className="sr-only">{step.done ? " — complete" : step.key === active ? " — current step" : " — pending"}</span>
       </li>)}
     </ol>

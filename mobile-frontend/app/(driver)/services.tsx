@@ -15,7 +15,7 @@ import type { Booking } from '@/types/booking';
 type ServiceFilter = 'Upcoming' | 'Active' | 'History';
 
 function activeServiceStage(booking: Booking) {
-  if (booking.rentalProgress.tripEnded) return 'Trip Ended · Awaiting Incoming Inspection';
+  if (booking.rentalProgress.tripEnded) return 'Awaiting incoming inspection after trip end';
   return 'Active Service';
 }
 
@@ -71,10 +71,12 @@ export default function DriverServicesScreen() {
             {(['Upcoming', 'Active', 'History'] as ServiceFilter[]).map((item) => (
               <Pressable
                 key={item}
+                accessibilityRole="button"
+                accessibilityState={{ selected: filter === item }}
                 onPress={() => setFilter(item)}
-                className={`min-h-[42px] flex-1 items-center justify-center rounded-full border ${filter === item ? 'border-primary bg-primary' : 'border-border bg-surface'}`}>
+                className={`min-h-control min-w-0 flex-1 items-center justify-center rounded-field border px-2 py-2 ${filter === item ? 'border-primary bg-primary' : 'border-border bg-surface'}`}>
                 <Text
-                  className={`font-sans text-[12px] font-semibold ${filter === item ? 'text-surface' : 'text-foreground'}`}>
+                  className={`font-sans text-center text-caption font-medium ${filter === item ? 'text-surface' : 'text-foreground'}`}>
                   {item}
                 </Text>
               </Pressable>
@@ -82,13 +84,13 @@ export default function DriverServicesScreen() {
           </View>
 
           {message ? (
-            <Text className="font-sans mt-4 rounded-[18px] border border-border bg-surface p-3 text-[12px] font-medium leading-5 text-foreground">
+            <Text className="font-sans mt-4 rounded-card border border-border bg-surface p-3 text-[12px] font-medium leading-5 text-foreground">
               {message}
             </Text>
           ) : null}
           {isLoading ? <ActivityIndicator className="mt-10" color={themeColors.primary} /> : null}
 
-          <View className="mt-5 gap-4">
+          <View className="mt-section gap-4">
             {visible.map((booking) => {
               const isCompactCard = filter !== 'Active';
               const fullVehicleName = [booking.brand, booking.vehicleName, booking.model]
@@ -103,22 +105,19 @@ export default function DriverServicesScreen() {
                 .reduce((sum, charge) => sum + charge.amount, 0);
 
               return (
-                <View key={booking.id} className="rounded-card border border-border bg-surface p-5">
+                <View key={booking.id} className="rounded-card border border-border bg-surface p-card">
                   <View className={isCompactCard ? 'w-full' : 'flex-row items-start justify-between gap-3'}>
                     <View className={isCompactCard ? 'min-w-0 w-full' : 'min-w-0 flex-1'}>
-                      <View className={isCompactCard ? 'relative min-h-[22px] justify-center pr-24' : undefined}>
-                        <Text className="font-sans text-[11px] font-semibold text-primary">{booking.id}</Text>
+                      <View className={isCompactCard ? 'flex-row flex-wrap items-center justify-between gap-2' : undefined}>
+                        <Text className="font-sans shrink text-caption font-semibold text-primary">{booking.id}</Text>
                         {isCompactCard ? (
-                          <Text className="font-sans absolute right-0 top-0 rounded-full bg-muted px-2 py-1 text-[10px] font-semibold leading-[14px] text-primary">
+                          <Text className="font-sans rounded-field bg-muted px-2 py-1 text-caption font-medium text-primary">
                             {booking.status}
                           </Text>
                         ) : null}
                       </View>
                       <Text
-                        adjustsFontSizeToFit={isCompactCard}
-                        minimumFontScale={0.8}
-                        numberOfLines={isCompactCard ? 1 : undefined}
-                        className="font-sans mt-1 text-[19px] font-semibold text-foreground">
+                        className="font-sans mt-1 text-section font-semibold text-foreground">
                         {isCompactCard
                           ? [fullVehicleName, booking.vehiclePlateNumber].filter(Boolean).join(' - ')
                           : booking.vehicleName}
@@ -154,7 +153,7 @@ export default function DriverServicesScreen() {
                       </Text>
                     ) : null}
                   </View>
-                  <View className="mt-4 flex-row items-start gap-2 rounded-[18px] bg-background p-3">
+                  <View className="mt-3 flex-row items-start gap-2 border-t border-border pt-3">
                     <MapPin color={themeColors.primary} size={17} />
                     <Text className="font-sans min-w-0 flex-1 text-[12px] font-medium leading-5 text-foreground">
                       JamJade Car Rental Garage
@@ -171,7 +170,7 @@ export default function DriverServicesScreen() {
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => router.push(`/driver-telematics/${encodeURIComponent(booking.id)}` as Href)}
-                      className="mt-3 min-h-[48px] flex-row items-center justify-center gap-2 rounded-full bg-primary px-4">
+                      className="mt-3 min-h-control flex-row items-center justify-center gap-2 rounded-field bg-primary px-4">
                       <Text className="font-sans text-[13px] font-semibold text-surface">
                         {booking.status === 'Confirmed' ? 'Open vehicle setup' : 'Open Telematics'}
                       </Text>
@@ -182,7 +181,7 @@ export default function DriverServicesScreen() {
                       onPress={() =>
                         router.push(`/driver-payment?bookingId=${encodeURIComponent(booking.id)}` as Href)
                       }
-                      className="mt-3 min-h-[48px] flex-row items-center justify-center gap-2 rounded-full border border-primary bg-surface">
+                      className="mt-3 min-h-control flex-row items-center justify-center gap-2 rounded-field border border-primary bg-surface">
                       <CreditCard color={themeColors.primary} size={18} />
                       <Text className="font-sans text-[13px] font-semibold text-primary">
                         Review & Pay Driver Charges

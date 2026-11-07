@@ -66,11 +66,11 @@ export function AdditionalChargesForm({ onCancel, booking, onSaved, onBusyChange
     void handleSubmit(submit, () => appToast.error("Check every additional charge field."))(event);
   }}>
       <div data-workflow-body className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="grid gap-3 p-4 sm:p-5">
-        <h2 data-workflow-heading tabIndex={-1} className="text-sm font-bold text-foreground">{editingCharge ? "Edit Return Charge" : "Add Return Charges"}</h2>
+        <h2 data-workflow-heading tabIndex={-1} className="text-sm font-semibold text-foreground">{editingCharge ? "Edit Return Charge" : "Add Return Charges"}</h2>
         {errors.root?.message ? <p role="alert" className="text-xs text-destructive">{errors.root.message}</p> : null}
         <fieldset disabled={isSubmitting} className="grid min-w-0 gap-3">
         {fields.map((field, index) => <Card key={field.id} className="gap-0 rounded-2xl border border-border bg-surface py-3 ring-0"><CardContent className="grid gap-3 px-4">
-          <div className="flex items-center justify-between"><h3 className="text-sm font-bold text-foreground">Charge {index + 1}</h3>
+          <div className="flex items-center justify-between"><h3 className="text-sm font-semibold text-foreground">Charge {index + 1}</h3>
             {fields.length > 1 ? <Button type="button" variant="ghost" size="icon" aria-label={`Remove charge ${index + 1}`} onClick={() => remove(index)}><Trash2 size={16} /></Button> : null}</div>
           <div className="grid gap-3 sm:grid-cols-2">
           <SelectWithLabel id={`charge-type-${index}`} label="Type" required disabled={isSubmitting} options={typeOptions} value={charges[index]?.type}

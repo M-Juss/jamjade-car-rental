@@ -92,6 +92,36 @@ beforeEach(function () {
         'reference_run_id' => $this->referenceRun->id, 'same_mount_confirmed' => true];
 });
 
+it('distinguishes a captured reference from a prepared reference in recording review', function () {
+    $this->getJson($this->url)->assertOk()
+        ->assertJsonPath('data.review.processing.reference_status', 'review_required')
+        ->assertJsonPath('data.review.processing.reference_recording.id', $this->source->id);
+    $this->referenceRun->delete();
+    $this->getJson($this->url)->assertOk()
+        ->assertJsonPath('data.review.processing.reference_status', 'needs_processing')
+        ->assertJsonPath('data.review.processing.reference_recording.id', $this->source->id);
+});
+
+it('does not offer a later or different-mount reference as preparation for a bound trial', function () {
+    $session = (string) Str::uuid();
+    $mount = (string) Str::uuid();
+    $source = reusableRecording($this->admin, 'forward_reference', $this->group, [
+        'collection_binding' => syntheticCollectionBinding($session, $mount, 'FR'),
+    ]);
+    $target = reusableRecording($this->admin, 'maneuver_trial', $this->group, [
+        'collection_binding' => syntheticCollectionBinding($session, (string) Str::uuid(), 'FSS'),
+    ]);
+    $this->getJson('/admin/rc-research/native-recordings/'.$target->id)->assertOk()
+        ->assertJsonPath('data.review.processing.reference_status', 'missing')
+        ->assertJsonPath('data.review.processing.reference_recording', null);
+    $earlyTarget = reusableRecording($this->admin, 'maneuver_trial', $this->group, [
+        'collection_binding' => syntheticCollectionBinding($session, $mount, 'FSS'),
+        'started_at_utc' => $source->started_at->subMinute()->toISOString(),
+    ]);
+    $this->getJson('/admin/rc-research/native-recordings/'.$earlyTarget->id)->assertOk()
+        ->assertJsonPath('data.review.processing.reference_status', 'missing');
+});
+
 it('reuses only server-recomputed axes and offsets while retaining the trial clock and originals', function () {
     $before = Storage::disk('local')->allFiles();
     $hashes = array_map(fn ($p) => hash('sha256', Storage::disk('local')->get($p)), $before);

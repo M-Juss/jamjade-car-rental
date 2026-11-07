@@ -45,7 +45,7 @@ export const TextAreaWithLabel = React.forwardRef<
         <Label
           htmlFor={id}
           className={cn(
-            "text-[11px] font-medium uppercase tracking-[0.08em] text-subtle-foreground",
+            "text-xs font-medium normal-case tracking-normal text-subtle-foreground",
             labelClassName,
           )}
         >
@@ -55,7 +55,7 @@ export const TextAreaWithLabel = React.forwardRef<
             </span>
           )}
           {label}
-          {required && <span className="ml-0.5 text-rose-400">*</span>}
+          {required && <span className="ml-0.5 text-destructive">*</span>}
         </Label>
         <Textarea
           ref={ref}
@@ -65,9 +65,9 @@ export const TextAreaWithLabel = React.forwardRef<
           disabled={disabled}
           aria-invalid={Boolean(error)}
           className={cn(
-            "rounded-xl border-border bg-background px-3 py-2.5 text-[12.5px] text-foreground",
-            "placeholder:text-subtle-foreground shadow-none resize-none",
-            "focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-white",
+            "rounded-lg border-input bg-surface px-3 py-2.5 text-base sm:text-sm text-foreground",
+            "placeholder:text-subtle-foreground shadow-none resize-y",
+            "focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-surface",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             error && "border-destructive focus-visible:ring-destructive/30",
             textareaClassName,
@@ -75,7 +75,7 @@ export const TextAreaWithLabel = React.forwardRef<
           {...props}
         />
         {error ? (
-          <p className="text-[10.5px] font-medium leading-tight text-destructive">
+          <p className="text-xs font-medium leading-tight text-destructive">
             {error}
           </p>
         ) : null}

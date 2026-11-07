@@ -181,7 +181,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
 
   if (!booking) {
     return (
-      <View className="flex-1 justify-center bg-background px-5">
+      <View className="flex-1 justify-center bg-background px-screen">
         <BookingEmptyState
           title="Booking Not Found"
           subtitle={loadError ?? "We could not find that booking."}
@@ -211,7 +211,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               accessibilityLabel="Go back"
               accessibilityRole="button"
               onPress={() => router.back()}
-              className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface"
+              className="h-12 w-12 items-center justify-center rounded-field border border-border bg-surface"
             >
               <ArrowLeft
                 size={21}
@@ -232,7 +232,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
             </View>
           </View>
 
-          <View className="mt-6 gap-4">
+          <View className="mt-section gap-4">
             <BookingDetailsContent booking={booking} />
 
             <DetailsActions booking={booking} onAction={handleAction} />

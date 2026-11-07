@@ -21,7 +21,8 @@ export function TelematicsSetupCards({ handover, disabled, onOpen }: {
           <Icon size={21} color={themeColors.primary} />
           <View className="min-w-0 flex-1 gap-0.5">
             <Text className="font-sans text-body font-semibold text-foreground">{title}</Text>
-            <Text className={`font-sans text-caption ${completed ? 'text-success' : 'text-secondary-foreground'}`}>{stage.passedCount} of {stage.total} passed{stage.status === 'failed' ? ' · Needs attention' : ''}</Text>
+            <Text className={`font-sans text-caption ${completed ? 'text-success' : 'text-secondary-foreground'}`}>{stage.passedCount} of {stage.total} passed</Text>
+            {stage.status === 'failed' ? <Text className="font-sans text-caption text-destructive">Needs attention</Text> : null}
           </View>
           <StatusIcon size={19} color={completed ? themeColors.success : themeColors.secondaryForeground} />
         </View>
@@ -31,6 +32,6 @@ export function TelematicsSetupCards({ handover, disabled, onOpen }: {
         {!stage.canOpen && !completed ? <Text className="font-sans text-caption text-secondary-foreground">{key === 'calibration' && overview.device.passedCount < overview.device.total ? 'Complete device setup first.' : 'Setup is unavailable for this handover.'}</Text> : null}
       </Pressable>;
     })}
-    {handover.eligibility.state === 'rental_ended' ? <Text accessibilityLiveRegion="polite" className="font-sans text-center text-caption text-secondary-foreground">Rental ended · Results are read-only</Text> : null}
+    {handover.eligibility.state === 'rental_ended' ? <View className="items-center gap-0.5"><Text accessibilityLiveRegion="polite" className="font-sans text-caption font-medium text-foreground">Rental ended</Text><Text className="font-sans text-caption text-secondary-foreground">Results are read-only</Text></View> : null}
   </View>;
 }

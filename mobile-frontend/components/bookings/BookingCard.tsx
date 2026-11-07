@@ -97,8 +97,7 @@ export function BookingCard({
         <PaymentStatusBadge status={booking.paymentStatus} />
       </View>
       {hasTelematics ? (
-        <View className="mt-3 rounded-field bg-success-surface p-3">
-          <Text className="font-sans mb-2 text-[13px] text-success">Your self-drive rental is active.</Text>
+        <View className="mt-3">
           <ActionButton
             icon={Navigation}
             label="Open Telematics"

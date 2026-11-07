@@ -38,6 +38,22 @@ changing a cross-application flow.
 
 The API client prefers LAN at home and the configured backend tunnel when Expo is in tunnel mode. If the preferred endpoint cannot connect, it tries the other endpoint and remembers the working one for later requests.
 
+Android builds include an app-only encrypted DNS fallback for the exact HTTPS
+backend hostnames configured above. Normal system DNS is tried first. If it
+fails, `modules/backend-network` queries Google's `https://dns.google/resolve`
+using a separate client with no app credentials or cookies. Google receives the
+hostname and network IP, not API paths, login details or recording payloads.
+The config plugin writes the hostname allowlist into generated Android metadata;
+no private backend address is checked into native source. HTTP/local-IP endpoints
+and unrelated domains never use this fallback. Phone DNS/Wi-Fi settings and HTTPS
+certificate/hostname verification remain unchanged.
+
+Fallback answers are public IPv4 addresses only, cached in memory up to their
+DNS/CNAME TTL with a five-minute cap; failures are not cached. If Google's lookup
+is unavailable or invalid, the request fails normally. This does not bypass
+server authentication or repair an offline backend/tunnel. A new native build is
+required to install the module or change its configured hostname allowlist.
+
 ### Android development over USB
 
 If the Expo tunnel fails, connect the phone by USB with debugging enabled and

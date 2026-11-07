@@ -28,9 +28,9 @@ type TableActionMenuProps = {
 
 const itemVariantClass: Record<TableActionVariant, string> = {
   default: "text-muted-foreground",
-  success: "text-emerald-600",
-  warning: "text-amber-600",
-  danger: "text-rose-500",
+  success: "text-success",
+  warning: "text-warning",
+  danger: "text-destructive",
 };
 
 export function TableActionMenu({ label, items }: TableActionMenuProps) {
@@ -40,19 +40,19 @@ export function TableActionMenu({ label, items }: TableActionMenuProps) {
         <button
           type="button"
           aria-label={label}
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-subtle-foreground transition-colors duration-150 hover:bg-muted hover:text-primary md:h-7 md:w-7"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors duration-150 hover:bg-muted hover:text-primary focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:w-9"
         >
-          <MoreHorizontal size={18} className="md:size-3.5" />
+          <MoreHorizontal size={18} aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44 rounded-xl border-border p-1 shadow-[0_8px_24px_rgba(0,0,0,0.1)]">
+      <DropdownMenuContent align="end" className="w-44 rounded-xl border-border bg-popover p-1 shadow-dialog">
         {items.map((item) => (
           <Fragment key={item.label}>
             {item.separatorBefore && <DropdownMenuSeparator className="my-1 bg-border" />}
             <DropdownMenuItem
               disabled={item.disabled}
               onClick={item.onClick}
-              className={`cursor-pointer rounded-lg px-3 py-2 text-[12.5px] ${itemVariantClass[item.variant ?? "default"]}`}
+              className={`cursor-pointer rounded-lg px-3 py-2 text-sm ${itemVariantClass[item.variant ?? "default"]}`}
             >
               {item.icon}
               {item.label}

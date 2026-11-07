@@ -76,7 +76,7 @@ export function ReuseReferenceForm({ recordingId, bounds, onSaved }: {
         onValueChange={value => { form.setValue("reference_run_id", value, { shouldValidate: true }); form.setValue("same_mount_confirmed", false); }}
         disabled={form.formState.isSubmitting || !canChoose} error={form.formState.errors.reference_run_id?.message}
         options={listing?.references.map(option => ({ value: option.id, disabled: !option.compatible,
-          label: `${option.recording_name} · ${option.cutoff_hz} Hz${option.unavailable_reason ? ` · ${option.unavailable_reason}` : ""}` })) ?? []} />
+          label: option.recording_name, description: `${option.cutoff_hz} Hz${option.unavailable_reason ? `. ${option.unavailable_reason}` : ""}` })) ?? []} />
       <SelectWithLabel id={`${id}-cutoff`} label="Experimental cutoff" value={String(cutoff)}
         onValueChange={value => form.setValue("cutoff_hz", Number(value), { shouldValidate: true })} disabled={form.formState.isSubmitting}
         error={form.formState.errors.cutoff_hz?.message} options={[3, 5, 8].map(value => ({ value: String(value), label: `${value} Hz` }))} />

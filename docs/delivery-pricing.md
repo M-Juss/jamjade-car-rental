@@ -35,7 +35,17 @@ The web Toll Reviews queue, review map/form, actions, endpoints and navigation c
 
 ## Admin settings
 
-Management → Pricing Settings is Admin-only. Its existing Delivery Pricing form changes only minimum fee, included kilometres and per-km rate. It preserves the configured backend garage address/coordinates, including an unset point. The update API still validates optional garage fields if explicitly supplied. Changes are audited and affect only new quotes. Fresh environments must configure their actual garage point before delivery quotes are available.
+Management → Fee Pricing is Admin-only. One card groups late-return rates and delivery pricing under separate labels. Fields start disabled; Configure enables editing and replaces that action with Save and Cancel. Cancel restores the last confirmed values. All five fields validate before either existing endpoint is called; the card locks again after confirmed saves. Delivery updates change only minimum fee, included kilometres and per-km rate, preserving the configured backend garage address/coordinates, including an unset point. The update API still validates optional garage fields if explicitly supplied. Changes are audited and affect only new quotes. Fresh environments must configure their actual garage point before delivery quotes are available.
+
+The pricing form uses decimal-only input with no exponent, hexadecimal, sign or grouping-separator notation. Money allows two decimal places and included kilometres allow three; required, minimum and maximum rules mirror the existing Laravel requests. The shared pricing Zod schema supplies the existing delivery and late-return pricing schemas. Backend validation remains authoritative. Existing save endpoints remain separate: a partial failure keeps confirmed settings, retains failed edits and field errors, and retries only changed groups. Cancel restores confirmed values rather than undoing a successful request; after a failed save it refreshes both settings, covering a response lost after the server committed.
+
+Pricing UI verification on 2026-11-06: web lint, TypeScript, production build and
+12 focused form/schema checks passed. Cases cover locked/configure/cancel states,
+decimal input and bounds, validation before either update, field-specific 422
+errors, partial-save retry/cancel, lost responses, duplicate submission and denied
+loads. Requests use in-memory test services; real settings were not changed during
+verification. Browser visual checks remain pending because local browser use is
+disabled in Work settings.
 
 ## Contracts and storage
 

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Research\ListRcNativeRecordingsRequest;
 use App\Http\Requests\Research\RcNativeWindowRequest;
 use App\Http\Resources\RcNativeRecordingResource;
+use App\Http\Resources\RcRecordingReviewResource;
 use App\Models\RcNativeRecording;
 use App\Services\RcNativeResearchService;
+use App\Services\RcRecordingReviewService;
 use App\Services\RcResearchAccessService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +19,8 @@ class RcNativeRecordingController extends Controller
 {
     use ApiResponseTrait;
 
-    public function __construct(private readonly RcNativeResearchService $research, private readonly RcResearchAccessService $access) {}
+    public function __construct(private readonly RcNativeResearchService $research, private readonly RcResearchAccessService $access,
+        private readonly RcRecordingReviewService $review) {}
 
     private function enabled(): void
     {
@@ -40,10 +43,13 @@ class RcNativeRecordingController extends Controller
     public function show(Request $request, string $recording): JsonResponse
     {
         $this->enabled();
-        $record = $this->research->recording($request->user(), $recording)->load(['latestAnnotation', 'collectionContext:recording_id,display_code'])->loadCount('chunks');
+        $record = $this->research->recording($request->user(), $recording)->load(['latestAnnotation', 'collectionContext'])->loadCount('chunks');
+
+        $manifest = $this->research->manifest($record);
 
         return $this->success('Native recording fetched.', ['recording' => new RcNativeRecordingResource($record),
-            'manifest' => $this->research->manifest($record), 'processing' => null, 'reference' => null])
+            'manifest' => $manifest, 'processing' => null, 'reference' => null,
+            'review' => new RcRecordingReviewResource($this->review->inspect($record, $manifest))])
             ->header('Cache-Control', 'private, no-store');
     }
 

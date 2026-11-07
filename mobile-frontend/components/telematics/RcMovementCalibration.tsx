@@ -69,7 +69,7 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
         <Text className="font-sans text-caption font-semibold text-primary">STEP {String(Object.keys(CALIBRATION_STEPS).indexOf(step) + 1).padStart(2, '0')} / 05</Text>
         <Text className="font-sans shrink text-caption text-secondary-foreground">{CALIBRATION_STEPS[step].title}</Text>
       </View>
-      <Text className="font-sans mt-5 text-section font-semibold text-foreground">{guide.title}</Text>
+      <Text className="font-sans mt-section text-section font-semibold text-foreground">{guide.title}</Text>
       {!busy && !passed ? <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">{guide.hint} Start recording while parked.</Text> : null}
       <View className="my-5 items-center" accessible={false} importantForAccessibility="no-hide-descendants">
         <View style={styles.guide}>
@@ -90,7 +90,7 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
         <Text accessibilityLiveRegion="polite" className="font-sans text-center text-section font-semibold" style={{ color }}>{label}</Text>
         <Text className="font-sans text-center text-caption leading-5 text-secondary-foreground">{hint}</Text>
       </View>
-      <View className="mt-5 flex-row gap-3">
+      <View className="mt-section flex-row gap-3">
         <CalibrationSensorReading icon={Activity} label="Acceleration" value={step === 'braking_calibration' ? reading?.movement?.braking : step === 'forward_calibration' ? reading?.forward?.acceleration : reading?.acceleration}
           unit="m/s²" state={detected && (step === 'forward_calibration' || step === 'braking_calibration') ? 'valid' : 'neutral'} caption={step === 'braking_calibration' ? 'Deceleration' : 'Motion reading'} />
         <CalibrationSensorReading icon={RotateCcw} label="Gyroscope" value={reading?.rotation} unit="°/s peak"
@@ -102,7 +102,7 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
         <Text className="font-sans text-center text-caption text-secondary-foreground">Recording ends when the movement is captured.</Text>
       </View>
       {failureReason && !busy ? <Text accessibilityRole="alert" className="font-sans mt-4 text-body leading-6 text-foreground">{failureReason}</Text> : null}
-      <View className="mt-5 gap-3" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
+      <View className="mt-section gap-3" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
     </View>
   );
 }

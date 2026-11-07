@@ -24,7 +24,7 @@ export function ObserverDetails({ inspection, onInspect }: { inspection: Researc
   return <Card className="rounded-2xl border border-border bg-surface shadow-none ring-0">
     <CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">Observer annotation<Badge variant={trial.label_status === "confirmed" ? "secondary" : "outline"}>{humanize(trial.label_status)}</Badge></CardTitle></CardHeader>
     <CardContent className="space-y-4">
-      <div className="border-l-2 border-primary pl-3"><p className="text-sm font-semibold">{maneuverLabel(trial.observed_movement, trial.observed_intensity)}</p><button type="button" onClick={onInspect} className="mt-1 min-h-8 text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-primary">Inspect saved event · {seconds(trial.event_start_ms)}–{seconds(trial.event_end_ms)}</button></div>
+      <div className="border-l-2 border-primary pl-3"><p className="text-sm font-semibold">{maneuverLabel(trial.observed_movement, trial.observed_intensity)}</p><button type="button" onClick={onInspect} className="mt-1 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 text-left text-xs font-medium text-primary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-primary"><span>Inspect saved event</span><span className="font-normal text-muted-foreground">{seconds(trial.event_start_ms)}–{seconds(trial.event_end_ms)}</span></button></div>
       <DetailsList items={[["Intended", maneuverLabel(trial.intended_movement, trial.intended_intensity)], ["Observer quality", humanize(trial.quality)]]} />
       {trial.notes && <p className="whitespace-pre-wrap break-words rounded-xl bg-background p-3 text-xs leading-relaxed">{trial.notes}</p>}
       <p className="text-xs leading-relaxed text-muted-foreground">Saved with the recording. Inspection ranges do not change this annotation.</p>
@@ -68,7 +68,8 @@ export function RecordingSetup({ inspection }: { inspection: ResearchInspection 
     ["Mount method", session.mount_method ?? "Not recorded"], ["Battery condition", humanize(session.battery_condition)],
     ["RC configuration", session.rc_configuration ?? "Not recorded"], ["Platform", humanize(session.platform)], ["App version", session.app_version],
   ]} /><div className="border-t border-border pt-4"><h3 className="mb-3 text-sm font-semibold">Recording source</h3><DetailsList items={[
-    ["Capture", inspection.source === "synthetic_demo_v1" ? "Synthetic demo samples · v1 format" : "Expo DeviceMotion · foreground"], ["Protocol", `v${inspection.protocol.version} · ${inspection.protocol.recording_mode}`],
+    ["Capture", <span key="capture" className="flex flex-col gap-0.5"><span>{inspection.source === "synthetic_demo_v1" ? "Synthetic demo samples" : "Expo DeviceMotion"}</span><span className="font-normal text-muted-foreground">{inspection.source === "synthetic_demo_v1" ? "v1 format" : "Foreground"}</span></span>],
+    ["Protocol", <span key="protocol" className="flex flex-col gap-0.5"><span>v{inspection.protocol.version}</span><span className="font-normal text-muted-foreground">{humanize(inspection.protocol.recording_mode)}</span></span>],
     ["Coordinates", "Phone axes"], ["Acceleration", inspection.units.acceleration], ["Rotation", inspection.units.rotation],
-  ]} /><details className="mt-4 text-xs"><summary className="cursor-pointer font-medium text-primary">File integrity fingerprint</summary><p className="mt-2 break-all text-muted-foreground">SHA-256 · {inspection.content_sha256}</p></details></div></div>;
+  ]} /><details className="mt-4 text-xs"><summary className="cursor-pointer font-medium text-primary">File integrity fingerprint</summary><p className="mt-2 text-muted-foreground">SHA-256</p><p className="mt-1 break-all text-muted-foreground">{inspection.content_sha256}</p></details></div></div>;
 }

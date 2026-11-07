@@ -36,7 +36,7 @@ export function RcResearchTabs({ selectedTab, onTabChange, onLogout, isLoggingOu
       <FloatingTabBarSurface items={[
         { key: 'recordings', label: 'Recordings', icon: 'database-outline', selected: selectedTab === 'recordings',
           disabled: disabled || isLoggingOut, onPress: () => select('recordings') },
-        { key: 'collect', label: 'Collect', icon: 'flask-outline', featured: true, selected: selectedTab === 'collect',
+        { key: 'collect', label: 'Collect', icon: 'flask-outline', selected: selectedTab === 'collect',
           disabled: disabled || isLoggingOut, onPress: () => select('collect') },
         { key: 'logout', label: isLoggingOut ? 'Logging out…' : 'Logout', icon: 'logout',
           accessibilityLabel: 'Log out', accessibilityHint: 'Opens a confirmation before signing out',

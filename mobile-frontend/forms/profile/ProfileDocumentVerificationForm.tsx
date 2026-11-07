@@ -81,7 +81,7 @@ function ReviewStateNotice({
       : 'Your upload is locked while Jamjade reviews the submitted document.';
 
   return (
-    <View className={`mt-6 flex-row items-start gap-3 rounded-[24px] border p-4 ${background}`}>
+    <View className={`mt-section flex-row items-start gap-3 rounded-card border p-4 ${background}`}>
       <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
         <Icon size={20} color={iconColor} strokeWidth={2.45} />
       </View>
@@ -251,10 +251,10 @@ export function ProfileDocumentVerificationForm({
           />
         ) : null}
 
-        <View className="mt-6 gap-4">
+        <View className="mt-section gap-4">
           {documentId === 'driver-license' ? (
             <>
-              <View className="rounded-card border border-border bg-surface p-4 ">
+              <View className="rounded-card border border-border bg-surface p-4">
                 <Controller
                   control={control}
                   name="driverLicenseNumber"

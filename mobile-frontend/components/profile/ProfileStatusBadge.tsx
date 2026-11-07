@@ -40,7 +40,7 @@ export function ProfileStatusBadge({ status }: { status: RenterDocumentStatus })
   return (
     <View className={`${item.className} flex-row items-center gap-1.5 rounded-full border px-2.5 py-1.5`}>
       <Icon size={12} color={item.iconColor} strokeWidth={2.5} />
-      <Text className={`font-sans ${item.textClassName} text-[11px] font-semibold `}>{status}</Text>
+      <Text className={`font-sans ${item.textClassName} text-[11px] font-semibold`}>{status}</Text>
     </View>
   );
 }

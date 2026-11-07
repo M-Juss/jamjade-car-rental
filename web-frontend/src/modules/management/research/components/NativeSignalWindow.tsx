@@ -8,14 +8,17 @@ import type { NativeChannel, NativeRecording, NativeWindow } from "@/services/re
 import type { ReferenceRange } from "../forward-reference";
 import { seconds } from "../recording-analysis";
 import { ResearchState } from "./ResearchState";
+import { useReviewTimeline } from './ReviewTimelineContext';
 
 /** One bounded original-window loader shared by inspection and reference preparation. */
 export function NativeSignalWindow({ record, channels, children }: {
   record: NativeRecording; channels: NativeChannel[];
   children: (windows: NativeWindow[], bounds: ReferenceRange) => ReactNode;
 }) {
-  const [start, setStart] = useState(0);
-  const [windowSize, setWindowSize] = useState(30000);
+  const shared = useReviewTimeline();
+  const [localStart, setLocalStart] = useState(0), [localSize, setLocalSize] = useState(30000);
+  const start = shared?.start ?? localStart, setStart = shared?.setStart ?? setLocalStart;
+  const windowSize = shared?.windowSize ?? localSize, setWindowSize = shared?.setWindowSize ?? setLocalSize;
   const [revision, setRevision] = useState(0);
   const end = Math.min(record.duration_ms, start + windowSize);
   const requestKey = `${record.id}:${channels.join(",")}:${start}:${end}:${revision}`;
@@ -42,7 +45,7 @@ export function NativeSignalWindow({ record, channels, children }: {
       <div className="flex flex-wrap gap-2">
         <FilterSelect ariaLabel="Signal window length" className="w-36" value={String(windowSize)} onValueChange={value => { setWindowSize(Number(value)); setStart(0); }}
           options={[{ value: "5000", label: "5 seconds" }, { value: "10000", label: "10 seconds" }, { value: "30000", label: "30 seconds" }]} />
-        <Button type="button" size="sm" variant="outline" disabled={start <= 0 || pending} onClick={() => setStart(v => Math.max(0, v - windowSize))}>Previous</Button>
+        <Button type="button" size="sm" variant="outline" disabled={start <= 0 || pending} onClick={() => setStart(Math.max(0, start - windowSize))}>Previous</Button>
         <Button type="button" size="sm" variant="outline" disabled={end >= record.duration_ms || pending} onClick={() => setStart(end)}>Next</Button>
       </div>
     </div>}

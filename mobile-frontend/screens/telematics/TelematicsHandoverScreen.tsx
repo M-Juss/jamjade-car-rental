@@ -169,18 +169,19 @@ export function TelematicsHandoverScreen() {
       <TelematicsMap point={handover && released ? monitoring.sharing?.latestFix ?? null : null} recenter={0} />
     </View>
     <View pointerEvents="box-none" className="absolute left-0 right-0 z-10 flex-row items-center justify-between" style={{ top: insets.top + 8, paddingLeft: Math.max(20, insets.left), paddingRight: Math.max(20, insets.right) }}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Back to rentals" accessibilityState={{ disabled: busy }} disabled={busy} onPress={goBack} className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface disabled:opacity-50">
+      <Pressable accessibilityRole="button" accessibilityLabel="Back to rentals" accessibilityState={{ disabled: busy }} disabled={busy} onPress={goBack} className="h-11 w-11 items-center justify-center rounded-field border border-border bg-surface disabled:opacity-50">
         <ArrowLeft size={20} color={themeColors.foreground} />
       </Pressable>
       <View className="min-w-0 flex-1 items-center px-2">
-        {monitoring.prepared ? <Pressable accessibilityRole="button" accessibilityLabel="Cancel automatic GPS preparation" onPress={() => monitoring.prepare(null)} className="min-h-[44px] max-w-full justify-center rounded-full border border-border bg-surface px-3 py-1">
-          <Text numberOfLines={2} className="font-sans text-center text-[11px] font-semibold text-primary">GPS ready for release · Cancel</Text>
+        {monitoring.prepared ? <Pressable accessibilityRole="button" accessibilityLabel="Cancel automatic GPS preparation" onPress={() => monitoring.prepare(null)} className="min-h-[44px] max-w-full justify-center rounded-field border border-border bg-surface px-3 py-1">
+          <Text numberOfLines={2} className="font-sans text-center text-[11px] font-semibold text-foreground">GPS ready for release</Text>
+          <Text className="font-sans text-center text-caption font-medium text-primary">Cancel</Text>
         </Pressable> : monitoring.active ? <View className="max-w-full rounded-full border border-border bg-surface px-3 py-1.5">
           <Text accessibilityLiveRegion="polite" numberOfLines={1} className="font-sans text-center text-[11px] font-semibold text-primary">{monitoring.sharing?.phase === 'sharing' ? 'Monitoring active' : 'Waiting for GPS…'}</Text>
         </View> : null}
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Refresh telematics" accessibilityState={{ disabled: busy || loading }} disabled={busy || loading}
-        onPress={() => { void refresh(); void monitoring.refresh(); void activity.refresh(); }} className="h-11 w-11 items-center justify-center rounded-full border border-border bg-surface disabled:opacity-50">
+        onPress={() => { void refresh(); void monitoring.refresh(); void activity.refresh(); }} className="h-11 w-11 items-center justify-center rounded-field border border-border bg-surface disabled:opacity-50">
         {loading ? <ActivityIndicator size="small" color={themeColors.primary} /> : <RefreshCcw size={20} color={themeColors.primary} />}
       </Pressable>
     </View>

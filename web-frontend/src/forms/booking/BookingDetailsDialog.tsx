@@ -5,7 +5,6 @@ import { Car, CheckCircle2, Circle, ClipboardCheck, Radio, ReceiptText } from "l
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { BookingDialogFooter } from "@/modules/management/bookings/components/BookingDialogFooter";
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormDialogContent, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { VehicleConditionSnapshot } from "@/modules/management/vehicles/inspection";
@@ -22,7 +21,7 @@ import { bookingWorkflowPhase, bookingWorkflowTitles } from "@/modules/managemen
 type Stage = "outgoing" | "handover" | "device-setup" | "calibration" | "incoming" | "charges";
 
 function formatDate(value?: string | null) {
-  return value ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Not recorded";
+  return value ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(value)) : "Not recorded";
 }
 
 function money(value: number) {
@@ -30,11 +29,11 @@ function money(value: number) {
 }
 
 function Detail({ label, value }: { label: string; value?: string | number | null }) {
-  return <div className="rounded-xl bg-background px-3 py-2.5"><p className="text-[11px] text-muted-foreground">{label}</p><p className="mt-0.5 break-words text-[12.5px] font-semibold text-foreground">{value ?? "—"}</p></div>;
+  return <div className="min-w-0 py-1"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-0.5 break-words text-sm font-semibold text-foreground">{value ?? "—"}</p></div>;
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
-  return <Card className="gap-0 rounded-2xl border border-border bg-surface py-4 ring-0"><CardContent className="space-y-3"><h2 className="text-sm font-bold text-foreground">{title}</h2>{children}</CardContent></Card>;
+  return <section className="space-y-3 border-t border-border pt-5"><h2 className="text-base font-semibold text-foreground">{title}</h2>{children}</section>;
 }
 
 export function BookingStageContent({ stage, booking, chargeActions }: { stage: Stage; booking: BookingRecord; chargeActions?: ReturnChargeActions }) {
@@ -145,7 +144,7 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
       {error ? <div className="space-y-3 p-6 text-center"><p role="alert" className="text-sm text-destructive">Booking details could not be loaded.</p><Button type="button" variant="outline" onClick={() => { setError(false); setReload((value) => value + 1); }}>Retry Loading</Button></div> : null}
       {currentDetails ? <Tabs defaultValue="overview" className="min-h-0 flex-auto gap-0 overflow-hidden">
         <div className="shrink-0 space-y-3 border-b border-border p-4 sm:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><p className="font-semibold text-foreground">{currentDetails.bookingCode}</p><p className="text-muted-foreground">{currentDetails.adminStatus} · {currentDetails.paymentStatus}</p></div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs"><p className="font-semibold text-foreground">{currentDetails.bookingCode}</p><div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground"><span>Booking: <span className="font-medium text-foreground">{currentDetails.adminStatus}</span></span><span>Payment: <span className="font-medium text-foreground">{currentDetails.paymentStatus}</span></span></div></div>
           <TabsList aria-label="Booking details" className={`grid h-10 w-full ${currentDetails.driverOption === "self_drive" ? "grid-cols-4" : "grid-cols-3"}`}>
             <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger><TabsTrigger value="rental" className="text-xs">Rental</TabsTrigger><TabsTrigger value="payment" className="text-xs">Payment</TabsTrigger>
             {currentDetails.driverOption === "self_drive" ? <TabsTrigger value="documents" aria-label="Documents" className="text-xs"><span className="sm:hidden">Docs</span><span className="hidden sm:inline">Documents</span></TabsTrigger> : null}
@@ -158,7 +157,7 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
           {currentDetails.attention?.key === "not_started" ? <p className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs">The scheduled period ended without release. Check the customer and release records, then resolve the booking with a reason. <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => setResolveOpen(true)}>Resolve Missed Start</Button></p> : null}
           {nextAction ? <p className="rounded-xl bg-muted p-3 text-xs text-foreground"><strong>Next step:</strong> {bookingActionLabels[nextAction]}</p> : null}
         <Section title="Rental progress"><div className="grid gap-2">{steps.map((step) =>
-          <div key={step.label} className="flex items-center gap-3 rounded-xl bg-background px-3 py-2.5">
+          <div key={step.label} className="flex flex-wrap items-center gap-3 border-b border-border py-3 last:border-b-0">
             {step.done ? <CheckCircle2 size={17} className="shrink-0 text-success" /> : <Circle size={17} className="shrink-0 text-muted-foreground" />}
             <span className="flex-1 text-xs font-semibold text-foreground">{step.label}{step.stage === "handover" && currentDetails.telematicsSetupStatus ? <span className="ml-2 font-normal text-muted-foreground">({currentDetails.telematicsSetupStatus.replaceAll("_", " ")})</span> : null}</span>
             {step.stage && (step.done || ["handover", "device-setup", "calibration"].includes(step.stage) && Boolean(currentDetails.telematicsHandover?.setup)) ?
@@ -206,7 +205,7 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
             ].map(({ label, amount, emphasized }) => (
               <div key={label} className={`flex items-baseline justify-between gap-4 py-2.5 ${emphasized ? "border-t border-border" : ""}`}>
                 <dt className={`min-w-0 text-xs ${emphasized ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{label}</dt>
-                <dd className="shrink-0 whitespace-nowrap text-right text-[12.5px] font-semibold tabular-nums text-foreground">{money(amount)}</dd>
+                <dd className="shrink-0 whitespace-nowrap text-right text-sm font-semibold tabular-nums text-foreground">{money(amount)}</dd>
               </div>
             ))}
           </dl>

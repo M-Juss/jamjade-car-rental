@@ -21,7 +21,6 @@ async function selectDocumentImage() {
 }
 
 function DocumentSummaryPill({
-  iconBgClassName,
   iconColor,
   icon: Icon,
   label,
@@ -30,16 +29,15 @@ function DocumentSummaryPill({
   label: string;
   value: number;
   icon: LucideIcon;
-  iconBgClassName: string;
   iconColor: string;
 }) {
   return (
-    <View className="min-h-[82px] flex-1 rounded-[20px] border border-border bg-surface p-3.5">
-      <View className={`${iconBgClassName} h-9 w-9 items-center justify-center rounded-full`}>
-        <Icon size={18} color={iconColor} strokeWidth={2.45} />
+    <View className="min-w-[80px] flex-1 gap-1">
+      <View className="flex-row items-center gap-1.5">
+        <Icon size={15} color={iconColor} strokeWidth={2} />
+        <Text className="font-sans min-w-0 flex-1 text-caption text-secondary-foreground">{label}</Text>
       </View>
-      <Text className="font-sans mt-2 text-[20px] font-semibold text-foreground">{value}</Text>
-      <Text className="font-sans mt-0.5 text-[11px] font-normal text-secondary-foreground">{label}</Text>
+      <Text className="font-sans text-section font-semibold text-foreground">{value}</Text>
     </View>
   );
 }
@@ -85,12 +83,12 @@ export function DocumentManagerScreen() {
         <View
           className="w-full max-w-[560px] self-center px-screen"
           style={{ paddingBottom: 34 + insets.bottom, paddingTop: insets.top + 10 }}>
-          <View className="min-h-[48px] flex-row items-center gap-2 border-b border-border pb-4">
+          <View className="min-h-control flex-row items-center gap-2 border-b border-border pb-4">
             <Pressable
               accessibilityLabel="Go back"
               accessibilityRole="button"
               onPress={() => router.back()}
-              className="h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-surface">
+              className="h-11 w-11 shrink-0 items-center justify-center rounded-field border border-border bg-surface">
               <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
             </Pressable>
             <Text
@@ -98,35 +96,32 @@ export function DocumentManagerScreen() {
               adjustsFontSizeToFit
               minimumFontScale={0.85}
               numberOfLines={1}>
-              Manage Document
+              Documents
             </Text>
           </View>
 
-          <View className="mt-6 flex-row gap-2.5">
+          <View className="mt-section flex-row flex-wrap gap-3 rounded-card border border-border bg-surface p-card">
             <DocumentSummaryPill
               icon={CheckCircle2}
-              iconBgClassName="bg-success-surface"
               iconColor={themeColors.success}
               label="Verified"
               value={summary.verified}
             />
             <DocumentSummaryPill
               icon={Clock3}
-              iconBgClassName="bg-warning-surface"
               iconColor={themeColors.warning}
               label="Pending"
               value={summary.pending}
             />
             <DocumentSummaryPill
               icon={CircleDashed}
-              iconBgClassName="bg-muted"
               iconColor={themeColors.mutedForeground}
               label="Missing"
               value={summary.missing}
             />
           </View>
 
-          <View className="mt-5">
+          <View className="mt-section">
             <DocumentTypeTabs
               documents={renterDocuments}
               selectedId={selectedDocumentId}
@@ -135,7 +130,7 @@ export function DocumentManagerScreen() {
           </View>
 
           {selectedDocument ? (
-            <View className="mt-5">
+            <View className="mt-section">
               <DocumentUploadPanel
                 document={selectedDocument}
                 onRemove={() => removeRenterDocumentImage(selectedDocument.id)}

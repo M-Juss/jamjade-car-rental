@@ -562,9 +562,9 @@ export function VehicleFormDialog({
                   <button
                     key={value}
                     type="button"
-                    className={`min-w-0 rounded-lg px-2 py-2 text-[11px] font-bold leading-4 transition-colors sm:px-3 sm:text-xs ${
+                    className={`min-w-0 rounded-lg px-2 py-2 text-xs font-semibold leading-4 transition-colors sm:px-3 sm:text-xs ${
                       step === value
-                        ? "bg-surface text-primary shadow-sm"
+                        ? "bg-surface text-primary shadow-none"
                         : "text-muted-foreground"
                     }`}
                     onClick={() => {
@@ -581,8 +581,8 @@ export function VehicleFormDialog({
               {step === "vehicle" ? (
                 <>
               <div className="relative pb-5">
-                <Label className="text-[11.5px] font-semibold text-muted-foreground mb-2 block">
-                  Vehicle Images <span className="text-rose-400">*</span>
+                <Label className="text-xs font-semibold text-muted-foreground mb-2 block">
+                  Vehicle Images <span className="text-destructive">*</span>
                 </Label>
 
                 {imagePreviews.length > 0 ? (
@@ -597,7 +597,7 @@ export function VehicleFormDialog({
                         type="button"
                         onClick={() => fileRef.current?.click()}
                         disabled={isSubmitting || isProcessingImages}
-                        className="px-3 py-1.5 rounded-lg bg-muted text-[12px] font-semibold text-primary hover:bg-[#DDE8FF] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                        className="px-3 py-1.5 rounded-lg bg-muted text-sm font-semibold text-primary hover:bg-[#DDE8FF] transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isProcessingImages ? "Preparing..." : "Add more"}
                       </button>
@@ -637,19 +637,19 @@ export function VehicleFormDialog({
                     >
                       <Upload
                         size={18}
-                        className={dragOver ? "text-white" : "text-primary"}
+                        className={dragOver ? "text-primary-foreground" : "text-primary"}
                         strokeWidth={2}
                       />
                     </div>
                     <div className="text-center">
-                      <p className="text-[12.5px] font-semibold text-foreground">
+                      <p className="text-sm font-semibold text-foreground">
                         {isProcessingImages
                           ? "Preparing images..."
                           : dragOver
                             ? "Drop to upload"
                             : "Click or drag & drop"}
                       </p>
-                      <p className="text-[11px] text-subtle-foreground mt-0.5">
+                      <p className="text-xs text-subtle-foreground mt-0.5">
                         PNG, JPG, WEBP. Up to {MAX_VEHICLE_IMAGES} images.
                       </p>
                     </div>
@@ -678,10 +678,10 @@ export function VehicleFormDialog({
 
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="flex shrink-0 items-center justify-center text-primary">
                     <Car size={12} className="text-primary" />
                   </div>
-                  <h3 className="text-[12.5px] font-bold text-foreground">
+                  <h3 className="text-sm font-semibold text-foreground">
                     Basic Information
                   </h3>
                 </div>
@@ -703,8 +703,8 @@ export function VehicleFormDialog({
                         })
                       }
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                      triggerClassName="text-[12.5px] rounded-xl border-border bg-background focus:ring-primary focus:ring-1"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                      triggerClassName="text-base sm:text-sm rounded-xl border-border bg-background focus:ring-primary focus:ring-1"
                     />
                     <FormFieldError message={errors.brand?.message} />
                   </div>
@@ -716,7 +716,7 @@ export function VehicleFormDialog({
                       required
                       placeholder="e.g. Toyota Fortuner 2023"
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("name")}
                     />
                     <FormFieldError message={errors.name?.message} />
@@ -729,7 +729,7 @@ export function VehicleFormDialog({
                       required
                       placeholder="e.g. Fortuner V"
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("model")}
                     />
                     <FormFieldError message={errors.model?.message} />
@@ -741,7 +741,7 @@ export function VehicleFormDialog({
                       required
                       placeholder="e.g. ABC 1234"
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("plate_number")}
                     />
                     <FormFieldError message={errors.plate_number?.message} />
@@ -756,7 +756,7 @@ export function VehicleFormDialog({
                       min="1"
                       placeholder="0"
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("price_per_day")}
                     />
                     <FormFieldError
@@ -772,7 +772,7 @@ export function VehicleFormDialog({
                       placeholder="Add a short customer-facing vehicle description."
                       disabled={isSubmitting}
                       rows={3}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       textareaClassName="min-h-[92px]"
                       {...register("description")}
                     />
@@ -785,10 +785,10 @@ export function VehicleFormDialog({
 
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-6 h-6 rounded-lg bg-muted flex items-center justify-center">
+                  <div className="flex shrink-0 items-center justify-center text-primary">
                     <Settings2 size={12} className="text-primary" />
                   </div>
-                  <h3 className="text-[12.5px] font-bold text-foreground">
+                  <h3 className="text-sm font-semibold text-foreground">
                     Specifications
                   </h3>
                 </div>
@@ -804,7 +804,7 @@ export function VehicleFormDialog({
                       min="1"
                       placeholder="e.g. 5"
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("seats")}
                     />
                     <FormFieldError message={errors.seats?.message} />
@@ -817,7 +817,7 @@ export function VehicleFormDialog({
                       required
                       placeholder="e.g. Pearl White"
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       {...register("color")}
                     />
                     <FormFieldError message={errors.color?.message} />
@@ -839,8 +839,8 @@ export function VehicleFormDialog({
                         })
                       }
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                      triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                      triggerClassName="text-base sm:text-sm rounded-xl border-border bg-background"
                     />
                     <FormFieldError
                       message={errors.transmission?.message}
@@ -863,8 +863,8 @@ export function VehicleFormDialog({
                         })
                       }
                       disabled={isSubmitting}
-                      labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                      triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
+                      labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                      triggerClassName="text-base sm:text-sm rounded-xl border-border bg-background"
                     />
                     <FormFieldError message={errors.fuel_type?.message} />
                   </div>
@@ -905,8 +905,8 @@ export function VehicleFormDialog({
                     })
                   }
                   disabled={isSubmitting}
-                  labelClassName="text-[11.5px] font-semibold tracking-normal normal-case text-muted-foreground"
-                  triggerClassName="text-[12.5px] rounded-xl border-border bg-background"
+                  labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
+                  triggerClassName="text-base sm:text-sm rounded-xl border-border bg-background"
                 />
                 <FormFieldError message={errors.status?.message} />
               </div>
@@ -932,7 +932,7 @@ export function VehicleFormDialog({
                 variant="outline"
                 onClick={step === "condition" ? () => setStep("vehicle") : handleCancel}
                 disabled={isSubmitting || isProcessingImages}
-                className="border-border text-[13px] font-medium text-muted-foreground hover:bg-background"
+                className="border-border text-sm font-medium text-muted-foreground hover:bg-background"
               >
                 {step === "condition" ? "Back" : "Cancel"}
               </Button>
@@ -949,7 +949,7 @@ export function VehicleFormDialog({
                   submitConditionForm();
                 }}
                 disabled={isSubmitting || isProcessingImages || !configuration}
-                className="bg-primary text-[13px] font-semibold text-white shadow-[0_4px_14px_rgba(52,110,246,0.28)] hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
+                className="bg-primary text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Car size={14} className="mr-2" />
                 {isProcessingImages

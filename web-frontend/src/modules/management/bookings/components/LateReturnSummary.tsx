@@ -16,7 +16,7 @@ export function LateChargeSummary({ booking }: { booking: BookingRecord }) {
     [late.reviewedAt ? "Approved late charge" : "Estimated late charge", late.reviewedAt ? money(late.approvedAmount ?? 0) : late.estimatedAmount === null ? "Review agreed legacy terms" : money(late.estimatedAmount)],
   ];
   return <section className="min-w-0 space-y-2">
-    <h2 className="text-sm font-bold text-foreground">Late charge</h2>
+    <h2 className="text-sm font-semibold text-foreground">Late charge</h2>
     <dl className="grid gap-x-4 gap-y-3 text-xs sm:grid-cols-2">
       {items.map(([label, value]) => <div key={label}>
         <dt className="text-muted-foreground">{label}</dt>
@@ -37,7 +37,7 @@ export function LateReturnSummary({ booking }: { booking: BookingRecord }) {
   return <section className="space-y-3">
     {booking.attention && booking.attention.key !== "return_processing" ? <BookingAttentionBadge attention={booking.attention} elapsedMinutes={late.elapsedMinutes} /> : null}
     <section className="space-y-2">
-      <h2 className="text-sm font-bold text-foreground">Return timing</h2>
+      <h2 className="text-sm font-semibold text-foreground">Return timing</h2>
       <dl className="grid gap-x-4 gap-y-3 text-xs sm:grid-cols-2">
         {timing.map(([label, value]) => <div key={label}>
           <dt className="text-muted-foreground">{label}</dt>
@@ -46,7 +46,7 @@ export function LateReturnSummary({ booking }: { booking: BookingRecord }) {
       </dl>
     </section>
     <LateChargeSummary booking={booking} />
-    {(booking.upcomingBookings ?? []).map((next) => <p key={next.id} className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs">Upcoming pickup: <strong>{next.bookingCode}</strong> · {formatReturnDateTime(next.pickupAt)}. Coordinate vehicle availability before release.</p>)}
+    {(booking.upcomingBookings ?? []).map((next) => <div key={next.id} className="space-y-1 rounded-xl border border-warning-border bg-warning-surface p-3 text-xs"><p>Upcoming pickup: <strong>{next.bookingCode}</strong></p><p>{formatReturnDateTime(next.pickupAt)}</p><p>Coordinate vehicle availability before release.</p></div>)}
     {(booking.returnFollowUps ?? []).map((followUp, index) => <p key={index} className="rounded-xl bg-background p-3 text-xs"><span className="text-muted-foreground">{formatReturnDateTime(followUp.recordedAt)}</span><br />{followUp.note}</p>)}
   </section>;
 }

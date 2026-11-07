@@ -12,6 +12,7 @@ export type RcRecorderNative = {
   start(config: string): Promise<null>;
   stop(): Promise<null>;
   status(): Promise<string>;
+  collectionPage(offset: number, filter: string): Promise<string>;
   listCollection(offset: number, filter: string): Promise<string>;
   list(offset: number): Promise<string>;
   groups(): Promise<string>;

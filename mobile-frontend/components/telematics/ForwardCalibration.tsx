@@ -1,3 +1,4 @@
+import { MetadataList } from '@/components/common/MetadataList';
 import { Activity, ArrowUp, CircleCheck, CirclePause, RotateCcw } from 'lucide-react-native';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ActivityIndicator, Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -66,7 +67,7 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
         <Text className="font-sans text-caption text-secondary-foreground">Forward movement</Text>
       </View>
       <View className="mt-3 flex-row gap-1.5" accessible={false}>{[0, 1, 2, 3, 4].map((step) => <View key={step} className="h-1 flex-1 rounded-full" style={{ backgroundColor: step === 0 ? colors.success : step === 1 ? color : colors.muted }} />)}</View>
-      <Text className={`font-sans mt-5 font-semibold text-foreground ${compact ? 'text-section' : 'text-title'}`}>One gentle forward movement</Text>
+      <Text className={`font-sans mt-section font-semibold text-foreground ${compact ? 'text-section' : 'text-title'}`}>One gentle forward movement</Text>
       {!compact ? <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">Move straight at low speed when staff directs you, then stop safely. Recording ends when enough valid movement readings are captured.</Text> : null}
 
       <View style={[styles.guide, { maxWidth: guideSize }]} accessible={false} importantForAccessibility="no-hide-descendants">
@@ -106,9 +107,12 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
         <CalibrationSensorReading icon={Activity} label="Acceleration" value={reading?.forward?.acceleration} limit={limits.acceleration} unit="m/s²" minimum state={warning ? 'invalid' : captured || feedback.state === 'building' ? 'valid' : 'neutral'} caption={captured ? 'Movement captured' : undefined} />
         <CalibrationSensorReading icon={RotateCcw} label="Gyroscope" value={reading?.rotation} limit={mountLimits.rotationPeak} unit="°/s peak" />
       </View>
-      {noiseBaseline ? <Text className="font-sans mt-3 text-caption leading-5 text-secondary-foreground">Parked vibration: {noiseBaseline.horizontalRms.toFixed(2)} m/s² · {noiseBaseline.rotationRms.toFixed(2)} °/s</Text> : null}
+      {noiseBaseline ? <View className="mt-3"><MetadataList items={[
+        { label: 'Parked acceleration', value: `${noiseBaseline.horizontalRms.toFixed(2)} m/s²` },
+        { label: 'Parked rotation', value: `${noiseBaseline.rotationRms.toFixed(2)} °/s` },
+      ]} /></View> : null}
       {failureReason && !busy ? <Text accessibilityLiveRegion="polite" className="font-sans mt-4 text-body leading-6 text-destructive">{failureReason}</Text> : null}
-      <View className="mt-5 gap-3" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
+      <View className="mt-section gap-3" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
     </View>
   );
 }

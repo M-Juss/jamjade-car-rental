@@ -31,7 +31,7 @@ export function FormDialogContent({
       aria-describedby={undefined}
       showCloseButton={false}
       className={cn(
-        "flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-surface p-0 shadow-[0_24px_64px_rgba(0,0,0,0.14)] sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)]",
+        "flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden rounded-2xl border border-border bg-surface p-0 shadow-dialog sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)]",
         dialogWidths[width],
         className,
       )}
@@ -65,10 +65,10 @@ export function FormDialogHeader({
     <DialogHeader className={cn("shrink-0 border-b border-border px-4 py-4 sm:px-6", className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-primary", iconClassName)}>
+          <div className={cn("flex shrink-0 items-center justify-center text-primary", iconClassName)}>
             <Icon className="size-[18px]" strokeWidth={2.2} aria-hidden="true" />
           </div>
-          <DialogTitle className="min-w-0 whitespace-normal text-base font-bold leading-tight text-foreground [overflow-wrap:anywhere]">
+          <DialogTitle className="min-w-0 whitespace-normal text-base font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">
             {title}
           </DialogTitle>
         </div>
@@ -81,7 +81,7 @@ export function FormDialogHeader({
             onClick={onClose}
             aria-label={closeLabel}
             disabled={closeDisabled}
-            className="size-9 shrink-0 rounded-xl text-muted-foreground"
+            className="size-11 shrink-0 rounded-lg text-muted-foreground"
           >
             <X className="size-4" aria-hidden="true" />
           </Button>

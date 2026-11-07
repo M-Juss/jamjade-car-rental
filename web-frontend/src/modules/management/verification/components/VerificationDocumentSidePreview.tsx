@@ -37,8 +37,8 @@ export function VerificationDocumentSidePreview({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-background">
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-white px-3 py-2">
-        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2">
+        <p className="text-xs font-semibold normal-case tracking-normal text-muted-foreground">{label}</p>
         <Button
           variant="outline"
           aria-label={`Open ${record.documentType} ${label} preview`}
@@ -53,7 +53,7 @@ export function VerificationDocumentSidePreview({
               alt: `${record.documentType} ${label.toLowerCase()} preview`,
             });
           }}
-          className="h-7 rounded-lg border-border px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-primary"
+          className="h-7 rounded-lg border-border px-2 text-xs text-muted-foreground hover:bg-muted hover:text-primary"
         >
           <ExternalLink size={12} className="mr-1.5" />
           Open
@@ -62,7 +62,7 @@ export function VerificationDocumentSidePreview({
       {hasPreview && isPdf ? (
         <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
           <FileText size={34} className="text-subtle-foreground" />
-          <p className="mt-3 text-[12px] font-semibold text-muted-foreground">PDF document. Select Open to preview.</p>
+          <p className="mt-3 text-sm font-semibold text-muted-foreground">PDF document. Select Open to preview.</p>
         </div>
       ) : hasPreview && documentSide.url ? (
         <Image
@@ -77,7 +77,7 @@ export function VerificationDocumentSidePreview({
       ) : (
         <div className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
           <FileText size={34} className="text-subtle-foreground" />
-          <p className="mt-3 text-[12px] font-semibold text-muted-foreground">No {label.toLowerCase()} image was uploaded.</p>
+          <p className="mt-3 text-sm font-semibold text-muted-foreground">No {label.toLowerCase()} image was uploaded.</p>
         </div>
       )}
     </div>

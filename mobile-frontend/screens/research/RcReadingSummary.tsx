@@ -29,11 +29,11 @@ export function RcReadingSummary({ summary, sample }: { summary?: RcSummary; sam
       <CalibrationSensorReading label="Gravity" icon={Move3D} value={summary ? Math.hypot(...summary.gravity_mean) : undefined} unit="m/s²" state="neutral" caption="Mean magnitude" />
     </View>
     <View className="rounded-card border border-border bg-surface p-card">
-      <AxisReadings title={sample ? 'Acceleration · latest' : 'Acceleration · mean'}
+      <AxisReadings title={sample ? 'Latest acceleration' : 'Mean acceleration'}
         values={sample ? [sample.linear_x, sample.linear_y, sample.linear_z] : summary?.linear_mean} unit="m/s²" />
-      <AxisReadings title={sample ? 'Rotation · latest' : 'Rotation · mean'}
+      <AxisReadings title={sample ? 'Latest rotation' : 'Mean rotation'}
         values={sample ? [sample.rotation_x, sample.rotation_y, sample.rotation_z] : summary?.rotation_mean} unit="°/s" />
-      <AxisReadings title="Gravity · mean" values={summary?.gravity_mean} unit="m/s²" />
+      <AxisReadings title="Mean gravity" values={summary?.gravity_mean} unit="m/s²" />
       <View className="border-t border-border pt-1">
         <InfoRow label="Samples" value={summary ? String(summary.sample_count) : '—'} />
         <InfoRow label="Actual sampling rate" value={summary ? `${summary.mean_rate_hz.toFixed(1)} Hz` : '—'} />

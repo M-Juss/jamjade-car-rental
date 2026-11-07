@@ -188,7 +188,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
       record.getJSONArray("clock_anchors").put(JSONObject().put("utc", utc(wall)).put("elapsed_ns", start.toString())
         .put("uncertainty_ns", (after - before).toString()))
       val collectionDocument = if (evidence != null) {
-        val catalog = JSONObject(context.assets.open("rc-exercises-v1.json").bufferedReader().use { it.readText() })
+        val catalog = JSONObject(context.assets.open("rc-exercises-v2.json").bufferedReader().use { it.readText() })
         val protocols = catalog.getJSONArray("protocols")
         val protocol = (0 until protocols.length()).map { protocols.getJSONObject(it) }.first { it.getString("code") == input.getString("protocol_code") }
         local.workflow().bind(id, allocated.second, protocol, evidence)
@@ -347,6 +347,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
       .put("current", manifest?.let { local.summary(it) } ?: JSONObject.NULL)
   }
   fun list(offset: Int) = call { authorized().list(offset, activeId) }
+  fun collectionPage(offset: Int, filter: String) = call { authorized().page(offset, activeId, filter) }
   fun listCollection(offset: Int, filter: String) = call { authorized().list(offset, activeId, filter) }
   fun groups() = call { authorized().groups() }
   fun exportManifest(id: String) = call {
@@ -379,9 +380,19 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     check(activeId == null && !pending && !setupCheck.running) { "Stop capture before changing the setup" }
     val value = JSONObject(config)
     when (value.getString("action")) {
-      "current" -> local.workflow().current()
-      "open" -> { setupCheck.cancel(); local.workflow().open(local.group(value.getString("group_id")), utc()) }
-      "mount" -> { setupCheck.cancel(); local.workflow().mount(value.getString("reason"), utc()) }
+      "reset_local_research" -> {
+        require(value.optString("confirmation") == "DELETE_LOCAL_RC_RESEARCH") { "Confirm permanent research deletion" }
+        check(!serviceClosing) { "The recording is finishing. Try again." }
+        setupCheck.cancel()
+        local.resetResearch()
+        manifest = null; lastError = null; contextSignature = null
+        collectionSessionId = UUID.randomUUID().toString()
+        local.collectionState()
+      }
+      "current" -> local.collectionState()
+      "open" -> { setupCheck.cancel(); local.workflow().open(local.group(value.getString("group_id")), utc()); local.collectionState() }
+      "new_session" -> { setupCheck.cancel(); local.workflow().newSession(local.group(value.getString("group_id")), utc()); local.collectionState() }
+      "mount" -> { setupCheck.cancel(); local.workflow().mount(value.getString("reason"), utc()); local.collectionState() }
       else -> error("Unknown setup action")
     }
   }
@@ -428,10 +439,15 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     val session = current.getJSONObject("session")
     check(session.getString("recording_group_id") == value.getString("recording_group_id"))
     check(session.getJSONObject("conditions").getString("surface") == value.getString("surface") && session.getJSONObject("conditions").getString("slope") == value.getString("slope"))
-    val catalog = JSONObject(context.assets.open("rc-exercises-v1.json").bufferedReader().use { it.readText() })
+    val catalog = JSONObject(context.assets.open("rc-exercises-v2.json").bufferedReader().use { it.readText() })
     val protocols = catalog.getJSONArray("protocols")
     val protocol = (0 until protocols.length()).map { protocols.getJSONObject(it) }.firstOrNull { it.getString("code") == value.optString("protocol_code") } ?: error("Choose an exercise")
     check(protocol.getString("recording_kind") == value.getString("recording_kind"))
+    if (protocol.getString("recording_kind") == "maneuver_trial") {
+      check(local.hasForwardReference(session.getString("id"), current.getJSONObject("mount").getString("id"))) {
+        "Capture a forward reference for this session and mount before a maneuver trial."
+      }
+    }
     return JSONObject(evidence.toString())
   }
   private fun validateContext(value: JSONObject): JSONObject {

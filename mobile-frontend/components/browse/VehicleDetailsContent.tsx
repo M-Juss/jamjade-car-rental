@@ -61,7 +61,7 @@ export function VehicleDetailsContent({
               accessibilityRole="button"
               accessibilityLabel="Back to Browse"
               onPress={onBackPress}
-              className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface active:opacity-70">
+              className="h-11 w-11 shrink-0 items-center justify-center rounded-field bg-surface active:opacity-70">
               <ArrowLeft size={22} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
             <Text
@@ -78,7 +78,7 @@ export function VehicleDetailsContent({
                 accessibilityLabel={isBookmarked ? `Remove ${vehicleTitle} bookmark` : `Bookmark ${vehicleTitle}`}
                 accessibilityState={{ selected: isBookmarked }}
                 onPress={onBookmarkPress}
-                className="h-11 w-11 items-center justify-center rounded-full bg-surface active:opacity-70">
+                className="h-11 w-11 items-center justify-center rounded-field bg-surface active:opacity-70">
                 <Heart
                   size={22}
                   color={isBookmarked ? themeColors.primary : themeColors.foreground}
@@ -111,7 +111,7 @@ export function VehicleDetailsContent({
                 </View>
               ))}
             </View>
-            <View className="relative min-w-0 flex-1 overflow-hidden rounded-[20px]">
+            <View className="relative min-w-0 flex-1 overflow-hidden rounded-card">
               <VehicleImage
                 accessibilityLabel={`${vehicleTitle}, photo ${activeImageIndex + 1}`}
                 uri={activeImage}
@@ -134,7 +134,7 @@ export function VehicleDetailsContent({
                   accessibilityLabel={`Show ${vehicleTitle} photo ${index + 1} of ${images.length}`}
                   accessibilityState={{ selected: activeImage === image }}
                   onPress={() => setActiveImageIndex(index)}
-                  className={`h-[76px] w-[76px] overflow-hidden rounded-[18px] border-2 bg-surface p-0.5 ${
+                  className={`h-[76px] w-[76px] overflow-hidden rounded-card border-2 bg-surface p-0.5 ${
                     activeImage === image ? 'border-primary' : 'border-surface'
                   }`}>
                   <VehicleImage uri={image} className="h-full w-full rounded-[14px]" />
@@ -143,7 +143,7 @@ export function VehicleDetailsContent({
             </ScrollView>
           )}
 
-          <View className="mt-4 rounded-[22px] border border-border bg-surface p-4">
+          <View className="mt-4 rounded-card border border-border bg-surface p-4">
             <Text accessibilityRole="header" className="font-sans text-[17px] font-semibold text-foreground">
               Description
             </Text>
@@ -166,7 +166,7 @@ export function VehicleDetailsContent({
             )}
           </View>
 
-          <View className="mt-3 rounded-[22px] border border-border bg-surface p-4">
+          <View className="mt-3 rounded-card border border-border bg-surface p-4">
             <Text accessibilityRole="header" className="font-sans text-[17px] font-semibold text-foreground">
               Features
             </Text>
@@ -195,7 +195,7 @@ export function VehicleDetailsContent({
             {bookNowInfo}
           </Text>
         )}
-        <View className="min-h-16 flex-row flex-wrap items-center justify-between gap-3 rounded-[32px] bg-foreground p-2 pl-5">
+        <View className="min-h-16 flex-row flex-wrap items-center justify-between gap-3 rounded-card bg-foreground p-2 pl-5">
           <Text className="font-sans shrink text-[24px] font-semibold text-surface">
             {formatPeso(vehicle.pricePerDay)}
             <Text className="text-[13px] font-medium text-surface">/day</Text>
@@ -206,7 +206,7 @@ export function VehicleDetailsContent({
             accessibilityState={{ disabled: bookNowDisabled }}
             disabled={bookNowDisabled}
             onPress={onBookNow}
-            className={`min-h-12 items-center justify-center rounded-full px-6 py-3 ${
+            className={`min-h-12 items-center justify-center rounded-field px-6 py-3 ${
               bookNowDisabled ? 'bg-surface' : 'bg-primary active:bg-primary-hover'
             }`}>
             <Text className={`font-sans text-[15px] font-medium ${bookNowDisabled ? 'text-muted-foreground' : 'text-surface'}`}>

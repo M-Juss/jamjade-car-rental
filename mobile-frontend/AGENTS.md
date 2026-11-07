@@ -39,6 +39,11 @@ review package changes and preserve `platforms: ["android"]`.
   API errors, bearer-token injection, and SecureStore-backed token persistence.
   `services/api/` owns domain endpoints, request mapping, and response types.
   Screens and visual components must not call `fetch` or construct backend URLs.
+- `modules/backend-network` owns the Android app-only encrypted DNS fallback.
+  Its config plugin allowlists exact configured HTTPS backend hosts; normal DNS
+  remains first. Preserve the credential-free Google lookup, bounded TTL/cache,
+  default TLS checks and ordinary network failure handling. Never widen it to
+  unrelated domains, hardcode backend IPs or change phone-wide DNS settings.
 - `providers/AuthProvider.tsx` owns session restoration, current-user state,
   sign-in, sign-out, and account credential transitions. Customer API routes use
   Sanctum bearer tokens; never move the token to general-purpose storage.
@@ -103,6 +108,10 @@ local module; presentation components must not own sensors or network calls.
 - Automatic direction handling is required in operation. Observer direction and
   maneuver annotations are for training/evaluation only. Do not require a live
   Forward/Reverse selector or label uncertain data normal to hide failures.
+- Guided maneuver capture requires a prior stopped/sealed nonempty local forward
+  reference for the current session and mount. Preserve the native actor check
+  and reference-first UI; local capture order is not accepted alignment. Historical
+  originals remain inspectable and the legacy unbound protocol stays supported.
 - Preserve current Customer/Driver bearer-token and restricted Admin research-token
   scopes. Raw data stays out of setup evidence, ordinary logs and public storage.
   Update Laravel contracts and matching Zod/types/services together.
@@ -160,6 +169,15 @@ Constrain variable text beside controls with native flex sizing and allow rows
 to grow vertically. Show complete values in detail views; cap preview lines only
 when the full value can be opened or expanded. Keep field errors in normal flow.
 
+RC research uses `components/research/ResearchControls.tsx` for its shared icon buttons
+and centered disclosure dialogs. Reuse these within the feature; preserve its
+opened-view Back behavior, contextual consent and 10-item counted pagination.
+Research forms/cards opt into `density="compact"` on shared ActionButton and
+SectionCard. The app-wide UI refinement also uses the shared layout tokens for
+default cards and controls. Preserve the compact research variants. Header icons have
+plain touch targets rather than decorative circular frames. Do not duplicate new
+variants across individual research screens.
+
 Urbanist is bundled under `assets/fonts/urbanist/` and loaded by
 `expo-font` in `app/_layout.tsx`. The static faces and aliases in
 `constants/font-families.json` and `constants/fonts.ts` back the `font-sans`
@@ -176,6 +194,22 @@ normal layout flow, use scrollable content, and apply safe-area insets at screen
 or navigation/footer boundaries. Do not replace insets with fixed top or bottom
 padding, and account for Android edge-to-edge behavior on sheets, keyboards, and
 bottom actions.
+
+Use the compact mobile baseline: 16 px screen gutters and section gaps, 14 px
+card padding/corners, 10 px field/button corners, and 18 px sheet corners.
+Controls retain a 48 px minimum height (44 px for compact/icon actions) and grow
+with text. Prefer plain section icons, inline record metadata, and one surface
+per group over nested pills, repeated icon backgrounds, and separate statistic
+cards. Keep Urbanist, the semantic palette, readable text, and meaningful status
+badges; circles remain appropriate for avatars, progress and selection indicators.
+
+Separate metadata through aligned fields or main/supporting text instead of
+middle-dot strings. Reuse `components/common/MetadataList.tsx` for compact labeled
+groups and keep recording dates, durations, statuses and cached-status notes
+distinct. Select options may show a separate description without changing their
+values. Use ordinary sentences for instructions; retain scientific notation and
+stored labels. Customer Profile keeps three separate Bookings, Spent and Joined
+cards, with inline header icons and a numeric MM/DD/YYYY joined date.
 
 ## Verification
 

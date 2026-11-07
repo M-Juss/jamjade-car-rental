@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export function TableCard({ className, ...props }: ComponentProps<typeof Card>) {
   return (
     <Card
-      className={cn("min-w-0 overflow-hidden rounded-2xl border-0 bg-surface shadow-[0_2px_12px_rgba(0,0,0,0.05)]", className)}
+      className={cn("min-w-0 gap-0 overflow-hidden rounded-2xl border border-border bg-surface py-0 shadow-none", className)}
       {...props}
     />
   );

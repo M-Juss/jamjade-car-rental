@@ -25,11 +25,11 @@ export function DeviceSetupDisclosureDialog({ visible, resetsCalibration, monito
           <View className="flex-row items-center gap-2 border-b border-border p-card">
             <Info size={21} color={themeColors.primary} accessible={false} />
             <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-section font-semibold text-foreground">Before device setup</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-full bg-background">
+            <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-field bg-background">
               <X size={20} color={themeColors.foreground} />
             </Pressable>
           </View>
-          <ScrollView className="shrink" contentContainerClassName="gap-5 p-card" showsVerticalScrollIndicator>
+          <ScrollView className="shrink" contentContainerClassName="gap-section p-card" showsVerticalScrollIndicator>
             <Text className="font-sans text-body leading-6 text-foreground">Keep the vehicle parked during these checks.</Text>
             <View className="flex-row items-start gap-3">
               <ShieldCheck size={21} color={themeColors.primary} />

@@ -47,12 +47,12 @@ export function SelectWithLabel({
         <Label
           htmlFor={id}
           className={cn(
-            "text-[11px] font-medium uppercase tracking-[0.08em] text-subtle-foreground",
+            "text-xs font-medium normal-case tracking-normal text-subtle-foreground",
             labelClassName,
           )}
         >
           {label}
-          {required && <span className="ml-0.5 text-rose-400">*</span>}
+          {required && <span className="ml-0.5 text-destructive">*</span>}
         </Label>
       ) : null}
       <SelectControl
@@ -70,7 +70,7 @@ export function SelectWithLabel({
         contentClassName={contentClassName}
       />
       {error ? (
-        <p className="text-[10.5px] font-medium leading-tight text-destructive">
+        <p className="text-xs font-medium leading-tight text-destructive">
           {error}
         </p>
       ) : null}

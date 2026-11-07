@@ -23,7 +23,7 @@ export default function ManagementMobileHeader({ portal, counts, countsError }: 
   const bookingLabel = countsError ? "Booking count unavailable" : counts.bookings === null ? "Checking booking count" : `${counts.bookings} bookings awaiting pickup`;
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center border-b border-border bg-surface/90 px-2 backdrop-blur lg:hidden">
+    <header className="sticky top-0 z-40 flex h-14 items-center border-b border-border bg-surface px-2 lg:hidden">
       <button
         type="button"
         aria-expanded={navOpen}

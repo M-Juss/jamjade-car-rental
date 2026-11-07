@@ -61,7 +61,7 @@ class RcNativeProtocol
                 'collection_binding.mount_version_id' => 'required_with:collection_binding|uuid',
                 'collection_binding.preflight_id' => 'required_with:collection_binding|uuid',
                 'collection_binding.clock_context_id' => 'required_with:collection_binding|uuid',
-                'collection_binding.catalog_version' => 'required_with:collection_binding|in:rc-exercises-v1',
+                'collection_binding.catalog_version' => 'required_with:collection_binding|in:rc-exercises-v1,rc-exercises-v2',
                 'collection_binding.protocol_code' => 'required_with:collection_binding|in:FSS,HA,HB,LT,RT,RSS,SW,SR,FR',
                 'collection_binding.protocol_sha256' => 'required_with:collection_binding|regex:/^[a-f0-9]{64}$/D',
                 'coordinate_frame' => 'required|in:android_device_natural',

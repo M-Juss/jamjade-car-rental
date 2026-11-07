@@ -85,7 +85,7 @@ function RecordingWorkspace({ inspection }: { inspection: ResearchInspection }) 
             <CardContent className="space-y-5 pt-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><FilterSelect ariaLabel="Acceleration signal" value={acceleration} onValueChange={setAcceleration} className="sm:w-60" options={[
                 { value: "linear", label: "Linear acceleration" }, { value: "including_gravity", label: "Including gravity" },
-              ]} /><span className="text-xs text-muted-foreground">Saved values · no added filtering</span></div>
+              ]} /><span className="text-xs text-muted-foreground">Unfiltered saved values</span></div>
               <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground"><Info className="mt-0.5 size-4 shrink-0" />Vehicle alignment is not recorded. X, Y, and Z describe the phone, not forward, lateral, and vertical vehicle motion.</p>
               <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">View: {seconds(view[0])}–{seconds(view[1])}</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={selection[1] - selection[0] < 1} onClick={() => setView(selection)}><ZoomIn className="size-3.5" />Zoom to interval</Button>{(view[0] !== 0 || view[1] !== duration) && <Button variant="ghost" size="sm" onClick={() => setView([0, duration])}>Full recording</Button>}</div></div>
               <SignalTimeline title={acceleration === "linear" ? "Linear acceleration" : "Acceleration including gravity"} unit={inspection.units.acceleration} points={accelerationPoints} domain={view} selection={selection} observed={observed} cursor={cursor} onCursor={setCursor} onSelection={setSelection} syncId={trial.id} />
@@ -128,5 +128,5 @@ function RecordingWorkspace({ inspection }: { inspection: ResearchInspection }) 
 }
 
 function MomentValues({ title, point, unit }: { title: string; point: ReturnType<typeof nearestPoint>; unit: string }) {
-  return <div><p className="mb-1 text-xs text-muted-foreground">{title} ({unit}){point ? ` · at ${seconds(point.time)}` : ""}</p>{point ? <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium tabular-nums">{(["x", "y", "z"] as const).map((axis) => <span key={axis}>{axis.toUpperCase()} {point[axis]?.toFixed(3)}</span>)}</p> : <p className="text-xs text-muted-foreground">No nearby measurement</p>}</div>;
+  return <div><div className="mb-1 flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted-foreground"><p>{title} ({unit})</p>{point ? <p>At {seconds(point.time)}</p> : null}</div>{point ? <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium tabular-nums">{(["x", "y", "z"] as const).map((axis) => <span key={axis}>{axis.toUpperCase()} {point[axis]?.toFixed(3)}</span>)}</p> : <p className="text-xs text-muted-foreground">No nearby measurement</p>}</div>;
 }

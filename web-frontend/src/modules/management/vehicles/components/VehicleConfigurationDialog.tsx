@@ -118,8 +118,8 @@ export function VehicleConfigurationDialog({ open, onOpenChange }: { open: boole
                 const count = options.filter((option) => option.section === key).length;
                 return <Card key={key} className={"gap-0 overflow-hidden py-0" + (key === "equipment" ? " md:col-span-2" : "")}>
                   <CardContent className="p-0"><button type="button" onClick={() => setSelected(key)} className="flex min-h-24 w-full items-center gap-3 p-4 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-primary"><Icon size={18} /></span>
-                    <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-foreground">{title}</span><span className="text-xs text-muted-foreground">{count} options</span></span>
+                    <span className="flex shrink-0 items-center justify-center text-primary"><Icon size={18} /></span>
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">{title}</span><span className="text-xs text-muted-foreground">{count} options</span></span>
                     <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
                   </button></CardContent>
                 </Card>;

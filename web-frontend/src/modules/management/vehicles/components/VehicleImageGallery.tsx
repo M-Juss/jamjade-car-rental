@@ -13,7 +13,7 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
   const remainingCount = Math.max(0, images.length - 5);
   const [primaryImage, ...thumbnailImages] = visibleImages;
   const removeButtonClass =
-    "absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-foreground shadow-md transition-colors hover:bg-rose-50 hover:text-rose-500 md:h-8 md:w-8";
+    "absolute right-2 top-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-surface/95 text-foreground shadow-none transition-colors hover:bg-destructive-surface hover:text-destructive md:h-8 md:w-8";
 
   if (!primaryImage) {
     return (
@@ -63,7 +63,7 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
                   className="h-full w-full object-cover"
                 />
                 {showMoreOverlay && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#0B1220]/58 text-xl font-black text-white">
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#0B1220]/58 text-xl font-black text-primary-foreground">
                     +{remainingCount}
                   </div>
                 )}

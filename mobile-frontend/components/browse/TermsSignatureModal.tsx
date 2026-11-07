@@ -214,7 +214,7 @@ export function TermsSignatureModal({
         <View
           className="mt-auto max-h-[94%] overflow-hidden rounded-t-sheet bg-surface"
           style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
-          <View className="flex-row items-center gap-3 border-b border-border bg-surface px-5 pb-4 pt-5">
+          <View className="flex-row items-center gap-3 border-b border-border bg-surface px-screen pb-4 pt-5">
             <View className="min-w-0 flex-1">
               <Text
                 accessibilityRole="header"
@@ -238,11 +238,11 @@ export function TermsSignatureModal({
 
           {step === 'terms' ? (
             <>
-              <ScrollView className="px-5" showsVerticalScrollIndicator>
+              <ScrollView className="px-screen" showsVerticalScrollIndicator>
                 <View className="pb-6 pt-5">
                   {termsSections.map((section, sectionIndex) => (
                     <View
-                      className={sectionIndex === 0 ? '' : 'mt-6 border-t border-border pt-6'}
+                      className={sectionIndex === 0 ? '' : 'mt-section border-t border-border pt-6'}
                       key={section.title}>
                       <Text
                         accessibilityRole="header"
@@ -279,17 +279,17 @@ export function TermsSignatureModal({
                   ))}
                 </View>
               </ScrollView>
-              <View className="border-t border-border bg-surface px-5 pt-4">
+              <View className="border-t border-border bg-surface px-screen pt-4">
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setStep('signature')}
-                  className="min-h-[58px] items-center justify-center rounded-full bg-primary">
+                  className="min-h-control items-center justify-center rounded-field bg-primary px-4 py-3">
                   <Text className="font-sans text-[15px] font-semibold text-surface">Sign</Text>
                 </Pressable>
               </View>
             </>
           ) : (
-            <View className="px-5 pb-2 pt-5">
+            <View className="px-screen pb-2 pt-5">
               <View>
                 <Text className="font-sans text-[13px] font-semibold text-foreground">
                   Draw your signature below
@@ -301,7 +301,7 @@ export function TermsSignatureModal({
                 <View
                   {...signatureResponder.panHandlers}
                   collapsable={false}
-                  className="mt-4 h-[240px] overflow-hidden rounded-[20px] border border-dashed border-[#AFC5FF] bg-background">
+                  className="mt-4 h-[240px] overflow-hidden rounded-card border border-dashed border-[#AFC5FF] bg-background">
                   <Svg height="100%" pointerEvents="none" width="100%">
                     {strokes.map((stroke, index) =>
                       stroke.length > 1 ? (
@@ -325,17 +325,17 @@ export function TermsSignatureModal({
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setStrokes([])}
-                  className="mt-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-full border border-border bg-background">
+                  className="mt-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-field border border-border bg-background">
                   <Eraser size={17} color={themeColors.primary} strokeWidth={2.4} />
                   <Text className="font-sans text-[13px] font-semibold text-primary">Clear Signature</Text>
                 </Pressable>
               </View>
 
-              <View className="mt-5 flex-row gap-3">
+              <View className="mt-section flex-row gap-3">
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setStep('terms')}
-                  className="min-h-[56px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
+                  className="min-h-control flex-1 items-center justify-center rounded-field border border-border bg-surface">
                   <Text className="font-sans text-[14px] font-semibold text-foreground">Review Terms</Text>
                 </Pressable>
                 <Pressable
@@ -343,7 +343,7 @@ export function TermsSignatureModal({
                   accessibilityState={{ disabled: !hasSignature }}
                   disabled={!hasSignature}
                   onPress={handleSubmit}
-                  className={`min-h-[56px] flex-1 items-center justify-center rounded-full ${
+                  className={`min-h-control flex-1 items-center justify-center rounded-field ${
                     hasSignature ? 'bg-primary' : 'bg-[#C8D4E8]'
                   }`}>
                   <Text className="font-sans text-[14px] font-semibold text-surface">Submit</Text>

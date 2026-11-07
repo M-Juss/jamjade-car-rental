@@ -20,6 +20,7 @@ class StoreRcObservationRequest extends BaseFormRequest
             'flags' => ['present', 'array', 'list', 'max:9'],
             'flags.*' => ['required', 'distinct:strict', 'in:steering_corrections,unexpected_reverse,unexpected_turn,bump,cone_contact,phone_shift,holder_loose,interrupted,not_sure'],
             'actual_stop_method' => ['required', 'in:brake_applied,neutral_release,unknown,not_applicable'],
+            'initial_deviation' => ['sometimes', 'required', 'string', 'in:left,right,unknown'],
             'notes' => ['present', 'nullable', 'string', 'max:1000']];
     }
 }

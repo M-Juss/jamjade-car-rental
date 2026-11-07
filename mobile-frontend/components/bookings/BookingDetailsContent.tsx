@@ -17,7 +17,7 @@ export function BookingDetailsContent({ booking }: { booking: Booking }) {
                 uri={booking.image}
                 accessibilityLabel={[booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(' ')}
         resizeMode="cover"
-        className="mb-4 h-[140px] w-full rounded-[24px] bg-muted"
+        className="mb-4 h-[140px] w-full rounded-card bg-muted"
       />
       <View className="mb-4 flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
@@ -82,7 +82,7 @@ export function BookingDetailsContent({ booking }: { booking: Booking }) {
 
     {booking.sharedVehicleLocation ? <SectionCard title="Vehicle location" icon={Navigation}>
       <InfoRow label="Last shared" value={new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Manila' }).format(new Date(booking.sharedVehicleLocation.sharedAt))} />
-      <View className="mt-3 h-[220px] overflow-hidden rounded-[18px]">
+      <View className="mt-3 h-[220px] overflow-hidden rounded-card">
         <TelematicsMap point={{ ...booking.sharedVehicleLocation, captured_at: booking.sharedVehicleLocation.sharedAt }} recenter={0} />
       </View>
     </SectionCard> : null}

@@ -9,8 +9,8 @@ type ManagementPageHeadingProps = {
 export function ManagementPageHeading({ title, description, className }: ManagementPageHeadingProps) {
   return (
     <div className={cn("min-w-0", className)}>
-      <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
-      {description ? <p className="mt-0.5 text-sm text-muted-foreground">{description}</p> : null}
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      {description ? <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p> : null}
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function BackgroundLocationDisclosureDialog({ visible, onCancel, onContin
         <View className="flex-row items-center gap-2 border-b border-border p-card">
           <Info size={21} color={themeColors.primary} accessible={false} />
           <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-section font-semibold text-foreground">Before background access</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-full bg-background"><X size={20} color={themeColors.foreground} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close disclosure" onPress={onCancel} className="h-11 w-11 items-center justify-center rounded-field bg-background"><X size={20} color={themeColors.foreground} /></Pressable>
         </View>
         <ScrollView className="shrink" contentContainerClassName="gap-4 p-card" showsVerticalScrollIndicator>
           <Text className="font-sans text-body leading-6 text-foreground">Background location access lets you share your latest GPS location with authorized JamJade staff during an active rental when the app is minimized or the screen is locked.</Text>

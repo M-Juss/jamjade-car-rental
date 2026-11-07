@@ -5,13 +5,18 @@ export const directions = ["forward", "reverse", "not_applicable", "unknown"] as
 export const severities = ["normal", "harsh", "not_applicable", "unknown"] as const;
 export const certainties = ["reviewed", "uncertain"] as const;
 export const annotationSources = ["observed", "operator_report", "signal_review"] as const;
+export const initialDeviations = ["left", "right", "unknown"] as const;
 
 // StoreRcAnnotationsRequest owns acceptance. Duration, access and revision conflicts stay server rules.
 export const annotationIntervalSchema = z.object({
   start_ms: z.number().min(0).max(86400000), end_ms: z.number().min(0).max(86400000),
   movement: z.enum(movements), direction: z.enum(directions), severity: z.enum(severities),
   certainty: z.enum(certainties), source: z.enum(annotationSources), notes: z.string().max(1000).nullable(),
+  initial_deviation: z.enum(initialDeviations).optional(),
 }).strict().superRefine((value, ctx) => {
+  if (value.initial_deviation !== undefined && value.movement !== "swerving") {
+    ctx.addIssue({ code: "custom", path: ["initial_deviation"], message: "Initial deviation is available for swerving intervals only." });
+  }
   if (value.end_ms <= value.start_ms) ctx.addIssue({ code: "custom", path: ["start_ms"], message: "End must follow start." });
   const stationary = value.movement === "stationary";
   if (stationary && (value.direction !== "not_applicable" || value.severity !== "not_applicable")) {

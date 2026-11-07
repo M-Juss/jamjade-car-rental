@@ -25,7 +25,7 @@ export function DashboardAttentionPanel({ bookings, total, bookingPath }: Props)
     <Card className="min-w-0 rounded-2xl border-border bg-surface xl:max-h-[calc(640px+var(--dashboard-calendar-extra-height,0px))]">
       <CardContent className="flex min-h-0 flex-col px-4">
         <div className="mb-3 flex items-start justify-between gap-2">
-          <h2 className="min-w-0 text-sm font-bold text-foreground">Bookings Requiring Action</h2>
+          <h2 className="min-w-0 text-sm font-semibold text-foreground">Bookings Requiring Action</h2>
           <span className="shrink-0 text-xs font-semibold text-muted-foreground">{total}</span>
         </div>
         {bookings.length === 0 ? (
@@ -52,7 +52,7 @@ export function DashboardAttentionPanel({ bookings, total, bookingPath }: Props)
                       <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{booking.vehicleName || "Vehicle unavailable"}</p>
                       {booking.attention && (
                         <p className={cn("text-xs font-medium", overdue ? "text-destructive" : "text-warning")}>
-                          {attentionLabels[booking.attention.key]}{duration ? ` · ${duration}` : ""}
+                          {attentionLabels[booking.attention.key]}{duration ? <span className="mt-0.5 block font-normal">{duration}</span> : null}
                         </p>
                       )}
                       {booking.upcomingBookings.length > 0 && (

@@ -9,11 +9,13 @@ type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 export type SelectOption = {
   value: string;
   label: string;
+  description?: string;
 };
 
 type SelectWithLabelProps = {
   id?: string;
   label: string;
+  hideLabel?: boolean;
   icon?: MaterialIconName;
   placeholder?: string;
   options: SelectOption[];
@@ -32,6 +34,7 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export function SelectWithLabel({
   label,
+  hideLabel = false,
   icon,
   placeholder = 'Select an option',
   options,
@@ -54,10 +57,12 @@ export function SelectWithLabel({
 
   return (
     <View className={cx('w-full gap-1.5', wrapperClassName)}>
-      <Text className="font-sans text-caption font-medium text-foreground">
-        {label}
-        {required && <Text className="text-destructive"> *</Text>}
-      </Text>
+      {!hideLabel ? (
+        <Text className="font-sans text-caption font-medium text-foreground">
+          {label}
+          {required && <Text className="text-destructive"> *</Text>}
+        </Text>
+      ) : null}
 
       <Pressable
         accessibilityRole="button"
@@ -118,17 +123,20 @@ export function SelectWithLabel({
                     accessibilityState={{ selected: isSelected }}
                     onPress={() => handleSelect(item.value)}
                     className={cx(
-                      'min-h-[46px] flex-row items-center justify-between gap-3 rounded-2xl px-3 py-3',
+                      'min-h-control flex-row items-center justify-between gap-3 rounded-card px-3 py-3',
                       isSelected && 'bg-muted',
                     )}>
-                    <Text
-                      className={cx(
-                        'font-sans',
-                        'min-w-0 flex-1 text-[15px] text-foreground',
-                        isSelected && 'text-foreground',
-                      )}>
-                      {item.label}
-                    </Text>
+                    <View className="min-w-0 flex-1 gap-0.5">
+                      <Text
+                        className={cx(
+                          'font-sans',
+                          'text-[15px] text-foreground',
+                          isSelected && 'text-foreground',
+                        )}>
+                        {item.label}
+                      </Text>
+                      {item.description ? <Text className="font-sans text-caption text-secondary-foreground">{item.description}</Text> : null}
+                    </View>
                     {isSelected && <MaterialIcons name="check" size={20} color={themeColors.primary} />}
                   </Pressable>
                 );

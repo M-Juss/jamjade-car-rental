@@ -75,6 +75,44 @@ function uploadHarness(post) {
 const receipt = { id: '8901a1f5-6628-46c2-8f44-6f124ac9bd60', client_recording_id: values.recording_group_id,
   manifest_sha256: 'a'.repeat(64), expected_chunks: 2, received_chunks: 2, state: 'verified' };
 
+const observation = { base_revision: 0, completed_as_planned: null, source: 'operator_report', observer_code: null,
+  flags: [], actual_stop_method: 'unknown', notes: null };
+function savedObservation(input = observation) {
+  const { base_revision, ...reported } = input;
+  return { recording_id: values.recording_group_id, observations: [{ ...reported, revision: base_revision + 1,
+    id: '00000000-0000-4000-8000-000000000010', reported_at: '2026-11-06T00:00:00Z' }] };
+}
+test('saving observations confirms the local revision without a network request or a details reread', async () => {
+  const h = harness();
+  h.module.saveObservation = async (id, payload) => {
+    assert.equal(id, values.recording_group_id);
+    assert.deepEqual(JSON.parse(payload), observation);
+    return JSON.stringify(savedObservation());
+  };
+  const result = await h.api.saveObservation(values.recording_group_id, observation);
+  assert.equal(result.observations.at(-1).revision, 1);
+  assert.equal(h.calls.length, 0);
+});
+test('observation save errors remain rejected for local form feedback', async () => {
+  const h = harness();
+  h.module.saveObservation = async () => { throw new Error('Synthetic storage failure'); };
+  await assert.rejects(h.api.saveObservation(values.recording_group_id, observation), /Synthetic storage failure/);
+  assert.equal(h.calls.length, 0);
+});
+test('an unrelated, stale or changed save acknowledgment cannot produce a success state', async () => {
+  for (const change of [
+    saved => { saved.recording_id = '00000000-0000-4000-8000-000000000099'; },
+    saved => { saved.observations[0].revision = 0; },
+    saved => { saved.observations[0].completed_as_planned = true; },
+    saved => { saved.observations[0].flags = ['bump']; },
+    saved => { saved.observations = []; },
+  ]) {
+    const h = harness();
+    h.module.saveObservation = async () => { const saved = savedObservation(); change(saved); return JSON.stringify(saved); };
+    await assert.rejects(h.api.saveObservation(values.recording_group_id, observation), /could not be confirmed/);
+  }
+});
+
 test('native upload resumes accepted chunks and marks uploaded only after matching server verification', async () => {
   const h = uploadHarness(async path => ({ data: path.endsWith('/finalize') ? receipt : { ...receipt, state: 'incomplete', accepted_chunks: [{ channel: 'accelerometer', chunk_index: 0 }] } }));
   await h.api.upload(7, values.recording_group_id);

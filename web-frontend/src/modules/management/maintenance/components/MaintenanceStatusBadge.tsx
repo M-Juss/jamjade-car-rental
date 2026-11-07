@@ -21,7 +21,7 @@ export function MaintenanceStatusBadge({
   return (
     <Badge
       variant="outline"
-      className={`rounded-lg px-2.5 py-1 text-[10.5px] font-semibold ${statusStyles[value] ?? statusStyles.cancelled}`}
+      className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${statusStyles[value] ?? statusStyles.cancelled}`}
     >
       {label}
     </Badge>

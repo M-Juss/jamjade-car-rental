@@ -30,7 +30,7 @@ export function BookingTimeline({ items }: { items: BookingTimelineItem[] }) {
             <View className="min-w-0 flex-1 pb-5">
               <Text
                 className={
-                  'font-sans ' +
+                  'font-sans' +
                   (item.completed
                     ? 'text-[15px] font-semibold text-foreground'
                     : 'text-[15px] font-normal text-secondary-foreground')
@@ -44,7 +44,7 @@ export function BookingTimeline({ items }: { items: BookingTimelineItem[] }) {
               ) : null}
               <Text
                 className={
-                  'font-sans ' +
+                  'font-sans' +
                   (item.completed
                     ? 'mt-2 text-[11px] font-semibold text-success'
                     : 'mt-2 text-[11px] font-normal text-secondary-foreground')

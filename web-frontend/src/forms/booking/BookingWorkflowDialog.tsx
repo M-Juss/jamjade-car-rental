@@ -136,7 +136,7 @@ function BookingContext({ booking }: { booking: BookingRecord }) {
               {[booking.brand, booking.vehicleName, booking.model]
                 .filter(Boolean)
                 .join(" ")}
-              {booking.vehiclePlateNumber ? ` · ${booking.vehiclePlateNumber}` : ""}
+              {booking.vehiclePlateNumber ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{booking.vehiclePlateNumber}</span> : null}
             </dd>
           </div>
           <div>
@@ -499,7 +499,7 @@ export function BookingWorkflowDialog({
       <h2
         data-workflow-heading={chargeEntryOpen ? undefined : ""}
         tabIndex={-1}
-        className="text-sm font-bold text-foreground"
+        className="text-sm font-semibold text-foreground"
       >
         Review Return Charges
       </h2>
@@ -542,7 +542,7 @@ export function BookingWorkflowDialog({
               <h2
                 data-workflow-heading
                 tabIndex={-1}
-                className={currentAction === "reassign-driver" || reviewingDriver ? "text-sm font-bold text-foreground" : "sr-only"}
+                className={currentAction === "reassign-driver" || reviewingDriver ? "text-sm font-semibold text-foreground" : "sr-only"}
               >
                 {currentAction === "reassign-driver" || reviewingDriver ? "Reassign Driver" : "Assign Driver"}
               </h2>
@@ -559,9 +559,8 @@ export function BookingWorkflowDialog({
               placeholder="Select a driver"
               options={drivers.map((driver) => ({
                 value: String(driver.id),
-                label: driver.hasOutstandingBalance
-                  ? driver.name + " · Outstanding balance"
-                  : driver.name,
+                label: driver.name,
+                description: driver.hasOutstandingBalance ? "Outstanding balance" : undefined,
                 disabled: driver.hasOutstandingBalance,
               }))}
               value={selectedDriver}
@@ -632,7 +631,7 @@ export function BookingWorkflowDialog({
         <h2
           data-workflow-heading
           tabIndex={-1}
-          className="text-sm font-bold text-foreground"
+          className="text-sm font-semibold text-foreground"
         >
           Your action was saved
         </h2>
@@ -653,7 +652,7 @@ export function BookingWorkflowDialog({
           <h2
             data-workflow-heading
             tabIndex={-1}
-            className="text-sm font-bold text-foreground"
+            className="text-sm font-semibold text-foreground"
           >
             {booking.statusKey === "ongoing"
               ? "Rental Started"
@@ -733,7 +732,7 @@ export function BookingWorkflowDialog({
         <h2
           data-workflow-heading
           tabIndex={-1}
-          className="text-sm font-bold text-foreground"
+          className="text-sm font-semibold text-foreground"
         >
           {booking.rentalProgress?.outgoingFinalized ? "Outgoing Inspection" : "Rental Preparation"}
         </h2>
@@ -764,7 +763,7 @@ export function BookingWorkflowDialog({
         <h2
           data-workflow-heading
           tabIndex={-1}
-          className="text-sm font-bold text-foreground"
+          className="text-sm font-semibold text-foreground"
         >
           {bookingActionLabels[currentAction]}
         </h2>
@@ -860,7 +859,7 @@ export function BookingWorkflowDialog({
           <h2
             data-workflow-heading
             tabIndex={-1}
-            className="text-sm font-bold text-foreground"
+            className="text-sm font-semibold text-foreground"
           >
             {bookingActionLabels[currentAction]}
           </h2>
@@ -916,7 +915,7 @@ export function BookingWorkflowDialog({
       savedDetails = <><BookingContext booking={booking} />{savedTime ? <p className="text-xs text-muted-foreground">{formatReturnDateTime(savedTime)}</p> : null}</>;
     }
     reviewContent = reviewingDriver ? driverContent : <WorkflowPanel footer={<>{previousButton}{returnButton}</>}>
-      <h2 data-workflow-heading tabIndex={-1} className="text-sm font-bold text-foreground">{reviewLabel}</h2>
+      <h2 data-workflow-heading tabIndex={-1} className="text-sm font-semibold text-foreground">{reviewLabel}</h2>
       {savedDetails}
     </WorkflowPanel>;
   }

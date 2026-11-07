@@ -2,18 +2,25 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Eye } from "lucide-react";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TablePagination } from "@/components/common/tables/TablePagination";
 import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
 import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CardContent } from "@/components/ui/card";
+import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
 import { getNativeRecordings } from "@/services/research/native-research.service";
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import { ResearchState } from "./components/ResearchState";
-import exerciseCatalog from "./rc-exercises-v1.json";
 import { humanize, seconds } from "./recording-analysis";
+import { MetadataList } from "@/components/common/data-display/MetadataList";
+import { recordingPresentation, recordingSearchTerm } from "./recording-presentation";
 
 export function NativeRecordings({ revision }: { revision: number }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Awaited<ReturnType<typeof getNativeRecordings>> | null>(null);
@@ -24,31 +31,79 @@ export function NativeRecordings({ revision }: { revision: number }) {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true); setError(null);
-      try { const response = await getNativeRecordings(page, search, controller.signal); if (!controller.signal.aborted) setResult(response); }
+      try { const response = await getNativeRecordings(page, recordingSearchTerm(search), controller.signal); if (!controller.signal.aborted) setResult(response); }
       catch (cause) { if (!controller.signal.aborted) setError(cause); }
       finally { if (!controller.signal.aborted) setLoading(false); }
     }, 200);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [page, search, revision, retry]);
-  return <div className="space-y-5">
-    <SearchInput value={search} onValueChange={value => { setSearch(value.slice(0, 100)); setPage(1); }} placeholder="Search recording or surface..." />
-    <details className="rounded-xl border border-border bg-surface px-4 py-3 text-xs text-foreground">
-      <summary className="cursor-pointer font-semibold text-primary focus-visible:outline-primary">Abbreviation guide</summary>
-      <div className="mt-3 space-y-3"><p><strong>S02-FSS-R038</strong> · Session 02 · Forward Start-Stop · Recording 038</p>
-        <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">{exerciseCatalog.protocols.map(protocol => <div className="flex gap-2" key={protocol.code}><dt className="font-semibold">{protocol.code}</dt><dd>{protocol.label}</dd></div>)}</dl>
-      </div>
-    </details>
-    {loading || error || !result?.recordings.length ? <ResearchState loading={loading} error={error} onRetry={() => setRetry(v => v + 1)} /> : <>
-      <TableCard><Table><TableHeader><TableRow className="border-b border-border bg-background hover:bg-background">
-        {["Recording", "Duration", "Upload", "Capture", "Labels"].map(title => <TableHead key={title} className="px-4 py-3 text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{title}</TableHead>)}
-      </TableRow></TableHeader><TableBody>{result.recordings.map(record => <TableRow key={record.id} className="border-b border-background hover:bg-background">
-        <TableCell data-label="Recording" className="px-4 py-3"><Link className="text-[12.5px] font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline" href={`/admin/research/native/${record.id}`}>{record.display_code ?? record.name}</Link><p className="mt-1 text-xs text-muted-foreground">{formatReturnDateTime(record.started_at)}</p></TableCell>
-        <TableCell data-label="Duration" className="px-4 py-3 text-xs">{seconds(record.duration_ms)}</TableCell>
-        <TableCell data-label="Upload" className="px-4 py-3"><Badge variant="outline">{record.state === "verified" ? "Integrity verified" : `${record.received_chunks}/${record.expected_chunks} chunks`}</Badge></TableCell>
-        <TableCell data-label="Capture" className="px-4 py-3 text-xs">{record.capture_state === "interrupted" ? "Interrupted" : "Stopped"}</TableCell>
-        <TableCell data-label="Labels" className="px-4 py-3"><Badge variant="secondary">{humanize(record.annotation_state)}</Badge></TableCell>
-      </TableRow>)}</TableBody></Table></TableCard>
-      <TablePagination page={result.page} lastPage={result.lastPage} total={result.total} onPageChange={setPage} label="Native recordings pagination" />
-    </>}
-  </div>;
+  return (
+    <TableCard aria-label="Research recordings">
+      <CardContent className="border-b border-border p-4">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <SearchInput
+            value={search}
+            onValueChange={value => { setSearch(value.slice(0, 100)); setPage(1); }}
+            placeholder="Search recording or surface..."
+            wrapperClassName="min-w-0 flex-1"
+          />
+          {search && <Button type="button" variant="ghost" onClick={() => { setSearch(""); setPage(1); }}>Clear</Button>}
+        </div>
+      </CardContent>
+      {loading || error || !result?.recordings.length ? (
+        <ResearchState className="rounded-none border-0" loading={loading} error={error} onRetry={() => setRetry(v => v + 1)} />
+      ) : (
+        <>
+          <Table>
+            <colgroup>
+              <col style={{ width: "36%" }} />
+              <col style={{ width: "12%" }} />
+              <col />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "3.5rem" }} />
+            </colgroup>
+            <TableHeader>
+              <TableRow className="border-b border-border bg-background hover:bg-background">
+                {["Recording", "Duration", "Upload", "Capture", "Labels", "Actions"].map(title => (
+                  <TableHead key={title}>{title === "Actions" ? <span className="sr-only">Actions</span> : title}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.recordings.map(record => {
+                const presentation = recordingPresentation({ name: record.name, displayCode: record.display_code, surface: record.surface });
+                return (
+                <TableRow key={record.id}>
+                  <TableCell data-label="Recording">
+                    <Link aria-label={record.display_code ?? record.name} className="font-semibold text-primary underline-offset-4 hover:underline focus-visible:underline" href={`/admin/research/native/${record.id}`}>
+                      {presentation.title}
+                    </Link>
+                    {presentation.metadata.length ? <MetadataList className={presentation.metadata.length > 3 ? "mt-2" : "mt-2 grid-cols-3 gap-x-3"} items={presentation.metadata} /> : null}
+                    <p className="mt-1 text-xs text-muted-foreground">{formatReturnDateTime(record.started_at)}</p>
+                  </TableCell>
+                  <TableCell data-label="Duration" className="tabular-nums text-muted-foreground">{seconds(record.duration_ms)}</TableCell>
+                  <TableCell data-label="Upload">
+                    <Badge variant="outline" className={record.state === "verified" ? "border-success-border bg-success-surface text-success" : "border-border bg-background text-muted-foreground"}>
+                      {record.state === "verified" ? "Integrity verified" : `${record.received_chunks}/${record.expected_chunks} chunks`}
+                    </Badge>
+                  </TableCell>
+                  <TableCell data-label="Capture" className="text-muted-foreground">{record.capture_state === "interrupted" ? "Interrupted" : "Stopped"}</TableCell>
+                  <TableCell data-label="Labels"><Badge variant="outline" className="border-border bg-background text-muted-foreground">{humanize(record.annotation_state)}</Badge></TableCell>
+                  <TableCell data-label="Actions">
+                    <TableActionMenu label={`Open actions for ${record.display_code ?? record.name}`} items={[
+                      { label: "View", icon: <Eye size={13} className="mr-2" />, onClick: () => router.push(`/admin/research/native/${record.id}`) },
+                    ]} />
+                  </TableCell>
+                </TableRow>
+              ); })}
+            </TableBody>
+          </Table>
+          <div className="border-t border-border px-4 py-3 [&>div]:mt-0">
+            <TablePagination page={result.page} lastPage={result.lastPage} total={result.total} onPageChange={setPage} label="Native recordings pagination" />
+          </div>
+        </>
+      )}
+    </TableCard>
+  );
 }

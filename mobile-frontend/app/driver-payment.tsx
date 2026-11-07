@@ -96,7 +96,7 @@ export default function DriverPaymentScreen() {
             <Pressable
               accessibilityLabel="Go back"
               onPress={() => router.back()}
-              className="h-12 w-12 items-center justify-center rounded-full border border-border bg-surface">
+              className="h-12 w-12 items-center justify-center rounded-field border border-border bg-surface">
               <ArrowLeft color={themeColors.foreground} size={21} />
             </Pressable>
             <View className="min-w-0 flex-1">
@@ -114,7 +114,7 @@ export default function DriverPaymentScreen() {
               onPay={() => void pay()}
             />
           ) : !isLoading ? (
-            <Text className="font-sans mt-5 text-[13px] font-medium text-destructive">{message}</Text>
+            <Text className="font-sans mt-section text-[13px] font-medium text-destructive">{message}</Text>
           ) : null}
         </View>
       </ScrollView>

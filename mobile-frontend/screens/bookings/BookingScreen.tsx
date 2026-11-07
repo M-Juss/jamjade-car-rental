@@ -85,7 +85,7 @@ function BookingFilterSheet({
         <Pressable
           className="w-full max-w-[560px] self-center rounded-t-sheet bg-surface px-screen pt-4"
           style={{ paddingBottom: insets.bottom + 28 }}>
-          <View className="mb-5 h-1.5 w-12 self-center rounded-full bg-border" />
+          <View className="mb-section h-1.5 w-12 self-center rounded-full bg-border" />
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="font-sans text-[22px] font-semibold text-foreground">Filter bookings</Text>
             <Pressable
@@ -110,11 +110,11 @@ function BookingFilterSheet({
             ))}
           </View>
 
-          <View className="mt-5 flex-row gap-3">
+          <View className="mt-section flex-row gap-3">
             <Pressable
               accessibilityRole="button"
               onPress={() => setDraftStatus('All')}
-              className="min-h-[54px] flex-1 items-center justify-center rounded-full border border-border bg-surface">
+              className="min-h-control flex-1 items-center justify-center rounded-field border border-border bg-surface px-3 py-3">
               <Text className="font-sans text-[15px] font-semibold text-foreground">Reset</Text>
             </Pressable>
             <Pressable
@@ -123,7 +123,7 @@ function BookingFilterSheet({
                 onApply(draftStatus);
                 onClose();
               }}
-              className="min-h-[54px] flex-1 items-center justify-center rounded-full bg-primary">
+              className="min-h-control flex-1 items-center justify-center rounded-field bg-primary px-3 py-3">
               <Text className="font-sans text-[15px] font-semibold text-surface">Apply</Text>
             </Pressable>
           </View>
@@ -195,8 +195,8 @@ export function BookingScreen() {
   const emptySubtitle = searchTerm.trim()
     ? 'Try another booking ID or vehicle name.'
     : selectedStatus === 'All'
-      ? 'Start browsing available vehicles and create your first booking.'
-      : `You do not have any ${selectedStatus.toLowerCase()} bookings right now. Start browsing available vehicles and create a new booking.`;
+      ? 'Browse vehicles to make your first booking.'
+      : 'Try another status or browse available vehicles.';
 
   return (
     <View className="flex-1 bg-background">
@@ -209,7 +209,7 @@ export function BookingScreen() {
           style={{ paddingBottom: floatingTabBarContentPadding + insets.bottom, paddingTop: insets.top + 10 }}>
           <CustomerTabHeader title="Bookings" showLogout />
 
-          <View className="mt-2 min-h-[56px] flex-row items-center rounded-full border border-border bg-surface px-4 ">
+          <View className="mt-2 min-h-control flex-row items-center rounded-field border border-border bg-surface px-4">
             <Search size={20} color={themeColors.subtleForeground} strokeWidth={2.3} />
             <TextInput
               value={searchTerm}
@@ -237,18 +237,18 @@ export function BookingScreen() {
             </Pressable>
           </View>
 
-          <View className="mt-5 flex-row items-center justify-between gap-3">
+          <View className="mt-3 flex-row items-center justify-between gap-3">
             <Text className="font-sans text-[13px] font-semibold text-foreground">
               {filteredBookings.length} booking{filteredBookings.length === 1 ? '' : 's'}
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => void loadBookings()}>
-              <Text className="font-sans text-[12px] font-medium text-primary">Refresh</Text>
+            <Pressable accessibilityRole="button" onPress={() => void loadBookings()} className="min-h-11 justify-center px-3">
+              <Text className="font-sans text-caption font-medium text-primary">Refresh</Text>
             </Pressable>
           </View>
 
           <View className="mt-4 gap-3">
             {loadError ? (
-              <View className="rounded-[24px] border border-destructive-border bg-destructive-surface p-4">
+              <View className="rounded-card border border-destructive-border bg-destructive-surface p-4">
                 <Text className="font-sans text-[13px] font-medium text-destructive">{loadError}</Text>
               </View>
             ) : null}

@@ -3,7 +3,7 @@
 import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, CalendarClock, Gauge, Loader2, Plus, Settings, Wrench } from "lucide-react";
+import { AlertCircle, Loader2, Plus, Settings } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KpiCard } from "@/components/common/data-display/KpiCard";
+import { SummaryList } from "@/components/common/data-display/SummaryList";
 import { CancelMaintenanceDialog } from "@/forms/maintenance/records/CancelMaintenanceDialog";
 import { MaintenanceLifecycleDialog } from "@/forms/maintenance/records/MaintenanceLifecycleDialog";
 import { MaintenancePlanDialog } from "@/forms/maintenance/plans/MaintenancePlanDialog";
@@ -126,10 +126,10 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
   )), [normalizedSearch, records, statusFilter]);
 
   const summaryItems = [
-    { label: "Due Soon", value: fixedVehicleId ? plans.filter((plan) => plan.dueStatus === "due_soon").length : summary?.dueSoon, icon: Gauge, iconClassName: "bg-warning-surface text-warning" },
-    { label: "Overdue", value: fixedVehicleId ? plans.filter((plan) => plan.dueStatus === "overdue").length : summary?.overdue, icon: AlertCircle, iconClassName: "bg-destructive-surface text-destructive" },
-    { label: "Scheduled", value: fixedVehicleId ? records.filter((record) => record.status === "scheduled").length : summary?.scheduled, icon: CalendarClock, iconClassName: "bg-muted text-primary" },
-    { label: "In Progress", value: fixedVehicleId ? records.filter((record) => record.status === "in_progress").length : summary?.inProgress, icon: Wrench, iconClassName: "bg-success-surface text-success" },
+    { label: "Due Soon", value: fixedVehicleId ? plans.filter((plan) => plan.dueStatus === "due_soon").length : summary?.dueSoon },
+    { label: "Overdue", value: fixedVehicleId ? plans.filter((plan) => plan.dueStatus === "overdue").length : summary?.overdue },
+    { label: "Scheduled", value: fixedVehicleId ? records.filter((record) => record.status === "scheduled").length : summary?.scheduled },
+    { label: "In Progress", value: fixedVehicleId ? records.filter((record) => record.status === "in_progress").length : summary?.inProgress },
   ];
 
   const statusOptions = tab === "plans"
@@ -186,12 +186,12 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {compact ? (
           <div>
-            <h1 className="text-lg font-bold text-foreground">Vehicle Maintenance</h1>
+            <h1 className="text-lg font-semibold text-foreground">Vehicle Maintenance</h1>
             <p className="mt-1 text-xs text-muted-foreground">Manage maintenance plans, scheduled work, and service history.</p>
           </div>
         ) : (
           <ManagementPageHeading
-            title="Maintenance Management"
+            title="Maintenance"
             description="Manage maintenance plans, scheduled work, and service history."
           />
         )}
@@ -203,19 +203,17 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
 
       {error ? <Card className="rounded-2xl border border-destructive-border bg-destructive-surface shadow-none"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-sm text-destructive"><AlertCircle size={16} />{error}</div><Button type="button" size="sm" variant="outline" onClick={() => void load()}>Try Again</Button></CardContent></Card> : null}
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {summaryItems.map(({ label, value, icon, iconClassName }) => <KpiCard key={label} label={label} value={value ?? 0} icon={icon} iconClassName={iconClassName} />)}
-      </div>
+      <SummaryList label="Maintenance summary" items={summaryItems.map(({ label, value }) => ({ label, value: value ?? 0 }))} />
 
       <Tabs value={tab} onValueChange={(value) => { setTab(value as ModuleTab); setStatusFilter("all"); }}>
         <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-border bg-surface p-1">
-          <TabsTrigger value="plans" className="px-3 py-2 text-[12px]">Maintenance Plans</TabsTrigger>
-          <TabsTrigger value="active" className="px-3 py-2 text-[12px]">Scheduled &amp; Active</TabsTrigger>
-          <TabsTrigger value="history" className="px-3 py-2 text-[12px]">History</TabsTrigger>
+          <TabsTrigger value="plans" className="px-3 py-2 text-sm">Maintenance Plans</TabsTrigger>
+          <TabsTrigger value="active" className="px-3 py-2 text-sm">Scheduled &amp; Active</TabsTrigger>
+          <TabsTrigger value="history" className="px-3 py-2 text-sm">History</TabsTrigger>
         </TabsList>
 
-        <Card className="rounded-2xl border-0 bg-surface shadow-[0_2px_12px_rgba(0,0,0,0.05)]">
-          <CardContent className="p-4"><div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="py-3">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <SearchInput value={search} onValueChange={setSearch} placeholder="Search maintenance..." wrapperClassName="min-w-[180px] flex-1" />
             <FilterSelect
               value={statusFilter}
@@ -224,8 +222,8 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
               className="sm:w-[170px]"
               options={statusOptions.map(([value, label]) => ({ value, label }))}
             />
-          </div></CardContent>
-        </Card>
+          </div>
+        </div>
 
         <TabsContent value="plans"><MaintenancePlansTable paginationKey={`${search}|${statusFilter}`} plans={filteredPlans} onSchedule={openSchedule} onEdit={(plan) => { setEditingPlan(plan); setPlanOpen(true); }} onDelete={setDeletePlan} onViewRecord={(recordId) => { const record = records.find((item) => item.id === recordId); if (record) setDetailsRecord(record); }} /></TabsContent>
         <TabsContent value="active"><ScheduledMaintenanceTable paginationKey={`${search}|${statusFilter}`} records={filteredActive} onView={setDetailsRecord} onStart={(record) => setLifecycle({ record, mode: "start" })} onComplete={(record) => setLifecycle({ record, mode: "complete" })} onReschedule={setRescheduleRecord} onCancel={setCancelRecord} onCondition={(record) => void openConditionFlow(record)} /></TabsContent>
@@ -255,7 +253,7 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
       ) : null}
 
       <AlertDialog open={Boolean(deletePlan)} onOpenChange={(open) => { if (!open && !isDeleting) setDeletePlan(null); }}>
-        <AlertDialogContent className="max-w-[430px] rounded-2xl border-0 shadow-[0_24px_64px_rgba(0,0,0,0.13)]">
+        <AlertDialogContent className="max-w-[430px] rounded-2xl border border-border shadow-dialog">
           <AlertDialogHeader><AlertDialogTitle>Delete Maintenance Plan?</AlertDialogTitle><AlertDialogDescription>{deletePlan?.hasHistory ? `“${deletePlan.name}” has maintenance history, so it will be archived and the history will remain.` : `Delete “${deletePlan?.name}”? This unused plan will be removed.`}</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel disabled={isDeleting}>Keep Plan</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={isDeleting} onClick={(event) => { event.preventDefault(); void confirmDelete(); }}>{isDeleting ? "Deleting..." : "Delete Plan"}</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>

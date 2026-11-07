@@ -7,8 +7,14 @@ versioned protocols, compact aliases and separately saved/synced observations.
 See the [central guide](telematics-master-plan.md#phase-2-pilot-implementation-current-runtime-boundary)
 for active DTOs and limitations. Installation/physical acceptance on the Redmi,
 validated alignment/check limits, explicit server session closure/reopening,
-the three-step web review, separate v2 confidence and dataset export remain pending.
-No capture is automatically accepted for training.
+separate v2 confidence and dataset export remain pending. The web review now uses
+Check recording → Prepare signals → Label and review, with owner-bound collection/
+observation/reference checks and Details for diagnostics. New guided mobile
+maneuver captures require a prior local forward reference for the active mount;
+this does not certify alignment or data usability.
+FSS and normal-LT draft timestamp proposals are available in the website label editor;
+operators still select event judgments and explicitly save. No capture is
+automatically accepted for training.
 
 Current implemented telematics includes native v2 collection,
 explicit resumable upload, server verification, protected native signal review

@@ -39,7 +39,7 @@ type MaintenanceLifecycleDialogProps = {
 
 function formatDate(value?: string | null) {
   return value
-    ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+    ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(value))
     : "—";
 }
 
@@ -146,8 +146,8 @@ export function MaintenanceLifecycleDialog({
                 ["Schedule", `${formatDateOnly(record.scheduledStart)} – ${formatDateOnly(record.scheduledEnd)}`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl border border-border bg-background p-3">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{label}</p>
-                  <p className="mt-1 text-xs font-bold text-foreground">{value}</p>
+                  <p className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">{label}</p>
+                  <p className="mt-1 text-xs font-semibold text-foreground">{value}</p>
                 </div>
               ))}
               <p className="text-xs leading-5 text-muted-foreground sm:col-span-2">
@@ -175,7 +175,7 @@ export function MaintenanceLifecycleDialog({
                   ["Category", record.categoryLabel],
                   ["Actual Start", formatDate(record.actualStartedAt)],
                 ].map(([label, value]) => (
-                  <div key={label}><p className="text-[10.5px] font-semibold uppercase tracking-wider text-subtle-foreground">{label}</p><p className="mt-1 text-xs font-bold text-foreground">{value}</p></div>
+                  <div key={label}><p className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">{label}</p><p className="mt-1 text-xs font-semibold text-foreground">{value}</p></div>
                 ))}
               </div>
               <TextAreaWithLabel
@@ -228,7 +228,7 @@ export function MaintenanceLifecycleDialog({
                   Body Repair remains In Progress until the resulting Vehicle Condition update is signed and finalized.
                 </p>
               ) : null}
-              {form.formState.errors.root?.message ? <p className="text-[11px] font-medium text-destructive sm:col-span-2">{form.formState.errors.root.message}</p> : null}
+              {form.formState.errors.root?.message ? <p className="text-xs font-medium text-destructive sm:col-span-2">{form.formState.errors.root.message}</p> : null}
             </div>
             <FormDialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>

@@ -145,7 +145,7 @@ export function FilterSheet({
         />
         <View
           accessibilityViewIsModal
-          className="w-full max-w-[560px] shrink self-center rounded-t-[28px] bg-surface"
+          className="w-full max-w-[560px] shrink self-center rounded-t-sheet bg-surface"
           style={{
             maxHeight: Math.min(height * 0.94, height - insets.top - 12),
             paddingLeft: Math.max(insets.left, 16),
@@ -164,7 +164,7 @@ export function FilterSheet({
               accessibilityRole="button"
               accessibilityLabel="Close filters"
               onPress={onClose}
-              className="h-11 w-11 items-center justify-center rounded-full bg-muted">
+              className="h-11 w-11 items-center justify-center rounded-field bg-muted">
               <X size={22} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
           </View>
@@ -218,7 +218,7 @@ export function FilterSheet({
                 className="font-sans mb-2.5 text-[17px] font-semibold text-foreground">
                 Price Range <Text className="text-[13px] font-medium text-muted-foreground">(₱ / day)</Text>
               </Text>
-              <View className="flex-row gap-2.5 rounded-[18px] border border-border bg-background p-2.5">
+              <View className="flex-row gap-2.5 rounded-card border border-border bg-background p-2.5">
                 {[
                   { label: 'Minimum', value: minPrice, setter: setMinPrice, placeholder: 'No minimum' },
                   { label: 'Maximum', value: maxPrice, setter: setMaxPrice, placeholder: 'No maximum' },
@@ -255,7 +255,7 @@ export function FilterSheet({
                 className="font-sans mb-2.5 text-[17px] font-semibold text-foreground">
                 Other Preferences
               </Text>
-              <View className="gap-2.5 rounded-[18px] border border-border bg-background p-2.5">
+              <View className="gap-2.5 rounded-card border border-border bg-background p-2.5">
                 {[preferences.slice(0, 2), preferences.slice(2)].map((row, index) => (
                   <View key={index} className="flex-row gap-3">
                     {row.map(({ key, label, icon: Icon }) => (
@@ -335,13 +335,13 @@ export function FilterSheet({
             <Pressable
               accessibilityRole="button"
               onPress={reset}
-              className="min-h-12 items-center justify-center rounded-full border border-border bg-surface px-4 py-2">
+              className="min-h-12 items-center justify-center rounded-field border border-border bg-surface px-4 py-2">
               <Text className="font-sans text-[15px] font-medium text-foreground">Reset</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={apply}
-              className="min-h-12 items-center justify-center rounded-full bg-primary px-4 py-2">
+              className="min-h-12 items-center justify-center rounded-field bg-primary px-4 py-2">
               <Text className="font-sans text-[15px] font-medium text-surface">Apply Filter</Text>
             </Pressable>
           </View>

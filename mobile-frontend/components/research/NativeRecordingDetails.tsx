@@ -1,12 +1,15 @@
 import { Radio } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 import { InfoRow, SectionCard } from '@/components/bookings';
-import { recordingTitle } from '@/lib/research/collection';
+import { MetadataList } from '@/components/common/MetadataList';
+import { recordingDisplay } from '@/lib/research/collection';
+import { RecordingMetadata } from './RecordingMetadata';
 import { NATIVE_CHANNEL_LABELS, NATIVE_END_REASONS, type NativeRecording } from '@/lib/research/native-recorder';
 
 export function NativeRecordingDetails({ recording }: { recording: NativeRecording }) {
   const reason = recording.end_reason ? NATIVE_END_REASONS[recording.end_reason] ?? 'Recording ended' : null;
-  return <SectionCard title={recordingTitle(recording)} icon={Radio}>
+  return <SectionCard density="compact" title={recordingDisplay(recording).title} icon={Radio}>
+    <RecordingMetadata recording={recording} className="mb-3" />
     <InfoRow label="State" value={recording.state} /><InfoRow label={recording.diagnostics_partial ? 'Recovered span' : 'Duration'} value={`${((recording.duration_ms ?? 0) / 1000).toFixed(1)} s`} />
     {reason && <InfoRow label="Ended" value={reason} />}
     <InfoRow label="Storage" value="Encrypted on this phone" />
@@ -28,9 +31,12 @@ export function NativeRecordingDetails({ recording }: { recording: NativeRecordi
       <InfoRow label="Availability" value={channel.availability.replaceAll('_', ' ')} /><InfoRow label="Saved events" value={String(channel.statistics?.persisted_count ?? 0)} />
       <InfoRow label="Delivered rate" value={channel.statistics?.rate_hz == null ? 'Not enough data' : `${channel.statistics.rate_hz.toFixed(1)} Hz`} />
       <InfoRow label="Largest sensor gap" value={channel.statistics?.max_gap_ms == null ? 'Not enough data' : `${channel.statistics.max_gap_ms.toFixed(1)} ms`} />
-      {Boolean(channel.statistics?.duplicate_timestamps || channel.statistics?.backwards_timestamps || channel.statistics?.rejected_count || channel.statistics?.not_durable_count) && <Text className="font-sans my-2 text-caption text-warning">
-        {channel.statistics?.duplicate_timestamps ?? 0} repeated · {channel.statistics?.backwards_timestamps ?? 0} backward · {channel.statistics?.rejected_count ?? 'Unknown'} rejected · {channel.statistics?.not_durable_count ?? 'Unknown'} unsaved
-      </Text>}
+      {Boolean(channel.statistics?.duplicate_timestamps || channel.statistics?.backwards_timestamps || channel.statistics?.rejected_count || channel.statistics?.not_durable_count) && <View className="my-2"><MetadataList items={[
+        { label: 'Repeated timestamps', value: channel.statistics?.duplicate_timestamps ?? 0 },
+        { label: 'Backward timestamps', value: channel.statistics?.backwards_timestamps ?? 0 },
+        { label: 'Rejected', value: channel.statistics?.rejected_count ?? 'Unknown' },
+        { label: 'Unsaved', value: channel.statistics?.not_durable_count ?? 'Unknown' },
+      ]} /></View>}
       <InfoRow label="Units" value={channel.unit === 'native_rotation_vector' ? 'Unitless; heading accuracy in rad' : channel.unit} />
     </View>)}
   </SectionCard>;

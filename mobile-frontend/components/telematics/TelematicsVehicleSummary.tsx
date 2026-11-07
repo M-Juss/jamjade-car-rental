@@ -15,7 +15,7 @@ export function TelematicsVehicleSummary({ handover }: { handover: MobileTelemat
   const source = getVehicleImageSource(image);
   return <View className="flex-row items-stretch gap-2 border-b border-border pb-3">
     <View className="min-w-0 flex-1 gap-1">
-      <Text accessibilityRole="header" className="font-sans text-[19px] font-bold leading-6 text-foreground">{handover.vehicle.name || 'Your vehicle'}</Text>
+      <Text accessibilityRole="header" className="font-sans text-[19px] font-semibold leading-6 text-foreground">{handover.vehicle.name || 'Your vehicle'}</Text>
       <Text className="font-sans text-[11px] font-semibold leading-4 text-primary">{handover.bookingCode}</Text>
       <View className="mt-1 flex-row items-center gap-3">
         <View className="min-w-0 flex-1 gap-0.5">

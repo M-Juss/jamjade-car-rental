@@ -38,6 +38,14 @@ test("stationary and movement semantics remain separate", () => {
     assert.equal(schema.safeParse({ base_revision: 0, intervals: [item] }).success, false);
   }
 });
+test("swerve deviation round-trips independently of travel direction", () => {
+  const swerve = { ...trial, movement: "swerving", initial_deviation: "right" };
+  const parse = item => schema.safeParse({ base_revision: 0, intervals: [item] });
+  assert.deepEqual(parse(swerve).data.intervals[0], swerve);
+  assert.equal(parse({ ...swerve, initial_deviation: undefined }).success, true);
+  assert.equal(parse({ ...swerve, initial_deviation: "forward" }).success, false);
+  assert.equal(parse({ ...swerve, movement: "driving" }).success, false);
+});
 test("revision, interval count, notes and clock bounds match the request limits", () => {
   for (const base_revision of [-1, .5, 1001]) assert.equal(schema.safeParse({ base_revision, intervals: [] }).success, false);
   assert.equal(schema.safeParse({ base_revision: 0, intervals: Array(101).fill(interval) }).success, false);

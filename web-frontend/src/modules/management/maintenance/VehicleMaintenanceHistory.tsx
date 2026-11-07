@@ -35,7 +35,7 @@ export function VehicleMaintenanceHistory({ vehicleId }: { vehicleId: string }) 
 
   return (
     <section className="space-y-4" aria-labelledby="vehicle-maintenance-history-heading">
-      <h2 id="vehicle-maintenance-history-heading" className="text-lg font-bold text-foreground">Maintenance History</h2>
+      <h2 id="vehicle-maintenance-history-heading" className="text-lg font-semibold text-foreground">Maintenance History</h2>
       {loading ? (
         <div role="status" className="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">
           <Loader2 className="mr-2 size-4 animate-spin" />Loading maintenance history

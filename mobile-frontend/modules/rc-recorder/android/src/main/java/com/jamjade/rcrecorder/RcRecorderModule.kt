@@ -17,6 +17,7 @@ class RcRecorderModule : Module() {
     AsyncFunction("lock") { engine().lock(); null }
     AsyncFunction("status") { engine().state().toString() }
     AsyncFunction("list") { offset: Int -> engine().list(offset).toString() }
+    AsyncFunction("collectionPage") { offset: Int, filter: String -> engine().collectionPage(offset, filter).toString() }
     AsyncFunction("listCollection") { offset: Int, filter: String -> engine().listCollection(offset, filter).toString() }
     AsyncFunction("groups") { engine().groups().toString() }
     AsyncFunction("createGroup") { config: String ->
