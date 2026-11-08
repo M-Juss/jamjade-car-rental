@@ -47,7 +47,8 @@ export type NativeCollectionGroup = {
 };
 export type NativeGroupCatalog = { groups: NativeCollectionGroup[]; selected_group_id: string | null;
   preset: { id: string; label: string; rc_model: string; mount_orientation: 'tilted'; mount_location: 'upper_roof'; screen_facing: 'up' } };
-export type NativeRecorderState = { setup_check?: SetupEvidence | null; checking?: boolean; active: boolean; preparing: boolean; error: string | null; current: NativeRecording | null; phone_power?: NativePhonePower };
+export type NativeSetupProgress = { phase: 'waiting' | 'moving' | 'steady'; steady_ms: number; required_ms: number };
+export type NativeRecorderState = { setup_check?: SetupEvidence | null; checking?: boolean; setup_progress?: NativeSetupProgress | null; setup_check_error?: string | null; active: boolean; preparing: boolean; error: string | null; current: NativeRecording | null; phone_power?: NativePhonePower };
 export const NATIVE_RECORDING_PURPOSES = [
   { value: 'maneuver_trial', label: 'Maneuver trial' }, { value: 'stationary_reference', label: 'Stationary reference capture' },
   { value: 'forward_reference', label: 'Forward reference capture' },

@@ -14,6 +14,7 @@ class ListRcNativeRecordingsRequest extends BaseFormRequest
     public function rules(): array
     {
         return ['page' => ['sometimes', 'integer', 'min:1'], 'per_page' => ['sometimes', 'integer', 'min:1', 'max:10'],
-            'search' => ['sometimes', 'nullable', 'string', 'max:100']];
+            'search' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'group_id' => ['sometimes', 'uuid'], 'session_id' => ['sometimes', 'uuid']];
     }
 }

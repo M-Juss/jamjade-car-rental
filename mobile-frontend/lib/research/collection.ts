@@ -1,4 +1,4 @@
-import catalog from '@/assets/research/rc-exercises-v2.json';
+import catalog from '@/assets/research/rc-exercises-v3.json';
 import { recordingPresentation } from './recording-presentation';
 import type { CollectionContextInput, ObservationInput, ResearchSession } from '@/validation/research/collection';
 

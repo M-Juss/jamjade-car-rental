@@ -13,6 +13,14 @@ class RcNativeProtocol
 
     public const MAX_RECORDING_BYTES = 67108864;
 
+    public const CURRENT_EXERCISE_CATALOG = 'rc-exercises-v3';
+
+    public const EXERCISE_CATALOGS = ['rc-exercises-v1', 'rc-exercises-v2', self::CURRENT_EXERCISE_CATALOG];
+
+    public const EXERCISE_CODES = ['FSS', 'HA', 'HB', 'LT', 'HLT', 'RT', 'HRT', 'RSS', 'SW', 'SR', 'FR'];
+
+    public const HARSH_TURN_CODES = ['HLT', 'HRT'];
+
     public const CHANNELS = ['accelerometer' => [1, 'm/s²'], 'gyroscope' => [4, 'rad/s'],
         'gravity' => [9, 'm/s²'], 'linear_acceleration' => [10, 'm/s²'], 'rotation_vector' => [11, 'native_rotation_vector']];
 
@@ -61,8 +69,8 @@ class RcNativeProtocol
                 'collection_binding.mount_version_id' => 'required_with:collection_binding|uuid',
                 'collection_binding.preflight_id' => 'required_with:collection_binding|uuid',
                 'collection_binding.clock_context_id' => 'required_with:collection_binding|uuid',
-                'collection_binding.catalog_version' => 'required_with:collection_binding|in:rc-exercises-v1,rc-exercises-v2',
-                'collection_binding.protocol_code' => 'required_with:collection_binding|in:FSS,HA,HB,LT,RT,RSS,SW,SR,FR',
+                'collection_binding.catalog_version' => 'required_with:collection_binding|in:'.implode(',', self::EXERCISE_CATALOGS),
+                'collection_binding.protocol_code' => 'required_with:collection_binding|in:'.implode(',', self::EXERCISE_CODES),
                 'collection_binding.protocol_sha256' => 'required_with:collection_binding|regex:/^[a-f0-9]{64}$/D',
                 'coordinate_frame' => 'required|in:android_device_natural',
                 'state' => 'required|in:stopped,interrupted', 'integrity' => 'required|in:sealed,verified_prefix',
@@ -74,6 +82,11 @@ class RcNativeProtocol
                 'channels' => 'required|array:accelerometer,gyroscope,gravity,linear_acceleration,rotation_vector',
                 'chunks' => 'present|array|max:2000', 'chunk_inventory_sha256' => 'required|regex:/^[a-f0-9]{64}$/D',
             ])->validate();
+            $binding = $m['collection_binding'] ?? [];
+            if (in_array($binding['protocol_code'] ?? null, self::HARSH_TURN_CODES, true)
+                && $binding['catalog_version'] !== self::CURRENT_EXERCISE_CATALOG) {
+                self::invalid();
+            }
             $start = self::ns($m['started_elapsed_ns'] ?? null);
             $end = self::ns($m['ended_elapsed_ns'] ?? null);
             if ($end < $start || abs(($end - $start) / 1e6 - $m['duration_ms']) > 1

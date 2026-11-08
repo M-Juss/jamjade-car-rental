@@ -9,7 +9,22 @@ export const researchQuerySchema = z.object({
 
 export type ResearchQuery = z.infer<typeof researchQuerySchema>;
 
-export const nativeResearchQuerySchema = z.object({ page: z.number().int().min(1), per_page: z.number().int().min(1).max(10), search: z.string().max(100) });
+export const nativeResearchQuerySchema = z.object({
+  page: z.number().int().min(1),
+  per_page: z.number().int().min(1).max(10),
+  search: z.string().max(100).nullable().optional(),
+  group_id: z.string().uuid().optional(),
+  session_id: z.string().uuid().optional(),
+});
+
+export const nativeRecordingFilterSessionsSchema = z.array(z.object({
+  id: z.string().uuid(),
+  session_number: z.number().int().positive(),
+  group_id: z.string().uuid(),
+  surface: z.string(),
+  recording_name: z.string(),
+}));
+
 export const nativeWindowQuerySchema = z.object({
   channel: z.enum(["accelerometer", "gyroscope", "gravity", "linear_acceleration", "rotation_vector"]),
   start_ms: z.number().min(0).max(86400000), end_ms: z.number().min(0).max(86400000),

@@ -12,6 +12,16 @@ use Illuminate\Support\Str;
 
 class RcNativeResearchService
 {
+    public function recordingLimit(): int
+    {
+        return app()->isLocal() ? 1000 : 100;
+    }
+
+    public function storageLimit(): int
+    {
+        return app()->isLocal() ? 2147483648 : 268435456;
+    }
+
     public function recording(User $user, string $id): RcNativeRecording
     {
         return RcNativeRecording::where('user_id', $user->id)->findOrFail($id);
@@ -33,7 +43,7 @@ class RcNativeResearchService
                     return $existing;
                 }
                 $bytes = array_sum(array_column($manifest['chunks'], 'logical_bytes'));
-                abort_if((clone $records)->count() >= 100 || (clone $records)->sum('expected_bytes') + $bytes > 268435456,
+                abort_if((clone $records)->count() >= $this->recordingLimit() || (clone $records)->sum('expected_bytes') + $bytes > $this->storageLimit(),
                     409, 'Research storage limit reached. Contact the administrator.');
                 $id = (string) Str::uuid();
                 $path = 'rc-research-v2/'.$id.'/manifest.encrypted';

@@ -172,9 +172,13 @@ export const nativeRecorder = {
   async beginCheck() {
     const revision = accessRevision;
     if (AppState.currentState !== 'active') throw new NativeRecorderError('Open RC Research before checking.');
-    await mutate(async () => { checkRevision(revision); await moduleOrThrow().beginCheck(); });
+    await mutate(async () => {
+      checkRevision(revision);
+      if (AppState.currentState !== 'active') throw new NativeRecorderError('Open RC Research before checking.');
+      await moduleOrThrow().beginCheck();
+    });
   },
-  async cancelCheck() { if (this.collectionAvailable) await moduleOrThrow().cancelCheck(); },
+  async cancelCheck() { if (this.collectionAvailable) await mutate(() => moduleOrThrow().cancelCheck()); },
   async saveObservation(id: string, values: ObservationInput): Promise<RecordingCollection> {
     nativeUploadIdSchema.parse(id);
     const input = observationInputSchema.parse(values), revision = accessRevision;

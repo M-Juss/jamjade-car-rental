@@ -2,6 +2,8 @@
 
 use App\Models\RcCollectionContext;
 use App\Models\RcCollectionSession;
+use App\Models\RcMountVersion;
+use App\Models\RcNativeRecording;
 use App\Models\RcObservationRevision;
 use App\Models\User;
 use App\Services\RcCollectionService;
@@ -104,6 +106,63 @@ it('syncs encrypted collection details idempotently without rewriting originals'
         ->getJson('/admin/rc-research/native-recordings?search=S02-FSS-R038')->assertOk()->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.display_code', 'S02-FSS-R038')->assertJsonPath('data.0.name', 'Synthetic upload fixture');
 
+});
+
+it('combines native recording search with owner scoped group and session filters before pagination', function () {
+    $this->postJson($this->contextUrl, $this->input)->assertOk();
+    $recording = RcNativeRecording::findOrFail($this->recordId);
+    $session = RcCollectionSession::findOrFail($this->input['session']['id']);
+    $context = RcCollectionContext::findOrFail($recording->id);
+    $groupId = $session->payload['recording_group_id'];
+    $otherGroupId = (string) Str::uuid();
+    $otherAdmin = User::factory()->create(['is_active' => true]);
+    $otherAdmin->assignRole('admin');
+
+    $addSessionRecording = function (int $ownerId, string $group, int $number, string $name) use ($session, $context, $recording) {
+        $sessionId = (string) Str::uuid();
+        $mountId = (string) Str::uuid();
+        $sessionPayload = [...$session->payload, 'id' => $sessionId, 'session_number' => $number, 'recording_group_id' => $group];
+        $newSession = $session->replicate()->fill([
+            'id' => $sessionId, 'user_id' => $ownerId, 'session_number' => $number, 'payload' => $sessionPayload,
+        ]);
+        $newSession->save();
+        $mount = RcMountVersion::findOrFail($context->mount_id);
+        $mount->replicate()->fill(['id' => $mountId, 'session_id' => $sessionId,
+            'payload' => [...$mount->payload, 'id' => $mountId, 'research_session_id' => $sessionId]])->save();
+        $newRecording = $recording->replicate()->fill([
+            'client_recording_id' => (string) Str::uuid(), 'user_id' => $ownerId, 'name' => $name,
+        ]);
+        $newRecording->save();
+        $preflightId = (string) Str::uuid();
+        $code = sprintf('S%02d-FSS-R038', $number);
+        $context->replicate()->fill([
+            'recording_id' => $newRecording->id, 'mount_id' => $mountId, 'preflight_id' => $preflightId, 'display_code' => $code,
+            'payload' => [...$context->payload, 'session' => $sessionPayload, 'display_code' => $code],
+        ])->save();
+
+        return $sessionId;
+    };
+    $sameGroupSession = $addSessionRecording($this->admin->id, $groupId, 3, 'Second tile run');
+    $otherGroupSession = $addSessionRecording($this->admin->id, $otherGroupId, 4, 'Same surface, different group');
+    $foreignSession = $addSessionRecording($otherAdmin->id, $groupId, 2, 'Another owner run');
+    $recording->replicate()->fill(['client_recording_id' => (string) Str::uuid(), 'name' => 'Unsynced run'])->save();
+    $this->withHeader('Authorization', '')->actingAs($this->admin, 'web');
+    $url = '/admin/rc-research/native-recordings';
+
+    $this->getJson($url.'?per_page=1')->assertOk()->assertJsonPath('meta.total', 4)->assertJsonCount(1, 'data')
+        ->assertJsonCount(3, 'meta.filter_sessions')->assertJsonPath('meta.filter_sessions.0.id', $session->id)
+        ->assertJsonPath('meta.filter_sessions.0.group_id', $groupId)
+        ->assertJsonPath('meta.filter_sessions.1.id', $sameGroupSession)
+        ->assertJsonPath('meta.filter_sessions.2.id', $otherGroupSession);
+    $this->getJson($url."?group_id=$groupId&per_page=1")->assertOk()->assertJsonPath('meta.total', 2)->assertJsonCount(1, 'data');
+    $this->getJson($url."?session_id=$sameGroupSession")->assertOk()->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.name', 'Second tile run');
+    $this->getJson($url."?group_id=$groupId&session_id=$sameGroupSession&search=S03-FSS-R038")->assertOk()
+        ->assertJsonPath('data.0.name', 'Second tile run');
+    $this->getJson($url."?group_id=$groupId&session_id=$otherGroupSession")->assertOk()->assertJsonCount(0, 'data')
+        ->assertJsonCount(3, 'meta.filter_sessions');
+    $this->getJson($url."?session_id=$foreignSession")->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson($url.'?group_id=G1&session_id=S02')->assertUnprocessable()->assertJsonValidationErrors(['group_id', 'session_id']);
 });
 
 it('preserves independently synced observation history and detects stale writes', function () {
@@ -264,7 +323,7 @@ it('does not reuse setup evidence for another original recording', function () {
 
 it('keeps v1 snapshots immutable and rejects substituting v2 instructions on an old original', function () {
     $old = app(RcCollectionService::class)->catalog('rc-exercises-v1');
-    $new = app(RcCollectionService::class)->catalog();
+    $new = app(RcCollectionService::class)->catalog('rc-exercises-v2');
     expect(collect($old['protocols'])->firstWhere('code', 'FSS')['expected_stop_method'])->toBe('brake_applied')
         ->and(collect($new['protocols'])->firstWhere('code', 'FSS')['expected_stop_method'])->toBe('neutral_release');
     $this->postJson($this->contextUrl, $this->input)->assertOk();
@@ -274,3 +333,38 @@ it('keeps v1 snapshots immutable and rejects substituting v2 instructions on an 
     $this->postJson($this->contextUrl, $input)->assertUnprocessable();
     expect(RcCollectionContext::first()->payload['protocol_snapshot']['expected_stop_method'])->toBe('brake_applied');
 });
+
+it('syncs a v3 harsh turn in an existing session and rejects older catalog bindings', function (string $code, string $layout) {
+    $this->postJson($this->contextUrl, $this->input)->assertOk();
+    $manifest = $this->manifest;
+    $manifest['recording_id'] = (string) Str::uuid();
+    $manifest['context']['recording_number'] = 39;
+    $catalog = app(RcCollectionService::class)->catalog();
+    expect($catalog['catalog_version'])->toBe('rc-exercises-v3');
+    $protocol = collect($catalog['protocols'])->firstWhere('code', $code);
+    $hash = hash('sha256', RcNativeProtocol::canonical($protocol));
+    $manifest['collection_binding'] = [...$manifest['collection_binding'], 'preflight_id' => (string) Str::uuid(),
+        'catalog_version' => 'rc-exercises-v2', 'protocol_code' => $code, 'protocol_sha256' => $hash];
+    $this->postJson('/api/mobile/rc-research/native-recordings', ['manifest_json' => json_encode($manifest, JSON_THROW_ON_ERROR)])
+        ->assertUnprocessable();
+
+    $manifest['collection_binding']['catalog_version'] = $catalog['catalog_version'];
+    $json = json_encode($manifest, JSON_THROW_ON_ERROR);
+    $id = $this->postJson('/api/mobile/rc-research/native-recordings', ['manifest_json' => $json])->assertOk()->json('data.id');
+    $url = "/api/mobile/rc-research/native-recordings/$id";
+    foreach ($this->payloads as $channel => $payload) {
+        $this->postJson("$url/chunks", ['channel' => $channel, 'chunk_index' => 0, 'payload' => $payload])->assertOk();
+    }
+    $this->postJson("$url/finalize")->assertOk();
+    $input = [...$this->input, 'recording_id' => $manifest['recording_id'], 'manifest_sha256' => hash('sha256', $json),
+        'capture_number' => 39, 'protocol_code' => $code, 'catalog_version' => $catalog['catalog_version'], 'protocol_sha256' => $hash];
+    $input['preflight']['id'] = $manifest['collection_binding']['preflight_id'];
+    $this->postJson("$url/context", [...$input, 'catalog_version' => 'rc-exercises-v2'])
+        ->assertUnprocessable()->assertJsonValidationErrors('protocol_code');
+    $this->postJson("$url/context", $input)->assertOk()->assertJsonPath('data.display_code', "S02-$code-R039");
+    $saved = RcCollectionContext::findOrFail($id)->payload;
+    expect(RcCollectionSession::count())->toBe(1)
+        ->and($saved['session']['catalog_version'])->toBe('rc-exercises-v1')
+        ->and($saved['protocol_snapshot']['planned_assessment'])->toBe('harsh_attempt')
+        ->and($saved['course_snapshot']['layout_key'])->toBe($layout);
+})->with([['HLT', 'left_turn'], ['HRT', 'right_turn']]);

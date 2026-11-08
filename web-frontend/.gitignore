@@ -20,6 +20,9 @@
 # production
 /build
 
+# Local shortcut to the generated Android APK
+/public/JamJade-Car-Rental.apk
+
 # misc
 .DS_Store
 *.pem

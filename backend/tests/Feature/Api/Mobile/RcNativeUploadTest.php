@@ -81,6 +81,48 @@ it('stores exact originals encrypted, retries idempotently and verifies the comp
     $this->assertDatabaseCount('rc_research_trials', 0);
 });
 
+it('allows local research to upload past the standard recording limit', function () {
+    $url = '/api/mobile/rc-research/native-recordings';
+    $id = $this->withToken($this->token)->postJson($url, ['manifest_json' => $this->manifestJson])
+        ->assertOk()->json('data.id');
+    $existing = RcNativeRecording::findOrFail($id)->getAttributes();
+    $records = [];
+    for ($i = 0; $i < 99; $i++) {
+        $records[] = array_replace($existing, ['id' => (string) Str::uuid(), 'client_recording_id' => (string) Str::uuid()]);
+    }
+    RcNativeRecording::insert($records);
+
+    $newManifest = array_replace($this->manifest, ['recording_id' => (string) Str::uuid()]);
+    $payload = ['manifest_json' => json_encode($newManifest, JSON_THROW_ON_ERROR)];
+    $this->postJson($url, $payload)->assertConflict()->assertJsonPath('message', 'Research storage limit reached. Contact the administrator.');
+
+    $this->app->instance('env', 'local');
+    $this->postJson($url, $payload)->assertOk()->assertJsonPath('data.state', 'incomplete');
+    $this->assertDatabaseCount('rc_native_recordings', 101);
+
+    $records = [];
+    for ($i = 0; $i < 899; $i++) {
+        $records[] = array_replace($existing, ['id' => (string) Str::uuid(), 'client_recording_id' => (string) Str::uuid()]);
+    }
+    RcNativeRecording::insert($records);
+    $this->postJson($url, $payload)->assertOk();
+    $newManifest['recording_id'] = (string) Str::uuid();
+    $this->postJson($url, ['manifest_json' => json_encode($newManifest, JSON_THROW_ON_ERROR)])->assertConflict();
+    $this->assertDatabaseCount('rc_native_recordings', 1000);
+});
+
+it('enforces the local payload budget while preserving retries', function () {
+    $this->app->instance('env', 'local');
+    $url = '/api/mobile/rc-research/native-recordings';
+    $payload = ['manifest_json' => $this->manifestJson];
+    $id = $this->withToken($this->token)->postJson($url, $payload)->assertOk()->json('data.id');
+    RcNativeRecording::whereKey($id)->update(['expected_bytes' => 2147483648]);
+    $this->postJson($url, $payload)->assertOk()->assertJsonPath('data.id', $id);
+    $manifest = array_replace($this->manifest, ['recording_id' => (string) Str::uuid()]);
+    $this->postJson($url, ['manifest_json' => json_encode($manifest, JSON_THROW_ON_ERROR)])->assertConflict();
+    $this->assertDatabaseCount('rc_native_recordings', 1);
+});
+
 it('rejects changed content under an existing recording or chunk identity', function () {
     $id = $this->withToken($this->token)->postJson('/api/mobile/rc-research/native-recordings', ['manifest_json' => $this->manifestJson])->json('data.id');
     $changed = $this->manifest;

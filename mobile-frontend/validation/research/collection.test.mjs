@@ -66,3 +66,23 @@ test('v2 deploys consistently while preserving historical v1 instructions', () =
   input.catalog_version = 'rc-exercises-v99';
   assert.equal(collectionContextSchema.safeParse(input).success, false);
 });
+
+test('v3 keeps earlier protocols and binds both harsh turns in an existing session', () => {
+  const root = new URL('../../', import.meta.url);
+  const canonical = readFileSync(new URL('../docs/contracts/rc-collection-v1/catalog-v3.json', root), 'utf8');
+  for (const path of ['assets/research/rc-exercises-v3.json', 'modules/rc-recorder/android/src/main/assets/rc-exercises-v3.json', '../backend/resources/research/rc-exercises-v3.json', '../web-frontend/src/modules/management/research/rc-exercises-v3.json']) {
+    assert.equal(readFileSync(new URL(path, root), 'utf8'), canonical);
+  }
+  const { protocols } = JSON.parse(canonical);
+  const previous = JSON.parse(readFileSync(new URL('assets/research/rc-exercises-v2.json', root), 'utf8'));
+  assert.deepEqual(protocols.filter(p => p.code !== 'HLT' && p.code !== 'HRT'), previous.protocols);
+  for (const [code, layout] of [['HLT', 'left_turn'], ['HRT', 'right_turn']]) {
+    const protocol = protocols.find(p => p.code === code);
+    assert.equal(protocol.planned_assessment, 'harsh_attempt');
+    assert.equal(protocol.layout_key, layout);
+    assert.equal(protocol.expected_stop_method, 'neutral_release');
+    const input = { ...fixture(), protocol_code: code, catalog_version: 'rc-exercises-v3' };
+    assert.equal(collectionContextSchema.safeParse(input).success, true);
+    assert.equal(collectionContextSchema.safeParse({ ...input, catalog_version: 'rc-exercises-v2' }).success, false);
+  }
+});

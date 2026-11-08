@@ -147,15 +147,22 @@ and the disabled Saved on phone action/confirmation. No observation was invented
 resubmitted or uploaded during that verification; recording accuracy was not
 evaluated by this feedback correction.
 
-The native, explicitly consented **Agree & check setup** action records approximately
-five seconds in the foreground with the operator's holder/top-forward/still
-confirmations. It calculates Welford per-axis rest means/sample standard deviations,
-vector RMS, delivered rate and largest inter-event gap for accelerometer and gyro.
-The accelerometer mean retains gravity. Missing/insufficient or rejected events
-fail capture eligibility; otherwise the result is **inconclusive / pilot only**.
-Orientation, stability and cadence acceptance remain unvalidated; no `passed`
-criteria version or accepted vehicle frame is manufactured. The 30-second maximum
-is a bounded scheduling safeguard, not a physical stillness criterion.
+The native, explicitly consented **Agree & check setup** action measures five
+consecutive steady seconds in the foreground with the operator's holder/top-forward/
+still confirmations. Collect displays the mounted-phone progress ring and restarts
+the count and summary when motion is detected or sensor readings are interrupted.
+The operator can cancel, and **Agree & start recording** remains a separate action.
+The native pilot restarts the window for an acceleration-vector change above
+0.5 m/s² relative to its first accelerometer reading, gyroscope magnitude above
+0.10 rad/s, or a reading gap above 250 ms. Missing sensors or a three-second
+sensor timeout stop the check with a retry message.
+
+Only the completed window contributes to Welford per-axis rest means and sample
+standard deviations, vector RMS, delivered rate and largest inter-event gap for
+accelerometer and gyro. The accelerometer mean retains gravity. The local reset
+limits are provisional feedback settings. The evidence result stays
+**inconclusive / pilot only**, with no criteria version or accepted vehicle frame.
+The preflight DTO and its evidence window bounds remain the same.
 
 Unused check evidence is held only in the native runtime, is one-use, and is
 cancelled by app background/destruction, logout/account change, session change,
@@ -525,9 +532,12 @@ existing Google Font.
 
 ### Versioned exercise protocols
 
-New captures use `rc-exercises-v2`; `rc-exercises-v1` remains immutable for historical captures. Every definition is provisional until the
+New captures use [`rc-exercises-v3`](contracts/rc-collection-v1/catalog-v3.json). Versions 1 and 2 remain immutable for historical captures. Every definition is provisional until the
 applicable physical rehearsal. `SR`/`FR` are setup codes, not maneuver classes.
-Only FSS/HA/HB/LT/RT/RSS/SW appear in the ordinary exercise picker.
+Only FSS/HA/HB/LT/RT/RSS/SW appear in the ordinary exercise picker. Left and
+right turns expose a Normal or Harsh attempt intensity selector. Existing
+sessions keep their original session metadata and use the latest catalog for
+new captures.
 
 | Code | Planned exercise | Procedure focus |
 | --- | --- | --- |
@@ -535,6 +545,7 @@ Only FSS/HA/HB/LT/RT/RSS/SW appear in the ordinary exercise picker.
 | HA | Harsh Acceleration Attempt | Sharp start attempt followed by a normal stop |
 | HB | Harsh Braking Attempt | Normal start followed by a sharp brake attempt |
 | LT / RT | Left / Right Turn | One smooth turn from the RC's perspective, straighten, then stop |
+| HLT / HRT | Left / Right Turn with Harsh attempt selected | Same corner at a slightly higher controlled entry speed, steady throttle through the turn, then straighten and release to neutral |
 | RSS | Reverse Start-Stop | Reverse normally, release the lever to neutral, allow it to stop |
 | SW | Swerve Attempt | One planned deviation and recovery, then straighten and stop; ordinary corrections are not automatically swerving |
 | SR / FR | Stationary / Forward Reference | Dedicated setup evidence using the reference workflow |
@@ -576,12 +587,13 @@ reviewed. Once used for capture, preserve that exact version/snapshot and publis
 a successor for changes. SR/FR labels and the contract version are technical
 identifiers; the UI must not imply that protocol procedures are already validated.
 
-Planned intensity and actual observation are separate fields. HA/HB encode an
-attempt, not a confirmed harsh class. SW has `planned_assessment = unspecified`;
-swerving motion is not automatically a harshness assessment. If a new harsh
-cornering procedure is introduced, version the catalog and define its course and
-rubric; do not invent HLT/HRT codes in one client before the shared contract changes.
-The current primary future targets still include harsh cornering.
+Planned intensity and reviewed severity are separate fields. HA, HB, HLT and HRT
+encode a harsh attempt. HLT and HRT use the same provisional course layout as the
+corresponding normal turn. Record course deviations, sliding and contact in the
+observation. Review sustained yaw and lateral acceleration in the turn interval
+with the reported maneuver before assigning severity. The planned intensity
+belongs to collection metadata and must stay out of model inputs. SW has
+`planned_assessment = unspecified`; assess swerving severity during review.
 
 The v2 catalog uses neutral release for ordinary forward/reverse stops, including
 FR, FSS, HA recovery, turns and swerve recovery. HB explicitly attempts an applied
@@ -611,7 +623,10 @@ Only completed upload plus setup/observation sync changes the dialog to Upload
 complete. It never claims a cached receipt is a fresh transfer.
 
 Record another returns to Collect using the active group/session, including when
-observations were saved from Recordings. It creates no session, group, recording,
+observations were saved from Recordings. It preselects the saved maneuver and
+its planned intensity when the session and mount match and a local forward
+reference is available. The next run has its own observations and setup evidence.
+It creates no session, group, recording,
 setup measurement or sensor subscription. Setup checks and any missing-reference
 gate still apply. Stay here/dismiss leaves the locally saved report open. Failed
 observation saves do not open the dialog; reopening an already saved report does
@@ -1634,7 +1649,7 @@ server acceptance must independently verify every chunk when implemented.
 Recovered duration is a lower-bound span to the last verified receipt
 (`end_time_source = last_verified_receipt`), with unknown actual stop/UTC end.
 
-Current budgets are 64 MiB per recording, 256 MiB per account, 100 local records,
+Current budgets are 64 MiB per recording, 2 GiB per account, 1,000 local records,
 a 64 MiB device-free-space reserve and 32 KiB plaintext channel buffers. Disk
 budgets are checked once per second and may be exceeded by in-flight checkpoints;
 they stop acquisition with a reason and never trigger automatic deletion. Required
@@ -1705,7 +1720,8 @@ remain original and are reported, not sorted or silently discarded.
 Laravel stores encrypted originals on the private local disk under `rc-research-v2`.
 `rc_native_recordings` and `rc_native_recording_chunks` contain bounded metadata,
 hashes, file indexes and summaries, never sample rows. Server allocation is bounded
-to 100 recordings / 256 MiB logical payload per owner, including incomplete uploads.
+to 100 recordings and 256 MiB logical payload per owner, including incomplete
+uploads. Local development permits 1,000 recordings and 2 GiB per owner.
 There is no automatic purge. Remote v2 deletion/retention-management UI remains
 pending; **Delete local recording** removes only the phone copy and says that
 complete or partial server copies are separate. Do not silently delete originals
@@ -1714,7 +1730,11 @@ or advertise the local action as server deletion.
 The web reads retain session authentication, active Admin/`rc_demo` checks,
 owner filtering, no-store headers and no private-path exposure:
 
-- `GET /admin/rc-research/native-recordings` (maximum 10 records, literal search).
+- `GET /admin/rc-research/native-recordings` (maximum 10 records, literal search,
+  optional `group_id` and `session_id` UUID filters). The owner’s synced sessions
+  supply `meta.filter_sessions` independently of the current page and search.
+  Filters combine before pagination through the saved session and mount links.
+  Uploads without synced collection metadata remain visible in the unfiltered list.
 - `GET /admin/rc-research/native-recordings/{id}` (verified manifest/metadata).
 - `GET /admin/rc-research/native-recordings/{id}/window` with channel/start/end.
 

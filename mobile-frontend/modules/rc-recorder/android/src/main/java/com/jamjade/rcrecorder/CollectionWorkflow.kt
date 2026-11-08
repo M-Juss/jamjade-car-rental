@@ -12,7 +12,7 @@ internal class CollectionWorkflow(
 ) {
   companion object {
     const val VERSION = "rc-collection-v1"
-    const val CATALOG = "rc-exercises-v2"
+    const val CATALOG = "rc-exercises-v3"
     fun code(session: Long, exercise: String, capture: Long) = "S${session.toString().padStart(2, '0')}-$exercise-R${capture.toString().padStart(3, '0')}"
   }
   /** Older installations have only the active session; preserve it on first use. */

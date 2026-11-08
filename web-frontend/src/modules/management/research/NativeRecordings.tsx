@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
+import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TablePagination } from "@/components/common/tables/TablePagination";
 import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
@@ -22,6 +23,8 @@ import { recordingPresentation, recordingSearchTerm } from "./recording-presenta
 export function NativeRecordings({ revision }: { revision: number }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [groupId, setGroupId] = useState("all");
+  const [sessionId, setSessionId] = useState("all");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<Awaited<ReturnType<typeof getNativeRecordings>> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,12 +34,47 @@ export function NativeRecordings({ revision }: { revision: number }) {
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true); setError(null);
-      try { const response = await getNativeRecordings(page, recordingSearchTerm(search), controller.signal); if (!controller.signal.aborted) setResult(response); }
+      try {
+        const response = await getNativeRecordings({
+          page,
+          search: recordingSearchTerm(search),
+          groupId: groupId === "all" ? undefined : groupId,
+          sessionId: sessionId === "all" ? undefined : sessionId,
+        }, controller.signal);
+        if (!controller.signal.aborted) setResult(response);
+      }
       catch (cause) { if (!controller.signal.aborted) setError(cause); }
       finally { if (!controller.signal.aborted) setLoading(false); }
     }, 200);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [page, search, revision, retry]);
+  }, [page, search, groupId, sessionId, revision, retry]);
+
+  const sessions = result?.filterSessions ?? [];
+  const groups = new Map<string, string>();
+  for (const session of sessions) {
+    if (groups.has(session.group_id)) continue;
+    const { metadata } = recordingPresentation({ name: session.recording_name });
+    const group = metadata.find(item => item.label === "Group")?.value;
+    groups.set(session.group_id, group ? `${group} (${session.surface})` : session.surface);
+  }
+  const sessionOptions = sessions.filter(session => groupId === "all" || session.group_id === groupId);
+  const hasFilters = Boolean(search.trim()) || groupId !== "all" || sessionId !== "all";
+
+  function changeGroup(value: string) {
+    setGroupId(value);
+    if (value !== "all" && !sessions.some(session => session.id === sessionId && session.group_id === value)) {
+      setSessionId("all");
+    }
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setSearch("");
+    setGroupId("all");
+    setSessionId("all");
+    setPage(1);
+  }
+
   return (
     <TableCard aria-label="Research recordings">
       <CardContent className="border-b border-border p-4">
@@ -45,13 +83,32 @@ export function NativeRecordings({ revision }: { revision: number }) {
             value={search}
             onValueChange={value => { setSearch(value.slice(0, 100)); setPage(1); }}
             placeholder="Search recording or surface..."
-            wrapperClassName="min-w-0 flex-1"
+            wrapperClassName="min-w-0 basis-full sm:flex-1 sm:basis-56"
           />
-          {search && <Button type="button" variant="ghost" onClick={() => { setSearch(""); setPage(1); }}>Clear</Button>}
+          <FilterSelect
+            value={groupId}
+            onValueChange={changeGroup}
+            ariaLabel="Filter recordings by group"
+            disabled={!groups.size}
+            className="min-w-0 flex-1 basis-36 sm:w-52 sm:flex-none sm:basis-auto"
+            options={[{ value: "all", label: "All groups" }, ...Array.from(groups, ([value, label]) => ({ value, label }))]}
+          />
+          <FilterSelect
+            value={sessionId}
+            onValueChange={value => { setSessionId(value); setPage(1); }}
+            ariaLabel="Filter recordings by session"
+            disabled={!sessionOptions.length}
+            className="min-w-0 flex-1 basis-36 sm:w-52 sm:flex-none sm:basis-auto"
+            options={[{ value: "all", label: "All sessions" }, ...sessionOptions.map(session => ({
+              value: session.id,
+              label: `S${String(session.session_number).padStart(2, "0")}${groupId === "all" ? ` (${session.surface})` : ""}`,
+            }))]}
+          />
+          {hasFilters && <Button type="button" variant="ghost" className="h-11 text-sm text-muted-foreground" onClick={clearFilters}>Clear</Button>}
         </div>
       </CardContent>
       {loading || error || !result?.recordings.length ? (
-        <ResearchState className="rounded-none border-0" loading={loading} error={error} onRetry={() => setRetry(v => v + 1)} />
+        <ResearchState className="rounded-none border-0" loading={loading} error={error} filtered={hasFilters} onRetry={() => setRetry(v => v + 1)} />
       ) : (
         <>
           <Table>

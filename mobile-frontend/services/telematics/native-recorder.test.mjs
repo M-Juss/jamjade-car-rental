@@ -18,8 +18,8 @@ function load(filename, dependencies, globals = {}) {
   return exports;
 }
 const setup = load('../../lib/research/native-recorder.ts', {});
-const validation = load('../../validation/research/native-recorder.ts', { zod: { z }, '@/lib/research/native-recorder': setup });
 const collectionValidation = load('../../validation/research/collection.ts', { zod: { z } });
+const validation = load('../../validation/research/native-recorder.ts', { zod: { z }, '@/lib/research/native-recorder': setup, './collection': collectionValidation });
 const uploadValidation = load('../../validation/research/native-upload.ts', { zod: { z } });
 const values = { recording_group_id: 'd87e0341-9f66-4a01-9f92-b2d1729486e1', surface: 'Test surface', mount_method: setup.NATIVE_MOUNT_METHOD,
   slope: 'level', recording_kind: 'maneuver_trial', consent: true };

@@ -40,6 +40,7 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [afterSave, setAfterSave] = useState<{ record: NativeRecording; uploaded: boolean } | null>(null);
+  const [repeatExercise, setRepeatExercise] = useState<{ sessionId: string; mountId: string; code: ExerciseCode } | null>(null);
   const [progress, setProgress] = useState<{ id: string; label: string } | null>(null), [statuses, setStatuses] = useState<Record<string, CollectionStatus>>({}), [onlineStatus, setOnlineStatus] = useState(false);
   const mounted = useRef(true), working = useRef(false), querying = useRef<Promise<void> | null>(null), previousActive = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; void nativeRecorder.cancelCheck(); }; }, []);
@@ -53,10 +54,10 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
         const next = await nativeRecorder.status(), ended = previousActive.current && !next.active;
         previousActive.current = next.active;
         if (mounted.current) { setState(next); if (ended && next.current) { setSelected(next.current); setDetails(false); } }
-        if ((withList || ended) && !next.active) {
+        if ((withList || ended) && !next.active && !next.checking) {
           const page = nativeRecorder.pagingAvailable ? await nativeRecorder.collectionPage(offset, filter) : null;
           const saved = page?.records ?? await nativeRecorder.listCollection(offset, filter), catalog = await nativeRecorder.groups();
-          const context = nativeRecorder.collectionAvailable && !next.active && !next.checking ? await nativeRecorder.collectionAction({ action: 'current' }) : null;
+          const context = nativeRecorder.collectionAvailable ? await nativeRecorder.collectionAction({ action: 'current' }) : null;
           if (!mounted.current) return;
           setRecords(saved); setGroups(catalog); if (page) { setTotal(page.total); if (page.offset !== offset) setOffset(page.offset); } if (context) setCollection(context);
           const revision = ++statusRevision.current;
@@ -65,7 +66,12 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
             if (mounted.current && revision === statusRevision.current) { setStatuses(Object.fromEntries(result.map(r => [r.client_recording_id, r]))); setOnlineStatus(true); }
           }).catch(() => { if (mounted.current && revision === statusRevision.current) { setStatuses({}); setOnlineStatus(false); } });
         }
-      } catch { if (mounted.current) setError('Recorder access is unavailable. Connect and verify access again.'); }
+      } catch {
+        if (mounted.current) {
+          setState(current => current?.checking ? { ...current, checking: false, setup_progress: null } : current);
+          setError('Recorder access is unavailable. Connect and verify access again.');
+        }
+      }
       finally { if (mounted.current) setLoading(false); }
     })();
     querying.current = task;
@@ -81,11 +87,12 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   }, [active, refresh, user]);
   useEffect(() => {
     if (!active) return;
-    const timer = setInterval(() => { if (AppState.currentState === 'active' && user && nativeRecorder.isAuthorized(user.id)) void refresh(false); }, 1000);
+    const timer = setInterval(() => { if (AppState.currentState === 'active' && user && nativeRecorder.isAuthorized(user.id)) void refresh(false); }, state?.checking ? 100 : 1000);
     return () => clearInterval(timer);
-  }, [active, refresh, user]);
+  }, [active, refresh, state?.checking, user]);
   useEffect(() => {
     setSelected(null); setDetails(false); setDirty(false); setGroupForm(false);
+    if (!continueCollection.current) setRepeatExercise(null);
     setSessionForm(!continueCollection.current); continueCollection.current = false;
     setSessionGroupId(null); setAfterSave(null);
   }, [mode]);
@@ -148,6 +155,8 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   const currentProtocol = current?.collection?.protocol_snapshot;
   const group = groups?.groups.find(g => g.id === collection.session?.recording_group_id);
   const latest = current?.collection?.observations?.at(-1);
+  const initialExercise = repeatExercise && repeatExercise.sessionId === collection.session?.id && repeatExercise.mountId === collection.mount?.id
+    ? repeatExercise.code : undefined;
 
   const setupOpened = mode === 'collect' && Boolean(collection.session && collection.mount) && !sessionForm && !groupForm && !selected && !state?.active;
   const navigationBlocked = busy || Boolean(state?.active || state?.checking);
@@ -158,7 +167,7 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
     const leave = () => {
       if (selected) { setSelected(null); setDirty(false); }
       else if (groupForm) { setGroupForm(false); setSessionForm(true); }
-      else setSessionForm(true);
+      else { setRepeatExercise(null); setSessionForm(true); }
     };
     if (dirty) Alert.alert('Discard unsaved observations?', 'The original recording is already saved.', [
       { text: 'Keep editing', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: leave },
@@ -225,8 +234,9 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
         {mode === 'collect' && !state?.active && !selected && groups && nativeRecorder.collectionAvailable && <>
           {groupForm ? <NativeCollectionGroupForm disabled={busy} catalog={groups} onCreate={async values => { await createGroup(values); }} />
             : !collection.session || !collection.mount || sessionForm ? <CollectionSessionForm catalog={groups} collection={collection} initialGroupId={sessionGroupId} busy={busy} onNewSession={newSession} onOpen={async id => { await run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: id })); setSessionGroupId(id); setSessionForm(false); }); }} onNewGroup={() => setGroupForm(true)} />
-              : <CollectionSetupForm key={collection.mount?.id} collection={collection} groupName={group?.name ?? 'Group unavailable'} nextNumber={group?.next_recording_number ?? 1} busy={busy} checking={state?.checking ?? false} evidence={state?.setup_check} phonePower={state?.phone_power}
-                onNotes={() => setNotes(true)} onCheck={async () => { await run(() => nativeRecorder.beginCheck()); }} onStart={start} />}
+              : <CollectionSetupForm key={collection.mount?.id} collection={collection} groupName={group?.name ?? 'Group unavailable'} nextNumber={group?.next_recording_number ?? 1} initialExercise={initialExercise} busy={busy} checking={state?.checking ?? false} evidence={state?.setup_check} stillness={state?.setup_progress} checkError={state?.setup_check_error} phonePower={state?.phone_power}
+                onNotes={() => setNotes(true)} onCheck={async () => { await run(() => nativeRecorder.beginCheck()); }}
+                onCancelCheck={async () => { await run(() => nativeRecorder.cancelCheck()); }} onStart={start} />}
         </>}
         {current && !state?.active && <View>
           <View style={{ display: details ? 'none' : 'flex' }} className="gap-3">
@@ -267,6 +277,9 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
       progress={progress?.id === afterSave?.record.recording_id ? progress?.label : undefined}
       onClose={() => setAfterSave(null)}
       onAnother={() => {
+        const saved = afterSave?.record.collection;
+        setRepeatExercise(saved?.protocol_snapshot.recording_kind === 'maneuver_trial'
+          ? { sessionId: saved.session.id, mountId: saved.mount.id, code: saved.protocol_code } : null);
         setAfterSave(null); setSelected(null); setDetails(false); setDirty(false); setSessionForm(false); setGroupForm(false);
         if (mode !== 'collect') { continueCollection.current = true; onCollect(); }
       }}

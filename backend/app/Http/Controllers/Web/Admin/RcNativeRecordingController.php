@@ -7,7 +7,9 @@ use App\Http\Requests\Research\ListRcNativeRecordingsRequest;
 use App\Http\Requests\Research\RcNativeWindowRequest;
 use App\Http\Resources\RcNativeRecordingResource;
 use App\Http\Resources\RcRecordingReviewResource;
+use App\Models\RcMountVersion;
 use App\Models\RcNativeRecording;
+use App\Services\RcCollectionService;
 use App\Services\RcNativeResearchService;
 use App\Services\RcRecordingReviewService;
 use App\Services\RcResearchAccessService;
@@ -20,7 +22,7 @@ class RcNativeRecordingController extends Controller
     use ApiResponseTrait;
 
     public function __construct(private readonly RcNativeResearchService $research, private readonly RcResearchAccessService $access,
-        private readonly RcRecordingReviewService $review) {}
+        private readonly RcRecordingReviewService $review, private readonly RcCollectionService $collection) {}
 
     private function enabled(): void
     {
@@ -31,13 +33,26 @@ class RcNativeRecordingController extends Controller
     {
         $this->enabled();
         $query = RcNativeRecording::where('user_id', $request->user()->id)->with(['latestAnnotation', 'collectionContext:recording_id,display_code'])->withCount('chunks');
-        if ($search = $request->validated('search')) {
+        $sessions = $this->collection->recordingFilterSessions($request->user()->id);
+        $groupId = $request->validated('group_id');
+        $sessionId = $request->validated('session_id');
+        if ($groupId !== null || $sessionId !== null) {
+            $sessionIds = collect($sessions)
+                ->filter(fn (array $session) => ($groupId === null || strcasecmp($session['group_id'], $groupId) === 0)
+                    && ($sessionId === null || strcasecmp($session['id'], $sessionId) === 0))
+                ->pluck('id');
+            $query->whereHas('collectionContext', fn ($context) => $context->whereIn('mount_id',
+                RcMountVersion::query()->whereIn('session_id', $sessionIds)->select('id')));
+        }
+        $search = $request->validated('search');
+        if ($search !== null && $search !== '') {
             $term = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
             $query->where(fn ($q) => $q->whereRaw("name LIKE ? ESCAPE '!'", [$term])->orWhereHas('collectionContext', fn ($context) => $context->whereRaw("display_code LIKE ? ESCAPE '!'", [$term]))->orWhereRaw("surface LIKE ? ESCAPE '!'", [$term]));
         }
 
         return $this->paginated('Native recordings fetched.', $query->latest('started_at')->orderByDesc('id')
-            ->paginate((int) $request->validated('per_page', 10)), RcNativeRecordingResource::class)->header('Cache-Control', 'private, no-store');
+            ->paginate((int) $request->validated('per_page', 10)), RcNativeRecordingResource::class, ['filter_sessions' => $sessions])
+            ->header('Cache-Control', 'private, no-store');
     }
 
     public function show(Request $request, string $recording): JsonResponse

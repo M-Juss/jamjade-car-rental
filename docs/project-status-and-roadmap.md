@@ -4,6 +4,8 @@ Last reconciled for telematics: **2026-11-06**. Phase 1 definitions are complete
 **Phase 2 pilot collection is implemented** in native/mobile/Laravel code, with
 Collect/Recordings, durable sessions/mount versions, consented bounded setup evidence,
 versioned protocols, compact aliases and separately saved/synced observations.
+Catalog v3 adds a Normal or Harsh attempt selection to Left and Right Turn
+collection. Reviewed turn severity remains an independent annotation.
 See the [central guide](telematics-master-plan.md#phase-2-pilot-implementation-current-runtime-boundary)
 for active DTOs and limitations. Installation/physical acceptance on the Redmi,
 validated alignment/check limits, explicit server session closure/reopening,

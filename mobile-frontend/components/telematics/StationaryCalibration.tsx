@@ -1,9 +1,9 @@
 import { Activity, CircleCheck, CirclePause, RotateCcw } from 'lucide-react-native';
 import { useEffect, useRef, type ReactNode } from 'react';
-import { ActivityIndicator, Animated, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { ActivityIndicator, Animated, Text, View } from 'react-native';
 
 import { CalibrationSensorReading } from '@/components/telematics/CalibrationSensorReading';
+import { StationaryPhoneVisual } from '@/components/telematics/StationaryPhoneVisual';
 import { themeColors as colors } from '@/constants/theme';
 import { useCalibrationVisuals } from '@/hooks/telematics/useCalibrationVisuals';
 import { stationaryWithinRange, type CalibrationLiveState, type CalibrationReading } from '@/lib/telematics/calibration';
@@ -60,26 +60,7 @@ export function StationaryCalibration({ live, limits, durationSeconds, busy, rcD
       {!compact ? <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">{`${rcDemo ? 'Keep the RC car powered on and stopped' : 'Keep the vehicle parked and idling'} for ${durationSeconds} seconds. We’ll measure the mounted phone’s background vibration.`}</Text> : null}
 
       <View className={purpose === 'resume' ? 'flex-row items-center gap-2' : undefined}>
-      <View style={[styles.guide, { maxWidth: guideSize, marginVertical: purpose === 'resume' ? 0 : 12 }]} accessible={false} importantForAccessibility="no-hide-descendants">
-        <View style={[styles.artwork, { transform: [{ scale: guideSize / 248 }] }]}><Svg width="100%" height="100%" viewBox="0 0 248 248" style={StyleSheet.absoluteFill}>
-          <Circle cx={124} cy={124} r={111} fill={colors.background} stroke={colors.border} strokeWidth={1} />
-          <Circle cx={124} cy={124} r={103} fill="none" stroke={colors.border} strokeWidth={5} />
-          <Circle cx={124} cy={124} r={103} fill="none" stroke={color} strokeWidth={5} strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 103}`} strokeDashoffset={2 * Math.PI * 103 * (1 - progress)} rotation={-90} origin="124, 124" />
-        </Svg>
-        <View style={styles.mountStem} /><View style={styles.mountBase} />
-        <View style={styles.phone}>
-          <View style={styles.notch} />
-          <View style={[styles.phoneScreen, { borderColor: color }]}>
-            {passed ? <Animated.View style={{ opacity: reducedMotion ? 1 : pulse, transform: [{ scale: reducedMotion ? 1 : pulse.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }] }}><CircleCheck size={40} color={colors.success} strokeWidth={1.6} /></Animated.View> : <>
-              <View style={[styles.crosshairHorizontal, { backgroundColor: color }]} /><View style={[styles.crosshairVertical, { backgroundColor: color }]} />
-              <Animated.View style={[styles.target, { borderColor: color, opacity: reducedMotion ? 1 : pulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }), transform: [{ scale: reducedMotion ? 1 : pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.1] }) }] }]} />
-              <View style={[styles.targetDot, { backgroundColor: color }]} />
-            </>}
-          </View>
-          <View style={styles.homeIndicator} />
-        </View>
-        <View style={styles.mountGrip} /></View>
-      </View>
+      <StationaryPhoneVisual guideSize={guideSize} marginVertical={purpose === 'resume' ? 0 : 12} progress={progress} color={color} passed={passed} pulse={reducedMotion ? undefined : pulse} />
       <View className={purpose === 'resume' ? 'min-w-0 flex-1 gap-1' : 'items-center gap-2'}>
         <View className={`flex-row items-center gap-2 ${purpose === 'resume' ? 'justify-start' : 'justify-center'}`}>
           {phase === 'preparing' || phase === 'evaluating' ? <ActivityIndicator color={color} size="small" /> : <StatusIcon size={20} color={color} />}
@@ -100,19 +81,3 @@ export function StationaryCalibration({ live, limits, durationSeconds, busy, rcD
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  guide: { width: '100%', maxWidth: 248, aspectRatio: 1, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
-  artwork: { width: 248, height: 248, alignItems: 'center', justifyContent: 'center' },
-  phone: { width: 78, height: 142, borderRadius: 17, borderWidth: 3, borderColor: colors.foreground, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginTop: -10 },
-  phoneScreen: { width: 62, height: 108, borderRadius: 10, borderWidth: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  notch: { position: 'absolute', zIndex: 1, width: 25, height: 4, borderRadius: 4, top: 5, backgroundColor: colors.foreground },
-  homeIndicator: { position: 'absolute', bottom: 4, width: 22, height: 3, borderRadius: 3, backgroundColor: colors.foreground },
-  mountStem: { position: 'absolute', width: 12, height: 43, bottom: 41, borderRadius: 5, backgroundColor: colors.subtleForeground },
-  mountBase: { position: 'absolute', width: 94, height: 10, bottom: 37, borderRadius: 6, backgroundColor: colors.foreground },
-  mountGrip: { position: 'absolute', width: 96, height: 16, top: 141, borderWidth: 3, borderColor: colors.foreground, borderRadius: 6, backgroundColor: colors.surface },
-  crosshairHorizontal: { position: 'absolute', width: 42, height: 1, opacity: 0.25 },
-  crosshairVertical: { position: 'absolute', width: 1, height: 42, opacity: 0.25 },
-  target: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5 },
-  targetDot: { position: 'absolute', width: 7, height: 7, borderRadius: 4 },
-});

@@ -14,9 +14,31 @@ use Illuminate\Validation\ValidationException;
 
 class RcCollectionService
 {
-    public function catalog(string $version = 'rc-exercises-v2'): array
+    public function recordingFilterSessions(int $userId): array
     {
-        abort_unless(in_array($version, ['rc-exercises-v1', 'rc-exercises-v2'], true), 422, 'Unsupported exercise protocol version.');
+        $recordingName = RcNativeRecording::query()->select('rc_native_recordings.name')
+            ->join('rc_collection_contexts', 'rc_collection_contexts.recording_id', '=', 'rc_native_recordings.id')
+            ->join('rc_mount_versions', 'rc_mount_versions.id', '=', 'rc_collection_contexts.mount_id')
+            ->whereColumn('rc_mount_versions.session_id', 'rc_collection_sessions.id')
+            ->where('rc_native_recordings.user_id', $userId)
+            ->oldest('rc_native_recordings.started_at')->orderBy('rc_native_recordings.id')->limit(1);
+
+        return RcCollectionSession::query()->where('user_id', $userId)
+            ->select(['id', 'session_number', 'payload'])->addSelect(['recording_name' => $recordingName])
+            ->orderBy('session_number')->orderBy('id')->get()
+            ->whereNotNull('recording_name')
+            ->map(function (RcCollectionSession $session) {
+                $payload = $session->payload;
+
+                return ['id' => $session->id, 'session_number' => (int) $session->session_number,
+                    'group_id' => $payload['recording_group_id'], 'surface' => $payload['conditions']['surface'],
+                    'recording_name' => $session->recording_name];
+            })->values()->all();
+    }
+
+    public function catalog(string $version = RcNativeProtocol::CURRENT_EXERCISE_CATALOG): array
+    {
+        abort_unless(in_array($version, RcNativeProtocol::EXERCISE_CATALOGS, true), 422, 'Unsupported exercise protocol version.');
 
         return json_decode(file_get_contents(resource_path("research/{$version}.json")), true, 32, JSON_THROW_ON_ERROR);
     }
@@ -30,7 +52,7 @@ class RcCollectionService
     {
         abort_unless($record->state === 'verified', 409, 'Verify the original recording before syncing collection details.');
         $protocol = collect($this->catalog($input['catalog_version'])['protocols'])->firstWhere('code', $input['protocol_code']);
-        if (! hash_equals($this->hash($protocol), $input['protocol_sha256']) || $input['manifest_sha256'] !== $record->manifest_sha256
+        if (! is_array($protocol) || ! hash_equals($this->hash($protocol), $input['protocol_sha256']) || $input['manifest_sha256'] !== $record->manifest_sha256
             || $input['recording_id'] !== $record->client_recording_id) {
             throw ValidationException::withMessages(['protocol_code' => 'Protocol or original recording identity does not match.']);
         }

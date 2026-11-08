@@ -20,10 +20,10 @@ class RcRecordingReviewService
         $reference = null;
         if (($manifest['context']['recording_kind'] ?? null) === 'maneuver_trial') {
             $referenceStatus = 'missing';
-            // Per-owner recording storage is already bounded to 100 originals.
+            // Search within the per-owner recording limit.
             $candidates = RcNativeRecording::where('user_id', $record->user_id)->where('state', 'verified')
                 ->where('capture_state', 'stopped')->where('id', '!=', $record->id)
-                ->where('started_at', '<=', $record->started_at)->latest('started_at')->limit(100)->get();
+                ->where('started_at', '<=', $record->started_at)->latest('started_at')->limit($this->research->recordingLimit())->get();
             foreach ($candidates as $candidate) {
                 try {
                     if ($this->reuse->compatibility($record, $manifest, $candidate, $this->research->manifest($candidate)) !== null) {

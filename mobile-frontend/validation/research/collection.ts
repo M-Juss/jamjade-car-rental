@@ -3,7 +3,8 @@ import { z } from 'zod';
 const uuid = z.uuid();
 const time = z.iso.datetime({ offset: true });
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
-export const exerciseCodeSchema = z.enum(['FSS', 'HA', 'HB', 'LT', 'RT', 'RSS', 'SW', 'SR', 'FR']);
+export const exerciseCodeSchema = z.enum(['FSS', 'HA', 'HB', 'LT', 'HLT', 'RT', 'HRT', 'RSS', 'SW', 'SR', 'FR']);
+const catalogVersion = z.enum(['rc-exercises-v1', 'rc-exercises-v2', 'rc-exercises-v3']);
 const ns = z.string().regex(/^[1-9][0-9]{0,18}$/).refine(v => BigInt(v) <= 9223372036854775807n);
 const stats = z.object({ count: z.number().int().min(2).max(100000), rejected_count: z.literal(0),
   mean: z.array(z.number().min(-100000).max(100000)).length(3), std: z.array(z.number().min(0).max(100000)).length(3),
@@ -11,7 +12,7 @@ const stats = z.object({ count: z.number().int().min(2).max(100000), rejected_co
 }).strict();
 export const sessionSchema = z.object({ id: uuid, device_profile_id: uuid, session_number: z.number().int().min(1).max(999999999),
   recording_group_id: uuid, opened_at: time, conditions: z.object({ surface: z.string().min(1).max(100), slope: z.enum(['level', 'uphill', 'downhill']) }).strict(),
-  preset_id: z.literal('mn82s_roof_v1'), catalog_version: z.enum(['rc-exercises-v1', 'rc-exercises-v2']), operator_code: z.string().regex(/^OP[0-9]{2,4}$/),
+  preset_id: z.literal('mn82s_roof_v1'), catalog_version: catalogVersion, operator_code: z.string().regex(/^OP[0-9]{2,4}$/),
 }).strict();
 const mountSchema = z.object({ id: uuid, research_session_id: uuid, mount_number: z.number().int().min(1).max(999999),
   reason: z.enum(['initial', 'remounted', 'repositioned', 'suspected_shift']), created_at: time,
@@ -26,8 +27,11 @@ const preflightSchema = z.object({ id: uuid, mount_version_id: uuid, clock_conte
 }).strict();
 export const collectionContextSchema = z.object({ contract_version: z.literal('rc-collection-v1'), recording_id: uuid, manifest_sha256: hash,
   session: sessionSchema, mount: mountSchema, preflight: preflightSchema, capture_number: z.number().int().min(1).max(999999999),
-  protocol_code: exerciseCodeSchema, catalog_version: z.enum(['rc-exercises-v1', 'rc-exercises-v2']), protocol_sha256: hash,
+  protocol_code: exerciseCodeSchema, catalog_version: catalogVersion, protocol_sha256: hash,
 }).strict().superRefine((v, ctx) => {
+  if ((v.protocol_code === 'HLT' || v.protocol_code === 'HRT') && v.catalog_version !== 'rc-exercises-v3') {
+    ctx.addIssue({ code: 'custom', path: ['protocol_code'], message: 'Harsh turns require the updated exercise catalog.' });
+  }
   const p = v.preflight;
   if (v.mount.research_session_id !== v.session.id || p.mount_version_id !== v.mount.id) ctx.addIssue({ code: 'custom', path: ['mount'], message: 'Mount does not match this session.' });
   const delta = BigInt(p.end_elapsed_ns) - BigInt(p.start_elapsed_ns);

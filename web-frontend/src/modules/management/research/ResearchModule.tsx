@@ -8,7 +8,7 @@ import { MetadataList } from "@/components/common/data-display/MetadataList";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { NativeRecordings } from "./NativeRecordings";
-import exerciseCatalog from "./rc-exercises-v2.json";
+import exerciseCatalog from "./rc-exercises-v3.json";
 
 export function ResearchModule() {
   const [revision, setRevision] = useState(0);

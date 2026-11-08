@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Research;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\RcNativeProtocol;
 use Carbon\CarbonImmutable;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreRcCollectionContextRequest extends BaseFormRequest
@@ -24,7 +26,7 @@ class StoreRcCollectionContextRequest extends BaseFormRequest
             'session.recording_group_id' => ['required', 'uuid'], 'session.opened_at' => ['required', 'date'],
             'session.conditions' => ['required', 'array:surface,slope'],
             'session.conditions.surface' => ['required', 'string', 'max:100'], 'session.conditions.slope' => ['required', 'in:level,uphill,downhill'],
-            'session.preset_id' => ['required', 'in:mn82s_roof_v1'], 'session.catalog_version' => ['required', 'in:rc-exercises-v1,rc-exercises-v2'],
+            'session.preset_id' => ['required', 'in:mn82s_roof_v1'], 'session.catalog_version' => ['required', Rule::in(RcNativeProtocol::EXERCISE_CATALOGS)],
             'session.operator_code' => ['required', 'regex:/^OP[0-9]{2,4}$/D'],
             'mount' => ['required', 'array:id,research_session_id,mount_number,reason,created_at,preset_id,alignment_status'],
             'mount.id' => ['required', 'uuid'], 'mount.research_session_id' => ['required', 'uuid'],
@@ -32,8 +34,8 @@ class StoreRcCollectionContextRequest extends BaseFormRequest
             'mount.reason' => ['required', 'in:initial,remounted,repositioned,suspected_shift'], 'mount.created_at' => ['required', 'date'],
             'mount.preset_id' => ['required', 'in:mn82s_roof_v1'], 'mount.alignment_status' => ['required', 'in:pending'],
             'capture_number' => ['required', 'integer', 'between:1,999999999'],
-            'protocol_code' => ['required', 'in:FSS,HA,HB,LT,RT,RSS,SW,SR,FR'],
-            'catalog_version' => ['required', 'in:rc-exercises-v1,rc-exercises-v2'], 'protocol_sha256' => ['required', 'regex:/^[a-f0-9]{64}$/D'],
+            'protocol_code' => ['required', Rule::in(RcNativeProtocol::EXERCISE_CODES)],
+            'catalog_version' => ['required', Rule::in(RcNativeProtocol::EXERCISE_CATALOGS)], 'protocol_sha256' => ['required', 'regex:/^[a-f0-9]{64}$/D'],
             'preflight' => ['required', 'array:id,mount_version_id,clock_context_id,consent_version,consented_at,started_at,start_elapsed_ns,end_elapsed_ns,summary_method_version,criteria_version,holder_locked,phone_top_forward,rc_still,window_ms,measurements,checks,result'],
             'preflight.id' => ['required', 'uuid'], 'preflight.mount_version_id' => ['required', 'uuid'], 'preflight.clock_context_id' => ['required', 'uuid'],
             'preflight.consent_version' => ['required', 'in:rc-preflight-v1'], 'preflight.consented_at' => ['required', 'date'],
@@ -72,6 +74,10 @@ class StoreRcCollectionContextRequest extends BaseFormRequest
         $validator->after(function (Validator $validator) {
             if ($validator->errors()->isNotEmpty()) {
                 return;
+            }
+            if (in_array($this->input('protocol_code'), RcNativeProtocol::HARSH_TURN_CODES, true)
+                && $this->input('catalog_version') !== RcNativeProtocol::CURRENT_EXERCISE_CATALOG) {
+                $validator->errors()->add('protocol_code', 'Harsh turns require the updated exercise catalog.');
             }
             $p = $this->input('preflight');
             $start = $p['start_elapsed_ns'];

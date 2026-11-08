@@ -17,9 +17,9 @@ import javax.crypto.SecretKey
 internal class RecorderStore(private val context: Context, val ownerHash: String) {
   companion object {
     const val RECORD_LIMIT = 64L * 1024 * 1024
-    const val OWNER_LIMIT = 256L * 1024 * 1024
+    const val OWNER_LIMIT = 2L * 1024 * 1024 * 1024
     const val FREE_RESERVE = 64L * 1024 * 1024
-    const val MAX_RECORDINGS = 100
+    const val MAX_RECORDINGS = 1000
     val channels = linkedMapOf("accelerometer" to 1, "gyroscope" to 4, "gravity" to 9,
       "linear_acceleration" to 10, "rotation_vector" to 11)
     fun hash(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

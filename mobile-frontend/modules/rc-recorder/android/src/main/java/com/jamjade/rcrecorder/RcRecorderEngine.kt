@@ -42,7 +42,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
   private var owner: String? = null
   @Volatile private var permitted = false
   private var leaseEnd = 0L
-  private val setupCheck = SetupCheck(manager, handler) { permitted && SystemClock.elapsedRealtimeNanos() < leaseEnd }
+  private val setupCheck = SetupCheck(manager, handler, { utc(it) }) { permitted && SystemClock.elapsedRealtimeNanos() < leaseEnd }
   private var store: RecorderStore? = null
   private var manifest: JSONObject? = null
   private var activeId: String? = null
@@ -188,7 +188,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
       record.getJSONArray("clock_anchors").put(JSONObject().put("utc", utc(wall)).put("elapsed_ns", start.toString())
         .put("uncertainty_ns", (after - before).toString()))
       val collectionDocument = if (evidence != null) {
-        val catalog = JSONObject(context.assets.open("rc-exercises-v2.json").bufferedReader().use { it.readText() })
+        val catalog = JSONObject(context.assets.open("${CollectionWorkflow.CATALOG}.json").bufferedReader().use { it.readText() })
         val protocols = catalog.getJSONArray("protocols")
         val protocol = (0 until protocols.length()).map { protocols.getJSONObject(it) }.first { it.getString("code") == input.getString("protocol_code") }
         local.workflow().bind(id, allocated.second, protocol, evidence)
@@ -343,7 +343,8 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     if (activeId != null) updateManifest(SystemClock.elapsedRealtimeNanos())
     JSONObject().put("active", activeId != null || pending).put("preparing", pending).put("error", lastError ?: JSONObject.NULL)
       .put("setup_check", setupCheck.result() ?: JSONObject.NULL).put("checking", setupCheck.running)
-      .put("phone_power", PhonePower.snapshot(context))
+      .put("setup_progress", setupCheck.progress() ?: JSONObject.NULL).put("setup_check_error", setupCheck.error ?: JSONObject.NULL)
+      .apply { if (!setupCheck.running) put("phone_power", PhonePower.snapshot(context)) }
       .put("current", manifest?.let { local.summary(it) } ?: JSONObject.NULL)
   }
   fun list(offset: Int) = call { authorized().list(offset, activeId) }
@@ -400,8 +401,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     val local = authorized()
     check(activeId == null && !pending && !setupCheck.running) { "Another capture is active" }
     val mount = local.workflow().current().getJSONObject("mount")
-    val consentTime = utc()
-    setupCheck.start(mount.getString("id"), clockContextId, consentTime, consentTime)
+    setupCheck.start(mount.getString("id"), clockContextId)
   }
   fun cancelCheck() = call { setupCheck.cancel() }
   fun collection(id: String) = call { authorized().collection(id) ?: JSONObject.NULL }
@@ -439,7 +439,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     val session = current.getJSONObject("session")
     check(session.getString("recording_group_id") == value.getString("recording_group_id"))
     check(session.getJSONObject("conditions").getString("surface") == value.getString("surface") && session.getJSONObject("conditions").getString("slope") == value.getString("slope"))
-    val catalog = JSONObject(context.assets.open("rc-exercises-v2.json").bufferedReader().use { it.readText() })
+    val catalog = JSONObject(context.assets.open("${CollectionWorkflow.CATALOG}.json").bufferedReader().use { it.readText() })
     val protocols = catalog.getJSONArray("protocols")
     val protocol = (0 until protocols.length()).map { protocols.getJSONObject(it) }.firstOrNull { it.getString("code") == value.optString("protocol_code") } ?: error("Choose an exercise")
     check(protocol.getString("recording_kind") == value.getString("recording_kind"))
