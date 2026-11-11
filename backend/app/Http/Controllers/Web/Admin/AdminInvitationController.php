@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\Invitation\InviteAdminRequest;
 use App\Http\Resources\Admin\PersonnelResource;
 use App\Models\User;
 use App\Services\AdminInvitationService;
+use App\Support\AccountPasswordRules;
+use App\Support\ValidationPatterns;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 
@@ -51,8 +53,8 @@ class AdminInvitationController extends Controller
     public function accept(Request $request, string $token, AdminInvitationService $service)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:160'],
-            'password' => ['required', 'string', 'min:8', 'max:72', 'confirmed'],
+            'name' => ['required', 'string', 'max:160', 'regex:'.ValidationPatterns::PERSON_NAME],
+            'password' => [...AccountPasswordRules::required(), 'confirmed'],
         ]);
         $service->accept($token, $data);
 

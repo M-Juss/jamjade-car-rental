@@ -16,9 +16,10 @@ button{margin-top:24px;background:#346ef6;color:white;cursor:pointer}.error{colo
 @else
 <h1>Accept Admin invitation</h1><p>{{ $invitation->email }}</p>
 <form method="post">@csrf
-<label for="name">Full name</label><input id="name" name="name" value="{{ old('name') }}" required maxlength="160" autocomplete="name">
+<label for="name">Full name</label><input id="name" name="name" value="{{ old('name') }}" required maxlength="160" autocomplete="name" oninput="this.value=this.value.replace(/[^\p{L}\p{M} '\u2019-]/gu,'')">
 @error('name')<p class="error">{{ $message }}</p>@enderror
-<label for="password">Password</label><input id="password" type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password">
+<label for="password">Password</label><input id="password" type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password" pattern="(?=.*\p{Lu})(?=.*[^\p{L}\p{N}\s]).{8,72}" title="Use at least 8 characters, including 1 uppercase letter and 1 special character.">
+<p>Use at least 8 characters, including 1 uppercase letter and 1 special character.</p>
 @error('password')<p class="error">{{ $message }}</p>@enderror
 <label for="password_confirmation">Confirm password</label><input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password">
 <button type="submit">Create Admin account</button>

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\Booking;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\ValidationPatterns;
 
 class ReviewCancellationRefundRequest extends BaseFormRequest
 {
@@ -20,6 +21,6 @@ class ReviewCancellationRefundRequest extends BaseFormRequest
 
     public function rules(): array
     {
-        return ['amount' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999.99'], 'reason' => ['required', 'string', 'max:1000']];
+        return ['amount' => ['required', 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'decimal:0,2', 'min:0', 'max:9999999.99'], 'reason' => ['required', 'string', 'max:1000']];
     }
 }

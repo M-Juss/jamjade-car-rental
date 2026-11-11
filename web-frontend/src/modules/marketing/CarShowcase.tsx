@@ -141,7 +141,6 @@ export default function CarShowcase() {
                             alt={vehicle.name}
                             fill
                             sizes="(min-width: 1280px) 44vw, (min-width: 1024px) 54vw, (min-width: 640px) 64vw, 86vw"
-                            unoptimized
                             className="object-contain"
                           />
                         ) : (

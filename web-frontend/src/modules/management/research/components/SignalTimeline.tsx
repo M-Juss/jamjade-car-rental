@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, XAxis, YAxis, type MouseHandlerDataParam } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -13,7 +13,7 @@ const axes = [
 ] as const;
 const phoneLabels = { x: "X", y: "Y", z: "Z" };
 
-export function SignalTimeline({ title, unit, points, domain, selection, observed, cursor, onCursor, onSelection, syncId, includeZero = true, axisLabels = phoneLabels, frameLabel = "Phone", headingLevel = "h3", comparison, initialAxes = ["x", "y", "z"] }: {
+export function SignalTimeline({ title, unit, points, domain, selection, observed, cursor, onCursor, onSelection, syncId, includeZero = true, axisLabels = phoneLabels, frameLabel = "Phone", headingLevel = "h3", comparison, initialAxes = ["x", "y", "z"], headingContent }: {
   title: string; unit: string; points: SignalPoint[]; domain: [number, number];
   selection: [number, number]; observed?: [number, number]; cursor: number;
   onCursor: (time: number) => void; onSelection: (range: [number, number]) => void; syncId: string;
@@ -22,6 +22,7 @@ export function SignalTimeline({ title, unit, points, domain, selection, observe
   headingLevel?: "h3" | "h4" | "h5";
   comparison?: { points: SignalPoint[]; label: string };
   initialAxes?: ("x" | "y" | "z")[];
+  headingContent?: ReactNode;
 }) {
   const dragStart = useRef<number | null>(null);
   const [visible, setVisible] = useState({ x: initialAxes.includes("x") || initialAxes.length === 0, y: initialAxes.includes("y"), z: initialAxes.includes("z") });
@@ -41,7 +42,7 @@ export function SignalTimeline({ title, unit, points, domain, selection, observe
     return event.activeLabel !== undefined && event.activeLabel !== null && Number.isFinite(time) ? Math.max(domain[0], Math.min(domain[1], time)) : null;
   };
   return <div className="min-w-0">
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><Heading className="text-sm font-semibold">{title} <span className="font-normal text-muted-foreground">({unit})</span></Heading>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><Heading className="text-sm font-semibold">{headingContent ?? <>{title} <span className="font-normal text-muted-foreground">({unit})</span></>}</Heading>
       <div className="flex flex-wrap gap-1 text-xs text-muted-foreground" aria-label={`${frameLabel} axes`}>{axes.map((axis) => <Button key={axis.key} size="sm" variant="ghost" className={`gap-1.5 px-2 text-xs ${visible[axis.key] ? "" : "opacity-40"}`}
         aria-label={`${title}: show ${axisLabels[axis.key]} axis`} aria-pressed={visible[axis.key]}
         disabled={visible[axis.key] && Object.values(visible).filter(Boolean).length === 1}

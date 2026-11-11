@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Payment;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\ValidationPatterns;
 
 class StorePaymentRequest extends BaseFormRequest
 {
@@ -16,7 +17,7 @@ class StorePaymentRequest extends BaseFormRequest
         return [
             'booking_id' => ['required', 'exists:bookings,id'],
             'payment_method' => ['required', 'string', 'max:80'],
-            'amount' => ['required', 'numeric', 'min:1'],
+            'amount' => ['required', 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'decimal:0,2', 'min:1', 'max:9999999999.99'],
             'transaction_id' => ['nullable', 'string', 'max:120'],
             'proof_of_payment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];

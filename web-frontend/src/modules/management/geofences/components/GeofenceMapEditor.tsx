@@ -98,10 +98,16 @@ export function GeofenceMapEditor({
 
     if (geometryType === "circle" && center) {
       const position = { lat: center.latitude, lng: center.longitude };
-      markersRef.current.push(new google.maps.Marker({ map, position: { lat: center.latitude, lng: center.longitude }, title: "Fence center" }));
+      markersRef.current.push(new google.maps.Marker({
+        map,
+        position: { lat: center.latitude, lng: center.longitude },
+        title: "Fence center",
+        clickable: false,
+      }));
       if (radiusMeters && radiusMeters > 0) {
         shapeRef.current = new google.maps.Circle({
           map,
+          clickable: false,
           center: { lat: center.latitude, lng: center.longitude },
           radius: radiusMeters,
           fillColor: "#346EF6",

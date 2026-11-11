@@ -6,9 +6,31 @@ use App\Models\User;
 use App\Models\Vehicle;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
+
+it('requires a private initial password before creating hosted seed accounts', function () {
+    $this->app->detectEnvironment(fn () => 'production');
+    config(['auth.initial_owner_password' => null]);
+    expect(fn () => Artisan::call('db:seed', ['--class' => DatabaseSeeder::class, '--force' => true]))->toThrow(RuntimeException::class);
+    $this->assertDatabaseCount('users', 0);
+});
+
+it('uses the configured hosted password once and preserves it on a later seed', function () {
+    $this->app->detectEnvironment(fn () => 'production');
+    $password = Str::random(32);
+    config(['auth.initial_owner_password' => $password]);
+    Artisan::call('db:seed', ['--class' => DatabaseSeeder::class, '--force' => true]);
+    $owner = User::sole();
+    expect(Hash::check($password, $owner->password))->toBeTrue();
+    $hash = $owner->password;
+    config(['auth.initial_owner_password' => Str::random(32)]);
+    Artisan::call('db:seed', ['--class' => DatabaseSeeder::class, '--force' => true]);
+    expect($owner->fresh()->password)->toBe($hash);
+});
 
 it('seeds only the Jamjade owner account without demo vehicle data', function () {
     $this->seed(DatabaseSeeder::class);

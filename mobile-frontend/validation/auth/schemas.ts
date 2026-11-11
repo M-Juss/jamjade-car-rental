@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { requiredString, utf8ByteLength } from '@/validation/shared';
+import { accountPasswordSchema, requiredString } from '@/validation/shared';
 
 export const loginSchema = z.object({
   email: requiredString('Email address is required.')
@@ -14,11 +14,7 @@ export const registerSchema = z
     email: requiredString('Email address is required.')
       .email('Enter a valid email address.')
       .max(255, 'Email address must be 255 characters or fewer.'),
-    password: z
-      .string()
-      .min(8, { message: 'Use at least 8 characters.' })
-      .max(72, 'Use 72 characters or fewer.')
-      .refine((value) => utf8ByteLength(value) <= 72, 'The password must be 72 UTF-8 bytes or fewer.'),
+    password: accountPasswordSchema,
     confirmPassword: z.string().min(1, { message: 'Confirm your password.' }),
   })
   .superRefine((form, context) => {

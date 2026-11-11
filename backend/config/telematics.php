@@ -4,6 +4,7 @@ return [
     'handover_test_mode' => env('TELEMATICS_HANDOVER_TEST_MODE', false),
     'early_start_test_mode' => env('RENTAL_EARLY_START_TEST_MODE', false),
     'calibration_profile' => env('TELEMATICS_CALIBRATION_PROFILE', 'standard'),
+    'hosted_rc_demo' => env('TELEMATICS_HOSTED_RC_DEMO', false),
     // Fleet freshness display only; stale updates do not diagnose GPS/network loss.
     'fleet_location_recent_seconds' => 120,
     'foreground_location' => [
@@ -15,7 +16,7 @@ return [
         'retention_hours' => 24,
     ],
     // Provisional RC workflow demonstration settings, not learned driving limits.
-    // Keep parked reference checks unchanged; ignored outside local/testing.
+    // Keep parked reference checks unchanged; also available in an explicit hosted RC demo.
     'calibration_rc_overrides' => [
         'capture_seconds' => [
             'forward_calibration' => 3,

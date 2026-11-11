@@ -8,7 +8,7 @@ import type { NativeInspection, NativeStatistics } from '@/services/research/nat
 import { DetailsList } from './RecordingDetails';
 import { AnnotationHistory } from './AnnotationHistory';
 import { humanize } from '../recording-analysis';
-import { referenceRequirement, timingWarnings } from '../review-workflow';
+import { referenceRequirement } from '../review-workflow';
 
 const stopLabel = (value: string) => ({ brake_applied: 'Applied brake', neutral_release: 'Released to neutral', unknown: 'Not sure', not_applicable: 'Not applicable' }[value] ?? humanize(value));
 const fixed = (value: number | null) => value == null ? 'Unavailable' : value.toFixed(2);
@@ -23,18 +23,10 @@ export function ReferenceRequirement({ inspection }: { inspection: NativeInspect
 }
 
 export function RecordingChecks({ inspection }: { inspection: NativeInspection }) {
-  const { recording, review } = inspection;
+  const { review } = inspection;
   const observation = review.observation, collection = review.collection;
-  const issues = timingWarnings(inspection);
   return <div className="space-y-4">
-    <DetailsList items={[
-      ['Original file', recording.state === 'verified' ? 'Verified' : `${recording.received_chunks}/${recording.expected_chunks} chunks received`],
-      ['Capture', humanize(recording.capture_state)],
-      ['Collection setup', collection ? `S${String(collection.session_number).padStart(2, '0')} · Mount ${collection.mount_number} · ${collection.protocol_code}` : 'Pilot history — no collection context'],
-      ['Observations', observation ? `Synced · revision ${observation.revision}` : 'Not synced — save and sync from the phone'],
-      ['Timing', !recording.summary ? 'Not available' : issues.length ? `Needs review: ${issues.join(', ')}` : 'No sequence or timestamp anomalies reported'],
-    ]} />
-    {observation && <div className="space-y-3 border-t border-border pt-4">
+    {observation && <div className="space-y-3">
       <h3 className="text-sm font-semibold">Reported run</h3>
       <DetailsList items={[
         ['Completed as planned', observation.completed_as_planned === null ? 'Not sure' : observation.completed_as_planned ? 'Yes' : 'No'],
@@ -53,7 +45,7 @@ export function RecordingChecks({ inspection }: { inspection: NativeInspection }
 
 export function RecordingDetailsDialog({ inspection, annotationState }: { inspection: NativeInspection; annotationState: string }) {
   const { recording, manifest, review } = inspection;
-  return <Dialog><DialogTrigger asChild><Button variant="outline" size="sm"><Info className="size-4" />Details</Button></DialogTrigger>
+  return <Dialog><DialogTrigger asChild><Button variant="outline" size="xs" className="h-7"><Info className="size-3" />Details</Button></DialogTrigger>
     <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
       <DialogHeader><DialogTitle>Recording details</DialogTitle></DialogHeader>
       <DetailsList items={[
@@ -67,7 +59,6 @@ export function RecordingDetailsDialog({ inspection, annotationState }: { inspec
         <div className="mt-2 space-y-4">{Object.entries(recording.summary ?? {}).map(([channel, stats]) => <ChannelQuality key={channel} title={humanize(channel)} stats={stats} />)}</div>
       </details>
       <details className="border-t border-border pt-3"><summary className="min-h-9 cursor-pointer text-sm font-medium">Label history</summary><AnnotationHistory recordingId={recording.id} /></details>
-      <details className="border-t border-border pt-3 text-xs"><summary className="min-h-9 cursor-pointer font-medium">Original file fingerprint</summary><p className="break-all text-muted-foreground">SHA-256: {recording.manifest_sha256}</p></details>
     </DialogContent>
   </Dialog>;
 }

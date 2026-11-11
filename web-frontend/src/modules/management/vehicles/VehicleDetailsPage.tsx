@@ -175,7 +175,6 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
                   alt=""
                   fill
                   sizes="64px"
-                  unoptimized
                   className="object-contain"
                 />
               ) : (
@@ -183,14 +182,15 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="break-words text-lg font-semibold text-foreground">{vehicle.name}</h1>
+              <h1 className="flex flex-wrap items-baseline gap-x-2 text-lg font-semibold text-foreground">
+                <span className="break-words">{vehicle.name}</span>
+                <span aria-hidden="true" className="text-border">|</span>
+                <span className="break-words text-sm font-semibold">
+                  {vehicle.plateNumber ? <><span className="sr-only">Plate number: </span>{vehicle.plateNumber}</> : "Plate unavailable"}
+                </span>
+              </h1>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span className="text-muted-foreground">{[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}</span>
-                <span className="font-semibold text-foreground">
-                  {vehicle.plateNumber ? (
-                    <><span className="sr-only">Plate number: </span>{vehicle.plateNumber}</>
-                  ) : "Plate unavailable"}
-                </span>
               </div>
             </div>
           </div>

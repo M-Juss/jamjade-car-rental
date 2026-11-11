@@ -60,6 +60,13 @@ consent; physical rental acceptance remains pending. See the
 
 ## Product direction
 
+Deployment preparation — 2026-11-12: the selected target is BerryPanel using the
+existing repository's `main` branch and `jamjadecarrental.tech` with Hostinger DNS.
+Hosted RC Research/Model Explorer/motion require the explicit opt-in documented
+in the [central guide](telematics-master-plan.md#hosted-rc-demo-deployment--2026-11-12).
+The [deployment guide](deployment-berrypanel.md) records setup and pending host
+capabilities; this is not a completed public deployment.
+
 JamJade uses Laravel for its authoritative API/domain layer, Next.js for Admin/Staff
 management, and an Android-only Expo app for Customers and assigned Drivers.
 iOS and mobile-browser targets are retired; the Next.js website remains supported.
@@ -79,6 +86,8 @@ Admin Model Explorer now explains owner-bound saved development examples from
 the pinned frozen split, including prepared signals, feature calculations,
 observed class ranges and exact selected-tree traversal. It is local-only and
 read-only; it does not retrain or alter the classifier. See the [central guide](telematics-master-plan.md#model-development-navigation--2026-11-11).
+Drive Monitoring remains implemented but is temporarily hidden from the Admin
+sidebar; see the [navigation note](telematics-master-plan.md#drive-monitoring-sidebar-visibility--2026-11-12).
 
 **The [central telematics guide](telematics-master-plan.md) owns the complete
 baseline, agreed requirements, target pipeline, UI, data contracts, implementation

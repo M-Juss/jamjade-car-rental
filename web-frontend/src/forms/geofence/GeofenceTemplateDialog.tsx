@@ -166,9 +166,9 @@ export function GeofenceTemplateDialog({
             </p>
             {geometryType === "circle" ? (
               <div className="grid gap-4 sm:grid-cols-3">
-                <InputWithLabel id="geofence-latitude" label="Center Latitude" required inputMode="decimal" error={form.formState.errors.centerLatitude?.message} {...form.register("centerLatitude")} />
-                <InputWithLabel id="geofence-longitude" label="Center Longitude" required inputMode="decimal" error={form.formState.errors.centerLongitude?.message} {...form.register("centerLongitude")} />
-                <InputWithLabel id="geofence-radius" label="Radius (meters)" required type="number" min="0" max="100000" step="any" error={form.formState.errors.radiusMeters?.message} {...form.register("radiusMeters")} />
+                <InputWithLabel id="geofence-latitude" label="Center Latitude" required inputFormat="signedDecimal" error={form.formState.errors.centerLatitude?.message} {...form.register("centerLatitude")} />
+                <InputWithLabel id="geofence-longitude" label="Center Longitude" required inputFormat="signedDecimal" error={form.formState.errors.centerLongitude?.message} {...form.register("centerLongitude")} />
+                <InputWithLabel id="geofence-radius" label="Radius (meters)" required inputFormat="decimal" error={form.formState.errors.radiusMeters?.message} {...form.register("radiusMeters")} />
               </div>
             ) : (
               <div className="flex shrink-0 flex-col gap-2">
@@ -186,8 +186,8 @@ export function GeofenceTemplateDialog({
                   {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-[auto_1fr_1fr_auto] items-end gap-2">
                       <span className="pb-3 text-xs font-semibold text-foreground">{index + 1}.</span>
-                      <InputWithLabel id={`geofence-point-${index}-latitude`} label="Latitude" required inputMode="decimal" error={form.formState.errors.polygonCoordinates?.[index]?.latitude?.message} {...form.register(`polygonCoordinates.${index}.latitude`)} />
-                      <InputWithLabel id={`geofence-point-${index}-longitude`} label="Longitude" required inputMode="decimal" error={form.formState.errors.polygonCoordinates?.[index]?.longitude?.message} {...form.register(`polygonCoordinates.${index}.longitude`)} />
+                  <InputWithLabel id={`geofence-point-${index}-latitude`} label="Latitude" required inputFormat="signedDecimal" error={form.formState.errors.polygonCoordinates?.[index]?.latitude?.message} {...form.register(`polygonCoordinates.${index}.latitude`)} />
+                  <InputWithLabel id={`geofence-point-${index}-longitude`} label="Longitude" required inputFormat="signedDecimal" error={form.formState.errors.polygonCoordinates?.[index]?.longitude?.message} {...form.register(`polygonCoordinates.${index}.longitude`)} />
                       <Button type="button" variant="ghost" size="icon" className="mb-1" aria-label={`Remove point ${index + 1}`} onClick={() => remove(index)}><Trash2 /></Button>
                     </div>
                   ))}

@@ -29,6 +29,20 @@ beforeEach(function () {
     $this->admin->assignRole('admin');
 });
 
+it('opens hosted Model Explorer only after explicit RC demo opt-in', function () {
+    $this->app->detectEnvironment(fn () => 'production');
+    config(['telematics.hosted_rc_demo' => false]);
+    $this->actingAs($this->admin, 'web')->getJson(MANEUVER_COMPARISON_PATH)->assertForbidden();
+    config(['telematics.hosted_rc_demo' => true]);
+    $this->getJson(MANEUVER_COMPARISON_PATH)->assertOk()->assertJsonCount(0, 'data.recordings');
+
+    $other = User::factory()->create(['is_active' => true]);
+    $recording = comparisonRecording($other);
+    $annotation = comparisonAnnotation($recording);
+    $this->getJson(MANEUVER_COMPARISON_PATH)->assertOk()->assertJsonCount(0, 'data.recordings');
+    $this->getJson(MANEUVER_COMPARISON_PATH.'/'.$recording->id.'/'.$annotation->id.'/0')->assertNotFound();
+});
+
 function comparisonRecording(User $owner): RcNativeRecording
 {
     return RcNativeRecording::create([

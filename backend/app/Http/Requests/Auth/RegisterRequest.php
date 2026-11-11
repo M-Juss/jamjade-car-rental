@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\BaseFormRequest;
-use Illuminate\Validation\Rules\Password;
+use App\Support\AccountPasswordRules;
 
 class RegisterRequest extends BaseFormRequest
 {
@@ -17,14 +17,7 @@ class RegisterRequest extends BaseFormRequest
         return [
             'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'size:11', 'regex:/^09\d{9}$/', 'unique:users,phone_number'],
-            'password' => [
-                'required', 'string', 'confirmed', Password::min(8), 'max:72',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (is_string($value) && strlen($value) > 72) {
-                        $fail('The password must be 72 UTF-8 bytes or fewer.');
-                    }
-                },
-            ],
+            'password' => [...AccountPasswordRules::required(), 'confirmed'],
             'device_name' => ['nullable', 'string', 'max:120'],
         ];
     }

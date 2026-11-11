@@ -5,6 +5,7 @@ namespace App\Http\Requests\Maintenance;
 use App\Enums\MaintenanceCategory;
 use App\Http\Requests\BaseFormRequest;
 use App\Models\VehicleMaintenanceRecord;
+use App\Support\ValidationPatterns;
 use Illuminate\Validation\Validator;
 
 class CompleteMaintenanceRequest extends BaseFormRequest
@@ -20,9 +21,9 @@ class CompleteMaintenanceRequest extends BaseFormRequest
             'odometer_at_completion' => ['nullable', 'integer', 'min:0'],
             'work_performed' => ['required', 'string', 'max:5000'],
             'service_provider' => ['nullable', 'string', 'max:150'],
-            'labor_cost' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'parts_cost' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
-            'other_cost' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99'],
+            'labor_cost' => ['nullable', 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'decimal:0,2', 'min:0', 'max:9999999999.99'],
+            'parts_cost' => ['nullable', 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'decimal:0,2', 'min:0', 'max:9999999999.99'],
+            'other_cost' => ['nullable', 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'decimal:0,2', 'min:0', 'max:9999999999.99'],
             'notes' => ['nullable', 'string', 'max:3000'],
             'condition_changed' => ['nullable', 'boolean'],
         ];

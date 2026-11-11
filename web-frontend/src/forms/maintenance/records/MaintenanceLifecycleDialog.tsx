@@ -196,7 +196,7 @@ export function MaintenanceLifecycleDialog({
                 id="maintenance-completion-odometer"
                 label={requireOdometer ? "Completion Odometer" : "Completion Odometer (Optional)"}
                 required={requireOdometer}
-                inputMode="numeric"
+                inputFormat="integer"
                 error={form.formState.errors.odometerAtCompletion?.message}
                 {...form.register("odometerAtCompletion")}
               />
@@ -218,9 +218,9 @@ export function MaintenanceLifecycleDialog({
                   )}
                 />
               ) : null}
-              <InputWithLabel id="maintenance-completion-labor-cost" label="Labor Cost (Optional)" inputMode="decimal" error={form.formState.errors.laborCost?.message} {...form.register("laborCost")} />
-              <InputWithLabel id="maintenance-completion-parts-cost" label="Parts Cost (Optional)" inputMode="decimal" error={form.formState.errors.partsCost?.message} {...form.register("partsCost")} />
-              <InputWithLabel id="maintenance-completion-other-cost" label="Other Cost (Optional)" inputMode="decimal" error={form.formState.errors.otherCost?.message} {...form.register("otherCost")} />
+              <InputWithLabel id="maintenance-completion-labor-cost" label="Labor Cost (Optional)" inputFormat="decimal" error={form.formState.errors.laborCost?.message} {...form.register("laborCost")} />
+              <InputWithLabel id="maintenance-completion-parts-cost" label="Parts Cost (Optional)" inputFormat="decimal" error={form.formState.errors.partsCost?.message} {...form.register("partsCost")} />
+              <InputWithLabel id="maintenance-completion-other-cost" label="Other Cost (Optional)" inputFormat="decimal" error={form.formState.errors.otherCost?.message} {...form.register("otherCost")} />
               <InputWithLabel id="maintenance-completion-total" label="Total Cost" readOnly value={new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(totalCost)} />
               <TextAreaWithLabel id="maintenance-completion-notes" label="Completion Notes (Optional)" wrapperClassName="sm:col-span-2" error={form.formState.errors.notes?.message} {...form.register("notes")} />
               {forceConditionVerification ? (

@@ -235,11 +235,9 @@ export function MaintenancePlanDialog({
                           id="maintenance-plan-interval-km"
                           label="Interval (km)"
                           required
-                          inputMode="numeric"
+                          inputFormat="integer"
                           pattern="[0-9]*"
-                          onChange={(event) => {
-                            if (/^\d*$/.test(event.target.value)) field.onChange(event);
-                          }}
+                          onChange={field.onChange}
                           error={form.formState.errors.intervalKm?.message}
                         />
                       )}
@@ -277,11 +275,9 @@ export function MaintenancePlanDialog({
                           id="maintenance-plan-interval-days"
                           label="Interval (days)"
                           required
-                          inputMode="numeric"
+                          inputFormat="integer"
                           pattern="[0-9]*"
-                          onChange={(event) => {
-                            if (/^\d*$/.test(event.target.value)) field.onChange(event);
-                          }}
+                          onChange={field.onChange}
                           error={form.formState.errors.intervalDays?.message}
                         />
                       )}

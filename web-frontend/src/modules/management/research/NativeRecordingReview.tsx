@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Clock3, Gauge, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getNativeInspection } from "@/services/research/native-research.service";
 import type { NativeChannel, NativeInspection, NativeWindow } from "@/services/research/native-types";
 import type { ProcessingDetail } from "@/services/research/processing-types";
-import { formatReturnDateTime } from "@/services/booking/return-time";
 import { ResearchState } from "./components/ResearchState";
 import { DetailsList } from "./components/RecordingDetails";
 import { SignalTimeline } from "./components/SignalTimeline";
@@ -44,9 +43,10 @@ export function NativeRecordingReview({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [revision, setRevision] = useState(0);
+  const [annotationState, setAnnotationState] = useState<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();
-    getNativeInspection(id, controller.signal).then(data => { if (!controller.signal.aborted) { setInspection(data); setError(null); } })
+    getNativeInspection(id, controller.signal).then(data => { if (!controller.signal.aborted) { setInspection(data); setAnnotationState(data.recording.annotation_state); setError(null); } })
       .catch(cause => { if (!controller.signal.aborted) setError(cause); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -60,34 +60,30 @@ export function NativeRecordingReview({ id }: { id: string }) {
         </Link>
         {inspection && !error && <><span aria-hidden="true" className="text-border">/</span><h1 aria-current="page" className="min-w-0 break-words text-xs font-semibold text-foreground">{presentation?.title}</h1></>}
       </nav>
-      {inspection && !error && <time dateTime={inspection.recording.started_at} className="text-xs text-muted-foreground">{formatReturnDateTime(inspection.recording.started_at)}</time>}
+      {inspection && !error && <RecordingDetailsDialog inspection={inspection} annotationState={annotationState ?? inspection.recording.annotation_state} />}
     </header>
     {!error && presentation?.metadata.length ? <MetadataList className="sm:grid-cols-4" items={presentation.metadata} /> : null}
-    {loading || error || !inspection ? <ResearchState loading={loading} error={error} onRetry={() => { setLoading(true); setRevision(v => v + 1); }} /> : <NativeWorkspace key={inspection.recording.id} inspection={inspection} />}
+    {loading || error || !inspection ? <ResearchState loading={loading} error={error} onRetry={() => { setLoading(true); setRevision(v => v + 1); }} /> : <NativeWorkspace key={inspection.recording.id} inspection={inspection} onAnnotationState={setAnnotationState} />}
   </section>;
 }
 
-function NativeWorkspace({ inspection }: { inspection: NativeInspection }) {
+function NativeWorkspace({ inspection, onAnnotationState }: { inspection: NativeInspection; onAnnotationState: (state: string) => void }) {
   const { recording: record, review } = inspection;
   const [step, setStep] = useState(record.annotation_state !== "unlabeled" ? "labels" : review.processing.saved_runs ? "prepare" : "check");
   const [labelsOpened, setLabelsOpened] = useState(record.annotation_state !== "unlabeled");
   const [savedResult, setSavedResult] = useState<ProcessingDetail | null>(null);
   const [prepareNew, setPrepareNew] = useState(false);
-  const [annotationState, setAnnotationState] = useState(record.annotation_state);
   const blocked = referenceRequirement(inspection).blocked;
   const inspectable = record.state === "verified" && record.duration_ms > 0;
   const hasResult = Boolean(savedResult || review.processing.saved_runs);
   const openStep = (value: string) => { setStep(value); if (value === "labels") setLabelsOpened(true); };
   return <ReviewTimelineProvider duration={record.duration_ms}>
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { label: "Duration", value: `${(record.duration_ms / 1000).toFixed(2)} s`, icon: Clock3 },
           { label: "Readings", value: record.summary?.accelerometer?.event_count.toLocaleString() ?? "Pending", icon: ListChecks },
           { label: "Sample rate", value: record.summary?.accelerometer?.rate_hz == null ? "Unavailable" : `${fixed(record.summary.accelerometer.rate_hz, 1)} Hz`, icon: Gauge },
         ].map((item) => <KpiCard key={item.label} {...item} />)}
-      </div>
-      <RecordingDetailsDialog inspection={inspection} annotationState={annotationState} />
     </div>
     <Card className="min-w-0 border-border bg-surface shadow-none ring-0"><Tabs value={step} onValueChange={openStep}>
       <CardHeader className="border-b border-border p-3 sm:p-4"><TabsList aria-label="Recording review steps">
@@ -97,7 +93,7 @@ function NativeWorkspace({ inspection }: { inspection: NativeInspection }) {
       </TabsList></CardHeader>
       <TabsContent value="check" className="mt-0"><CardContent className="space-y-5 pt-4">
         <RecordingChecks inspection={inspection} />
-        {inspectable && <OriginalSignals inspection={inspection} viewControl={null} />}
+        {inspectable && <OriginalSignals inspection={inspection} />}
         {inspectable && <div className="flex flex-wrap justify-end gap-2">
           {blocked ? <Button onClick={() => openStep("labels")}>Label original signals</Button> : <Button onClick={() => openStep("prepare")}>Continue to preparation</Button>}
         </div>}
@@ -121,39 +117,42 @@ function NativeWorkspace({ inspection }: { inspection: NativeInspection }) {
       {labelsOpened && <TabsContent value="labels" forceMount className="mt-0 data-[state=inactive]:hidden"><CardContent className="space-y-4 pt-4">
         {!inspectable ? <p className="text-sm text-muted-foreground">Finish uploading before labeling intervals.</p> : <>
           {!hasResult && <p className="text-xs text-muted-foreground">Labeling original signals. No processed result is saved for this recording.</p>}
-          <NativeAnnotations inspection={inspection} onState={setAnnotationState} />
+          <OriginalSignals inspection={inspection} />
+          <NativeAnnotations inspection={inspection} onState={onAnnotationState} />
         </>}
       </CardContent></TabsContent>}
     </Tabs></Card>
   </ReviewTimelineProvider>;
 }
 
-function OriginalSignals({ inspection, viewControl }: { inspection: NativeInspection; viewControl: ReactNode }) {
+function OriginalSignals({ inspection }: { inspection: NativeInspection }) {
   const [channel, setChannel] = useState<NativeChannel>("accelerometer");
   const channels = useMemo(() => [channel], [channel]);
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-center gap-2">
-      {viewControl}
-      <FilterSelect height="compact" value={channel} onValueChange={setChannel} ariaLabel="Original sensor channel" className="w-full sm:w-80"
-        options={(["accelerometer", "gyroscope", "linear_acceleration", "gravity", "rotation_vector"] as NativeChannel[]).map(value => ({ value, label: channelLabels[value] }))} />
-    </div>
     <NativeSignalWindow record={inspection.recording} channels={channels}>
-      {(windows, bounds) => <OriginalSignalChart window={windows[0]} origin={inspection.manifest.started_elapsed_ns} bounds={bounds} recordingId={inspection.recording.id} />}
+      {(windows, bounds) => <OriginalSignalChart window={windows[0]} origin={inspection.manifest.started_elapsed_ns} bounds={bounds} recordingId={inspection.recording.id}
+        onChannelChange={setChannel} />}
     </NativeSignalWindow>
   </div>;
 }
 
-function OriginalSignalChart({ window, origin, bounds, recordingId }: {
-  window: NativeWindow; origin: string; bounds: ReferenceRange; recordingId: string;
+function OriginalSignalChart({ window, origin, bounds, recordingId, onChannelChange }: {
+  window: NativeWindow; origin: string; bounds: ReferenceRange; recordingId: string; onChannelChange: (channel: NativeChannel) => void;
 }) {
   const { selection, setSelection, cursor, setCursor } = useReviewSelection(bounds);
   const points = useMemo(() => nativeSignalPoints(window.events, origin), [window.events, origin]);
   const stats = nativeIntervalStats(points, ...selection);
   const unit = window.channel === "gyroscope" ? "rad/s" : window.channel === "rotation_vector" ? "unitless XYZ" : "m/s²";
+  const channelHeading = <div className="flex min-w-0 items-center gap-2">
+          <FilterSelect height="compact" value={window.channel} onValueChange={value => onChannelChange(value as NativeChannel)} ariaLabel="Original sensor channel"
+            className="w-full sm:w-72" options={(["accelerometer", "gyroscope"] as NativeChannel[]).map(value => ({ value, label: value === "accelerometer" ? "Acceleration" : "Gyroscope" }))} />
+    <span className="shrink-0 font-normal text-muted-foreground">({unit})</span>
+  </div>;
   return <div className="space-y-4">
-    {points.length === 0 ? <p className="text-sm text-muted-foreground">No readings for this sensor in this interval.</p>
+    {points.length === 0 ? <div className="flex flex-wrap items-center justify-between gap-3">{channelHeading}<p className="text-sm text-muted-foreground">No readings for this sensor in this interval.</p></div>
       : <SignalTimeline title={channelLabels[window.channel]} unit={unit} points={points} domain={bounds} selection={selection}
-        cursor={cursor} onCursor={setCursor} onSelection={setSelection} syncId={recordingId} includeZero={false} />}
+        cursor={cursor} onCursor={setCursor} onSelection={setSelection} syncId={recordingId} includeZero={false}
+        headingContent={channelHeading} />}
     <details className="text-xs"><summary className="min-h-9 cursor-pointer font-medium text-primary">Interval statistics & timing</summary>
       <div className="mt-3 space-y-4">
         <SignalSelectionControls bounds={bounds} selection={selection} onSelection={setSelection} />
@@ -162,8 +161,6 @@ function OriginalSignalChart({ window, origin, bounds, recordingId }: {
           ["Std. deviation X / Y / Z", stats ? stats.std.map(v => v.toFixed(4)).join(" / ") : "Unavailable"],
           ["Peak magnitude", stats ? `${fixed(stats.peak, 4)} ${unit}` : "Unavailable", <SignalStatisticHelp key="peak" kind="peak" channel={window.channel} count={stats?.count ?? 0} />],
           ["RMS magnitude", stats ? `${fixed(stats.rms, 4)} ${unit}` : "Unavailable", <SignalStatisticHelp key="rms" kind="rms" channel={window.channel} count={stats?.count ?? 0} />],
-          ["Axes", "Original phone XYZ"], ["Time basis", "Independent sensor timestamps"], ["Filtering / interpolation", "None"],
-          ["Line breaks", "Gaps > 250 ms; repeated/backward times"],
           ...(window.channel === "rotation_vector" ? [["Rotation vector", "XYZ shown; all components retained"] as [string, string]] : [])]} />
       </div>
     </details>

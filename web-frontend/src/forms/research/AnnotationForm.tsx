@@ -1,7 +1,5 @@
 "use client";
 
-import { MetadataList } from "@/components/common/data-display/MetadataList";
-
 import { useId, useMemo, useState } from "react";
 import { useFieldArray, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +18,9 @@ import { annotationRevisionSchema, movements, directions, severities, certaintie
 import { NativeSignalWindow } from "@/modules/management/research/components/NativeSignalWindow";
 import { SignalTimeline } from "@/modules/management/research/components/SignalTimeline";
 import { SignalSelectionControls } from "@/modules/management/research/components/SignalSelectionControls";
+import { ManagementTable, ManagementTableCell, TableCard } from "@/components/common/tables/ManagementTable";
+import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { nativeSignalPoints } from "@/modules/management/research/native-analysis";
 import { useReviewSelection, useReviewTimeline } from '@/modules/management/research/components/ReviewTimelineContext';
 import { humanize, seconds } from "@/modules/management/research/recording-analysis";
@@ -29,7 +30,7 @@ import type { ReferenceRange } from "@/modules/management/research/forward-refer
 
 const channels: NativeChannel[] = ["accelerometer"];
 const timingChannels: NativeChannel[] = ["accelerometer", "gyroscope"];
-const label = (value: string) => ({ driving: "Straight driving", swerving: "Swerve (obstacle avoidance)", not_applicable: "Not applicable", operator_report: "Operator report", signal_review: "Signals only", observed: "Direct observation", reviewed: "Reviewed", uncertain: "Uncertain / approximate" }[value] ?? humanize(value));
+const label = (value: string) => ({ driving: "Straight driving", swerving: "Swerving", not_applicable: "Not applicable", operator_report: "Operator report", signal_review: "Signals only", observed: "Direct observation", reviewed: "Reviewed", uncertain: "Uncertain / approximate" }[value] ?? humanize(value));
 const directionalSwerve = (code?: string) => code === "SWL" || code === "HSWL" || code === "SWR" || code === "HSWR";
 const expectedDeviation = (code?: string) => code === "SWL" || code === "HSWL" ? "left" : code === "SWR" || code === "HSWR" ? "right" : null;
 
@@ -49,6 +50,9 @@ export function AnnotationForm({ record, origin, saved, onSaved, onReload, proto
   const [conflict, setConflict] = useState(false);
   const busy = form.formState.isSubmitting;
   const errorAt = editing === null ? null : form.formState.errors.intervals?.[editing];
+  const showTravelDirection = items.some(item => !directionalSwerve(protocolCode) || item.movement !== "swerving");
+  const showInitialDeviation = items.some(item => hasInitialDeviation(item.movement)
+    && (!directionalSwerve(protocolCode) || item.movement !== "swerving" || item.initial_deviation !== expectedDeviation(protocolCode)));
   const submit = async (values: AnnotationValues) => {
     form.clearErrors();
     try {
@@ -96,30 +100,49 @@ export function AnnotationForm({ record, origin, saved, onSaved, onReload, proto
             setEditing(position); setPage(Math.floor(position / TABLE_PAGE_SIZE) + 1);
           }} />}
       </NativeSignalWindow>
-      <p className="text-xs text-muted-foreground">Unmarked time stays unlabeled. Saving labels does not approve training data.</p>
       {items.length > 1 && <Button type="button" size="sm" variant="ghost" onClick={() => { array.replace([...items].sort((a, b) => a.start_ms - b.start_ms)); setEditing(null); setPage(1); }}>Sort by time</Button>}
       {items.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No labeled intervals yet.</p>}
-      <div className="space-y-2">{array.fields.slice((page - 1) * TABLE_PAGE_SIZE, page * TABLE_PAGE_SIZE).map((field, offset) => {
+      {items.length > 0 && <TableCard aria-label="Draft interval labels">
+        <ManagementTable>
+          <TableHeader><TableRow>
+            <TableHead>Movement</TableHead><TableHead>Start</TableHead><TableHead>End</TableHead><TableHead>Duration</TableHead>
+            {showTravelDirection && <TableHead>Travel direction</TableHead>}
+            {showInitialDeviation && <TableHead>Initial deviation</TableHead>}
+            <TableHead>Severity</TableHead><TableHead>Certainty</TableHead><TableHead className="w-36 text-right"><span className="sr-only">Actions</span></TableHead>
+          </TableRow></TableHeader>
+          <TableBody>{array.fields.slice((page - 1) * TABLE_PAGE_SIZE, page * TABLE_PAGE_SIZE).map((field, offset) => {
         const index = (page - 1) * TABLE_PAGE_SIZE + offset; const item = items[index];
-        return <div key={field.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3 text-xs">
-          <div className="min-w-0 flex-1 space-y-2"><div className="flex flex-wrap justify-between gap-x-4 gap-y-1"><p className="font-medium">{label(item.movement)}</p><p className="text-muted-foreground">{seconds(item.start_ms)}–{seconds(item.end_ms)}</p></div>
-            <MetadataList className="sm:grid-cols-3" items={[
-              ...(!directionalSwerve(protocolCode) || item.movement !== "swerving" ? [{ label: 'Travel direction', value: label(item.direction) }] : []),
-              { label: 'Severity', value: label(item.severity) }, { label: 'Certainty', value: label(item.certainty) },
-              ...(hasInitialDeviation(item.movement) && (!directionalSwerve(protocolCode) || item.movement !== "swerving" || item.initial_deviation !== expectedDeviation(protocolCode)) ? [{ label: 'Initial deviation', value: item.initial_deviation ? label(item.initial_deviation) : 'Not recorded' }] : []),
-            ]} /></div>
-          <div className="flex gap-1"><Button type="button" size="sm" variant={editing === index ? "secondary" : "outline"} onClick={() => setEditing(index)}>Edit</Button>
-            <Button type="button" size="sm" variant="ghost" aria-label={`Remove interval ${index + 1} from draft`} onClick={() => { array.remove(index); setEditing(null); setPage(1); }}>Remove</Button></div>
-        </div>;
-      })}</div>
+        const travelDirectionShown = !directionalSwerve(protocolCode) || item.movement !== "swerving";
+        const initialDeviationShown = hasInitialDeviation(item.movement)
+          && (!directionalSwerve(protocolCode) || item.movement !== "swerving" || item.initial_deviation !== expectedDeviation(protocolCode));
+        return <TableRow key={field.id}>
+          <ManagementTableCell data-label="Movement" className="font-medium">{label(item.movement)}</ManagementTableCell>
+          <ManagementTableCell data-label="Start" className="tabular-nums">{seconds(item.start_ms)}</ManagementTableCell>
+          <ManagementTableCell data-label="End" className="tabular-nums">{seconds(item.end_ms)}</ManagementTableCell>
+          <ManagementTableCell data-label="Duration" className="tabular-nums">{seconds(item.end_ms - item.start_ms)}</ManagementTableCell>
+          {showTravelDirection && <ManagementTableCell data-label="Travel direction">{travelDirectionShown ? label(item.direction) : "—"}</ManagementTableCell>}
+          {showInitialDeviation && <ManagementTableCell data-label="Initial deviation">{initialDeviationShown ? label(item.initial_deviation ?? "unknown") : "—"}</ManagementTableCell>}
+          <ManagementTableCell data-label="Severity">{label(item.severity)}</ManagementTableCell>
+          <ManagementTableCell data-label="Certainty">{label(item.certainty)}</ManagementTableCell>
+          <ManagementTableCell data-label="Actions" className="sm:text-right"><div className="flex gap-1 sm:justify-end">
+            <Button type="button" size="sm" variant="outline" aria-label={`Edit interval ${index + 1}`} onClick={() => setEditing(index)}>Edit</Button>
+            <Button type="button" size="sm" variant="ghost" aria-label={`Remove interval ${index + 1} from draft`} onClick={() => { array.remove(index); setEditing(null); setPage(1); }}>Remove</Button>
+          </div></ManagementTableCell>
+        </TableRow>;
+      })}</TableBody>
+        </ManagementTable>
+      </TableCard>}
       {items.length > TABLE_PAGE_SIZE && <TablePagination page={page} total={items.length} lastPage={Math.ceil(items.length / TABLE_PAGE_SIZE)} onPageChange={setPage} />}
-      {editing !== null && items[editing] && <div className="space-y-4 rounded-xl border border-border p-4">
-        <h3 className="text-sm font-semibold">Interval {editing + 1}</h3>
+      <Dialog open={editing !== null && Boolean(items[editing])} onOpenChange={open => { if (!open) setEditing(null); }}>
+        {editing !== null && items[editing] && <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader><DialogTitle>Edit interval {editing + 1}</DialogTitle>
+          <DialogDescription>{seconds(items[editing].start_ms)}–{seconds(items[editing].end_ms)} s · {seconds(items[editing].end_ms - items[editing].start_ms)} s</DialogDescription>
+        </DialogHeader>
         <div className="grid gap-4 sm:grid-cols-2">
-          {(["start_ms", "end_ms"] as const).map(key => <InputWithLabel key={key} id={`${id}-${key}`} type="number" label={key === "start_ms" ? "Start (s)" : "End (s)"}
-            min={0} max={record.duration_ms / 1000} step="any" value={Number.isFinite(items[editing][key]) ? items[editing][key] / 1000 : ""} error={errorAt?.[key]?.message}
+          {(["start_ms", "end_ms"] as const).map(key => <InputWithLabel key={key} id={`${id}-${key}`} type="text" inputFormat="decimal" label={key === "start_ms" ? "Start (s)" : "End (s)"}
+            min={0} max={record.duration_ms / 1000} step="any" disabled={busy} value={Number.isFinite(items[editing][key]) ? items[editing][key] / 1000 : ""} error={errorAt?.[key]?.message}
             onChange={event => form.setValue(`intervals.${editing}.${key}`, event.target.value === "" ? NaN : Number(event.target.value) * 1000, { shouldValidate: true, shouldDirty: true })} />)}
-          <SelectWithLabel id={`${id}-movement`} label="Movement" value={items[editing].movement} error={errorAt?.movement?.message}
+          <SelectWithLabel id={`${id}-movement`} label="Movement" value={items[editing].movement} disabled={busy} error={errorAt?.movement?.message}
             options={movements.filter(value => !legacyLaneChange || value !== "swerving").map(value => ({ value, label: label(value) }))} onValueChange={value => {
               const movement = movements.find(v => v === value); if (!movement) return;
               const interval = form.getValues(`intervals.${editing}`);
@@ -131,23 +154,25 @@ export function AnnotationForm({ record, origin, saved, onSaved, onReload, proto
                 initial_deviation: hasInitialDeviation(movement) ? interval.initial_deviation ?? (movement === "swerving" ? expectedDeviation(protocolCode) : null) ?? "unknown" : undefined,
               }, { shouldValidate: true, shouldDirty: true });
             }} />
-          {hasInitialDeviation(items[editing].movement) && (!directionalSwerve(protocolCode) || items[editing].movement !== "swerving" || items[editing].initial_deviation !== expectedDeviation(protocolCode)) && <SelectWithLabel id={`${id}-initial-deviation`} label="Initial deviation"
+          {hasInitialDeviation(items[editing].movement) && (!directionalSwerve(protocolCode) || items[editing].movement !== "swerving" || items[editing].initial_deviation !== expectedDeviation(protocolCode)) && <SelectWithLabel id={`${id}-initial-deviation`} label="Initial deviation" disabled={busy}
             value={items[editing].initial_deviation ?? ""} error={errorAt?.initial_deviation?.message}
             options={initialDeviations.map(value => ({ value, label: label(value) }))} onValueChange={value => {
               const deviation = initialDeviations.find(option => option === value);
               if (deviation) form.setValue(`intervals.${editing}.initial_deviation`, deviation, { shouldValidate: true, shouldDirty: true });
             }} />}
-          {(!directionalSwerve(protocolCode) || items[editing].movement !== "swerving" || items[editing].direction !== "forward") && <SelectWithLabel id={`${id}-direction`} label="Travel direction" value={items[editing].direction} error={errorAt?.direction?.message}
+          {(!directionalSwerve(protocolCode) || items[editing].movement !== "swerving" || items[editing].direction !== "forward") && <SelectWithLabel id={`${id}-direction`} label="Travel direction" value={items[editing].direction} disabled={busy} error={errorAt?.direction?.message}
             options={directions.map(value => ({ value, label: label(value) }))} onValueChange={value => { const v = directions.find(v => v === value); if (v) form.setValue(`intervals.${editing}.direction`, v, { shouldValidate: true, shouldDirty: true }); }} />}
-          <SelectWithLabel id={`${id}-severity`} label="Assessment" value={items[editing].severity} error={errorAt?.severity?.message}
+          <SelectWithLabel id={`${id}-severity`} label="Assessment" value={items[editing].severity} disabled={busy} error={errorAt?.severity?.message}
             options={severities.map(value => ({ value, label: label(value) }))} onValueChange={value => { const v = severities.find(v => v === value); if (v) form.setValue(`intervals.${editing}.severity`, v, { shouldValidate: true, shouldDirty: true }); }} />
-          <SelectWithLabel id={`${id}-source`} label="Label source" value={items[editing].source} error={errorAt?.source?.message}
+          <SelectWithLabel id={`${id}-source`} label="Label source" value={items[editing].source} disabled={busy} error={errorAt?.source?.message}
             options={annotationSources.map(value => ({ value, label: label(value) }))} onValueChange={value => { const v = annotationSources.find(v => v === value); if (v) form.setValue(`intervals.${editing}.source`, v, { shouldValidate: true, shouldDirty: true }); }} />
-          <SelectWithLabel id={`${id}-certainty`} label="Certainty" value={items[editing].certainty} error={errorAt?.certainty?.message}
+          <SelectWithLabel id={`${id}-certainty`} label="Certainty" value={items[editing].certainty} disabled={busy} error={errorAt?.certainty?.message}
             options={certainties.map(value => ({ value, label: label(value) }))} onValueChange={value => { const v = certainties.find(v => v === value); if (v) form.setValue(`intervals.${editing}.certainty`, v, { shouldValidate: true, shouldDirty: true }); }} />
         </div>
-        <TextAreaWithLabel id={`${id}-notes`} label="Notes" rows={2} maxLength={1000} {...form.register(`intervals.${editing}.notes`)} error={errorAt?.notes?.message} />
-      </div>}
+        <TextAreaWithLabel id={`${id}-notes`} label="Notes" rows={2} maxLength={1000} disabled={busy} {...form.register(`intervals.${editing}.notes`)} error={errorAt?.notes?.message} />
+        <div className="flex justify-end"><Button type="button" variant="outline" disabled={busy} onClick={() => setEditing(null)}>Done</Button></div>
+      </DialogContent>}
+      </Dialog>
       <FormFieldError message={form.formState.errors.intervals?.root?.message ?? form.formState.errors.intervals?.message} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy || conflict || !form.formState.isDirty}>{busy ? "Saving labels..." : "Save labels"}</Button>
@@ -198,6 +223,6 @@ function LabelSelection({ window, origin, bounds, recordingId, onAdd, disabled, 
     <SignalTimeline title="Original acceleration" points={points} unit="m/s²" domain={bounds} selection={selection} cursor={cursor} onCursor={setCursor}
       onSelection={setSelection} syncId={`${recordingId}-labels`} initialAxes={["x", "y"]} includeZero={false} />
     <SignalSelectionControls bounds={bounds} selection={selection} onSelection={setSelection} />
-    <Button type="button" variant="outline" disabled={disabled || selection[1] <= selection[0]} onClick={() => onAdd([...selection], suggestedSelection ? `Timing proposed by ${timingVersion}; boundaries require review.` : undefined)}>Label selected interval</Button>
+    <div className="flex justify-end"><Button type="button" variant="outline" disabled={disabled || selection[1] <= selection[0]} onClick={() => onAdd([...selection], suggestedSelection ? `Timing proposed by ${timingVersion}; boundaries require review.` : undefined)}>Label selected interval</Button></div>
   </div>;
 }

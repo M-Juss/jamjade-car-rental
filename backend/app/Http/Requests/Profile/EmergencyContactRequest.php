@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Profile;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\ValidationPatterns;
 
 class EmergencyContactRequest extends BaseFormRequest
 {
@@ -14,7 +15,7 @@ class EmergencyContactRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:100', 'regex:/^[\pL ]+$/u'],
+            'name' => ['required', 'string', 'max:100', 'regex:'.ValidationPatterns::PERSON_NAME],
             'relationship' => ['required', 'string', 'max:80'],
             'phone_number' => ['required', 'string', 'size:11', 'regex:/^09\d{9}$/'],
         ];
@@ -38,7 +39,7 @@ class EmergencyContactRequest extends BaseFormRequest
     public function messages(): array
     {
         return [
-            'name.regex' => 'The emergency contact name may only contain letters and spaces.',
+            'name.regex' => 'The emergency contact name may contain letters, spaces, apostrophes, or hyphens, but no numbers.',
             'phone_number.size' => 'The emergency contact number must contain 11 digits.',
             'phone_number.regex' => 'The emergency contact number must start with 09 and contain 11 digits.',
         ];

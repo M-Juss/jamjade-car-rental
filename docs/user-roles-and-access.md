@@ -9,11 +9,12 @@ Accounts remain in `users`, with role membership in the existing Spatie tables. 
 ## Access responsibilities
 
 Admin RC Research: an existing active Admin uses normal mobile sign-in when
-Laravel's local/testing `rc_demo` profile is enabled. The implemented destination
+Laravel's `rc_demo` profile is enabled in local/testing or an explicitly opted-in hosted demo. The implemented destination
 has Data / Collect / Logout and explicit local native v2 recording. Its
 eight-hour research-only bearer token cannot access ordinary mobile features;
-web session authentication remains separate. Access outside local/testing RC mode
-is not implemented. The Admin website now has separate read-only, owner-scoped
+web session authentication remains separate. Hosted access additionally requires
+`TELEMATICS_HOSTED_RC_DEMO=true`; see the [hosted RC boundary](telematics-master-plan.md#hosted-rc-demo-deployment--2026-11-12).
+The Admin website now has separate read-only, owner-scoped
 recording list/sample endpoints under `/admin/rc-research/trials`, using its normal
 web session and the same active RC-mode restriction. These do not authorize web
 cookies on mobile research routes or mobile tokens on web routes. See
@@ -322,3 +323,16 @@ Protected management writes require a code sent to the single active account wit
 Laravel binds a hashed, single-use code to the requester, action, validated payload and locked state. Codes expire after 15 minutes; resends wait 60 seconds and preserve the five-attempt limit. The write and consumption share a transaction. The system fails closed if there is no single active Owner or email delivery is unavailable. The migration `2026_11_11_220000_create_owner_verifications_table.php` adds challenge storage. Mail delivery must use a configured delivery transport; the log transport is rejected for these codes. The web uses the existing HTTP service, a shared verification dialog and the combined `PUT /admin/fee-pricing` endpoint.
 
 The feature tests use faked email and cover code issuance, protected actions, wrong/expired/replayed codes, changed state and transactional rollback. Live email delivery and browser checks are separate.
+
+
+## Hosted initial owner seed — 2026-11-12
+
+On nonlocal environments, `DatabaseSeeder` requires `INITIAL_OWNER_PASSWORD`
+(at least 12 characters), configured through `config/auth.php`. It validates
+this before creating accounts and preserves an existing owner's password on a
+later hosted seed. Local/testing seed credentials and the existing owner/role
+mapping remain unchanged. Use the full seeder only on initial setup: its legacy
+account reconciliation still exists. Existing-database transfers preserve their
+accounts rather than rerunning the seed. See [deployment setup](deployment-berrypanel.md).
+Regression coverage is in `tests/Feature/DatabaseSeederTest.php`; the scoped
+seed/access suite passed before the final whole-suite check.

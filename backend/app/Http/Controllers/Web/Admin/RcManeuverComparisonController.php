@@ -42,6 +42,6 @@ class RcManeuverComparisonController extends Controller
     private function ensureAvailable(): void
     {
         abort_unless($this->access->enabled(), 403, 'Model Explorer is unavailable.');
-        abort_unless(app()->isLocal(), 503, 'Model Explorer requires the private local research data.');
+        abort_unless(app()->isLocal() || config('telematics.hosted_rc_demo'), 503, 'Model Explorer is unavailable.');
     }
 }

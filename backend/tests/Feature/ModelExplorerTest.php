@@ -67,6 +67,14 @@ it('blocks the read endpoint outside local environments', function () {
     $this->actingAs($this->admin, 'web')->getJson('/admin/rc-research/model-explorer')->assertStatus(503);
 });
 
+it('opens the frozen example endpoint for an explicitly enabled hosted demo', function () {
+    $this->app->detectEnvironment(fn () => 'production');
+    config(['telematics.hosted_rc_demo' => true]);
+    $this->mock(ModelExplorerService::class)->shouldReceive('index')->once()->withArgs(fn (User $user) => $user->is($this->admin))->andReturn([]);
+    $this->actingAs($this->admin, 'web')->getJson('/admin/rc-research/model-explorer')->assertOk()
+        ->assertHeader('Cache-Control', 'no-store, private');
+});
+
 it('does not expose an example id for a recording owned by another account', function () {
     $owned = modelExplorerRecording($this->admin);
     $otherUser = User::factory()->create();

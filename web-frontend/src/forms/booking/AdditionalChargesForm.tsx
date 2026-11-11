@@ -76,7 +76,7 @@ export function AdditionalChargesForm({ onCancel, booking, onSaved, onBusyChange
           <div className="grid gap-3 sm:grid-cols-2">
           <SelectWithLabel id={`charge-type-${index}`} label="Type" required disabled={isSubmitting} options={typeOptions} value={charges[index]?.type}
             error={errors.charges?.[index]?.type?.message} onValueChange={(value) => setValue(`charges.${index}.type`, value as AdditionalChargesFormValues["charges"][number]["type"], { shouldDirty: true })} />
-          <InputWithLabel id={`charge-amount-${index}`} label="Amount (PHP)" required type="number" min="0.01" max="9999999.99" step="0.01"
+          <InputWithLabel id={`charge-amount-${index}`} label="Amount (PHP)" required inputFormat="decimal"
             error={errors.charges?.[index]?.amount?.message} {...register(`charges.${index}.amount`)} />
           </div>
           <TextAreaWithLabel id={`charge-description-${index}`} label="Description" required rows={2} maxLength={1000}

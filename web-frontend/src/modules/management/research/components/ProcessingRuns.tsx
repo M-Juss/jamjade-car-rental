@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
 import { useReviewSelection, useReviewTimeline } from './ReviewTimelineContext';
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { TablePagination } from "@/components/common/tables/TablePagination";
@@ -64,14 +63,10 @@ export function ProcessingRuns({ recordingId, initialResult, viewControl }: { re
     return () => controller.abort();
   }, [recordingId, selectedId, retry]);
   const denied = (error: unknown) => error instanceof ApiError && error.status === 403;
-  const savedControl = listing && listing.runs.length > 0 && !listError ? <div className="flex min-w-0 items-center gap-2 sm:ml-auto">
-    {listing.total > 1 ? <FilterSelect height="compact" ariaLabel="Saved processing run" className="w-full sm:w-64" placeholder="Saved result" value={selectedId ?? detail?.run.id ?? ""}
+  const savedControl = listing && listing.total > 1 && !listError ? <div className="flex min-w-0 items-center sm:ml-auto">
+    <FilterSelect height="compact" ariaLabel="Saved processing run" className="w-full sm:w-64" placeholder="Saved result" value={selectedId ?? detail?.run.id ?? ""}
       disabled={listLoading} onValueChange={id => { setDetailLoading(true); setDetailError(null); setDetail(null); setSelectedId(id); setRetry(v => v + 1); }}
       options={listing.runs.map(run => ({ value: run.id, label: `${run.cutoff_hz} Hz`, description: formatReturnDateTime(run.created_at) }))} />
-      : <div className="text-xs"><p className="font-medium">{listing.runs[0].cutoff_hz} Hz</p><p className="mt-0.5 text-muted-foreground">{formatReturnDateTime(listing.runs[0].created_at)}</p></div>}
-    <Button size="icon" variant="ghost" className="rounded-xl" disabled={listLoading} aria-label="Refresh saved results" onClick={() => { setListLoading(true); setRevision(v => v + 1); }}>
-      <RefreshCw className={`size-4 ${listLoading ? "animate-spin" : ""}`} aria-hidden="true" />
-    </Button>
   </div> : null;
   const showResult = !detailLoading && !detailError && detail;
   return <section className="space-y-4" aria-label="Processed readings">
@@ -105,6 +100,7 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
   const signals = result.signals[channel];
   const comparison = filterComparison(signals, selection);
   const unit = channel === "acceleration" ? "m/s²" : "rad/s";
+  const title = channel === "acceleration" ? "Vehicle acceleration" : "Vehicle rotation";
   const phaseRanges = result.config.ranges;
   const origin = result.reference_origin;
   const interval = (["rest", "starting", "stopping"] as const).find(phase => phaseRanges?.[phase].every((v, i) => v === selection[i]))
@@ -132,10 +128,11 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
       <Button className="rounded-xl" variant={compare ? "default" : "outline"} aria-label="Compare before and after filtering" aria-pressed={compare} onClick={() => setCompare(v => !v)}>Compare</Button>
       {savedControl}
     </div>
-    <SignalTimeline key={channel} title={channel === "acceleration" ? "Vehicle acceleration" : "Vehicle rotation"} unit={unit}
+    <SignalTimeline key={channel} title={title} unit={unit}
       points={compare ? signals.before : signals.after} comparison={compare ? { points: signals.after, label: "After" } : undefined}
       domain={bounds} selection={selection} cursor={cursor} onCursor={setCursor} onSelection={setSelection} syncId={run.id}
-      axisLabels={labels} frameLabel="Vehicle" initialAxes={channel === "acceleration" ? ["x"] : ["z"]} />
+      axisLabels={labels} frameLabel="Vehicle" initialAxes={channel === "acceleration" ? ["x"] : ["z"]}
+      headingContent={<span className="sr-only">{title} ({unit})</span>} />
     <div className="space-y-3 rounded-xl border border-border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">{rangeText(selection)}</h3>
@@ -172,7 +169,6 @@ function ProcessingRunResult({ detail: { run, result }, viewControl, savedContro
           {compare ? <p className="text-muted-foreground">Before / after filtering</p> : null}
           <DetailsList items={comparison.axes.map(axis => [channel === "acceleration" ? accelerationAxes[axis.axis].label : labels[axis.axis], metric(axis, "std")])} />
         </div>
-        <p className="leading-relaxed text-muted-foreground">Fixed reference; phone tilt can affect acceleration.</p>
         <details><summary className="min-h-9 cursor-pointer font-medium text-primary">Advanced diagnostics</summary>
           <div className="mt-3 space-y-4">
             <div className="space-y-3">

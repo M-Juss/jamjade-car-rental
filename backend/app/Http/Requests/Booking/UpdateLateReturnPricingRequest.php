@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Booking;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\ValidationPatterns;
 
 class UpdateLateReturnPricingRequest extends BaseFormRequest
 {
@@ -14,8 +15,8 @@ class UpdateLateReturnPricingRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'small_vehicle_hourly_rate' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,1000000'],
-            'large_vehicle_hourly_rate' => ['required', 'numeric', 'decimal:0,2', 'between:0.01,1000000'],
+            'small_vehicle_hourly_rate' => ['required', 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'decimal:0,2', 'between:0.01,1000000'],
+            'large_vehicle_hourly_rate' => ['required', 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'decimal:0,2', 'between:0.01,1000000'],
         ];
     }
 }

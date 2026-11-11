@@ -34,7 +34,7 @@ export function CancellationRefundForm({ booking, onCancel, onSaved, onBusyChang
   return <form noValidate className="flex min-h-0 flex-auto flex-col overflow-hidden" onSubmit={form.handleSubmit(submit)}>
     <div className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="space-y-4 p-4 sm:p-6">
       <p className="text-xs text-muted-foreground">Enter the approved refund, or 0 to decline. Saving this decision does not return money.</p>
-      <InputWithLabel id="cancellation-refund-amount" label="Approved refund (PHP)" inputMode="decimal" required disabled={busy} error={form.formState.errors.amount?.message} {...form.register("amount")} />
+      <InputWithLabel id="cancellation-refund-amount" label="Approved refund (PHP)" inputFormat="decimal" required disabled={busy} error={form.formState.errors.amount?.message} {...form.register("amount")} />
       <TextAreaWithLabel id="cancellation-refund-reason" label="Decision reason" rows={4} maxLength={1000} required disabled={busy} error={form.formState.errors.reason?.message} {...form.register("reason")} />
       {form.formState.errors.root?.message ? <p role="alert" className="text-xs text-destructive">{form.formState.errors.root.message}</p> : null}
     </div></div>

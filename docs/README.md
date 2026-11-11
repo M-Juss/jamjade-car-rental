@@ -12,6 +12,7 @@ experimental settings, and dated verification; none is evidence of another.
 | Programmer's architecture, current technologies, source map, and planned additions | [System architecture and technologies](system-architecture-and-technologies.md) |
 | Telematics, RC research, collection/inspection UI, calibration, fleet monitoring, AI and scoring | [Telematics and RC Research: central implementation guide](telematics-master-plan.md) |
 | Android-only configuration, builds, and dated platform checks | [Android-only mobile scope](android-only-mobile.md) |
+| BerryPanel deployment, main branch, Hostinger DNS and hosted-demo setup | [BerryPanel deployment](deployment-berrypanel.md) |
 | Roles and authorization | [User roles and access](user-roles-and-access.md) |
 | Booking, inspection, handover, return, payment and completion | [Booking rental lifecycle](booking-rental-lifecycle.md) |
 

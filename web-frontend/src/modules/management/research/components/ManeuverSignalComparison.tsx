@@ -41,14 +41,31 @@ export function ManeuverSignalComparison({ maneuver, events, recordings }: {
 }) {
   const [normalId, setNormalId] = useState("");
   const [harshId, setHarshId] = useState("");
+  const [sessionId, setSessionId] = useState("all");
   const [channel, setChannel] = useState<Channel>(maneuver === "cornering" || maneuver === "swerving" ? "rotation" : "longitudinal");
   const measured = events.filter(event => event.measurements !== null).toSorted((a, b) =>
     (recordings.get(a.recording_id)?.name ?? "").localeCompare(recordings.get(b.recording_id)?.name ?? "", undefined, { numeric: true }) || a.start_ms - b.start_ms);
-  const options = (severity: ReviewedManeuver["severity"]) => measured.filter(event => event.severity === severity).map(event => ({
+  const sessions = new Map<string, ComparisonRecording>();
+  for (const event of measured) {
+    const recording = recordings.get(event.recording_id);
+    if (recording && !sessions.has(recording.session_id ?? "unassigned")) sessions.set(recording.session_id ?? "unassigned", recording);
+  }
+  const sessionOptions = [{ value: "all", label: "All sessions" }, ...[...sessions.entries()]
+    .filter(([value]) => value !== "unassigned")
+    .sort(([, first], [, second]) => (first.session_number ?? 0) - (second.session_number ?? 0))
+    .map(([value, recording]) => ({
+      value,
+      label: `S${String(recording.session_number).padStart(2, "0")} (${recording.surface.replaceAll("_", " ").replace(/^./, letter => letter.toUpperCase())})`,
+    }))];
+  if (sessions.has("unassigned")) sessionOptions.push({ value: "unassigned", label: "No session" });
+  const activeSession = sessionOptions.some(option => option.value === sessionId) ? sessionId : "all";
+  const sessionEvents = measured.filter(event => activeSession === "all"
+    || (recordings.get(event.recording_id)?.session_id ?? "unassigned") === activeSession);
+  const options = (severity: ReviewedManeuver["severity"]) => sessionEvents.filter(event => event.severity === severity).map(event => ({
     value: eventId(event), label: `${recordings.get(event.recording_id)?.name ?? "Recording"} · ${event.start_ms / 1000}–${event.end_ms / 1000} s`,
   }));
-  const normal = usePreparedSignal(measured.find(event => eventId(event) === normalId));
-  const harsh = usePreparedSignal(measured.find(event => eventId(event) === harshId));
+  const normal = usePreparedSignal(sessionEvents.find(event => eventId(event) === normalId));
+  const harsh = usePreparedSignal(sessionEvents.find(event => eventId(event) === harshId));
   const normalOptions = options("normal");
   const harshOptions = options("harsh");
   const series = new Map<number, { time: number; normal?: number; harsh?: number }>();
@@ -65,7 +82,15 @@ export function ManeuverSignalComparison({ maneuver, events, recordings }: {
   return <Card>
     <CardHeader><CardTitle><h2>Compare recordings</h2></CardTitle></CardHeader>
     <CardContent className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="min-w-0 space-y-1.5">
+          <span className="font-medium">Session</span>
+          <FilterSelect ariaLabel="Session" value={activeSession} onValueChange={value => {
+            setSessionId(value);
+            setNormalId("");
+            setHarshId("");
+          }} options={sessionOptions} />
+        </div>
         <div className="min-w-0 space-y-1.5">
           <span className="font-medium">Normal recording</span>
           <FilterSelect ariaLabel="Normal recording" value={normalId} onValueChange={setNormalId} options={normalOptions}
@@ -96,7 +121,7 @@ export function ManeuverSignalComparison({ maneuver, events, recordings }: {
             {harsh.samples.length > 0 && <Line dataKey="harsh" stroke="var(--color-harsh)" strokeWidth={2} strokeDasharray="5 3" dot={harsh.samples.length === 1} connectNulls isAnimationActive={false} />}
           </LineChart>
         </ChartContainer>
-        <p className="text-xs text-muted-foreground">Time from the start of each reviewed interval.</p>
+
       </> : !normalId && !harshId && (normalOptions.length > 0 || harshOptions.length > 0) &&
         <p className="text-muted-foreground">Choose a recording to see its prepared signal.</p>}
     </CardContent>

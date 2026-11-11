@@ -5,6 +5,7 @@ namespace App\Http\Requests\Vehicle;
 use App\Http\Requests\BaseFormRequest;
 use App\Services\VehicleConfigurationService;
 use App\Support\VehicleConditionRules;
+use App\Support\ValidationPatterns;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
@@ -54,15 +55,15 @@ class VehicleRequest extends BaseFormRequest
         }
 
         $rules = [
-            'name' => [$formFieldRequirement, 'string', 'max:160'],
-            'brand' => [$formFieldRequirement, 'string', 'max:80'],
-            'model' => [$formFieldRequirement, 'string', 'max:120'],
-            'plate_number' => [$formFieldRequirement, 'string', 'max:32', $plateNumberUnique],
-            'price_per_day' => [$formFieldRequirement, 'numeric', 'min:1'],
+            'name' => [$formFieldRequirement, 'string', 'max:160', 'regex:'.ValidationPatterns::VEHICLE_TEXT],
+            'brand' => [$formFieldRequirement, 'string', 'max:80', 'regex:'.ValidationPatterns::VEHICLE_TEXT],
+            'model' => [$formFieldRequirement, 'string', 'max:120', 'regex:'.ValidationPatterns::VEHICLE_TEXT],
+            'plate_number' => [$formFieldRequirement, 'string', 'max:32', 'regex:'.ValidationPatterns::PLATE_NUMBER, $plateNumberUnique],
+            'price_per_day' => [$formFieldRequirement, 'numeric', 'regex:'.ValidationPatterns::DECIMAL_2, 'between:1,9999999999.99'],
             'seats' => [$formFieldRequirement, 'integer', 'min:1', 'max:20'],
             'transmission' => [$formFieldRequirement, 'string', 'max:40'],
             'fuel_type' => [$formFieldRequirement, 'string', 'max:40'],
-            'color' => [$formFieldRequirement, 'string', 'max:80'],
+            'color' => [$formFieldRequirement, 'string', 'max:80', 'regex:'.ValidationPatterns::VEHICLE_COLOR],
             'status' => [$formFieldRequirement, 'in:available,rented,maintenance,unavailable'],
             'description' => [$formFieldRequirement, 'string', 'max:3000'],
             'is_featured' => ['nullable', 'boolean'],

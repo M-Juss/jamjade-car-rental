@@ -29,9 +29,13 @@ export function TelematicsActivity({ activity, showError }: { activity: ReturnTy
       <Text className="font-sans text-body text-secondary-foreground">No activity yet</Text>
     </View> : null}
     {activity.items.map((item) => item.kind === 'maneuver' ? (
-      <View key={`maneuver:${item.id}`} className="gap-1 rounded-field border border-border bg-surface p-3">
-        <Text className="font-sans text-body font-semibold text-foreground">{maneuverTitles[item.target]}</Text>
-        <Text className="font-sans text-caption text-secondary-foreground">{item.status === 'confirmed' ? 'Detected' : 'Uncertain'}</Text>
+      <View key={`maneuver:${item.id}`} className="gap-2 rounded-field border border-border bg-surface p-3">
+        <View className="flex-row items-start justify-between gap-3">
+          <Text className="min-w-0 flex-1 font-sans text-body font-semibold text-foreground">{maneuverTitles[item.target]}</Text>
+          <View className={`shrink-0 rounded-full px-2.5 py-1 ${item.status === 'confirmed' ? 'bg-success-surface' : 'bg-warning-surface'}`}>
+            <Text className={`font-sans text-[11px] font-semibold ${item.status === 'confirmed' ? 'text-success' : 'text-warning'}`}>{item.status === 'confirmed' ? 'Detected' : 'Uncertain'}</Text>
+          </View>
+        </View>
         <Text className="font-sans text-[11px] text-secondary-foreground">{formatRentalDate(item.occurredAt, true)}</Text>
       </View>
     ) : <Pressable key={`notification:${item.id}`} accessibilityRole="button" accessibilityLabel={item.isRead ? `${item.title}, read` : `Mark ${item.title} as read`} accessibilityHint={item.isRead ? undefined : 'Marks this activity as read.'} disabled={activity.openingId !== null} onPress={() => void activity.markRead(item)} className={`flex-row items-start gap-3 rounded-field border border-border p-3 ${item.isRead ? 'bg-surface' : 'bg-muted'}`}>

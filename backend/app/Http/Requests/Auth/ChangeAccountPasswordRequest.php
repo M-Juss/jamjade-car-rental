@@ -3,8 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\BaseFormRequest;
-use Closure;
-use Illuminate\Validation\Rules\Password;
+use App\Support\AccountPasswordRules;
 
 class ChangeAccountPasswordRequest extends BaseFormRequest
 {
@@ -17,15 +16,7 @@ class ChangeAccountPasswordRequest extends BaseFormRequest
     {
         return [
             'current_password' => ['required', 'string'],
-            'password' => [
-                'required', 'string', 'confirmed', 'different:current_password', Password::min(8), 'max:72',
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    // Bcrypt must not silently truncate a longer UTF-8 password.
-                    if (is_string($value) && strlen($value) > 72) {
-                        $fail('The new password must be 72 UTF-8 bytes or fewer.');
-                    }
-                },
-            ],
+            'password' => [...AccountPasswordRules::required(), 'confirmed', 'different:current_password'],
             'password_confirmation' => ['required', 'string'],
         ];
     }

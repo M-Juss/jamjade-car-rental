@@ -90,9 +90,7 @@ export function VehicleConditionForm({
             id="condition-odometer"
             label="Odometer"
             required
-            type="number"
-            min="0"
-            inputMode="numeric"
+            inputFormat="integer"
             disabled={disabled}
             value={value.odometer}
             error={errors?.odometer?.message}

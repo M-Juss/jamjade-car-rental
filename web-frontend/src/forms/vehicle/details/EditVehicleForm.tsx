@@ -232,6 +232,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <InputWithLabel
                   id="edit-vehicle-name"
                   label="Vehicle Name"
+                  inputFormat="vehicleText"
                   error={errors.name?.message}
                   {...register("name")}
                   wrapperClassName="sm:col-span-2"
@@ -260,6 +261,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <InputWithLabel
                   id="edit-vehicle-model"
                   label="Model"
+                  inputFormat="vehicleText"
                   error={errors.model?.message}
                   {...register("model")}
                   labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
@@ -268,6 +270,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <InputWithLabel
                   id="edit-vehicle-plate-number"
                   label="Plate Number"
+                  inputFormat="plateNumber"
                   error={errors.plate_number?.message}
                   placeholder="e.g. ABC 1234"
                   {...register("plate_number")}
@@ -277,8 +280,8 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <InputWithLabel
                   id="edit-vehicle-price"
                   label="Price / Day (₱)"
+                  inputFormat="decimal"
                   icon={<PhilippinePeso size={13} />}
-                  type="number"
                   error={errors.price_per_day?.message}
                   {...register("price_per_day")}
                   labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
@@ -311,8 +314,8 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <InputWithLabel
                   id="edit-vehicle-seats"
                   label="Seats"
+                  inputFormat="integer"
                   icon={<Users size={13} />}
-                  type="number"
                   error={errors.seats?.message}
                   {...register("seats")}
                   labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
@@ -321,6 +324,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <InputWithLabel
                   id="edit-vehicle-color"
                   label="Color"
+                  inputFormat="color"
                   error={errors.color?.message}
                   {...register("color")}
                   labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"

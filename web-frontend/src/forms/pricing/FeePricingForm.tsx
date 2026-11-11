@@ -96,7 +96,7 @@ export function FeePricingForm() {
 
   const fields = (items: readonly (readonly [PricingField, string])[]) => items.map(([name, label]) => (
     <Controller key={name} name={name} control={form.control} render={({ field, fieldState }) => (
-      <InputWithLabel {...field} id={name} label={label} required={editing} type="text" inputMode="decimal" autoComplete="off"
+      <InputWithLabel {...field} id={name} label={label} required={editing} inputFormat={name === "included_km" ? "decimal3" : "decimal"} autoComplete="off"
         inputClassName="disabled:bg-background disabled:opacity-100"
         disabled={!editing || busy} error={fieldState.error?.message}
         onChange={event => { if (/^\d*(?:\.\d*)?$/.test(event.target.value)) field.onChange(event.target.value); }} />

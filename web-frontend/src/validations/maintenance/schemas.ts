@@ -3,21 +3,22 @@ import type { VehicleRecord } from "@/services/vehicle";
 import { maintenanceDateKey } from "@/services/maintenance/dates";
 
 const requiredText = z.string().trim().min(1, "This field is required.");
-const positiveIntegerText = z.string().trim().refine(
+const positiveIntegerText = z.string().trim().regex(/^\d+$/, "Enter digits only.").refine(
   (value) => Number.isInteger(Number(value)) && Number(value) >= 1,
   "Enter a positive whole number.",
 );
 const optionalPositiveIntegerText = z.string().trim().optional().refine(
-  (value) => !value || (Number.isInteger(Number(value)) && Number(value) >= 1),
+  (value) => !value || (/^\d+$/.test(value) && Number.isInteger(Number(value)) && Number(value) >= 1),
   "Enter a positive whole number.",
 );
 const optionalNonNegativeIntegerText = z.string().trim().optional().refine(
-  (value) => !value || (Number.isInteger(Number(value)) && Number(value) >= 0),
+  (value) => !value || (/^\d+$/.test(value) && Number.isInteger(Number(value)) && Number(value) >= 0),
   "Enter a valid whole number.",
 );
 const optionalNonNegativeAmount = z.string().trim().optional().refine(
   (value) => !value || (
     Number.isFinite(Number(value))
+    && /^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(value)
     && Number(value) >= 0
     && Number(value) <= 9_999_999_999.99
   ),

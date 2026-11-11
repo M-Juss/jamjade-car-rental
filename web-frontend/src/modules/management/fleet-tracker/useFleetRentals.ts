@@ -105,8 +105,8 @@ export function useFleetRentals() {
     setError(null);
     setQuery((current) => ({ ...current, ...changes }));
   };
-  const refresh = () => {
-    setLoading(true);
+  const refresh = (quiet = false) => {
+    if (!quiet) setLoading(true);
     setError(null);
     setReload((value) => value + 1);
   };

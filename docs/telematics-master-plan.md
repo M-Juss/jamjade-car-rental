@@ -5024,6 +5024,23 @@ examples or labels into training approval. Source: `backend/app/Services/ModelEx
 `backend/app/Services/RcRuntimeForestService.php`,
 `web-frontend/src/modules/management/research/ModelExplorerModule.tsx`.
 
+On the native recording review, Details replaces the header timestamp and aligns
+with the back link. The overview status rows, original-file fingerprint, and
+original-signal axis/time-basis/cleaning rows were removed from the visible UI.
+The details dialog keeps recording metadata, sensor quality and annotation
+history. The sensor selector replaces the duplicate channel heading beside the
+chart, and the reported-run block no longer has a separator line. Source:
+`NativeRecordingReview.tsx` and `components/RecordingChecks.tsx`.
+
+The processed vehicle chart hides its duplicate visible title while retaining
+the accessible chart name. Single-run cutoff, timestamp and refresh controls are
+hidden beside the chart. The saved-run selector appears when multiple runs are
+available. Source: `components/ProcessingRuns.tsx`.
+
+Check recording and Label and review both include the original acceleration or
+gyroscope signal selector. The labeling form continues to use acceleration for
+interval selection. Source: `NativeRecordingReview.tsx`.
+
 Verification: focused Model Explorer, runtime-forest and Drive Monitoring feature
 tests passed (12 tests, 57 assertions); scoped Pint, web lint and TypeScript
 checks passed. The parent agent also completed the web production build and
@@ -5039,17 +5056,31 @@ sandbox. The broader backend suite ran 1,167 tests: 1,154 passed, with 11
 failures and 2 errors in unrelated registration, booking-lifecycle, notification
 and reference-reuse coverage.
 
+#### Drive Monitoring sidebar visibility — 2026-11-12
+
+Drive Monitoring is temporarily hidden from the Admin sidebar under Model
+Development by product decision. Its Admin route and implementation remain in
+place, so hiding the navigation entry does not stop rental motion monitoring.
+The sidebar filter lives in
+`web-frontend/src/modules/management/shell/components/ManagementSidebarNav.tsx`.
+
 #### Reviewed maneuver comparison — 2026-11-11
 
 Model Explorer opens on **Maneuver comparison**. The owner-bound local Admin API
 reads the latest manifest-matched annotation revision of each verified recording.
 The page filters reviewed normal and harsh cornering, acceleration and braking
-by surface, collection session and direction. It shows one Reviewed events row,
+by surface, collection session and a selected direction. Cornering and swerving
+default to left; acceleration and braking default to forward. It shows one Reviewed events row,
 counting every matching reviewed interval even when its measurements are
 unavailable. The summary shows mean, median and range for measured intervals,
-with differences computed as harsh minus normal. The histogram and per-surface
-means use the selected measurement. Two selected recordings can be plotted in
-seconds from their respective interval starts.
+with differences computed as harsh minus normal. Two selected recordings can
+be plotted in seconds from their respective interval starts. The measurement
+distribution and per-surface results panels were removed from the view.
+The recording comparison includes a Session selector that filters the Normal
+and Harsh recording choices together. The Driving course button opens a looping
+video for the selected maneuver and direction, using the supplied files in
+`web-frontend/public/research/driving-courses/`. Both braking directions use the
+supplied braking video; selections without a video show an unavailable state.
 
 Swerving has its own maneuver filter with initial left, right and unknown
 directions. It uses peak absolute yaw, lateral acceleration and interval duration.
@@ -5327,3 +5358,51 @@ failed in existing booking tests.
 The final standalone ARM64 APK built and installed successfully on the Redmi
 using `adb install -r`. The signed-in Activity screen still needs a physical
 visual check.
+
+
+### Hosted RC demo deployment — 2026-11-12
+
+The agreed hosted capstone includes RC Research, Model Explorer and rental RC
+motion. `TELEMATICS_HOSTED_RC_DEMO=true` together with
+`TELEMATICS_CALIBRATION_PROFILE=rc_demo` explicitly enables the existing RC
+profile in production/staging. With either setting absent, standard hosted
+behavior remains unchanged. `TelematicsCalibrationProfileService` owns the
+selection; `RentalMotionMonitoringService` reuses it. `RcResearchAccessService`
+continues to constrain Admin research access and issue research-only mobile
+bearer tokens. Existing owner-bound queries, authorization and consent remain.
+`RcDemoInferenceService` now allows the opted-in hosted PHP forest path, and both
+Model Explorer controllers allow hosted access through the same explicit mode.
+No DTO, sampling, feature definition, threshold, model identity, native code or
+role membership changed. Local training/export commands remain local-only.
+The per-owner nonlocal upload budgets remain 100 recordings / 256 MiB.
+
+Keep `APP_ENV=production` and `APP_DEBUG=false`. This switch does not enable
+`TELEMATICS_HANDOVER_TEST_MODE` or `RENTAL_EARLY_START_TEST_MODE` in production:
+Staff release, server-time eligibility, required setup, payment and inspection
+rules retain their existing boundaries. This is an RC demo, not evidence of
+real-car classification accuracy or physical rental acceptance.
+
+The existing frozen runtime file is not tracked in Git. Inference needs
+`storage/app/private/rc-research-v2/datasets/models/pilot-split-v3-yaw-forest-v1/runtime-forest-v1.json.encrypted`
+and its matching application encryption key. A missing/invalid model returns
+503. Reviewed maneuver comparison needs its original database IDs/ownership,
+observations, annotations and private prepared signals; the historical frozen
+example endpoint additionally needs its pinned development export. Deploying
+source alone cannot populate these views. Transfer the existing data and key
+privately through server-owner access, preserving database IDs and storage paths;
+never regenerate the key after import. General hosting and Hostinger DNS steps
+belong in [the deployment guide](deployment-berrypanel.md).
+
+Fleet Monitoring's manual Refresh and retry handlers now call `refresh()` through
+an event wrapper, preventing React click events from being interpreted as the
+hook's optional quiet-refresh boolean. This also removes two production
+TypeScript errors in `FleetTrackerModule.tsx`. Web lint, TypeScript within the
+production build, and the production build passed using the installed Node 24
+binary; the default Node 25 installation currently fails to load its Homebrew
+simdjson library. No UI layout or API contract changed.
+
+The focused hosted access, model, seeder, calibration and rental suite passed
+173 tests / 1,049 assertions. The final full suite passed 1,221 of 1,254 cases,
+with 31 failures and 2 errors (the same counts as the pre-change baseline).
+Scoped PHP formatting passed. Final verification is recorded in the deployment
+guide. Android and public server acceptance remain pending.

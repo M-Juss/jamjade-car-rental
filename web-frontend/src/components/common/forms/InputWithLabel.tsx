@@ -19,7 +19,45 @@ type InputWithLabelProps = {
   wrapperClassName?: string;
   labelClassName?: string;
   inputClassName?: string;
+  inputFormat?:
+    | "integer"
+    | "decimal"
+    | "decimal3"
+    | "signedDecimal"
+    | "personName"
+    | "vehicleText"
+    | "color"
+    | "plateNumber";
 } & React.ComponentPropsWithoutRef<typeof Input>;
+
+type InputFormat = NonNullable<InputWithLabelProps["inputFormat"]>;
+
+function sanitizeInput(value: string, format: InputFormat) {
+  if (format === "integer") return value.replace(/\D/g, "");
+
+  if (["decimal", "decimal3", "signedDecimal"].includes(format)) {
+    const signed = format === "signedDecimal" && value.trimStart().startsWith("-") ? "-" : "";
+    const raw = value.replace(/-/g, "");
+    const pieces = raw.replace(/[^\d.]/g, "").split(".");
+    const whole = pieces.shift() ?? "";
+    const fraction = pieces.join("");
+    const maxFractionDigits = format === "decimal3" ? 3 : format === "signedDecimal" ? 8 : 2;
+    return `${signed}${whole}${pieces.length || raw.includes(".") ? `.${fraction.slice(0, maxFractionDigits)}` : ""}`;
+  }
+
+  if (format === "personName") return value.replace(/[^\p{L}\p{M} '\u2019-]/gu, "");
+  if (format === "color") return value.replace(/[^\p{L}\p{M} /-]/gu, "");
+  if (format === "plateNumber") {
+    return value.replace(/[^\p{L}\p{N} -]/gu, "").replace(/\s+/g, " ").toUpperCase();
+  }
+  return value.replace(/[^\p{L}\p{M}\p{N} .&'\u2019()\/+\-]/gu, "");
+}
+
+function defaultInputMode(format?: InputFormat): React.HTMLAttributes<HTMLInputElement>["inputMode"] {
+  if (format === "integer") return "numeric";
+  if (["decimal", "decimal3", "signedDecimal"].includes(format ?? "")) return "decimal";
+  return undefined;
+}
 
 export const InputWithLabel = forwardRef<HTMLInputElement, InputWithLabelProps>(
   (
@@ -35,17 +73,28 @@ export const InputWithLabel = forwardRef<HTMLInputElement, InputWithLabelProps>(
       wrapperClassName,
       labelClassName,
       inputClassName,
+      inputFormat,
+      inputMode,
+      onChange,
       ...props
     },
     ref,
   ) => {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const isPassword = type === "password";
+    const isTextNumeric = ["integer", "decimal", "decimal3", "signedDecimal"].includes(inputFormat ?? "");
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (inputFormat) event.currentTarget.value = sanitizeInput(event.currentTarget.value, inputFormat);
+      onChange?.(event);
+    };
     const input = (
       <Input
+        {...props}
         ref={ref}
         id={id}
-        type={isPassword && isPasswordVisible ? "text" : type}
+        type={isPassword && isPasswordVisible ? "text" : isTextNumeric ? "text" : type}
+        inputMode={inputMode ?? defaultInputMode(inputFormat)}
+        onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
         aria-invalid={Boolean(error)}
@@ -58,7 +107,6 @@ export const InputWithLabel = forwardRef<HTMLInputElement, InputWithLabelProps>(
           inputClassName,
           isPassword && "pr-11",
         )}
-        {...props}
       />
     );
 

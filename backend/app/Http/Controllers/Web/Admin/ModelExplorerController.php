@@ -18,7 +18,7 @@ class ModelExplorerController extends Controller
     public function __invoke(Request $request, RcResearchAccessService $access, ModelExplorerService $explorer, ?string $example = null): JsonResponse
     {
         abort_unless($access->enabled(), 403, 'Model Explorer is unavailable.');
-        abort_unless(app()->isLocal(), 503, 'Model Explorer requires the private local research dataset.');
+        abort_unless(app()->isLocal() || config('telematics.hosted_rc_demo'), 503, 'Model Explorer is unavailable.');
         try {
             $data = $example === null ? $explorer->index($request->user()) : $explorer->show($request->user(), (int) $example);
         } catch (HttpExceptionInterface $exception) {

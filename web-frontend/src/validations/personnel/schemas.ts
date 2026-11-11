@@ -2,17 +2,16 @@ import { z } from "zod/v3";
 
 const REQUIRED_MESSAGE = "This field is required.";
 const requiredText = z.string().trim().min(1, REQUIRED_MESSAGE);
-const personNamePattern = /^[\p{L} ]+$/u;
+const personNamePattern = /^[\p{L}\p{M}]+(?:[ '\u2019-][\p{L}\p{M}]+)*$/u;
 const mobileNumberPattern = /^09\d{9}$/;
-const specialCharacterPattern =
-  /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/;
+const specialCharacterPattern = /[^\p{L}\p{N}\s]/u;
 
 const personName = (field: string) =>
   z.string().transform((value) => value.trim().replace(/\s+/gu, " ")).pipe(requiredText
     .max(80, "Maximum 80 characters only.")
     .regex(
       personNamePattern,
-      `${field} may only contain letters and spaces.`,
+      `${field} may contain letters, spaces, apostrophes, or hyphens, but no numbers.`,
     ));
 
 export function createPersonnelAccountSchema(requirePassword: boolean) {
@@ -32,8 +31,8 @@ export function createPersonnelAccountSchema(requirePassword: boolean) {
         ),
       role: z.enum(["staff", "driver", "admin"]),
       status: z.enum(["active", "inactive"]),
-      password: z.string().max(255, "Maximum 255 characters only."),
-      passwordConfirmation: z.string().max(255, "Maximum 255 characters only."),
+      password: z.string().max(72, "Use 72 characters or fewer."),
+      passwordConfirmation: z.string().max(72, "Use 72 characters or fewer."),
     })
     .superRefine((values, context) => {
       if (requirePassword && !values.password) {
@@ -52,7 +51,7 @@ export function createPersonnelAccountSchema(requirePassword: boolean) {
         });
       }
 
-      if (values.password && !/[A-Z]/.test(values.password)) {
+      if (values.password && !/\p{Lu}/u.test(values.password)) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Password must contain at least 1 uppercase letter.",
@@ -67,6 +66,14 @@ export function createPersonnelAccountSchema(requirePassword: boolean) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Password must contain at least 1 special character.",
+          path: ["password"],
+        });
+      }
+
+      if (values.password && new TextEncoder().encode(values.password).byteLength > 72) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "The password must be 72 UTF-8 bytes or fewer.",
           path: ["password"],
         });
       }
@@ -86,7 +93,7 @@ export type PersonnelAccountFormValues = z.infer<
 >;
 
 export function sanitizePersonName(value: string) {
-  return value.replace(/[^\p{L} ]/gu, "").slice(0, 80);
+  return value.replace(/[^\p{L}\p{M} '\u2019-]/gu, "").slice(0, 80);
 }
 
 export function sanitizeMobileNumber(value: string) {

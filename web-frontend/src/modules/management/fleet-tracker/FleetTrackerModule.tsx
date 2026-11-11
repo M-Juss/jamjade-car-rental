@@ -24,6 +24,7 @@ import { fleetVehicleName } from "./fleet-presentation";
 import { fleetStatusLabels, fleetTrackingFilters } from "./fleet-status";
 import { useFleetRentals } from "./useFleetRentals";
 import { FleetGoogleMap } from "./components/google-maps/FleetGoogleMap";
+import { FleetGeofenceLog } from "./components/FleetGeofenceLog";
 
 export default function FleetTracker() {
   const {
@@ -56,7 +57,7 @@ export default function FleetTracker() {
         <Button
           variant="outline"
           size="sm"
-          onClick={refresh}
+          onClick={() => refresh()}
           disabled={loading}
         >
           {loading ? <Loader2 className="animate-spin" /> : <RefreshCcw />}
@@ -185,7 +186,7 @@ export default function FleetTracker() {
                 <p role="alert" className="text-sm text-destructive">
                   {error}
                 </p>
-                <Button variant="outline" size="sm" onClick={refresh}>
+                <Button variant="outline" size="sm" onClick={() => refresh()}>
                   Try again
                 </Button>
               </div>
@@ -251,6 +252,7 @@ export default function FleetTracker() {
                 </SheetTitle>
               </SheetHeader>
               <div className="grid items-start gap-6 p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+              <div className="min-w-0 space-y-5">
               <Card>
               <CardHeader className="min-h-14 border-b border-border pb-3"><CardTitle className="text-sm font-semibold">Booking information</CardTitle><CardDescription className="text-xs">{selected.bookingCode}</CardDescription></CardHeader>
               <CardContent>
@@ -295,17 +297,9 @@ export default function FleetTracker() {
                   </div>
                 ))}
               </dl>
-              <div className="mt-5 border-t border-border pt-4">
-                <h3 className="text-sm font-semibold">Customer emergency contacts</h3>
-                {selected.emergencyContacts.length ? <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
-                  {selected.emergencyContacts.map((contact, index) => <div key={index} className="min-w-0 space-y-1">
-                    <dt className="break-words font-medium">{contact.name}</dt>
-                    <dd className="text-xs text-muted-foreground">{contact.relationship}</dd>
-                    <dd className="break-words">{contact.phoneNumber}</dd>
-                  </div>)}
-                </dl> : <p className="mt-2 text-sm text-muted-foreground">No emergency contact provided</p>}
-              </div>
               </CardContent></Card>
+              <FleetGeofenceLog activity={selected.geofenceActivity} onRefresh={() => refresh(true)} />
+              </div>
               <RentalDrivingEvents key={selected.bookingCode} bookingCode={selected.bookingCode} dataVersion={dataVersion} />
               </div>
             </>

@@ -1,6 +1,6 @@
 # System architecture and technologies
 
-Source review: **2026-11-11**. This is the programmer's overview of the current
+Source review: **2026-11-12**. This is the programmer's overview of the current
 architecture, technologies used, and agreed future additions. It describes the
 inspected checkout, not a verified production deployment. Versions below are
 resolved versions in the repository lockfiles, not measurements of a running server
@@ -45,6 +45,20 @@ summaries to Laravel. See the
 | Mobile frontend | Expo Router composes Android screens; domain services isolate API calls and device behavior. The secure-storage abstraction persists authentication tokens. | [Routes](../mobile-frontend/app), [services](../mobile-frontend/services), [token storage](../mobile-frontend/services/http/auth-storage.ts) |
 | Native RC recorder | A local Expo module bridges TypeScript to Kotlin. An Android foreground service and SensorManager collect original streams into encrypted local files. Explicit upload transfers them to Laravel. | [TypeScript adapter](../mobile-frontend/services/telematics/native-recorder.ts), [Kotlin implementation](../mobile-frontend/modules/rc-recorder/android/src/main/java/com/jamjade/rcrecorder) |
 
+Vehicle image delivery — 2026-11-12: the public vehicle showcase, management
+gallery, and 64 px management detail thumbnail use Next.js image optimization for
+responsive, cached variants; uploaded originals remain intact. When the website is
+opened through its public tunnel, the web client uses same-origin API/storage paths
+and Next.js rewrites `/storage` to Laravel, so image URLs do not point at the
+visitor's own loopback address. See [`CarShowcase`](../web-frontend/src/modules/marketing/CarShowcase.tsx),
+[`VehicleImageGallery`](../web-frontend/src/modules/management/vehicles/components/VehicleImageGallery.tsx),
+[`VehicleDetailsPage`](../web-frontend/src/modules/management/vehicles/VehicleDetailsPage.tsx),
+[web URL resolution](../web-frontend/src/services/http/config.ts), and
+[Next.js rewrites](../web-frontend/next.config.ts). Lint passed and Next.js
+compiled the optimized build; the production build did not finish type-checking
+because of existing errors in `FleetTrackerModule.tsx`. Browser/network timing
+was not measured.
+
 Backend validation and authorization remain authoritative even when a frontend
 validates or hides a control. Web authentication uses Laravel's stateful
 session/cookie/CSRF flow; mobile authentication uses Sanctum bearer tokens through
@@ -62,6 +76,15 @@ or native configuration is introduced. Existing login and account-email changes
 remain separate. See [registration contracts](user-roles-and-access.md#mobile-registration-email-verification).
 
 ## Technologies currently used
+
+Hosted-demo preparation — 2026-11-12: BerryPanel is the selected deployment
+target, with `main` as source and `jamjadecarrental.tech` managed in Hostinger DNS.
+The current Composer production lock requires PHP 8.4 despite the manifest's
+broader PHP 8.3 constraint. Production RC access is now an explicit opt-in through
+`TELEMATICS_HOSTED_RC_DEMO` plus the `rc_demo` profile. No additional server runtime
+was introduced. See [deployment setup](deployment-berrypanel.md) and the
+[central RC boundary](telematics-master-plan.md#hosted-rc-demo-deployment--2026-11-12).
+Public deployment and Android acceptance remain pending.
 
 | Area | Technologies and role | Version/source evidence |
 | --- | --- | --- |

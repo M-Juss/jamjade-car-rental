@@ -10,7 +10,7 @@ class RcDemoInferenceService
 
     public function predict(array $input): array
     {
-        abort_unless(app()->isLocal(), 503, 'RC demo inference is unavailable.');
+        abort_unless(app()->isLocal() || (config('telematics.hosted_rc_demo') && app(RcResearchAccessService::class)->enabled()), 503, 'RC demo inference is unavailable.');
         try {
             return app(RcRuntimeForestService::class)->predict($input);
         } catch (Throwable) {

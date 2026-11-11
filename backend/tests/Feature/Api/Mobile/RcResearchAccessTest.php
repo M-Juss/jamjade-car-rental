@@ -33,6 +33,16 @@ it('uses the existing Admin account with an expiring research-only mobile token'
     $this->assertDatabaseCount('customer_profiles', 0);
 });
 
+it('allows hosted Admin research login with explicit opt-in and keeps token scope', function () {
+    $this->app->detectEnvironment(fn () => 'production');
+    config(['telematics.hosted_rc_demo' => true]);
+    $response = $this->postJson('/api/mobile/login', $this->credentials)->assertOk();
+    $token = PersonalAccessToken::findToken($response->json('data.token'));
+    expect($token->abilities)->toBe(['rc-research']);
+    $this->withToken($response->json('data.token'))->getJson('/api/mobile/rc-research')->assertOk();
+    $this->getJson('/api/mobile/bookings')->assertForbidden();
+});
+
 it('isolates research login from ordinary mobile sessions', function () {
     $ordinary = $this->admin->createToken('research-device', ['mobile']);
     $first = $this->postJson('/api/mobile/login', $this->credentials)->assertOk()->json('data.token');

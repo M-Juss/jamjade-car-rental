@@ -212,6 +212,7 @@ export function PersonnelAccountForm({
                       label="First Name"
                       required
                       icon={<User size={13} />}
+                      inputFormat="personName"
                       placeholder="e.g. Maria"
                       disabled={isViewMode || isSubmitting}
                       maxLength={80}
@@ -232,6 +233,7 @@ export function PersonnelAccountForm({
                       label="Last Name"
                       required
                       icon={<User size={13} />}
+                      inputFormat="personName"
                       placeholder="e.g. Santos"
                       disabled={isViewMode || isSubmitting}
                       maxLength={80}
@@ -251,6 +253,7 @@ export function PersonnelAccountForm({
                       id="personnel-phone-number"
                       label="Phone Number"
                       icon={<Phone size={13} />}
+                      inputFormat="integer"
                       inputMode="numeric"
                       maxLength={11}
                       placeholder="09XX XXX XXXX"
@@ -310,13 +313,14 @@ export function PersonnelAccountForm({
                           icon={<Lock size={13} />}
                           type="password"
                           autoComplete={mode === "add" ? "new-password" : "off"}
-                          maxLength={255}
+                          maxLength={72}
                           placeholder="Enter password"
                           disabled={isSubmitting}
                           labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                           {...register("password")}
                         />
                         <FormFieldError message={errors.password?.message} />
+                        <p className="mt-1 text-xs text-subtle-foreground">At least 8 characters, including 1 uppercase letter and 1 special character.</p>
                       </div>
 
                       <div className="relative pb-5">
@@ -327,7 +331,7 @@ export function PersonnelAccountForm({
                           icon={<Lock size={13} />}
                           type="password"
                           autoComplete={mode === "add" ? "new-password" : "off"}
-                          maxLength={255}
+                          maxLength={72}
                           placeholder="Confirm password"
                           disabled={isSubmitting}
                           labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"

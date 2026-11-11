@@ -713,6 +713,7 @@ export function VehicleFormDialog({
                     <InputWithLabel
                       id="vehicle-name"
                       label="Vehicle Name"
+                      inputFormat="vehicleText"
                       required
                       placeholder="e.g. Toyota Fortuner 2023"
                       disabled={isSubmitting}
@@ -726,6 +727,7 @@ export function VehicleFormDialog({
                     <InputWithLabel
                       id="vehicle-model"
                       label="Model"
+                      inputFormat="vehicleText"
                       required
                       placeholder="e.g. Fortuner V"
                       disabled={isSubmitting}
@@ -738,6 +740,7 @@ export function VehicleFormDialog({
                     <InputWithLabel
                       id="vehicle-plate-number"
                       label="Plate Number"
+                      inputFormat="plateNumber"
                       required
                       placeholder="e.g. ABC 1234"
                       disabled={isSubmitting}
@@ -752,8 +755,7 @@ export function VehicleFormDialog({
                       label="Price / Day (PHP)"
                       required
                       icon={<PhilippinePeso size={13} />}
-                      type="number"
-                      min="1"
+                      inputFormat="decimal"
                       placeholder="0"
                       disabled={isSubmitting}
                       labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
@@ -800,8 +802,7 @@ export function VehicleFormDialog({
                       label="Seats"
                       required
                       icon={<Users size={13} />}
-                      type="number"
-                      min="1"
+                      inputFormat="integer"
                       placeholder="e.g. 5"
                       disabled={isSubmitting}
                       labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
@@ -814,6 +815,7 @@ export function VehicleFormDialog({
                     <InputWithLabel
                       id="vehicle-color"
                       label="Color"
+                      inputFormat="color"
                       required
                       placeholder="e.g. Pearl White"
                       disabled={isSubmitting}

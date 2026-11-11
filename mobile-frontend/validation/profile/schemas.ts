@@ -35,10 +35,9 @@ export const basicInfoSchema = z.object({
         1000,
         'Address must be 1000 characters or fewer.',
       ),
-      postalCode: requiredString('Postal code is required.').max(
-        20,
-        'Postal code must be 20 characters or fewer.',
-      ),
+      postalCode: requiredString('Postal code is required.').regex(/^\d{4}$/, {
+        message: 'Enter a 4-digit postal code.',
+      }),
       provinceCode: z.string().nullable(),
       regionCode: requiredString('Region is required.'),
     })

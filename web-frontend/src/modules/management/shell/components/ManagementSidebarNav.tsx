@@ -89,6 +89,7 @@ function ManagementSidebarNavContent({
 
   const visibleModules = useMemo(
     () => managementModulesForPortal(portal, permissions)
+      .filter((module) => module.id !== "driveMonitoring")
       .flatMap((module) => {
         const href = managementPath(portal, module.id);
         return href ? [{ ...module, href }] : [];
@@ -96,7 +97,7 @@ function ManagementSidebarNavContent({
     [permissions, portal],
   );
   const modelItems = visibleModules.filter((module) => module.section === "Model Development")
-    .sort((a, b) => ["research", "modelExplorer", "driveMonitoring"].indexOf(a.id) - ["research", "modelExplorer", "driveMonitoring"].indexOf(b.id));
+    .sort((a, b) => ["research", "modelExplorer"].indexOf(a.id) - ["research", "modelExplorer"].indexOf(b.id));
   const mainItems = visibleModules.filter((module) => directModuleIds.has(module.id));
   const managementItems = visibleModules.filter((module) => !directModuleIds.has(module.id) && module.section !== "Model Development");
   const managementIsActive = managementItems.some(

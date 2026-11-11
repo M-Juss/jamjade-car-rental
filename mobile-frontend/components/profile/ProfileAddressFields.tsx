@@ -252,9 +252,9 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
         autoCapitalize="characters"
         error={errors?.postalCode?.message?.toString()}
         icon="markunread-mailbox"
-        keyboardType="number-pad"
+        numericInput="integer"
         label="Postal Code"
-        maxLength={20}
+        maxLength={4}
         onChangeText={(postalCode) => updateValue({ postalCode })}
         placeholder="Enter postal code"
         required

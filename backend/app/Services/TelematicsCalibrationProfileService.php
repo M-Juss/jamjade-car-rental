@@ -6,7 +6,7 @@ class TelematicsCalibrationProfileService
 {
     public function active(): array
     {
-        $id = app()->environment(['local', 'testing']) && config('telematics.calibration_profile') === 'rc_demo'
+        $id = (app()->environment(['local', 'testing']) || config('telematics.hosted_rc_demo')) && config('telematics.calibration_profile') === 'rc_demo'
             ? 'rc_demo' : 'standard';
         $settings = config('telematics.calibration');
         if ($id === 'rc_demo') {

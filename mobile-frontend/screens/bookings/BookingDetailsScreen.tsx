@@ -145,7 +145,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                 label="Pay charges" icon={CreditCard} onPress={() => router.push(`/driver-payment?bookingId=${encodeURIComponent(booking.id)}` as Href)} /> : null}
             </View> : null}
             {!isDriver && booking.canReviseUnpaid ? (
-              <ActionButton density="compact" className="self-start" icon={CreditCard} label="Edit dates and pay" variant="primary"
+              <ActionButton density="compact" className="w-full" icon={CreditCard} label="Edit dates and pay" variant="primary"
                 onPress={() => router.push(`/browse/booking?vehicleId=${encodeURIComponent(booking.vehicleId)}&bookingId=${encodeURIComponent(booking.id)}` as Href)} />
             ) : null}
             {!isDriver && booking.status === 'Pending' && booking.paymentStatus === 'Unpaid' && !booking.canReviseUnpaid ? (

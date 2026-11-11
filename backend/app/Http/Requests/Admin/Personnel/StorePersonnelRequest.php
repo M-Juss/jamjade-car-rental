@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Admin\Personnel;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Support\AccountPasswordRules;
+use App\Support\ValidationPatterns;
 use Illuminate\Validation\Rule;
 
 class StorePersonnelRequest extends BaseFormRequest
@@ -27,23 +29,15 @@ class StorePersonnelRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'first_name' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
-            'last_name' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
+            'first_name' => ['required', 'string', 'max:80', 'regex:'.ValidationPatterns::PERSON_NAME],
+            'last_name' => ['required', 'string', 'max:80', 'regex:'.ValidationPatterns::PERSON_NAME],
             'email' => ['required', 'email', 'max:160', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'regex:/^09\d{9}$/', 'unique:users,phone_number'],
             'role' => ['required', 'string', Rule::in($this->user()->hasRole('owner') ? ['staff', 'driver', 'admin'] : ($this->user()->hasRole('admin') ? ['staff', 'driver'] : ['driver'])), Rule::exists('roles', 'name')->where('guard_name', 'web')],
             'is_active' => ['sometimes', 'boolean'],
             'modules' => ['prohibited'],
             'permissions' => ['prohibited'],
-            'password' => [
-                'required',
-                'string',
-                'min:8',
-                'max:255',
-                'regex:/[A-Z]/',
-                'regex:/[!@#$%^&*()_+\-=\[\]{};\\\':"\\\\|,.<>\/?]/',
-                'confirmed',
-            ],
+            'password' => [...AccountPasswordRules::required(), 'confirmed'],
         ];
     }
 

@@ -17,6 +17,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $development = app()->environment(['local', 'testing']);
+        $password = $development ? 'Jamjade@123' : (string) config('auth.initial_owner_password');
+        if (! $development && strlen($password) < 12) {
+            throw new \RuntimeException('Set INITIAL_OWNER_PASSWORD to at least 12 characters before seeding the hosted demo.');
+        }
+
         $this->call([
             RoleAndPermissionSeeder::class,
         ]);
@@ -51,7 +57,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Jamjade Owner',
             'email' => $ownerEmail,
             'phone_number' => $ownerPhone,
-            'password' => Hash::make('Jamjade@123'),
+            'password' => $owner->exists && ! $development ? $owner->password : Hash::make($password),
             'email_verified_at' => now(),
             'is_active' => true,
         ])->save();

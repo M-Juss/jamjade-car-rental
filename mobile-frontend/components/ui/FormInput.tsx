@@ -3,6 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { forwardRef, type ComponentProps } from 'react';
 import { Text, TextInput, type TextInputProps, View } from 'react-native';
 import { KeyboardAwareField } from '@/components/common/KeyboardFormScrollView';
+import { sanitizeDecimalInput, sanitizeIntegerInput } from '@/validation/shared';
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -13,6 +14,7 @@ type FormInputProps = Omit<TextInputProps, 'style'> & {
   helperText?: string;
   required?: boolean;
   multiline?: boolean;
+  numericInput?: 'integer' | 'decimal';
 };
 
 function cx(...classes: (string | false | null | undefined)[]) {
@@ -21,7 +23,7 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export const FormInput = forwardRef<TextInput, FormInputProps>(
   (
-    { label, icon, error, helperText, required = false, editable = true, multiline = false, ...props },
+    { label, icon, error, helperText, required = false, editable = true, multiline = false, numericInput, keyboardType, onChangeText, ...props },
     ref,
   ) => (
     <KeyboardAwareField className="gap-1.5">
@@ -46,6 +48,12 @@ export const FormInput = forwardRef<TextInput, FormInputProps>(
           accessibilityLabel={label}
           editable={editable}
           multiline={multiline}
+          keyboardType={keyboardType ?? (numericInput === 'integer' ? 'number-pad' : numericInput === 'decimal' ? 'decimal-pad' : undefined)}
+          onChangeText={(value) => onChangeText?.(numericInput === 'integer'
+            ? sanitizeIntegerInput(value)
+            : numericInput === 'decimal'
+              ? sanitizeDecimalInput(value)
+              : value)}
           placeholderTextColor={themeColors.subtleForeground}
           textAlignVertical={multiline ? 'top' : 'center'}
           className={cx(

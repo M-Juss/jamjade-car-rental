@@ -4,6 +4,7 @@ import { Pressable, Text, TextInput, type TextInputProps, View } from 'react-nat
 
 import { themeColors } from '@/constants/theme';
 import { KeyboardAwareField } from '@/components/common/KeyboardFormScrollView';
+import { sanitizeDecimalInput, sanitizeIntegerInput } from '@/validation/shared';
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -18,6 +19,7 @@ type InputWithLabelProps = Omit<TextInputProps, 'style'> & {
   showPasswordToggle?: boolean;
   inputClassName?: string;
   wrapperClassName?: string;
+  numericInput?: 'integer' | 'decimal';
 };
 
 function cx(...classes: (string | false | null | undefined)[]) {
@@ -38,6 +40,9 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
       editable,
       inputClassName,
       wrapperClassName,
+      numericInput,
+      keyboardType,
+      onChangeText,
       ...props
     },
     ref,
@@ -71,6 +76,12 @@ export const InputWithLabel = forwardRef<TextInput, InputWithLabelProps>(
             ref={ref}
             accessibilityLabel={label}
             editable={isEditable}
+            keyboardType={keyboardType ?? (numericInput === 'integer' ? 'number-pad' : numericInput === 'decimal' ? 'decimal-pad' : undefined)}
+            onChangeText={(value) => onChangeText?.(numericInput === 'integer'
+              ? sanitizeIntegerInput(value)
+              : numericInput === 'decimal'
+                ? sanitizeDecimalInput(value)
+                : value)}
             placeholderTextColor={themeColors.subtleForeground}
             secureTextEntry={isSecure}
             className={cx('font-sans', 'min-w-0 flex-1 py-0 text-[15px] text-foreground', inputClassName)}

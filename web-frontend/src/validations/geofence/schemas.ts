@@ -2,7 +2,8 @@ import { z } from "zod/v3";
 import { polygonValidationError } from "./geometry";
 
 const numberText = (min: number, max: number, message: string) => z.string().trim().refine(
-  (value) => value !== "" && Number.isFinite(Number(value)) && Number(value) >= min && Number(value) <= max,
+  (value) => /^(?:-?\d+(?:\.\d{1,8})?|-?\.\d{1,8})$/.test(value)
+    && Number.isFinite(Number(value)) && Number(value) >= min && Number(value) <= max,
   message,
 );
 

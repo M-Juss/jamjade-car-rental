@@ -4,22 +4,27 @@ import { VEHICLE_ISSUE_TYPES, VEHICLE_PANEL_ORDER } from "@/modules/management/v
 
 const REQUIRED_MESSAGE = "This field is required.";
 const IMAGE_SIZE_LIMIT = 5 * 1024 * 1024;
+const vehicleTextPattern = /^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} .&'’()\/+\-]*$/u;
+const colorPattern = /^[\p{L}\p{M}]+(?:[ /-][\p{L}\p{M}]+)*$/u;
+const plateNumberPattern = /^[A-Z0-9][A-Z0-9 -]*$/;
+const decimalTextPattern = /^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/;
 
 const requiredText = z.string().trim().min(1, REQUIRED_MESSAGE);
 
 const vehicleFeatureTextSchema = requiredText.max(120, "Maximum 120 characters only.");
 
 const positiveNumberText = requiredText.refine((value) => {
+  if (!decimalTextPattern.test(value)) return false;
   const numberValue = Number(value);
-  return Number.isFinite(numberValue) && numberValue > 0;
-}, "Enter a valid number.");
+  return Number.isFinite(numberValue) && numberValue > 0 && numberValue <= 9_999_999_999.99;
+}, "Enter a price using digits and a decimal point only, with up to two decimal places.");
 
-const positiveIntegerText = requiredText.refine((value) => {
+const positiveIntegerText = requiredText.regex(/^\d+$/, "Enter digits only.").refine((value) => {
   const numberValue = Number(value);
   return Number.isInteger(numberValue) && numberValue > 0;
 }, "Enter a valid number.");
 
-const nonNegativeIntegerText = requiredText.refine((value) => {
+const nonNegativeIntegerText = requiredText.regex(/^\d+$/, "Enter digits only.").refine((value) => {
   const numberValue = Number(value);
   return Number.isInteger(numberValue) && numberValue >= 0;
 }, "Enter a valid odometer reading.");
@@ -35,17 +40,17 @@ const vehicleImageSchema = z
 export const vehicleStatusSchema = z.enum(["available", "unavailable", "maintenance"]);
 
 const vehicleDetailsSchema = z.object({
-  name: requiredText.max(160, "Maximum 160 characters only."),
-  brand: requiredText.max(80, "Maximum 80 characters only."),
-  model: requiredText.max(120, "Maximum 120 characters only."),
-  plate_number: requiredText.max(32, "Maximum 32 characters only."),
+  name: requiredText.max(160, "Maximum 160 characters only.").regex(vehicleTextPattern, "Use letters, numbers, spaces, or common vehicle-name punctuation."),
+  brand: requiredText.max(80, "Maximum 80 characters only.").regex(vehicleTextPattern, "Enter a valid vehicle brand."),
+  model: requiredText.max(120, "Maximum 120 characters only.").regex(vehicleTextPattern, "Use letters, numbers, spaces, or common model punctuation."),
+  plate_number: requiredText.max(32, "Maximum 32 characters only.").regex(plateNumberPattern, "Use letters, numbers, spaces, or hyphens only."),
   description: requiredText.max(3000, "Maximum 3000 characters only."),
   price_per_day: positiveNumberText,
   seats: positiveIntegerText.refine(
     (value) => Number(value) <= 20,
     "Seats cannot exceed 20.",
   ),
-  color: requiredText.max(80, "Maximum 80 characters only."),
+  color: requiredText.max(80, "Maximum 80 characters only.").regex(colorPattern, "Use color words separated by spaces, hyphens, or slashes; do not enter numbers."),
   transmission: requiredText.max(40, "Maximum 40 characters only."),
   fuel_type: requiredText.max(40, "Maximum 40 characters only."),
   features: z.array(vehicleFeatureTextSchema)

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { utf8ByteLength } from '@/validation/shared';
+import { accountPasswordSchema } from '@/validation/shared';
 
 const currentPasswordSchema = z
   .string()
@@ -20,13 +20,7 @@ export const updateAccountEmailSchema = z.object({
 export const changeAccountPasswordSchema = z
   .object({
     currentPassword: currentPasswordSchema,
-    password: z
-      .string()
-      .min(8, 'Use at least 8 characters.')
-      .max(72, 'Use 72 characters or fewer.')
-      .refine((value) => Array.from(value).length >= 8, 'Use at least 8 characters.')
-      .refine((value) => value.trim().length > 0, 'Enter your new password.')
-      .refine((value) => utf8ByteLength(value) <= 72, 'The new password must be 72 UTF-8 bytes or fewer.'),
+    password: accountPasswordSchema.refine((value) => value.trim().length > 0, 'Enter your new password.'),
     confirmPassword: z.string().min(1, 'Confirm your new password.'),
   })
   .superRefine((values, context) => {

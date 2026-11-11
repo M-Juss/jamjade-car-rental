@@ -138,9 +138,10 @@ export function RegisterForm() {
                     autoCapitalize="none"
                     autoComplete="new-password"
                     error={fieldState.error?.message}
-                    helperText="Use at least 8 characters."
+                    helperText="Use at least 8 characters, including 1 uppercase letter and 1 special character."
                     icon="lock-outline"
                     label="Password"
+                    maxLength={72}
                     onBlur={field.onBlur}
                     onChangeText={field.onChange}
                     placeholder="Create password"
@@ -163,6 +164,7 @@ export function RegisterForm() {
                     error={fieldState.error?.message}
                     icon="lock-outline"
                     label="Confirm password"
+                    maxLength={72}
                     onBlur={field.onBlur}
                     onChangeText={field.onChange}
                     placeholder="Confirm password"

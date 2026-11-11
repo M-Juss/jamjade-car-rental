@@ -111,7 +111,7 @@ export function OwnerVerificationDialog() {
           <div className="space-y-4 p-4 sm:p-6">
             {!id ? <p>Send a verification code to the Owner for approval?</p> : <>
               <p>Ask the Owner for the code after they review this action.</p>
-              <InputWithLabel id="owner-code" label="Verification code" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+              <InputWithLabel id="owner-code" label="Verification code" inputFormat="integer" autoComplete="one-time-code" maxLength={6}
                 {...form.register("code")} error={form.formState.errors.code?.message} />
               <Button type="button" variant="ghost" disabled={busy || seconds > 0} onClick={() => void send()}>
                 {seconds ? `Resend code in ${seconds}s` : "Resend code"}

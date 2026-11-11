@@ -25,6 +25,7 @@ import { KeyboardAwareField, KeyboardFormScrollView } from '@/components/common/
 import { themeColors } from '@/constants/theme';
 import type { Vehicle } from '@/types/browse';
 import { browsePriceRangeSchema } from '@/validation/vehicle/browse-filters';
+import { sanitizeDecimalInput } from '@/validation/shared';
 
 import type { BrowseFilters, SortOption } from './BrowseComponents';
 
@@ -229,7 +230,7 @@ export function FilterSheet({
                       accessibilityLabel={`${label} daily price in pesos`}
                       value={value}
                       onChangeText={(text) => {
-                        setter(text);
+                        setter(sanitizeDecimalInput(text));
                         setPriceError(null);
                       }}
                       keyboardType="decimal-pad"

@@ -14,7 +14,7 @@ class RentalMotionMonitoringService
 
     public function enabled(): bool
     {
-        return app()->environment(['local', 'testing']) && config('telematics.calibration_profile') === 'rc_demo';
+        return app(TelematicsCalibrationProfileService::class)->active()['id'] === 'rc_demo';
     }
 
     public function start(User $user, string $code, array $input): DriveMonitoringSession

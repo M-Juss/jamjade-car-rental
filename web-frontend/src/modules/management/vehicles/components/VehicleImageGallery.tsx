@@ -29,7 +29,6 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
           alt={alt}
           fill
           sizes="(min-width: 768px) 80vw, 100vw"
-          unoptimized
           className="object-contain"
         />
         {onRemoveImage && (
@@ -59,7 +58,6 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
                   alt={`${alt} ${index + 2}`}
                   fill
                   sizes="(min-width: 768px) 20vw, 25vw"
-                  unoptimized
                   className="h-full w-full object-contain"
                 />
                 {showMoreOverlay && (
