@@ -12,7 +12,7 @@ internal class CollectionWorkflow(
 ) {
   companion object {
     const val VERSION = "rc-collection-v1"
-    const val CATALOG = "rc-exercises-v3"
+    const val CATALOG = "rc-exercises-v6"
     fun code(session: Long, exercise: String, capture: Long) = "S${session.toString().padStart(2, '0')}-$exercise-R${capture.toString().padStart(3, '0')}"
   }
   /** Older installations have only the active session; preserve it on first use. */
@@ -150,7 +150,7 @@ internal class CollectionWorkflow(
     val keys = input.keys().asSequence().toSet()
     require(keys == required || keys == required + "initial_deviation")
     if (input.has("initial_deviation")) {
-      require(previous?.optString("protocol_code") == "SW")
+      require(previous?.optString("protocol_code") in setOf("LC", "SW", "SWL", "HSWL", "SWR", "HSWR"))
       require(input.get("initial_deviation") in setOf("left", "right", "unknown"))
     }
     val revisions = previous?.optJSONArray("observations") ?: JSONArray()

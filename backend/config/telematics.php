@@ -24,8 +24,6 @@ return [
             'right_turn_calibration' => 3,
         ],
         'minimum_forward_coherence' => 0.7,
-        'minimum_forward_acceleration' => 3,
-        'forward_acceleration_only' => true,
         'movement_maximum_tilt_degrees' => 60,
         'forward_maximum_rotation_peak' => 120,
         'forward_maximum_yaw_degrees' => 45,
@@ -62,9 +60,9 @@ return [
         'forward_maximum_rotation_peak' => 60,
         'forward_maximum_yaw_degrees' => 180,
         'minimum_longitudinal_acceleration' => 0.5,
-        'minimum_forward_acceleration' => 3,
-        'minimum_forward_duration_ms' => 0,
-        'minimum_forward_samples' => 1,
+        'minimum_forward_acceleration' => 0.5,
+        'minimum_forward_duration_ms' => 120,
+        'minimum_forward_samples' => 7,
         'minimum_forward_coherence' => 0.9,
         // Engineering margin over the accepted parked horizontal RMS, not a
         // statistical guarantee. Existing stationary caps still reject noise.
@@ -74,7 +72,7 @@ return [
     ],
     'geofence_max_accuracy_meters' => 50,
     'geofence_max_age_seconds' => 60,
-    'geofence_boundary_buffer_meters' => 10,
+    'geofence_boundary_buffer_meters' => 0,
     'geofence_confirmation_points' => 2,
-    'geofence_confirmation_seconds' => 10,
+    'geofence_confirmation_seconds' => 5,
 ];

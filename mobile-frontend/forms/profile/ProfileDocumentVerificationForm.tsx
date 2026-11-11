@@ -2,12 +2,11 @@ import { themeColors } from '@/constants/theme';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
-import { CheckCircle2, Clock3, RotateCcw } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo } from 'react';
+import { ArrowLeft, Clock3, RotateCcw } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenFrame';
 import { UploadDocumentCard } from '@/components/onboarding/UploadDocumentCard';
 import { DocumentReviewBadge } from '@/components/profile';
@@ -53,30 +52,21 @@ function ReviewStateNotice({
   rejectionReason,
   status,
 }: {
-  status: 'pending-review' | 'verified' | 'rejected';
+  status: 'pending-review' | 'rejected';
   rejectionReason?: string;
 }) {
-  const isVerified = status === 'verified';
   const isRejected = status === 'rejected';
-  const Icon = isVerified ? CheckCircle2 : isRejected ? RotateCcw : Clock3;
-  const iconColor = isVerified
-    ? themeColors.success
-    : isRejected
+  const Icon = isRejected ? RotateCcw : Clock3;
+  const iconColor = isRejected
       ? themeColors.destructive
       : themeColors.warning;
-  const background = isVerified
-    ? 'bg-success-surface border-success-border'
-    : isRejected
+  const background = isRejected
       ? 'bg-destructive-surface border-destructive-border'
       : 'bg-warning-surface border-warning-border';
-  const title = isVerified
-    ? 'Document verified'
-    : isRejected
+  const title = isRejected
       ? 'Document needs an update'
       : 'Document pending review';
-  const message = isVerified
-    ? 'This document has been approved and can no longer be changed.'
-    : isRejected
+  const message = isRejected
       ? `Your previous submission was not accepted. ${rejectionReason ? `Reason: ${rejectionReason} ` : ''}Upload corrected document images and submit again.`
       : 'Your upload is locked while Jamjade reviews the submitted document.';
 
@@ -91,7 +81,6 @@ function ReviewStateNotice({
           {message}
         </Text>
       </View>
-      <DocumentReviewBadge status={status} />
     </View>
   );
 }
@@ -108,12 +97,13 @@ export function ProfileDocumentVerificationForm({
   const { refreshProfile } = useAuth();
   const definition = getCustomerDocumentDefinition(documentId);
   const status = customer.documentStatuses[documentId];
-  const isLocked = status === 'pending-review' || status === 'verified';
+  const [isEditingVerified, setIsEditingVerified] = useState(false);
+  const isLocked = status === 'pending-review' || (status === 'verified' && !isEditingVerified);
   const toast = useFormToast();
   const documentSchema = useMemo(() => getCustomerDocumentSchema(documentId), [documentId]);
   const {
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isDirty, isSubmitting },
     getValues,
     handleSubmit,
     reset,
@@ -133,10 +123,12 @@ export function ProfileDocumentVerificationForm({
   );
 
   useEffect(() => {
-    if (status === 'rejected') {
-      reset(clearPreviousDocumentImages(documentId, getValues()));
+    if (!isDirty && !isEditingVerified) {
+      reset(status === 'rejected'
+        ? clearPreviousDocumentImages(documentId, customer.documents)
+        : customer.documents);
     }
-  }, [documentId, getValues, reset, status]);
+  }, [customer.documents, documentId, isDirty, isEditingVerified, reset, status]);
 
   if (!definition) {
     return null;
@@ -190,11 +182,21 @@ export function ProfileDocumentVerificationForm({
     router.replace(`/profile/documents${isOnboardingFlow ? '?source=onboarding' : ''}` as Href);
   };
 
+  const beginVerifiedEdit = () => {
+    reset(clearPreviousDocumentImages(documentId, customer.documents));
+    setIsEditingVerified(true);
+  };
+
+  const cancelVerifiedEdit = () => {
+    reset(customer.documents);
+    setIsEditingVerified(false);
+  };
+
   const renderUploadCard = (key: keyof CustomerDocumentUploads, label: string, required = true) => (
     <UploadDocumentCard
       disabled={isLocked || isSubmitting}
       error={errors[key]?.message}
-      helperText={IMAGE_HELPER}
+      helperText={isLocked ? undefined : IMAGE_HELPER}
       isUploading={isSubmitting}
       label={label}
       onChange={(value) => {
@@ -212,39 +214,47 @@ export function ProfileDocumentVerificationForm({
   return (
     <View className="flex-1">
       <OnboardingScreenFrame
-        action={
+        action={status === 'verified' && !isEditingVerified ? (
+          <BottomActionButton label="Edit & resubmit" onPress={beginVerifiedEdit} />
+        ) : isLocked ? undefined :
           <BottomActionButton
             disabled={isLocked || isSubmitting}
             label={
               isSubmitting
                 ? 'Submitting...'
                 : status === 'verified'
-                  ? 'Document Verified'
-                  : status === 'pending-review'
-                    ? 'Pending Review'
-                    : status === 'rejected'
+                  ? 'Resubmit document'
+                  : status === 'rejected'
                       ? 'Submit Corrected Document'
                       : 'Submit Documents'
             }
             onPress={handleSubmit(onSubmit, () => {
               toast.showToast('Please complete all required fields and document images.');
             })}
-            onSecondaryPress={isLocked || isSubmitting ? undefined : handleSaveLater}
-            secondaryLabel={isLocked || isSubmitting ? undefined : 'Save and Continue Later'}
+            onSecondaryPress={isSubmitting ? undefined : isEditingVerified ? cancelVerifiedEdit : handleSaveLater}
+            secondaryLabel={isSubmitting ? undefined : isEditingVerified ? 'Cancel' : 'Save and Continue Later'}
           />
         }>
-        <OnboardingHeader
-          navigationTitle="Document Verification"
-          onBackPress={
-            isOnboardingFlow
-              ? () => router.replace('/profile/documents?source=onboarding' as Href)
-              : undefined
-          }
-          subtitle={definition.uploadDescription}
-          title={definition.name}
-        />
+        <View className="min-h-12 flex-row items-center justify-between gap-3 border-b border-border pb-3">
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back"
+            onPress={() => isOnboardingFlow
+              ? router.replace('/profile/documents?source=onboarding' as Href)
+              : router.back()}
+            className="h-11 w-11 items-center justify-center">
+            <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
+          </Pressable>
+          <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-center text-[19px] font-semibold text-foreground">{definition.name}</Text>
+          <View className="h-11 w-11" />
+        </View>
+        <View className="mt-3 items-end"><DocumentReviewBadge status={status} /></View>
+        {isEditingVerified ? <Text className="font-sans mt-3 text-caption leading-5 text-secondary-foreground">
+          Upload new images. Resubmitting pauses self-drive eligibility until approval.
+        </Text> : null}
+        {status !== 'verified' ? <View className="mt-section">
+          <Text className="font-sans mt-2 text-body text-secondary-foreground">{definition.uploadDescription}</Text>
+        </View> : null}
 
-        {status !== 'not-submitted' ? (
+        {status !== 'not-submitted' && status !== 'verified' ? (
           <ReviewStateNotice
             rejectionReason={customer.documentRejectionReasons[documentId]}
             status={status}
@@ -299,8 +309,8 @@ export function ProfileDocumentVerificationForm({
 
           {documentId === 'proof-of-address' ? (
             <>
-              {renderUploadCard('proofOfAddress', 'Proof of Address')}
-              {renderUploadCard('proofOfAddressBack', 'Proof of Address Back (Optional)', false)}
+              {renderUploadCard('proofOfAddress', 'Front')}
+              {renderUploadCard('proofOfAddressBack', 'Back', false)}
             </>
           ) : null}
         </View>

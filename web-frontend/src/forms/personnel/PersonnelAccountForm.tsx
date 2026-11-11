@@ -46,7 +46,7 @@ type PersonnelAccountFormProps = {
   mode: PersonnelAccountFormMode;
   personnel?: PersonnelUser | null;
   roles: PersonnelRole[];
-  category?: "staff" | "driver";
+  category?: "staff" | "driver" | "admin";
   onOpenChange: (open: boolean) => void;
   onSave: (values: PersonnelAccountFormValues) => Promise<void>;
 };
@@ -72,9 +72,9 @@ export function PersonnelAccountForm({
     email: personnel?.email ?? "",
     password: "",
     passwordConfirmation: "",
-    role: personnel?.role.name ?? category ?? "staff",
+    role: personnel?.role.name ?? category ?? roles[0]?.name ?? "driver",
     status: personnel?.isActive === false ? "inactive" : "active",
-  }), [personnel, category]);
+  }), [personnel, category, roles]);
 
   const {
     register,
@@ -119,7 +119,7 @@ export function PersonnelAccountForm({
       await onSave(values);
       appToast.success(
         mode === "add"
-          ? "Personnel account created successfully."
+          ? category === "admin" ? "Admin account created successfully." : "Personnel account created successfully."
           : "Personnel account updated successfully.",
       );
       resetForm();
@@ -379,7 +379,7 @@ export function PersonnelAccountForm({
                           shouldValidate: true,
                         })
                       }
-                      disabled={isViewMode || isSubmitting}
+                      disabled={isViewMode || isSubmitting || category === "admin"}
                       labelClassName="text-xs font-semibold tracking-normal normal-case text-muted-foreground"
                       triggerClassName={`text-sm rounded-xl border-border bg-background ${
                         isViewMode ? "disabled:opacity-100" : ""

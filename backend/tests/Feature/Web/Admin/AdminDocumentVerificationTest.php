@@ -12,6 +12,17 @@ use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
 
+it('allows admins to unverify with a reason and verify again', function () {
+    $document = pendingCustomerDocument();
+    $document->update(['status' => DocumentStatus::Approved]);
+    $this->actingAs(documentReviewer());
+    $this->postJson("/admin/document-verification/{$document->id}/reject", [])->assertUnprocessable();
+    $this->postJson("/admin/document-verification/{$document->id}/reject", ['rejection_reason' => 'Document is no longer valid.'])
+        ->assertOk()->assertJsonPath('data.statusKey', 'rejected');
+    $this->postJson("/admin/document-verification/{$document->id}/approve")
+        ->assertOk()->assertJsonPath('data.statusKey', 'approved');
+});
+
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 });
@@ -95,7 +106,9 @@ it('rejects a pending document with a reason and allows resubmission', function 
         'message' => 'Not accepted: The back image is blurry.',
     ]);
 
-    $this->actingAs($reviewer)
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
+    $this->actingAs($staff)
         ->postJson("/admin/document-verification/{$document->id}/approve")
         ->assertUnprocessable()
         ->assertJsonValidationErrors('status');
@@ -173,6 +186,7 @@ it('lists every customer and separates pending review from self-drive eligibilit
         'submitted_at' => now(),
     ]);
     $approvedCustomer = documentCustomerUser();
+    addCustomerEmergencyContact($approvedCustomer);
     foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $type) {
         $approvedCustomer->documents()->create([
             'document_type' => $type,
@@ -205,6 +219,7 @@ it('lists every customer and separates pending review from self-drive eligibilit
 
 it('ignores legacy passport requirements and preserves old documents outside the active review', function () {
     $customer = documentCustomerUser();
+    addCustomerEmergencyContact($customer);
     $customer->customerProfile()->update(['passport_required' => true]);
 
     foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $type) {
@@ -244,6 +259,7 @@ it('ignores legacy passport requirements and preserves old documents outside the
 
 it('does not treat approved documents as self-drive eligibility without the required age', function () {
     $customer = documentCustomerUser();
+    addCustomerEmergencyContact($customer);
     $customer->customerProfile()->update(['birthdate' => now()->subYears(17)->toDateString()]);
 
     foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $type) {
@@ -261,6 +277,7 @@ it('does not treat approved documents as self-drive eligibility without the requ
 
 it('moves a customer from pending review to eligible after the final required approval', function () {
     $customer = documentCustomerUser();
+    addCustomerEmergencyContact($customer);
     $customer->documents()->create([
         'document_type' => CustomerDocument::DRIVERS_LICENSE,
         'status' => DocumentStatus::Approved,
@@ -286,6 +303,36 @@ it('moves a customer from pending review to eligible after the final required ap
         ->assertJsonPath('meta.total', 1)
         ->assertJsonPath('data.0.id', $customer->id)
         ->assertJsonPath('data.0.canSelfDrive', true);
+});
+
+it('requires a complete emergency contact in the self-drive list and customer details', function () {
+    $customer = customerUser();
+    $customer->emergencyContacts()->delete();
+    $customer->emergencyContacts()->create([
+        'name' => 'Maria Dela Cruz',
+        'relationship' => ' ',
+        'phone_number' => '09123456789',
+    ]);
+    $this->actingAs(documentReviewer());
+
+    $this->getJson('/admin/self-drive-verification/customers?eligibility=not_eligible')
+        ->assertOk()
+        ->assertJsonPath('meta.summary.eligible', 0)
+        ->assertJsonPath('data.0.id', $customer->id)
+        ->assertJsonPath('data.0.reviewStatus', 'emergency_contact_required')
+        ->assertJsonMissingPath('data.0.emergencyContacts');
+    $this->getJson("/admin/self-drive-verification/customers/{$customer->id}")
+        ->assertOk()
+        ->assertJsonPath('data.canSelfDrive', false)
+        ->assertJsonPath('data.reviewStatus', 'emergency_contact_required')
+        ->assertJsonPath('data.documentCounts.approved', 2);
+
+    $customer->emergencyContacts()->update(['relationship' => 'Parent']);
+    $this->getJson('/admin/self-drive-verification/customers?eligibility=eligible')
+        ->assertOk()
+        ->assertJsonPath('meta.summary.eligible', 1)
+        ->assertJsonPath('data.0.id', $customer->id)
+        ->assertJsonPath('data.0.reviewStatus', 'eligible');
 });
 
 it('validates customer filters and restricts the new list to document reviewers', function () {

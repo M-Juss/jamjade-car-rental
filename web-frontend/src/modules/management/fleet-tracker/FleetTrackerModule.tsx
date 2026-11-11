@@ -1,9 +1,11 @@
 "use client";
 
+import { RentalDrivingEvents } from "./components/RentalDrivingEvents";
+
 import { useRef, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
@@ -11,7 +13,6 @@ import { TablePagination } from "@/components/common/tables/TablePagination";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -19,7 +20,8 @@ import { ManagementPageHeading } from "@/modules/management/shell/components/Man
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import type { FleetQuery } from "@/validations/fleet/schemas";
 import { FleetVehicleCard } from "./components/FleetVehicleCard";
-import { fleetStatusLabels } from "./fleet-status";
+import { fleetVehicleName } from "./fleet-presentation";
+import { fleetStatusLabels, fleetTrackingFilters } from "./fleet-status";
 import { useFleetRentals } from "./useFleetRentals";
 import { FleetGoogleMap } from "./components/google-maps/FleetGoogleMap";
 
@@ -32,6 +34,7 @@ export default function FleetTracker() {
     loading,
     error,
     connection,
+    dataVersion,
     changeQuery,
     refresh,
   } = useFleetRentals();
@@ -41,7 +44,7 @@ export default function FleetTracker() {
     !loading && !error
       ? page?.rentals.find((rental) => rental.id === selectedId)
       : null;
-  const hasFilters = Boolean(searchInput || query.status || query.rental_type);
+  const hasFilters = Boolean(searchInput || query.status || query.tracking_state || query.rental_type);
 
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
@@ -111,23 +114,16 @@ export default function FleetTracker() {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <FilterSelect
                 prefixLabel="Tracking"
-                value={query.status ?? "all"}
+                value={query.tracking_state ?? "all"}
                 ariaLabel="Filter rentals by tracking status"
                 placeholder="All statuses"
                 height="compact"
                 className="min-w-0"
-                options={[
-                  { value: "all", label: "All statuses" },
-                  ...Object.entries(fleetStatusLabels).map(
-                    ([value, label]) => ({ value, label }),
-                  ),
-                ]}
+                options={fleetTrackingFilters}
                 onValueChange={(value) =>
                   changeQuery({
-                    status:
-                      value === "all"
-                        ? undefined
-                        : (value as FleetQuery["status"]),
+                    status: undefined,
+                    tracking_state: value === "all" ? undefined : (value as FleetQuery["tracking_state"]),
                     page: 1,
                   })
                 }
@@ -165,6 +161,7 @@ export default function FleetTracker() {
                   changeQuery({
                     search: "",
                     status: undefined,
+                    tracking_state: undefined,
                     rental_type: undefined,
                     page: 1,
                   });
@@ -236,6 +233,7 @@ export default function FleetTracker() {
         }}
       >
         <SheetContent
+          aria-describedby={undefined}
           side="bottom"
           className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-border bg-background"
           onCloseAutoFocus={(event) => {
@@ -249,14 +247,20 @@ export default function FleetTracker() {
             <>
               <SheetHeader className="border-b border-border px-6 py-4">
                 <SheetTitle>
-                  {selected.vehicle?.name ?? "Vehicle unavailable"}
+                  {fleetVehicleName(selected.vehicle)}
                 </SheetTitle>
-                <SheetDescription>{selected.bookingCode}</SheetDescription>
               </SheetHeader>
-              <dl className="mx-auto grid w-full max-w-3xl gap-4 px-6 py-5 text-sm sm:grid-cols-2">
+              <div className="grid items-start gap-6 p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+              <Card>
+              <CardHeader className="min-h-14 border-b border-border pb-3"><CardTitle className="text-sm font-semibold">Booking information</CardTitle><CardDescription className="text-xs">{selected.bookingCode}</CardDescription></CardHeader>
+              <CardContent>
+              <dl className="grid gap-4 text-sm sm:grid-cols-2">
                 {[
                   ["Plate", selected.vehicle?.plateNumber || "Unavailable"],
                   ["Customer", selected.customerName || "Unavailable"],
+                  ["Operator", selected.operator?.name || "Unavailable"],
+                  ["Contact", selected.operator?.phoneNumber || "Unavailable"],
+                  ["Email", selected.operator?.email || "Unavailable"],
                   [
                     "Rental type",
                     selected.rentalType === "self_drive"
@@ -278,7 +282,10 @@ export default function FleetTracker() {
                         )
                       : "No location received",
                   ],
-                  ...(selected.tracking.location ? [["GPS accuracy", `±${Math.round(selected.tracking.location.accuracy)} m`]] : []),
+                  ...(selected.tracking.location ? [
+                    ["Last location", `${selected.tracking.location.latitude.toFixed(6)}, ${selected.tracking.location.longitude.toFixed(6)}`],
+                    ["GPS accuracy", `±${Math.round(selected.tracking.location.accuracy)} m`],
+                  ] : [["Last location", "Unavailable"]]),
                 ].map(([label, value]) => (
                   <div key={label} className="min-w-0 space-y-1">
                     <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -288,6 +295,19 @@ export default function FleetTracker() {
                   </div>
                 ))}
               </dl>
+              <div className="mt-5 border-t border-border pt-4">
+                <h3 className="text-sm font-semibold">Customer emergency contacts</h3>
+                {selected.emergencyContacts.length ? <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
+                  {selected.emergencyContacts.map((contact, index) => <div key={index} className="min-w-0 space-y-1">
+                    <dt className="break-words font-medium">{contact.name}</dt>
+                    <dd className="text-xs text-muted-foreground">{contact.relationship}</dd>
+                    <dd className="break-words">{contact.phoneNumber}</dd>
+                  </div>)}
+                </dl> : <p className="mt-2 text-sm text-muted-foreground">No emergency contact provided</p>}
+              </div>
+              </CardContent></Card>
+              <RentalDrivingEvents key={selected.bookingCode} bookingCode={selected.bookingCode} dataVersion={dataVersion} />
+              </div>
             </>
           ) : null}
         </SheetContent>

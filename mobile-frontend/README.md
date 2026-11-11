@@ -252,6 +252,36 @@ the keyboard open. Repeat with a small screen, larger text, and phone/decimal
 keypads. Verify keyboard dismissal restores the normal layout. Browser viewport
 checks and native exports do not confirm real software-keyboard behavior.
 
+## Registration verification
+
+Registration validates email, password, and confirmation before showing a
+six-box code screen. `POST /mobile/register` returns pending metadata, without
+authenticating the customer. `POST /mobile/register/verify` accepts
+`registration_id` and a six-digit string `code`; only its successful response
+persists a Sanctum token and continues to onboarding. `POST
+/mobile/register/resend` accepts `registration_id` and refreshes the pending
+metadata. The code expires after 15 minutes and resend becomes available after
+60 seconds. Laravel owns expiry, attempt limits, uniqueness, and delivery.
+
+The screen shows each digit once in six boxes. Its single native input remains
+focusable for Android typing, paste, and backspace, with its own drawing hidden
+using opacity so the native glyphs cannot overlap the visible digits. The screen
+has no expiry countdown or local expiry-based button lock; Laravel returns expired
+code errors. The separate resend cooldown remains visible.
+
+Pending metadata stays in memory; the code and registration ID never enter route
+parameters or general-purpose storage. Password fields clear after successful
+initiation. An app restart requires starting registration again. Delivery uses
+the backend's existing Gmail SMTP configuration. Existing sign-in and account
+email changes retain their separate behavior. See
+[the registration contract](../docs/user-roles-and-access.md#mobile-registration-email-verification).
+
+Registration start/resend allow 60 seconds for synchronous SMTP delivery before
+timing out. They bypass the short backend-fallback deadline and do not replay a
+timed-out email POST on another backend candidate. This avoids reporting a
+connection failure after a slow email send while still permitting failover on
+immediate transport errors. The shared HTTP client owns this behavior.
+
 ## Account Information
 
 Customer setup resumes from persisted profile data after sign-in and session
@@ -270,7 +300,7 @@ node --test lib/customer/onboarding.test.mjs
 
 The Customer Profile separates Personal Information from Account Information. Personal/onboarding saves contain no email or password fields. Account forms use `validation/account/schemas.ts` and `services/api/account.service.ts`:
 
-- `PUT /mobile/account/email`: new email and current password. Laravel normalizes and checks uniqueness, changes the sign-in email immediately, and clears any previous email verification timestamp. No verification email or OTP is sent in this phase.
+- `PUT /mobile/account/email`: new email and current password. Laravel normalizes and checks uniqueness, changes the sign-in email immediately, and clears any previous email verification timestamp. Registration verification does not apply to this separate endpoint.
 - `PUT /mobile/account/password`: current password, new password, and confirmation. Laravel verifies the current password, hashes the replacement, rotates the remember token, and revokes existing mobile tokens. The app clears its session and shows a sign-in notice after success.
 
 These endpoints require an active Customer account and allow five combined attempts per minute per account. New passwords follow the current minimum of eight characters, must differ from the current password, and are limited to 72 UTF-8 bytes for bcrypt. Password inputs are not trimmed, persisted in the customer store, or logged. Changing an account does not require a completed personal profile.
@@ -282,7 +312,8 @@ current contracts, agreed pipeline, data/inspection UI, sequencing, and evidence
 It replaces the previous separate telematics/calibration/research guides.
 
 Existing Customer Self Drive and assigned-Driver setup use Laravel eligibility,
-six readiness checks, five explicitly consented foreground calibration captures,
+six readiness checks, two explicitly consented native foreground calibration captures
+(stationary then forward reference),
 and staff-controlled release. Released latest-GPS sharing has separate consent
 and foreground/background modes. The readiness task is inert; the rental location
 task is distinct. Neither collects continuous rental motion.

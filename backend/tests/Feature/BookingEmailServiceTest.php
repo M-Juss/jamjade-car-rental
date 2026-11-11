@@ -89,25 +89,55 @@ it('queues exactly two attachments using the saved filenames when queue delivery
     Storage::disk('local')->assertExists([$document->rental_information_path, $document->receipt_path]);
 });
 
-it('renders matching formal email formats without a card and identifies the individual payment', function () {
+it('renders branded matching email formats from the payment snapshot', function () {
     [$booking] = bookingEmailFixture();
     $confirmation = app(BookingConfirmationViewData::class)->make($booking);
     $confirmation['customer']['name'] = 'Example Customer';
 
-    foreach (['confirmation', 'confirmation-text'] as $template) {
-        $content = view("emails.bookings.{$template}", compact('confirmation'))->render();
-        $text = strip_tags($content);
-        expect($text)->toContain('Dear Example Customer,')
-            ->toContain('Booking reference: '.$booking->booking_code)
-            ->not->toContain('Invoice', 'INV-')->toContain('rental information')
-            ->toContain('Receipt reference: RCP-')
-            ->toContain('Amount received in this payment: PHP 3,500.00')
-            ->toContain('Total paid as of issue: PHP 3,500.00')
-            ->toContain('Remaining balance as of issue: PHP 0.00')
-            ->toContain('Please review both attached PDFs and retain them for your records.')
-            ->toContain('Sincerely,')
-            ->and($content)->not->toContain('<table')->not->toContain('background:')->not->toContain('border:');
+    $html = view('emails.bookings.confirmation', compact('confirmation'))->render();
+    $text = view('emails.bookings.confirmation-text', compact('confirmation'))->render();
+    $htmlText = html_entity_decode(strip_tags(preg_replace('/<\/(?:p|td|tr|h1|h2)>/i', "\n", $html)));
+    foreach ([$htmlText, $text] as $content) {
+        expect($content)->toContain('Booking confirmed')
+            ->toContain('Dear Example Customer,')
+            ->toContain($booking->booking_code)
+            ->toContain('Toyota Vios GR-S')
+            ->toContain('Rental dates')
+            ->not->toContain('Invoice', 'INV-')
+            ->toContain('Receipt reference')
+            ->toContain('RCP-')
+            ->toContain('Amount received this payment')
+            ->toContain('Total paid as of issue')
+            ->toContain('Remaining balance as of issue')
+            ->toContain('PHP 3,500.00')
+            ->toContain('PHP 0.00')
+            ->toContain('Your rental information, including the rental agreement, and payment receipt are attached. Please review and keep both PDFs for your records.');
     }
+    expect($html)->toContain('background-color: #346EF6')
+        ->toContain('max-width: 600px')
+        ->toContain('border-radius: 14px')
+        ->toContain('background-color: #F1F5FF')
+        ->not->toContain('gradient', 'Asia/Manila', 'PHT', 'UTC+8');
+});
+
+it('uses a payment title for non-confirmed snapshots and retains legacy invoice references', function () {
+    [$booking] = bookingEmailFixture();
+    $confirmation = app(BookingConfirmationViewData::class)->make($booking);
+    $confirmation['bookingStatusLabel'] = 'Pending';
+    $confirmation['formatVersion'] = 2;
+    $confirmation['invoiceReference'] = 'INV-HISTORICAL';
+
+    $html = view('emails.bookings.confirmation', compact('confirmation'))->render();
+    $text = view('emails.bookings.confirmation-text', compact('confirmation'))->render();
+    $htmlText = html_entity_decode(strip_tags(preg_replace('/<\/(?:p|td|tr|h1|h2)>/i', "\n", $html)));
+    foreach ([$htmlText, $text] as $content) {
+        expect($content)->toContain('Payment received')
+            ->toContain('Booking status')
+            ->toContain('Pending')
+            ->toContain('Invoice reference')
+            ->toContain('INV-HISTORICAL');
+    }
+    expect($html)->toContain('<title>Payment received</title>');
 });
 
 it('records a delivery failure without discarding the issued record when the recipient is missing', function () {

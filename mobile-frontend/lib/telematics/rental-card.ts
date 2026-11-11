@@ -28,13 +28,23 @@ export function rentalCardState(rental: MobileTelematicsRental) {
   return { canOpen: false, status, description, action: 'Setup locked' };
 }
 
-export function formatRentalDate(value: string | null) {
-  return value ? new Date(value).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' }) : 'Not scheduled';
+export function formatRentalDate(value: string | null, includeSeconds = false) {
+  return value ? new Date(value).toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: includeSeconds ? '2-digit' : undefined,
+  }) : 'Not scheduled';
 }
 
 export function formatRentalDateCompact(value: string | null) {
   return value ? new Date(value).toLocaleString('en-PH', {
     timeZone: 'Asia/Manila',
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',

@@ -49,6 +49,7 @@ class RentalReadinessService
             'fullyPaid' => $testMode || ($booking->payment_status === PaymentStatus::Paid && (float) $booking->remaining_balance <= 0),
             'ageEligible' => $testMode || CustomerAgePolicy::isEligible($booking->user->customerProfile?->birthdate),
             'documentsApproved' => $testMode || $documentsApproved,
+            'emergencyContactOnFile' => $testMode || ! $selfDrive || $booking->user->hasCompleteEmergencyContact(),
             'driverAssigned' => $driverAssigned,
             'driverEligible' => (bool) $driverEligible,
             'vehicleOperational' => $booking->vehicle?->status === VehicleStatus::Available
@@ -96,7 +97,7 @@ class RentalReadinessService
         $state = $this->evaluate($booking);
         app(SelfDriveBookingAvailabilityService::class)->assertHandoverAvailable($booking);
         $this->assertChecks($state, [
-            'bookingConfirmed', 'fullyPaid', 'ageEligible', 'documentsApproved', 'driverAssigned',
+            'bookingConfirmed', 'fullyPaid', 'ageEligible', 'documentsApproved', 'emergencyContactOnFile', 'driverAssigned',
             'driverEligible', 'vehicleOperational', 'outgoingFinalized', 'telematicsSetupReady',
         ], 'The rental cannot start until payment, inspection, telematics setup, operator, and vehicle readiness are complete.');
         $this->availability->assertBookingIntervalAvailable($booking->vehicle_id, $booking->rental_start_at, $booking->rental_end_at, $booking->id);

@@ -39,7 +39,7 @@ export function RecordingChecks({ inspection }: { inspection: NativeInspection }
       <DetailsList items={[
         ['Completed as planned', observation.completed_as_planned === null ? 'Not sure' : observation.completed_as_planned ? 'Yes' : 'No'],
         ['Stopped by', stopLabel(observation.actual_stop_method)],
-        ...(collection?.protocol_code === 'SW' ? [['Initial deviation', observation.initial_deviation ? humanize(observation.initial_deviation) : 'Not recorded'] as [string, string]] : []),
+        ...(collection && ['LC', 'SW', 'SWL', 'HSWL', 'SWR', 'HSWR'].includes(collection.protocol_code) ? [['Initial deviation', observation.initial_deviation ? humanize(observation.initial_deviation) : 'Not recorded'] as [string, string]] : []),
         ['Report from', humanize(observation.source)],
         ['Observations', observation.flags.length ? observation.flags.map(humanize).join(', ') : 'None reported'],
       ]} />

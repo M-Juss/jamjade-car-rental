@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Enums\BookingStatus;
 use App\Enums\TelematicsSetupStatus;
 use App\Models\Booking;
+use App\Models\Notification;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class FleetTrackerService
 {
@@ -15,7 +17,14 @@ class FleetTrackerService
         'not_started', 'awaiting_location', 'recent_location', 'no_recent_updates', 'paused', 'ended', 'unavailable',
     ];
 
-    public function rentals(array $filters): array
+    public const TRACKING_FILTERS = [
+        'updating' => ['recent_location'],
+        'paused' => ['paused'],
+        'no_updates' => ['no_recent_updates'],
+        'not_tracking' => ['not_started', 'awaiting_location', 'ended', 'unavailable'],
+    ];
+
+    public function rentals(array $filters, int $viewerId): array
     {
         $query = Booking::query()->where('status', BookingStatus::Ongoing);
         $totalOngoing = (clone $query)->count();
@@ -28,6 +37,8 @@ class FleetTrackerService
                     ->orWhereHas('vehicle', fn (Builder $vehicle) => $vehicle
                         ->where('name', 'like', '%'.$search.'%')->orWhere('plate_number', 'like', '%'.$search.'%'))
                     ->orWhereHas('user', fn (Builder $user) => $user->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('assignedDriver', fn (Builder $driver) => $driver->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('telematicsTrip.operator', fn (Builder $operator) => $operator->where('name', 'like', '%'.$search.'%'))
                     ->orWhereHas('user.customerProfile', fn (Builder $profile) => $profile
                         ->where('first_name', 'like', '%'.$search.'%')->orWhere('last_name', 'like', '%'.$search.'%'));
             });
@@ -38,20 +49,48 @@ class FleetTrackerService
         if ($status = $filters['status'] ?? null) {
             $this->filterTrackingStatus($query, $status, $cutoff);
         }
+        if ($state = $filters['tracking_state'] ?? null) {
+            $query->where(function (Builder $group) use ($state, $cutoff) {
+                foreach (self::TRACKING_FILTERS[$state] as $status) {
+                    $group->orWhere(fn (Builder $item) => $this->filterTrackingStatus($item, $status, $cutoff));
+                }
+            });
+        }
 
         $rentals = $query->select(['id', 'booking_code', 'user_id', 'vehicle_id', 'rental_type', 'rental_start_at', 'rental_end_at'])
             ->with([
-                'user:id,name', 'user.customerProfile:id,user_id,first_name,last_name',
-                'vehicle:id,name,plate_number',
-                'telematicsTrip:id,booking_id,status,last_location_at,latest_location,location_consent_at,location_consent_version',
+                'user:id,name,email,phone_number', 'user.emergencyContacts:id,user_id,name,relationship,phone_number', 'user.customerProfile:id,user_id,first_name,last_name',
+                'assignedDriver:users.id,users.name,users.email,users.phone_number',
+                'vehicle:id,brand,name,model,plate_number',
+                'telematicsTrip:id,booking_id,operator_user_id,status,last_location_at,latest_location,location_consent_at,location_consent_version',
+                'telematicsTrip.operator:id,name,email,phone_number',
                 'telematicsSetupSession:id,booking_id,status', 'returnRecord:id,booking_id,vehicle_received_at',
             ])
+            ->withCount('telematicsEvents')
             ->orderBy('rental_end_at')->orderBy('id')
             ->paginate($filters['per_page'] ?? 15);
+
+        $bookingIds = $rentals->getCollection()->modelKeys();
+        $drivingCounts = DB::table('drive_monitoring_events as event')
+            ->join('drive_monitoring_sessions as capture', 'capture.id', '=', 'event.session_id')
+            ->join('telematics_trips as trip', 'trip.id', '=', 'capture.telematics_trip_id')
+            ->whereIn('trip.booking_id', $bookingIds)
+            ->whereIn('event.status', ['confirmed', 'review_required'])
+            ->selectRaw('trip.booking_id, count(*) as total')->groupBy('trip.booking_id')
+            ->pluck('total', 'booking_id');
+        $notificationCounts = Notification::query()->where('user_id', $viewerId)
+            ->whereIn('booking_id', $bookingIds)->whereNull('read_at')
+            ->selectRaw('booking_id, count(*) as total')->groupBy('booking_id')
+            ->pluck('total', 'booking_id');
 
         $rentals->setCollection($rentals->getCollection()->map(fn (Booking $booking) => [
             'booking' => $booking, 'trackingStatus' => $this->trackingStatus($booking, $cutoff),
             'location' => $this->latestLocation($booking),
+            'activityCounts' => [
+                'driving' => (int) ($drivingCounts[$booking->id] ?? 0),
+                'trip' => (int) $booking->telematics_events_count,
+                'unreadNotifications' => (int) ($notificationCounts[$booking->id] ?? 0),
+            ],
         ]));
 
         return ['rentals' => $rentals, 'totalOngoing' => $totalOngoing];

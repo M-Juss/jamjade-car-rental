@@ -1,3 +1,4 @@
+import { OwnerVerificationDialog } from "@/components/common/owner-verification/OwnerVerificationDialog";
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,6 +37,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <OwnerVerificationDialog />
         <Toaster theme="light" position="top-right" />
       </body>
     </html>

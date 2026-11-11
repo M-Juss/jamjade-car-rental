@@ -6,13 +6,16 @@ use App\Enums\RentalType;
 use App\Enums\UserRole;
 use App\Enums\VehicleStatus;
 use App\Mail\BookingConfirmationMail;
+use App\Mail\VerifyMobileRegistrationMail;
 use App\Models\Booking;
 use App\Models\CustomerDocument;
 use App\Models\Payment;
 use App\Models\PayPalCheckout;
 use App\Models\TelematicsTrip;
 use App\Models\User;
+use App\Services\BookingService;
 use App\Services\PaymentDeadlineService;
+use App\Services\PayPalClient;
 use App\Support\BookingAgreement;
 use App\Support\PayPalAppUrl;
 use Carbon\CarbonImmutable;
@@ -63,7 +66,9 @@ it('accepts only configured web PayPal callback origins', function () {
         ->and(PayPalAppUrl::isAllowed('http://untrusted.example/paypal/return'))->toBeFalse();
 });
 
-it('registers a mobile customer and returns a bearer token', function () {
+it('starts mobile registration with an email verification code and no account or token', function () {
+    Mail::fake();
+
     $response = $this->postJson('/api/mobile/register', [
         'email' => 'new.customer@example.com',
         'password' => 'abcdefgh',
@@ -71,8 +76,22 @@ it('registers a mobile customer and returns a bearer token', function () {
         'device_name' => 'pest-registration-device',
     ]);
 
-    $response->assertCreated()
+    $response->assertStatus(202)
         ->assertJsonPath('success', true)
+        ->assertJsonStructure(['data' => ['registrationId', 'email', 'expiresAt', 'resendAvailableAt']])
+        ->assertJsonMissingPath('data.token')
+        ->assertJsonMissingPath('data.user');
+
+    $registrationId = $response->json('data.registrationId');
+    $this->assertDatabaseMissing('users', ['email' => 'new.customer@example.com']);
+    $this->assertDatabaseHas('pending_mobile_registrations', ['id' => $registrationId, 'email' => 'new.customer@example.com']);
+    expect(Mail::sent(VerifyMobileRegistrationMail::class))->toHaveCount(1);
+
+    $code = Mail::sent(VerifyMobileRegistrationMail::class)->first()->code;
+    $verified = $this->postJson('/api/mobile/register/verify', [
+        'registration_id' => $registrationId,
+        'code' => $code,
+    ])->assertCreated()
         ->assertJsonPath('data.tokenType', 'Bearer')
         ->assertJsonPath('data.user.isActive', true)
         ->assertJsonStructure(['data' => ['token', 'user']]);
@@ -81,8 +100,9 @@ it('registers a mobile customer and returns a bearer token', function () {
         'email' => 'new.customer@example.com',
         'phone_number' => null,
     ]);
+    $this->assertDatabaseMissing('pending_mobile_registrations', ['id' => $registrationId]);
 
-    $this->withToken($response->json('data.token'))
+    $this->withToken($verified->json('data.token'))
         ->getJson('/api/mobile/me')
         ->assertOk()
         ->assertJsonPath('data.user.email', 'new.customer@example.com');
@@ -126,14 +146,21 @@ it('completes the mobile profile and enforces self-drive age eligibility', funct
 });
 
 it('persists each mobile onboarding step to the customer profile', function () {
+    Mail::fake();
     $registration = $this->postJson('/api/mobile/register', [
         'email' => 'onboarding.customer@example.com',
         'password' => 'password123',
         'password_confirmation' => 'password123',
         'device_name' => 'onboarding-device',
+    ])->assertStatus(202);
+
+    $code = Mail::sent(VerifyMobileRegistrationMail::class)->first()->code;
+    $verified = $this->postJson('/api/mobile/register/verify', [
+        'registration_id' => $registration->json('data.registrationId'),
+        'code' => $code,
     ])->assertCreated();
 
-    $this->withToken($registration->json('data.token'))
+    $this->withToken($verified->json('data.token'))
         ->putJson('/api/mobile/profile', [
             'first_name' => 'Maria',
             'last_name' => 'Santos',
@@ -300,11 +327,12 @@ it('returns confirmed booking date ranges for the specific vehicle', function ()
 
 it('creates a booking with backend pricing and down payment validation', function () {
     $user = customerUser();
+    $user->emergencyContacts()->delete();
     $vehicle = availableVehicle();
     $vehicle->update(['color' => 'Silver']);
     Sanctum::actingAs($user);
 
-    $response = $this->postJson('/api/mobile/bookings', [
+    $payload = [
         'vehicle_id' => $vehicle->id,
         'rental_start_at' => now()->addDays(3)->toDateTimeString(),
         'rental_end_at' => now()->addDays(4)->toDateTimeString(),
@@ -318,7 +346,31 @@ it('creates a booking with backend pricing and down payment validation', functio
         'customer_signature' => 'Juan Dela Cruz',
         'terms_version' => '2026-06-07',
         'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
-    ]);
+    ];
+
+    $this->postJson('/api/mobile/profile/emergency-contact/skip')->assertOk();
+    $this->getJson('/api/mobile/profile')
+        ->assertOk()
+        ->assertJsonPath('data.selfDriveAvailability.canSelfDrive', false)
+        ->assertJsonPath('data.profile.selfDriveReviewStatus', 'emergency_contact_required')
+        ->assertJsonPath('data.profile.verificationStatus', 'approved');
+    $this->postJson('/api/mobile/bookings', $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('driver_option')
+        ->assertJsonPath('errors.driver_option.0', 'Add an emergency contact in your profile before booking a self-drive vehicle.');
+    $this->assertDatabaseCount('bookings', 0);
+
+    $this->postJson('/api/mobile/profile/emergency-contact', [
+        'name' => 'Maria Dela Cruz',
+        'relationship' => 'Parent',
+        'phone_number' => '09123456789',
+    ])->assertOk();
+    $this->getJson('/api/mobile/profile')
+        ->assertOk()
+        ->assertJsonPath('data.selfDriveAvailability.canSelfDrive', true)
+        ->assertJsonPath('data.profile.selfDriveReviewStatus', 'eligible');
+
+    $response = $this->postJson('/api/mobile/bookings', $payload);
 
     $response->assertCreated()
         ->assertJsonPath('success', true)
@@ -493,6 +545,7 @@ it('calculates outside Manila owner driver coverage only by rental day', functio
 
 it('enforces fulfillment options from the selected driver option', function () {
     $user = customerUser();
+    $user->emergencyContacts()->delete();
     $vehicle = availableVehicle();
     Sanctum::actingAs($user);
 
@@ -1126,4 +1179,115 @@ it('stores telematics events only for active customer trips', function () {
     $response->assertCreated()
         ->assertJsonPath('data.eventType', 'harsh_braking')
         ->assertJsonPath('data.severity', 'High');
+});
+
+it('revises an unpaid pending booking after an abandoned checkout and preserves the signed agreement', function () {
+    $user = customerUser();
+    $vehicle = availableVehicle();
+    Sanctum::actingAs($user);
+    $this->mock(PayPalClient::class, function ($mock) {
+        $mock->shouldReceive('createOrder')->twice()->andReturn(
+            ['id' => 'REVISION-OLD', 'links' => [['rel' => 'approve', 'href' => 'https://example.com/old']]],
+            ['id' => 'REVISION-NEW', 'links' => [['rel' => 'approve', 'href' => 'https://example.com/new']]],
+        );
+    });
+    $start = now('Asia/Manila')->addDays(5)->startOfDay();
+    $payload = [
+        'vehicle_id' => $vehicle->id, 'rental_start_at' => $start->toDateString(),
+        'rental_end_at' => $start->copy()->addDay()->toDateString(), 'pickup_location_type' => 'shop',
+        'pickup_location' => BookingService::JAMJADE_GARAGE,
+        'return_location' => BookingService::JAMJADE_GARAGE,
+        'driver_option' => 'owners_driver', 'owner_driver_coverage' => 'metro_manila',
+        'payment_option' => 'full_payment', 'customer_signature' => 'original-signature',
+        'terms_version' => BookingAgreement::VERSION,
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
+        'reviewed_pricing' => ['price_per_day' => 3500, 'subtotal' => 3500, 'delivery_fee' => 0,
+            'delivery_toll_fee' => 0, 'owner_driver_fee' => 700, 'total_amount' => 4200],
+        'app_return_url' => 'exp://192.168.1.50:8081/--/paypal/return',
+        'app_cancel_url' => 'exp://192.168.1.50:8081/--/paypal/cancel',
+    ];
+    $this->postJson('/api/mobile/paypal/orders', $payload)->assertCreated();
+    $booking = Booking::firstOrFail();
+    $this->postJson('/api/mobile/paypal/orders/REVISION-OLD/abandon')->assertOk();
+    $this->getJson("/api/mobile/bookings/{$booking->booking_code}")->assertOk()->assertJsonPath('data.canReviseUnpaid', true);
+    $payload['rental_end_at'] = $start->copy()->addDays(2)->toDateString();
+    $payload['customer_signature'] = 'updated-signature';
+    $payload['reviewed_pricing']['subtotal'] = 7000;
+    $payload['reviewed_pricing']['owner_driver_fee'] = 1400;
+    $payload['reviewed_pricing']['total_amount'] = 8400;
+    $conflict = $booking->replicate();
+    $conflict->booking_code = 'CONFLICT-REVISION';
+    $conflict->user_id = customerUser()->id;
+    $conflict->status = BookingStatus::Confirmed;
+    $conflict->rental_start_at = $start->copy()->addDay();
+    $conflict->rental_end_at = $start->copy()->addDays(3);
+    $conflict->save();
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)
+        ->assertUnprocessable()->assertJsonValidationErrors('rental_start_at');
+    $conflict->delete();
+    $wrongPrice = $payload;
+    $wrongPrice['reviewed_pricing']['total_amount'] = 1;
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $wrongPrice)
+        ->assertUnprocessable()->assertJsonValidationErrors('reviewed_pricing');
+    expect($booking->fresh()->terms->customer_signature)->toBe('original-signature');
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)
+        ->assertCreated()->assertJsonPath('data.amount', 8400);
+    $this->assertDatabaseHas('booking_terms_revisions', ['booking_id' => $booking->id, 'customer_signature' => 'original-signature']);
+    $this->assertDatabaseHas('booking_terms', ['booking_id' => $booking->id, 'customer_signature' => 'updated-signature']);
+    $this->assertDatabaseHas('payments', ['provider_order_id' => 'REVISION-OLD', 'status' => 'abandoned']);
+    $this->postJson('/api/mobile/paypal/orders/REVISION-OLD/capture')->assertUnprocessable();
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)->assertUnprocessable();
+    $current = PayPalCheckout::where('provider_order_id', 'REVISION-NEW')->firstOrFail();
+    $current->update(['status' => 'approved']);
+    $this->getJson("/api/mobile/bookings/{$booking->booking_code}")->assertOk()->assertJsonPath('data.canReviseUnpaid', false);
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)->assertUnprocessable();
+    $current->update(['status' => 'failed', 'provider_response' => ['status' => 'COMPLETED']]);
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)->assertUnprocessable();
+    $current->update(['status' => 'completed']);
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)->assertUnprocessable();
+    Sanctum::actingAs(customerUser());
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)->assertNotFound();
+});
+
+it('requires a fresh delivery quote and retains the previously accepted quote when revising dates', function () {
+    $user = customerUser();
+    $vehicle = availableVehicle();
+    Sanctum::actingAs($user);
+    $this->mock(PayPalClient::class, function ($mock) {
+        $mock->shouldReceive('createOrder')->twice()->andReturn(
+            ['id' => 'DELIVERY-OLD', 'links' => [['rel' => 'approve', 'href' => 'https://example.com/old']]],
+            ['id' => 'DELIVERY-NEW', 'links' => [['rel' => 'approve', 'href' => 'https://example.com/new']]],
+        );
+    });
+    $start = now('Asia/Manila')->addDays(5)->startOfDay();
+    $payload = withTestDeliveryQuote($user, [
+        'vehicle_id' => $vehicle->id, 'rental_start_at' => $start->toDateString(),
+        'rental_end_at' => $start->copy()->addDay()->toDateString(), 'pickup_location_type' => 'delivery',
+        'pickup_location' => 'Test delivery location', 'return_location' => 'Test delivery location',
+        'driver_option' => 'owners_driver', 'owner_driver_coverage' => 'metro_manila',
+        'payment_option' => 'full_payment', 'customer_signature' => 'old signature',
+        'terms_version' => BookingAgreement::VERSION,
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
+        'reviewed_pricing' => ['price_per_day' => 3500, 'subtotal' => 3500, 'delivery_fee' => 900,
+            'delivery_toll_fee' => 0, 'owner_driver_fee' => 700, 'total_amount' => 5100],
+        'app_return_url' => 'exp://192.168.1.50:8081/--/paypal/return',
+        'app_cancel_url' => 'exp://192.168.1.50:8081/--/paypal/cancel',
+    ]);
+    $oldQuote = $payload['delivery_quote_id'];
+    $this->postJson('/api/mobile/paypal/orders', $payload)->assertCreated();
+    $booking = Booking::firstOrFail();
+    $this->postJson('/api/mobile/paypal/orders/DELIVERY-OLD/abandon')->assertOk();
+    $payload['rental_end_at'] = $start->copy()->addDays(2)->toDateString();
+    $payload['reviewed_pricing']['subtotal'] = 7000;
+    $payload['reviewed_pricing']['owner_driver_fee'] = 1400;
+    $payload['reviewed_pricing']['total_amount'] = 9300;
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)
+        ->assertUnprocessable()->assertJsonValidationErrors('delivery_quote_id');
+    $payload = withTestDeliveryQuote($user, $payload);
+    $newQuote = $payload['delivery_quote_id'];
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/paypal/revise-order", $payload)->assertCreated();
+    expect($booking->fresh()->deliveryQuote->id)->toBe($newQuote);
+    $this->assertDatabaseHas('booking_terms_revisions', ['booking_id' => $booking->id, 'delivery_quote_id' => $oldQuote]);
+    $this->assertDatabaseHas('delivery_quotes', ['id' => $oldQuote, 'booking_id' => null, 'status' => 'consumed']);
+    $this->assertDatabaseHas('delivery_quotes', ['id' => $newQuote, 'booking_id' => $booking->id]);
 });

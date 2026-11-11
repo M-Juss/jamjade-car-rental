@@ -1,0 +1,697 @@
+{
+  "contract_version": "rc-collection-v1",
+  "catalog_version": "rc-exercises-v6",
+  "status": "provisional",
+  "preset": {
+    "preset_id": "mn82s_roof_v1",
+    "rc_model": "MN-82S Supertourer",
+    "phone_model": "Redmi Note 8 Pro",
+    "mount_method": "Adjustable screw",
+    "mount_location": "upper_roof",
+    "screen_facing": "up",
+    "phone_top_toward_rc_front": true,
+    "long_axis_front_back": true,
+    "mount_angle_degrees": null
+  },
+  "preflight_thresholds": {
+    "criteria_version": null,
+    "orientation_tolerance_degrees": null,
+    "acceleration_std_limit_mps2": null,
+    "gyroscope_rms_limit_radps": null,
+    "cadence_tolerance_percent": null
+  },
+  "protocols": [
+    {
+      "code": "FSS",
+      "label": "Forward Start-Stop",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "normal",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "straight_start_stop",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Start forward gradually and follow the marked lane. Release the lever to neutral at B and allow the RC to stop before C. Do not apply the opposite lever for this exercise."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "HA",
+      "label": "Harsh Acceleration Attempt",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "harsh_attempt",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "straight_start_stop",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Attempt one sharp forward start, then release the lever to neutral and allow the RC to stop within the rehearsed stopping zone. The attempt does not establish a harsh label."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "HB",
+      "label": "Harsh Braking Attempt",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "harsh_attempt",
+      "planned_direction": "forward",
+      "expected_stop_method": "brake_applied",
+      "layout_key": "straight_start_stop",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Start forward normally, then push the lever in the opposite direction to attempt a sharp brake while still moving forward. Stop without reversing. The attempt does not establish a harsh label."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "LT",
+      "label": "Left Turn",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "normal",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "left_turn",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach, make one smooth left turn from the RC perspective, straighten, then release the lever to neutral and allow the RC to stop."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "HLT",
+      "label": "Harsh Left Turn Attempt",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "harsh_attempt",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "left_turn",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach the same corner slightly faster than your normal left turn. Hold a steady throttle through the turn, straighten, then release to neutral to stop."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "RT",
+      "label": "Right Turn",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "normal",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "right_turn",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach, make one smooth right turn from the RC perspective, straighten, then release the lever to neutral and allow the RC to stop."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "HRT",
+      "label": "Harsh Right Turn Attempt",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "harsh_attempt",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "right_turn",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach the same corner slightly faster than your normal right turn. Hold a steady throttle through the turn, straighten, then release to neutral to stop."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "RSS",
+      "label": "Reverse Start-Stop",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "normal",
+      "planned_direction": "reverse",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "straight_start_stop",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Reverse once along the marked lane. Release the lever to neutral at B and allow the RC to stop before C."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "LC",
+      "label": "Lane Change",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "normal",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "lane_change",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Start between cones A in the original lane. At B, steer toward the adjacent lane. Countersteer to straighten at C, stay in that lane and release to neutral to stop before D. Mirror the course for the other side."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "SWL",
+      "label": "Swerve Left",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "normal",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "swerve_obstacle_avoidance",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm setup, lock the holder and rehearse at low speed. Mark one obstacle in the starting lane and leave room to pass it, return to that lane and stop."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach in the starting lane at a controlled speed. Steer smoothly to pass the obstacle on the left. Once clear, return to the starting lane, straighten and release to neutral in the stopping zone."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Record which way the RC first moved. Mark whether it cleared the obstacle and returned to the starting lane. Note any contact or unexpected movement."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "HSWL",
+      "label": "Swerve Left — Harsh Attempt",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "harsh_attempt",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "swerve_obstacle_avoidance",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm setup, lock the holder and rehearse at low speed. Mark one obstacle in the starting lane and leave room to pass it, return to that lane and stop."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach in the starting lane at a controlled speed. Make a quicker steering input to pass the obstacle on the left. Once clear, return to the starting lane, straighten and release to neutral in the stopping zone."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Record which way the RC first moved. Mark whether it cleared the obstacle and returned to the starting lane. Note any contact or unexpected movement."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "SWR",
+      "label": "Swerve Right",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "normal",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "swerve_obstacle_avoidance",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm setup, lock the holder and rehearse at low speed. Mark one obstacle in the starting lane and leave room to pass it, return to that lane and stop."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach in the starting lane at a controlled speed. Steer smoothly to pass the obstacle on the right. Once clear, return to the starting lane, straighten and release to neutral in the stopping zone."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Record which way the RC first moved. Mark whether it cleared the obstacle and returned to the starting lane. Note any contact or unexpected movement."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "HSWR",
+      "label": "Swerve Right — Harsh Attempt",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "harsh_attempt",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "swerve_obstacle_avoidance",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm setup, lock the holder and rehearse at low speed. Mark one obstacle in the starting lane and leave room to pass it, return to that lane and stop."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Approach in the starting lane at a controlled speed. Make a quicker steering input to pass the obstacle on the right. Once clear, return to the starting lane, straighten and release to neutral in the stopping zone."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Record which way the RC first moved. Mark whether it cleared the obstacle and returned to the starting lane. Note any contact or unexpected movement."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "MD",
+      "label": "Mixed Drive",
+      "recording_kind": "maneuver_trial",
+      "planned_assessment": "unspecified",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "mixed_drive",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Rehearse the planned sequence at low speed. Leave enough room to straighten and stop."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording and keep the RC still for about five seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Drive the planned sequence in one recording. When combining a turn and a swerve, straighten between maneuvers."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Release to neutral, let the RC settle, and keep it still for about five seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop and save the recording within 30 seconds."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Note the actual maneuver order, any contact, and any unexpected movement."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Upload the recording for review."
+        }
+      ]
+    },
+    {
+      "code": "SR",
+      "label": "Stationary Reference",
+      "recording_kind": "stationary_reference",
+      "planned_assessment": "not_applicable",
+      "planned_direction": "not_applicable",
+      "expected_stop_method": "not_applicable",
+      "layout_key": "stationary",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": false,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Keep the RC and phone untouched on the designated level setup area. Capture the required quiet evidence."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    },
+    {
+      "code": "FR",
+      "label": "Forward Reference",
+      "recording_kind": "forward_reference",
+      "planned_assessment": "not_applicable",
+      "planned_direction": "forward",
+      "expected_stop_method": "neutral_release",
+      "layout_key": "forward_reference",
+      "validation_status": "provisional",
+      "quiet_time_guidance_ms": 5000,
+      "requires_course_rehearsal": true,
+      "steps": [
+        {
+          "stage": "precheck",
+          "instruction": "Confirm the holder is locked, orientation is correct, the course is clear and the applicable setup checks are complete."
+        },
+        {
+          "stage": "initial_rest",
+          "instruction": "Start recording. Let the RC settle, then keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "exercise",
+          "instruction": "Capture quiet rest, one smooth straight forward start, then release the lever to neutral and allow the RC to stop without reversing, followed by quiet rest. This is alignment evidence; review must confirm a usable start and slowdown."
+        },
+        {
+          "stage": "final_rest",
+          "instruction": "Once the RC has stopped and its body has settled, keep it untouched for about five quiet seconds."
+        },
+        {
+          "stage": "save",
+          "instruction": "Stop recording and save the original immediately."
+        },
+        {
+          "stage": "observe",
+          "instruction": "Confirm what actually happened and select any unusual observations. Uncertain answers are allowed."
+        },
+        {
+          "stage": "upload",
+          "instruction": "Explicitly upload when connected. Keep the phone original after server verification."
+        }
+      ]
+    }
+  ]
+}

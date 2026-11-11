@@ -1,4 +1,3 @@
-import { ApiError } from '@/services/http';
 import { themeColors } from '@/constants/theme';
 import { receiptSuccessRoute } from '@/lib/payments/receipt';
 import { useFocusEffect } from '@react-navigation/native';
@@ -218,7 +217,7 @@ function PaymentScreen() {
           lateReturnPolicyVersion: booking.lateReturnPolicy?.version ?? '',
           appReturnUrl: returnUrl,
           appCancelUrl: cancelUrl,
-        }));
+        }, flow?.bookingReference));
       activeOrder = order;
 
       if (!checkout) {
@@ -230,7 +229,7 @@ function PaymentScreen() {
       if (result.type !== 'success') {
         await abandonPayPalOrder(order.orderId);
         router.replace(
-          `/browse/success?status=failed&message=${encodeURIComponent('The PayPal checkout was closed before payment approval. No payment was made; please restart the booking.')}&retryPath=${encodeURIComponent(`/browse/payment?flow=${flowId ?? ''}&vehicleId=${routeVehicleId ?? ''}`)}` as Href,
+          `/browse/success?status=failed&message=${encodeURIComponent('PayPal checkout was closed. Review your booking to try again.')}&retryPath=${encodeURIComponent(`/bookings/${encodeURIComponent(order.bookingCode)}`)}` as Href,
         );
         return;
       }
@@ -240,7 +239,7 @@ function PaymentScreen() {
       if (redirect.path?.includes('cancel') || result.url.includes('/cancel')) {
         await abandonPayPalOrder(order.orderId);
         router.replace(
-          `/browse/success?status=failed&message=${encodeURIComponent('PayPal payment was cancelled.')}&retryPath=${encodeURIComponent(`/browse/payment?flow=${flowId ?? ''}&vehicleId=${routeVehicleId ?? ''}`)}` as Href,
+          `/browse/success?status=failed&message=${encodeURIComponent('PayPal payment was cancelled.')}&retryPath=${encodeURIComponent(`/bookings/${encodeURIComponent(order.bookingCode)}`)}` as Href,
         );
         return;
       }
@@ -261,9 +260,9 @@ function PaymentScreen() {
         await abandonPayPalOrder(activeOrder.orderId).catch(() => undefined);
       }
 
-      const retryPath = checkoutError instanceof ApiError && checkoutError.errors?.late_return_policy_version
-        ? `/browse/booking?vehicleId=${encodeURIComponent(booking.vehicleId)}`
-        : `/browse/payment?flow=${flowId ?? ''}&vehicleId=${routeVehicleId ?? ''}`;
+      const retryPath = activeOrder
+        ? `/bookings/${encodeURIComponent(activeOrder.bookingCode)}`
+        : '/(tabs)/bookings';
       router.replace(
         `/browse/success?status=failed&message=${encodeURIComponent(message)}${approved && activeOrder ? `&orderId=${encodeURIComponent(activeOrder.orderId)}` : ''}&retryPath=${encodeURIComponent(retryPath)}` as Href,
       );
@@ -285,7 +284,7 @@ function PaymentScreen() {
               accessibilityRole="button"
               onPress={restartBooking}
               className="h-12 w-12 items-center justify-center rounded-field bg-surface">
-              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-title font-semibold text-foreground">Payment</Text>
@@ -379,10 +378,6 @@ function PaymentScreen() {
                 </Text>
               )}
             </Pressable>
-
-            <Text className="font-sans mt-3 text-center text-[11px] font-normal leading-4 text-secondary-foreground">
-              Complete your payment with PayPal. All amounts are in Philippine pesos.
-            </Text>
           </View>
         </View>
       </ScrollView>

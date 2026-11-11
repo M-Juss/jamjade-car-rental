@@ -13,7 +13,7 @@ import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { additionalChargesSchema, updateAdditionalChargeSchema, type AdditionalChargesFormValues } from "@/validations/booking/schemas";
 import { addAdditionalCharges, updateAdditionalCharge, type AdditionalChargeRecord, type BookingRecord } from "@/services/booking";
 import { appToast } from "@/lib/toast";
-import { ApiError } from "@/services/http";
+import { ApiError, OwnerVerificationCancelled } from "@/services/http";
 
 const typeOptions = [
   ["toll_fee", "Toll Fee"], ["vehicle_damage", "Vehicle Damage"],
@@ -43,6 +43,7 @@ export function AdditionalChargesForm({ onCancel, booking, onSaved, onBusyChange
       appToast.success(editingCharge ? "Return charge updated." : "Additional charges added successfully."); await onSaved();
     }
     catch (error) {
+      if (error instanceof OwnerVerificationCancelled) return;
       if (error instanceof ApiError && error.errors) Object.entries(error.errors).forEach(([field, messages]) => {
         if (!messages[0]) return;
         if (/^charges\.\d+\.(type|description|amount|responsibility)$/.test(field)) setError(field as Path<AdditionalChargesFormValues>, { type: "server", message: messages[0] });

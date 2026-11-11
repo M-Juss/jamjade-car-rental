@@ -24,7 +24,7 @@ export function ManagementAccessGuard({
   const isAuthorized = status === "ready" && Boolean(
     portal === "admin"
       ? isAdmin
-      : roles.includes("staff") && !isAdmin && currentModule?.permission && permissions.has(currentModule.permission),
+      : roles.includes("staff") && !isAdmin && (currentModule?.id === "personnel" || Boolean(currentModule?.permission && permissions.has(currentModule.permission))),
   );
 
   useEffect(() => {

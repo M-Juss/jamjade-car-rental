@@ -18,10 +18,11 @@ class SelfDriveBookingAvailabilityService
         User::query()->whereKey($userId)->lockForUpdate()->firstOrFail();
     }
 
-    public function assertReservationAvailable(User $customer, mixed $start, mixed $end): void
+    public function assertReservationAvailable(User $customer, mixed $start, mixed $end, ?int $ignoreBookingId = null): void
     {
         $conflict = Booking::query()->where('user_id', $customer->id)
             ->where('rental_type', RentalType::SelfDrive->value)
+            ->when($ignoreBookingId, fn ($query) => $query->whereKeyNot($ignoreBookingId))
             ->whereIn('status', [BookingStatus::Pending, BookingStatus::Confirmed, BookingStatus::Ongoing])
             ->where('rental_start_at', '<', $end)->where('rental_end_at', '>', $start)
             ->exists();
@@ -29,6 +30,25 @@ class SelfDriveBookingAvailabilityService
         if ($conflict) {
             throw ValidationException::withMessages([
                 'rental_start_at' => ['You already have a self-drive booking during this rental period. Choose non-overlapping dates.'],
+            ]);
+        }
+    }
+
+    public function assertCustomerBookingAvailable(User $customer): void
+    {
+        $hasActiveBooking = Booking::query()
+            ->where('user_id', $customer->id)
+            ->whereIn('status', [
+                BookingStatus::Pending,
+                BookingStatus::Confirmed,
+                BookingStatus::Ongoing,
+                BookingStatus::Returned,
+            ])
+            ->exists();
+
+        if ($hasActiveBooking) {
+            throw ValidationException::withMessages([
+                'booking' => ['Finish your active booking before creating another booking.'],
             ]);
         }
     }

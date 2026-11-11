@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export const movements = ["stationary", "acceleration", "driving", "braking", "left_turn", "right_turn", "swerving", "other"] as const;
+export const movements = ["stationary", "acceleration", "driving", "braking", "left_turn", "right_turn", "lane_change", "swerving", "other"] as const;
+export const hasInitialDeviation = (movement: string) => movement === "lane_change" || movement === "swerving";
 export const directions = ["forward", "reverse", "not_applicable", "unknown"] as const;
 export const severities = ["normal", "harsh", "not_applicable", "unknown"] as const;
 export const certainties = ["reviewed", "uncertain"] as const;
@@ -14,8 +15,8 @@ export const annotationIntervalSchema = z.object({
   certainty: z.enum(certainties), source: z.enum(annotationSources), notes: z.string().max(1000).nullable(),
   initial_deviation: z.enum(initialDeviations).optional(),
 }).strict().superRefine((value, ctx) => {
-  if (value.initial_deviation !== undefined && value.movement !== "swerving") {
-    ctx.addIssue({ code: "custom", path: ["initial_deviation"], message: "Initial deviation is available for swerving intervals only." });
+  if (value.initial_deviation !== undefined && !hasInitialDeviation(value.movement)) {
+    ctx.addIssue({ code: "custom", path: ["initial_deviation"], message: "Initial deviation is available for lane change and swerve intervals." });
   }
   if (value.end_ms <= value.start_ms) ctx.addIssue({ code: "custom", path: ["start_ms"], message: "End must follow start." });
   const stationary = value.movement === "stationary";

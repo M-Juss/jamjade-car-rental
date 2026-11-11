@@ -7,6 +7,7 @@ import { CalibrationSensorReading } from '@/components/telematics/CalibrationSen
 import { themeColors as colors } from '@/constants/theme';
 import { useCalibrationVisuals } from '@/hooks/telematics/useCalibrationVisuals';
 import { CALIBRATION_STEPS, rcMovementFeedback, type CalibrationLiveState, type CalibrationStep } from '@/lib/telematics/calibration';
+import { CALIBRATION_CHECK_ORDER } from '@/lib/telematics/setup';
 import type { MobileTelematicsHandover } from '@/services/api';
 
 const guides = {
@@ -32,7 +33,10 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
   const feedback = rcMovementFeedback(step, reading, calibration.movementLimits, calibration.forwardLimits,
     calibration.stationaryLimits.maxGapMs, phase === 'recording' && readingsStale);
   const passed = phase === 'passed';
-  const captured = feedback === 'captured';
+  const forward = step === 'forward_calibration';
+  const captured = forward ? phase === 'evaluating' : feedback === 'captured';
+  const measuring = forward && reading?.forwardStatus === 'measuring';
+  const retrying = forward && reading?.forwardStatus === 'retry';
   const failed = phase === 'failed' || Boolean(failureReason) && !busy;
   const detected = passed || captured && phase === 'recording';
   const pending = phase === 'preparing' || phase === 'evaluating';
@@ -46,9 +50,12 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
   const label = passed ? 'Movement confirmed' : phase === 'preparing' ? 'Preparing sensors'
     : phase === 'evaluating' ? 'Checking movement' : failed ? 'Try this movement again'
       : feedback === 'interrupted' ? 'Readings interrupted' : feedback === 'position_changed' ? 'Check the phone position'
-        : feedback === 'keep_straight' ? 'Keep the movement straight' : captured ? 'Movement detected' : phase === 'recording' ? 'Waiting for movement' : 'Ready when you are';
-  const hint = passed ? step === 'right_turn_calibration' ? 'Calibration complete. Wait for staff release.' : 'Next exercise is opening…'
-    : pending ? 'Keep parked while the sensors are prepared or the result is checked.'
+        : feedback === 'keep_straight' ? 'Keep the movement straight' : captured ? 'Movement detected'
+          : retrying ? 'Stop safely before trying again' : measuring ? 'Detecting movement'
+            : phase === 'recording' ? (forward ? 'Ready for forward movement' : 'Waiting for movement') : 'Ready when you are';
+  const hint = passed ? 'Calibration complete. Wait for staff release.'
+    : phase === 'preparing' ? 'Stay parked until ready.'
+      : phase === 'evaluating' ? 'Stop safely while the result is checked.'
       : captured ? 'Stop safely. Finishing the movement check.' : 'Follow staff directions and keep the mounted phone untouched.';
   const GuideIcon = passed || captured ? CircleCheck : guide.icon;
 
@@ -64,25 +71,25 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
   }, [animation, reducedMotion, phase, captured]);
 
   return (
-    <View className="rounded-card border border-border bg-surface p-card">
+    <View>
       <View className="flex-row items-center justify-between gap-3">
-        <Text className="font-sans text-caption font-semibold text-primary">STEP {String(Object.keys(CALIBRATION_STEPS).indexOf(step) + 1).padStart(2, '0')} / 05</Text>
+        <Text className="font-sans text-caption font-semibold text-primary">STEP {String(CALIBRATION_CHECK_ORDER.indexOf(step) + 1).padStart(2, '0')} / {String(CALIBRATION_CHECK_ORDER.length).padStart(2, '0')}</Text>
         <Text className="font-sans shrink text-caption text-secondary-foreground">{CALIBRATION_STEPS[step].title}</Text>
       </View>
-      <Text className="font-sans mt-section text-section font-semibold text-foreground">{guide.title}</Text>
+      <Text className="font-sans mt-2 text-section font-semibold text-foreground">{guide.title}</Text>
       {!busy && !passed ? <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">{guide.hint} Start recording while parked.</Text> : null}
-      <View className="my-5 items-center" accessible={false} importantForAccessibility="no-hide-descendants">
+      <View className="my-1 items-center" accessible={false} importantForAccessibility="no-hide-descendants">
         <View style={styles.guide}>
-          <Svg width={200} height={200} style={StyleSheet.absoluteFill}>
+          <Svg width={164} height={164} viewBox="0 0 200 200" style={StyleSheet.absoluteFill}>
             <Circle cx={100} cy={100} r={91} fill={colors.background} stroke={colors.border} strokeWidth={5} />
             <Circle cx={100} cy={100} r={91} fill="none" stroke={color} strokeWidth={5} strokeLinecap="round"
               strokeDasharray={2 * Math.PI * 91} strokeDashoffset={2 * Math.PI * 91 * (1 - progress)} rotation={-90} origin="100,100" />
           </Svg>
-          <GuideIcon size={30} color={color} />
+          <GuideIcon size={22} color={color} />
           <Animated.View style={{ transform: [
             { translateY: animation.interpolate({ inputRange: [0, 1], outputRange: [4, -5] }) },
             { rotate: animation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', step === 'left_turn_calibration' ? '-12deg' : step === 'right_turn_calibration' ? '12deg' : '0deg'] }) },
-          ] }}><CarFront size={58} color={color} strokeWidth={1.5} /></Animated.View>
+          ] }}><CarFront size={42} color={color} strokeWidth={1.5} /></Animated.View>
         </View>
       </View>
       <View className="items-center gap-2">
@@ -90,21 +97,21 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
         <Text accessibilityLiveRegion="polite" className="font-sans text-center text-section font-semibold" style={{ color }}>{label}</Text>
         <Text className="font-sans text-center text-caption leading-5 text-secondary-foreground">{hint}</Text>
       </View>
-      <View className="mt-section flex-row gap-3">
+      <View className="mt-2 gap-1">
         <CalibrationSensorReading icon={Activity} label="Acceleration" value={step === 'braking_calibration' ? reading?.movement?.braking : step === 'forward_calibration' ? reading?.forward?.acceleration : reading?.acceleration}
           unit="m/s²" state={detected && (step === 'forward_calibration' || step === 'braking_calibration') ? 'valid' : 'neutral'} caption={step === 'braking_calibration' ? 'Deceleration' : 'Motion reading'} />
         <CalibrationSensorReading icon={RotateCcw} label="Gyroscope" value={reading?.rotation} unit="°/s peak"
           state={detected && step.endsWith('turn_calibration') ? 'valid' : 'neutral'} caption={step === 'left_turn_calibration' || step === 'right_turn_calibration'
             ? `${(step === 'left_turn_calibration' ? reading?.movement?.leftDegrees ?? 0 : reading?.movement?.rightDegrees ?? 0).toFixed(1)}° ${step === 'left_turn_calibration' ? 'left' : 'right'}` : 'Motion reading'} />
       </View>
-      <View className="mt-4" accessibilityRole="progressbar" accessibilityLabel="Movement detection"
+      <View className="mt-2" accessibilityRole="progressbar" accessibilityLabel="Movement detection"
         accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}>
         <Text className="font-sans text-center text-caption text-secondary-foreground">Recording ends when the movement is captured.</Text>
       </View>
       {failureReason && !busy ? <Text accessibilityRole="alert" className="font-sans mt-4 text-body leading-6 text-foreground">{failureReason}</Text> : null}
-      <View className="mt-section gap-3" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
+      <View className="mt-3 gap-2" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({ guide: { height: 200, width: 200, alignItems: 'center', justifyContent: 'center', gap: 8 } });
+const styles = StyleSheet.create({ guide: { height: 164, width: 164, alignItems: 'center', justifyContent: 'center', gap: 8 } });

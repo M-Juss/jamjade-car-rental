@@ -57,7 +57,21 @@ export function buildApiUrl(path: string, baseUrl = getRuntimeApiBaseUrl()) {
   return `${baseUrl}/${path.replace(/^\/+/, "")}`;
 }
 
+const vehicleCutouts: Record<string, string> = {
+  "UDEO7laaeVUfknxJp8NpRbBICIpYay8zSyWT3alt.jpg": "toyota-vios-red.png",
+  "44Uk0Cq0cGPjXmtZBNMQ58e6IzANtaugZ7pkQQmD.jpg": "honda-brv-2020.png",
+  "JneuHefkuFQfyDuBYIO05nbp0pFqd8gejYfo9YpA.jpg": "toyota-avanza-2022.png",
+  "Z5P2AorYIAMFLngtJQSFBpLFgVSgZ4YemlWdH5gz.jpg": "toyota-hiace-2019.png",
+  "qOZY9KSRWygyWiP5zTKSGBX5RYauxnpz82lG0qqj.jpg": "toyota-hiace-2024.png",
+  "T0EQm3GUYyrw6jLJvbxjJ5UiG62lcgmcPHLw9SyC.jpg": "toyota-innova-2025.png",
+  "wOwmXCdUwf5nV3KtscuBS82hJAquwAk2qtcwkMtY.jpg": "toyota-innova-2026.png",
+  "vtbylE5jp7aRRLaL7hkHwsAKi3ZxCIgmSe1UBcRf.jpg": "toyota-vios-2018.png",
+};
+
 export function resolveAssetUrl(url?: string | null, baseUrl = getRuntimeApiBaseUrl()) {
+  const filename = url?.split(/[?#]/, 1)[0].match(/(?:^|\/)vehicles\/([^/]+)$/)?.[1];
+  if (filename && vehicleCutouts[filename]) return `/vehicles-transparent/${vehicleCutouts[filename]}`;
+
   if (!url) return null;
 
   if (/^https?:\/\//i.test(url)) {

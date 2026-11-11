@@ -31,15 +31,26 @@ class TelematicsSetupService
         TelematicsSetupStepType::PhoneMount,
         TelematicsSetupStepType::StationaryCalibration,
         TelematicsSetupStepType::ForwardCalibration,
-        TelematicsSetupStepType::BrakingCalibration,
-        TelematicsSetupStepType::LeftTurnCalibration,
-        TelematicsSetupStepType::RightTurnCalibration,
     ];
 
     /** @return list<TelematicsSetupStepType> */
     public static function requiredSteps(): array
     {
-        return TelematicsSetupStepType::cases();
+        return array_values(array_filter(TelematicsSetupStepType::cases(),
+            fn ($type) => ! in_array($type->value, TelematicsCalibrationService::RETIRED_STEPS, true)));
+    }
+
+    /** Required checks plus any historical exercise that actually has an attempt. */
+    public static function displayedSteps(?TelematicsSetupSession $session): array
+    {
+        $attempts = $session?->currentAttempts() ?? collect();
+        if ($session?->booking?->rental_type === RentalType::OwnersDriver) {
+            $operatorId = app(TelematicsOperatorService::class)->operatorId($session->booking);
+            $attempts = $attempts->filter(fn ($step) => (int) $step->actor_user_id === (int) $operatorId);
+        }
+
+        return array_values(array_filter(TelematicsSetupStepType::cases(), fn ($type) => in_array($type, self::requiredSteps(), true)
+            || $attempts->contains('step_type', $type)));
     }
 
     public function __construct(private readonly TelematicsHandoverEligibilityService $eligibility) {}
@@ -198,6 +209,43 @@ class TelematicsSetupService
         });
     }
 
+    public function restartMobileSetup(Booking $booking, User $actor, string $context): void
+    {
+        DB::transaction(function () use ($booking, $actor, $context) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->rental_type === RentalType::SelfDrive) {
+                app(SelfDriveBookingAvailabilityService::class)->lockCustomer($booking->user_id);
+            }
+            $this->assertSupportedRental($booking);
+            abort_unless(app(TelematicsOperatorService::class)->isOperator($booking, $actor), 403);
+
+            $session = $booking->telematicsSetupSession()->lockForUpdate()->first();
+            if ($booking->status !== BookingStatus::Confirmed || $session?->status !== TelematicsSetupStatus::ReadyForRelease) {
+                throw ValidationException::withMessages(['telematics_setup' => ['Only completed setup can be restarted before rental release.']]);
+            }
+            $this->eligibility->assertCanWorkSetup($booking);
+
+            $calibration = app(TelematicsCalibrationService::class);
+            if (! hash_equals($calibration->context($session), $context)) {
+                throw ValidationException::withMessages(['context' => ['Setup has changed. Refresh and try again.']]);
+            }
+            $latest = $calibration->latestSteps($session);
+            foreach (self::requiredSteps() as $type) {
+                if ($latest->get($type->value)?->status !== TelematicsSetupStepStatus::Passed) {
+                    throw ValidationException::withMessages(['telematics_setup' => ['Complete the current setup before restarting.']]);
+                }
+            }
+
+            $session->update([
+                'status' => TelematicsSetupStatus::InProgress,
+                'ready_at' => null,
+                'reset_through_step_id' => $session->steps->max('id'),
+            ]);
+            activity()->causedBy($actor)->performedOn($booking)
+                ->event('telematics_setup_restarted')->log('The rental operator restarted telematics setup.');
+        });
+    }
+
     public function assertReadyForRelease(Booking $booking): void
     {
         if (! app(TelematicsOperatorService::class)->supports($booking)) {
@@ -250,10 +298,11 @@ class TelematicsSetupService
     {
         $session->loadMissing(['booking.vehicleInspections.signatures', 'steps']);
         $booking = $session->booking;
-        if ($this->eligibility->testModeEnabled() && $booking?->rental_type === RentalType::SelfDrive) {
+        $testSelfDrive = $this->eligibility->testModeEnabled() && $booking?->rental_type === RentalType::SelfDrive;
+        if ($testSelfDrive && ! $session->reset_through_step_id) {
             // Test release uses a real mount confirmation. Other checks retain
             // their actual outcomes; unavailable calibration is never fabricated.
-            return $session->steps->where('step_type', TelematicsSetupStepType::PhoneMount)
+            return $session->currentAttempts()->where('step_type', TelematicsSetupStepType::PhoneMount)
                 ->sortByDesc('attempt_number')->first()?->status === TelematicsSetupStepStatus::Passed;
         }
 
@@ -261,7 +310,7 @@ class TelematicsSetupService
             return false;
         }
 
-        if (! $this->hasFinalizedOutgoingSignatures($booking)) {
+        if (! $testSelfDrive && ! $this->hasFinalizedOutgoingSignatures($booking)) {
             return false;
         }
 
@@ -289,7 +338,7 @@ class TelematicsSetupService
 
     private function assertPrerequisites(TelematicsSetupSession $session, TelematicsSetupStepType $type): void
     {
-        if ($this->eligibility->testModeEnabled() && $session->booking?->rental_type === RentalType::SelfDrive) {
+        if ($this->eligibility->testModeEnabled() && $session->booking?->rental_type === RentalType::SelfDrive && ! $session->reset_through_step_id) {
             return;
         }
 
@@ -302,7 +351,7 @@ class TelematicsSetupService
             TelematicsSetupStepType::PhoneMount => [TelematicsSetupStepType::GpsCheck],
             default => [],
         };
-        $latest = $session->steps->sortByDesc('attempt_number')->unique('step_type')
+        $latest = $session->currentAttempts()->sortByDesc('attempt_number')->unique('step_type')
             ->keyBy(fn (TelematicsSetupStep $attempt) => $attempt->step_type->value);
         if ($session->booking->rental_type === RentalType::OwnersDriver) {
             $operatorId = app(TelematicsOperatorService::class)->operatorId($session->booking);
@@ -330,10 +379,7 @@ class TelematicsSetupService
             TelematicsSetupStepType::GpsCheck => $this->evaluateGpsEvidence($evidence),
             TelematicsSetupStepType::PhoneMount => $this->evaluatePhoneMountEvidence($evidence),
             TelematicsSetupStepType::StationaryCalibration,
-            TelematicsSetupStepType::ForwardCalibration,
-            TelematicsSetupStepType::BrakingCalibration,
-            TelematicsSetupStepType::LeftTurnCalibration,
-            TelematicsSetupStepType::RightTurnCalibration => app(TelematicsCalibrationService::class)->evaluate($session, $type, $evidence),
+            TelematicsSetupStepType::ForwardCalibration => app(TelematicsCalibrationService::class)->evaluate($session, $type, $evidence),
             default => throw ValidationException::withMessages(['step' => ['This setup step is not available.']]),
         };
     }

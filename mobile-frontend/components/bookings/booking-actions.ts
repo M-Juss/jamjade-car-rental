@@ -2,10 +2,8 @@ import {
   Car,
   ClipboardList,
   CreditCard,
-  MessageCircle,
   Navigation,
   RefreshCcw,
-  Star,
   type LucideIcon,
 } from 'lucide-react-native';
 
@@ -18,9 +16,7 @@ export type BookingActionKey =
   | 'payment_info'
   | 'pay_balance'
   | 'open_telematics'
-  | 'contact_admin'
   | 'book_again'
-  | 'leave_feedback'
   | 'book_another_vehicle';
 
 export type BookingAction = {
@@ -62,12 +58,6 @@ const actionsByStatus = {
       icon: Navigation,
       variant: 'primary',
     },
-    {
-      key: 'contact_admin',
-      label: 'Contact Admin',
-      icon: MessageCircle,
-      variant: 'secondary',
-    },
   ],
   Ongoing: [
     detailAction,
@@ -76,12 +66,6 @@ const actionsByStatus = {
       label: 'Open Telematics',
       icon: Navigation,
       variant: 'primary',
-    },
-    {
-      key: 'contact_admin',
-      label: 'Contact Admin',
-      icon: MessageCircle,
-      variant: 'secondary',
     },
   ],
   Returned: [
@@ -100,12 +84,6 @@ const actionsByStatus = {
       label: 'Book Again',
       icon: RefreshCcw,
       variant: 'soft',
-    },
-    {
-      key: 'leave_feedback',
-      label: 'Leave Feedback',
-      icon: Star,
-      variant: 'secondary',
     },
   ],
   Rejected: [

@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Booking\AssignDriverRequest;
 use App\Http\Requests\Admin\Booking\ListBookingsRequest;
+use App\Http\Requests\Admin\Booking\ListDrivingAnalysisRequest;
 use App\Http\Requests\Admin\Booking\ReceiveVehicleRequest;
 use App\Http\Requests\Admin\Booking\RecordCancellationRefundRequest;
 use App\Http\Requests\Admin\Booking\RecordNoShowRequest;
@@ -19,6 +20,8 @@ use App\Http\Requests\Admin\Booking\UpdateAdditionalChargeRequest;
 use App\Http\Requests\Admin\BookingStatusRequest;
 use App\Http\Resources\AdditionalChargeResource;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\DrivingOperatorResource;
+use App\Http\Resources\RentalDrivingAnalysisResource;
 use App\Http\Resources\VehicleInspectionResource;
 use App\Models\Booking;
 use App\Models\BookingAssignment;
@@ -31,6 +34,9 @@ use App\Services\BookingInspectionService;
 use App\Services\BookingReturnService;
 use App\Services\BookingService;
 use App\Services\DriverAssignmentService;
+use App\Services\OwnerVerificationService;
+use App\Services\RentalDrivingAnalysisService;
+use App\Services\RentalDrivingOverviewService;
 use App\Services\RentalReadinessService;
 use App\Services\TelematicsSetupService;
 use App\Traits\ApiResponseTrait;
@@ -71,6 +77,41 @@ class BookingController extends Controller
         );
     }
 
+    public function drivingAnalysis(Booking $booking, RentalDrivingAnalysisService $analysis): JsonResponse
+    {
+        abort_unless($booking->status === BookingStatus::Completed, 404);
+
+        return $this->success('Driving analysis fetched.', new RentalDrivingAnalysisResource($analysis->forBooking($booking)))
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    public function drivingAnalysisIndex(ListDrivingAnalysisRequest $request, RentalDrivingAnalysisService $analysis, RentalDrivingOverviewService $overview): JsonResponse
+    {
+        $scope = $overview->rentals($request->validated());
+        $bookings = $this->bookingService->paginateForAdmin([
+            'booking_ids' => (clone $scope)->select('booking.id'),
+        ], $request->integer('per_page', 10));
+
+        return $this->paginated('Driving analysis fetched.', $bookings, BookingResource::class, [
+            'driving_grades' => $analysis->gradesForBookings($bookings->getCollection()),
+            'recorded_operators' => $overview->recordedOperators($bookings->getCollection()),
+            'summary' => $overview->summary($scope),
+            'vehicle_options' => $overview->vehicleOptions(),
+            'operator_filter' => $request->filled('operator_id')
+                ? $overview->operatorFilter($request->integer('operator_id')) : null,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function drivingOperators(ListDrivingAnalysisRequest $request, RentalDrivingOverviewService $overview): JsonResponse
+    {
+        $scope = $overview->rentals($request->validated(), operatorSearch: true)->whereNotNull('trip.operator_user_id');
+
+        return $this->paginated('Driving operators fetched.', $overview->operators($scope, $request->integer('per_page', 10)), DrivingOperatorResource::class, [
+            'summary' => $overview->summary($scope),
+            'vehicle_options' => $overview->vehicleOptions(),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     public function receiveVehicle(ReceiveVehicleRequest $request, Booking $booking, BookingReturnService $service): JsonResponse
     {
         $booking = $service->receive($booking, $request->user(), $request->validated('vehicle_received_at'));
@@ -87,9 +128,20 @@ class BookingController extends Controller
 
     public function reviewLateCharge(ReviewLateChargeRequest $request, Booking $booking, BookingReturnService $service): JsonResponse
     {
-        $booking = $service->review($booking, $request->user(), $request->validated());
+        $data = $request->validated();
 
-        return $this->success('Late return charge reviewed.', new BookingResource($booking->load($this->detailRelations())));
+        return app(OwnerVerificationService::class)->run($request, 'Review late return charge', $booking->booking_code, $data,
+            fn () => Booking::query()->lockForUpdate()->findOrFail($booking->id),
+            function ($locked) use ($service, $request, $data) {
+                $updated = $service->review($locked, $request->user(), $data);
+
+                return $this->success('Late return charge reviewed.', new BookingResource($updated->load($this->detailRelations())));
+            },
+            function ($locked) use ($service, $data) {
+                $estimate = $service->estimate($locked)['estimatedAmount'];
+
+                return $estimate === null || abs((float) $data['amount'] - $estimate) >= 0.005;
+            });
     }
 
     public function drivers(): JsonResponse
@@ -165,16 +217,26 @@ class BookingController extends Controller
 
     public function reviewRefund(ReviewCancellationRefundRequest $request, Booking $booking, BookingCancellationService $service): JsonResponse
     {
-        $booking = $service->review($booking, $request->user(), $request->validated());
+        $data = $request->validated();
 
-        return $this->success('Refund decision saved.', new BookingResource($booking->load($this->detailRelations())));
+        return app(OwnerVerificationService::class)->run($request, 'Review refund', $booking->booking_code, $data,
+            fn () => Booking::query()->lockForUpdate()->findOrFail($booking->id),
+            function ($locked) use ($service, $request, $data) {
+                $updated = $service->review($locked, $request->user(), $data);
+
+                return $this->success('Refund decision saved.', new BookingResource($updated->load($this->detailRelations())));
+            });
     }
 
     public function recordRefund(RecordCancellationRefundRequest $request, Booking $booking, BookingCancellationService $service): JsonResponse
     {
-        $booking = $service->recordRefund($booking, $request->user());
+        return app(OwnerVerificationService::class)->run($request, 'Record refund', $booking->booking_code, $request->validated(),
+            fn () => Booking::query()->lockForUpdate()->findOrFail($booking->id),
+            function ($locked) use ($service, $request) {
+                $updated = $service->recordRefund($locked, $request->user());
 
-        return $this->success('External refund recorded.', new BookingResource($booking->load($this->detailRelations())));
+                return $this->success('External refund recorded.', new BookingResource($updated->load($this->detailRelations())));
+            });
     }
 
     public function start(BookingStatusRequest $request, Booking $booking): JsonResponse
@@ -242,16 +304,26 @@ class BookingController extends Controller
 
     public function updateCharge(UpdateAdditionalChargeRequest $request, Booking $booking, int $charge): JsonResponse
     {
-        $updated = $this->additionalChargeService->update($booking, $charge, $request->validated('charges')[0], $request->user());
+        $data = $request->validated();
 
-        return $this->success('Return charge updated.', new AdditionalChargeResource($updated));
+        return app(OwnerVerificationService::class)->run($request, 'Edit return charge', $booking->booking_code.' charge '.$charge, $data,
+            fn () => Booking::query()->lockForUpdate()->findOrFail($booking->id),
+            function ($locked) use ($charge, $data, $request) {
+                $updated = $this->additionalChargeService->update($locked, $charge, $data['charges'][0], $request->user());
+
+                return $this->success('Return charge updated.', new AdditionalChargeResource($updated));
+            });
     }
 
     public function deleteCharge(BookingStatusRequest $request, Booking $booking, int $charge): JsonResponse
     {
-        $this->additionalChargeService->delete($booking, $charge, $request->user());
+        return app(OwnerVerificationService::class)->run($request, 'Delete return charge', $booking->booking_code.' charge '.$charge, [],
+            fn () => Booking::query()->lockForUpdate()->findOrFail($booking->id),
+            function ($locked) use ($charge, $request) {
+                $this->additionalChargeService->delete($locked, $charge, $request->user());
 
-        return $this->success('Return charge deleted.', ['id' => (string) $charge]);
+                return $this->success('Return charge deleted.', ['id' => (string) $charge]);
+            });
     }
 
     public function readiness(Booking $booking): JsonResponse

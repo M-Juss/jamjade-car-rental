@@ -1,5 +1,4 @@
-import { themeColors } from '@/constants/theme';
-import { ChevronRight, FileBadge, ReceiptText, type LucideIcon } from 'lucide-react-native';
+import { FileBadge, ReceiptText, type LucideIcon } from 'lucide-react-native';
 import { Pressable, Text, View, type PressableProps } from 'react-native';
 
 import { cx, profileColors } from '@/components/profile/ProfileCards';
@@ -75,9 +74,7 @@ export function DocumentRequirementRow({
       accessibilityRole={onPress ? 'button' : undefined}
       onPress={onPress}
       className={cx('flex-row items-center gap-3 py-3.5', !isLast && 'border-b border-[#EEF2FF]')}>
-      <View className="h-11 w-11 items-center justify-center rounded-field bg-muted">
-        <Icon size={20} color={profileColors.brand} strokeWidth={2.35} />
-      </View>
+      <Icon size={18} color={profileColors.brand} strokeWidth={2} />
       <View className="min-w-0 flex-1">
         <Text className="font-sans min-w-0 flex-shrink text-[14px] font-semibold leading-5 text-foreground">
           {definition.name}
@@ -92,9 +89,6 @@ export function DocumentRequirementRow({
       </View>
       <View className="items-end gap-2">
         <DocumentReviewBadge status={status} />
-        {onPress && !compact ? (
-          <ChevronRight size={17} color={themeColors.subtleForeground} strokeWidth={2.45} />
-        ) : null}
       </View>
     </Wrapper>
   );

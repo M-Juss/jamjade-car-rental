@@ -31,11 +31,12 @@ const interval = (start, end, movement = "stationary") => ({ start_ms: start, en
 
 // A structural field-array update changes its rows before the watch subscription
 // publishes. Exercise the actual form renderer during that intermediate render.
-function harness(current, watched, protocolCode) {
+function harness(current, watched, protocolCode, saved = null) {
   const handlers = new Map();
   const form = { control: {}, formState: { errors: {}, isSubmitting: false, isDirty: true },
     getValues: name => { assert.equal(name, "intervals"); return current; },
     handleSubmit: () => () => {}, register: () => ({}),
+    reset: values => { current.splice(0, current.length, ...values.intervals); },
   };
   const array = {
     get fields() { return current.map((row, i) => ({ ...row, id: `row-${i}` })); },
@@ -75,7 +76,7 @@ function harness(current, watched, protocolCode) {
   };
   const { AnnotationForm } = load("./AnnotationForm.tsx", dependencies);
   const render = () => renderToStaticMarkup(React.createElement(AnnotationForm, {
-    protocolCode, record: { id: "synthetic", duration_ms: 5000 }, origin: "0", saved: null, onSaved: empty, onReload: empty,
+    protocolCode, record: { id: "synthetic", duration_ms: 5000 }, origin: "0", saved, onSaved: empty, onReload: empty,
   }));
   return { render, handlers };
 }
@@ -127,6 +128,17 @@ test("resetting to saved intervals displays the new snapshot rather than the pre
   assert.doesNotMatch(html, /0s–1s/);
 });
 
+test("discarding a legacy draft restores the effective lane-change labels", () => {
+  const historic = interval(1000, 2000, "swerving");
+  const effective = { ...historic, movement: "lane_change" };
+  const current = [interval(0, 1000)];
+  const view = harness(current, [...current], "LC", { revision: 1, intervals: [historic], effective_intervals: [effective] });
+  view.render();
+  view.handlers.get("Discard draft")();
+  assert.deepEqual(current, [effective]);
+  assert.equal(historic.movement, "swerving");
+});
+
 
 test("only FSS and LT expose timestamp suggestions; manual additions keep unknown judgments", () => {
   for (const code of ["FSS", "LT"]) assert.match(harness([], [], code).render(), /Suggest intervals/);
@@ -138,4 +150,13 @@ test("only FSS and LT expose timestamp suggestions; manual additions keep unknow
   assert.equal(current[0].severity, "unknown");
   assert.equal(current[0].certainty, "uncertain");
   assert.equal(current[0].source, "signal_review");
+});
+
+test("directional swerve rows omit expected travel direction and first side", () => {
+  const swerve = { ...interval(1000, 2000, "swerving"), direction: "forward", severity: "normal", initial_deviation: "left" };
+  const newRun = harness([swerve], [swerve], "SWL").render();
+  assert.doesNotMatch(newRun, /Travel direction/);
+  assert.doesNotMatch(newRun, /Initial deviation/);
+  assert.match(harness([swerve], [swerve], "SW").render(), /Travel direction/);
+  assert.match(harness([swerve], [swerve], "SWR").render(), /Initial deviation/);
 });

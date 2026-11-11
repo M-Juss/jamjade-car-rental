@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, View } from 'react-native';
 
 import {
   BookingAccountModal,
@@ -24,9 +25,34 @@ export default function VehicleDetailsScreen() {
   const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
-  const { status } = useAuth();
+  const { status, refreshProfile } = useAuth();
+  const [availabilityState, setAvailabilityState] = useState<'checking' | 'ready' | 'error'>('checking');
+  const requestId = useRef(0);
   const customer = useCustomer();
   const bookingAvailability = getBookingAvailability(customer);
+
+  const checkAvailability = useCallback(async () => {
+    if (status !== 'authenticated') return;
+    const currentRequest = ++requestId.current;
+    setAvailabilityState('checking');
+    try {
+      await refreshProfile();
+      if (currentRequest === requestId.current) setAvailabilityState('ready');
+    } catch {
+      if (currentRequest === requestId.current) setAvailabilityState('error');
+    }
+  }, [refreshProfile, status]);
+
+  useFocusEffect(useCallback(() => {
+    void checkAvailability();
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') void checkAvailability();
+    });
+    return () => {
+      requestId.current += 1;
+      subscription.remove();
+    };
+  }, [checkAvailability]));
 
   if (isLoading) {
     return (
@@ -49,7 +75,7 @@ export default function VehicleDetailsScreen() {
   const handleBookNow = () => {
     if (status === 'authenticated') {
       if (!bookingAvailability.canBook) {
-        if (bookingAvailability.reason === 'balance') {
+        if (bookingAvailability.reason === 'balance' || bookingAvailability.reason === 'active_booking') {
           return;
         }
 
@@ -74,15 +100,16 @@ export default function VehicleDetailsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-muted">
+    <View className="flex-1 bg-background">
       <VehicleDetailsContent
         key={vehicle.id}
         vehicle={vehicle}
         isBookmarked={bookmarkedVehicleIds.includes(vehicle.id)}
         onBookmarkPress={() => toggleBookmarkedVehicle(vehicle.id)}
         onBackPress={() => router.back()}
-        bookNowDisabled={status === 'authenticated' && bookingAvailability.reason === 'balance'}
-        bookNowInfo={bookingAvailability.reason === 'balance' ? bookingAvailability.message : undefined}
+        bookNowDisabled={status === 'authenticated' && (availabilityState !== 'ready' || ['balance', 'active_booking'].includes(bookingAvailability.reason ?? ''))}
+        bookNowInfo={status === 'authenticated' && availabilityState === 'checking' ? 'Checking booking availability…' : status === 'authenticated' && availabilityState === 'error' ? 'Unable to check booking availability.' : ['balance', 'active_booking'].includes(bookingAvailability.reason ?? '') ? bookingAvailability.message : undefined}
+        onRetryAvailability={status === 'authenticated' && availabilityState === 'error' ? () => void checkAvailability() : undefined}
         onBookNow={handleBookNow}
       />
       <BookingAccountModal

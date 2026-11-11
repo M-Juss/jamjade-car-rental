@@ -122,9 +122,9 @@ class RcCollectionService
 
         return DB::transaction(function () use ($record, $input) {
             RcNativeRecording::whereKey($record->id)->lockForUpdate()->firstOrFail();
-            if (isset($input['initial_deviation']) && ($record->collectionContext()->first()?->payload['protocol_code'] ?? null) !== 'SW') {
+            if (isset($input['initial_deviation']) && ! in_array($record->collectionContext()->first()?->payload['protocol_code'] ?? null, ['LC', 'SW', ...RcNativeProtocol::DIRECTIONAL_SWERVE_CODES], true)) {
                 throw ValidationException::withMessages([
-                    'initial_deviation' => 'Initial deviation is available for swerve recordings only.',
+                    'initial_deviation' => 'Initial deviation is available for lane change and swerve recordings.',
                 ]);
             }
             $existing = RcObservationRevision::find($input['id']);

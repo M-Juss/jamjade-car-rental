@@ -1,6 +1,7 @@
 import { themeColors } from '@/constants/theme';
 import { FileCheck2, ImagePlus, Trash2, Upload } from 'lucide-react-native';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
 
 import { pickImageFromDevice, type DocumentImagePickError } from '@/lib/customer/image-picker';
 
@@ -30,6 +31,9 @@ export function UploadDocumentCard({
   onPickError?: (error: DocumentImagePickError) => void;
 }) {
   const hasPreview = Boolean(value);
+  const [failedValue, setFailedValue] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const imageFailed = hasPreview && failedValue === value;
 
   const handlePickImage = async () => {
     if (disabled) {
@@ -53,7 +57,6 @@ export function UploadDocumentCard({
       className={cx(
         'rounded-card border bg-surface p-card',
         error ? 'border-destructive-border' : 'border-border',
-        disabled && 'opacity-75',
       )}>
       <View className="flex-row items-start gap-3">
         <View
@@ -88,11 +91,18 @@ export function UploadDocumentCard({
           <View className="h-[170px] w-full items-center justify-center bg-muted">
             <ActivityIndicator accessibilityLabel={`Uploading ${label}`} color={themeColors.primary} />
           </View>
+        ) : imageFailed ? (
+          <View className="h-[170px] w-full items-center justify-center px-4">
+            <Text accessibilityRole="alert" className="font-sans text-center text-body text-secondary-foreground">Image could not be loaded.</Text>
+          </View>
         ) : hasPreview ? (
           <Image
-            source={{ uri: value }}
+            key={`${value}-${retryCount}`}
+            accessibilityLabel={label}
+            source={{ uri: value, ...(/^https?:\/\//i.test(value) ? { headers: { 'ngrok-skip-browser-warning': 'true' } } : {}) }}
+            onError={() => setFailedValue(value)}
             resizeMethod="resize"
-            resizeMode="cover"
+            resizeMode="contain"
             className="h-[170px] w-full bg-muted"
           />
         ) : (
@@ -105,7 +115,13 @@ export function UploadDocumentCard({
         )}
       </Pressable>
 
-      <View className="mt-3 min-h-[22px] flex-row items-start gap-2">
+      {imageFailed ? <Pressable accessibilityRole="button" accessibilityLabel={`Retry loading ${label}`}
+        className="min-h-11 justify-center self-start"
+        onPress={() => { setFailedValue(null); setRetryCount((count) => count + 1); }}>
+        <Text className="font-sans text-caption font-medium text-primary">Try again</Text>
+      </Pressable> : null}
+
+      {!disabled ? <View className="mt-3 min-h-[22px] flex-row items-start gap-2">
         {hasPreview ? (
           <FileCheck2 size={15} color={themeColors.success} strokeWidth={2.45} />
         ) : (
@@ -128,7 +144,7 @@ export function UploadDocumentCard({
             <Trash2 size={15} color={themeColors.destructive} strokeWidth={2.45} />
           </Pressable>
         ) : null}
-      </View>
+      </View> : null}
     </View>
   );
 }

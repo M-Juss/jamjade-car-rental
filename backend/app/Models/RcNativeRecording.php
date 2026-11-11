@@ -24,6 +24,11 @@ class RcNativeRecording extends Model
         return $this->hasOne(RcCollectionContext::class, 'recording_id');
     }
 
+    public function maneuverContactReview(): HasOne
+    {
+        return $this->hasOne(RcManeuverContactReview::class, 'recording_id');
+    }
+
     public function latestObservation(): HasOne
     {
         return $this->hasOne(RcObservationRevision::class, 'recording_id')->ofMany('revision', 'max')
@@ -33,6 +38,11 @@ class RcNativeRecording extends Model
     public function chunks(): HasMany
     {
         return $this->hasMany(RcNativeRecordingChunk::class, 'recording_id');
+    }
+
+    public function processingRuns(): HasMany
+    {
+        return $this->hasMany(RcProcessingRun::class, 'recording_id');
     }
 
     public function annotationRevisions(): HasMany

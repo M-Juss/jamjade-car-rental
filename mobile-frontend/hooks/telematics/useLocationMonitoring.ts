@@ -11,7 +11,7 @@ export function useLocationMonitoringLifecycle(userId: number | null) {
     locationMonitoring.reset();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active' && isLocationSharingActive(locationMonitoring.getSnapshot().phase) && !locationMonitoring.canContinueInBackground()) {
-        locationMonitoring.stop('Sharing stopped when the app left the foreground. Tap Resume sharing to continue.');
+        locationMonitoring.stop('Sharing stopped when the app left the foreground. Tap Resume sharing to continue.', 'paused', false, 'interrupted');
       }
       if (state === 'active') void locationMonitoring.check();
     });
@@ -37,6 +37,7 @@ export function useRentalLocationMonitoring(bookingCode: string) {
       const current = await getLocationMonitoring(bookingCode, controller.signal);
       if (request.current !== controller || !focused.current || controller.signal.aborted) return null;
       setSnapshot(current);
+      if (current.canMonitor) locationMonitoring.connectionRestored(bookingCode);
       return current;
     } catch {
       if (request.current === controller && focused.current) {

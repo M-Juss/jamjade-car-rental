@@ -55,4 +55,4 @@
 </section>
 @endif
 
-<table class="page-footer"><tr><td>Jamjade Car Rental · Payment receipt</td><td>{{ $confirmation['receipt']['reference'] }}</td></tr></table>
+<table class="page-footer"><tr><td>Date issued: {{ $formatDate($confirmation['issuedAt'], 'F j, Y') }}</td><td>{{ $confirmation['receipt']['reference'] }}</td></tr></table>

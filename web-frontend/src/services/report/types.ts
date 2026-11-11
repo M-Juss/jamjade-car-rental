@@ -70,7 +70,34 @@ export type DashboardActivity = {
   occurredAt?: string | null;
 };
 
+export type DashboardOperation = {
+  id: number;
+  kind: "pickup" | "return";
+  at: string;
+  bookingCode: string;
+  customerName: string;
+  vehicleName: string;
+  vehiclePlate: string | null;
+  location: string | null;
+  driverName: string | null;
+  rentalType: "self_drive" | "owners_driver";
+};
+
+export type DashboardOverview = {
+  asOf: string;
+  today: string;
+  todaysReturns: number;
+  operations: DashboardOperation[] | null;
+  operationsTotal: number | null;
+  pendingDocuments: number | null;
+  awaitingPayment: number | null;
+  balances: { amount: number; bookings: number; overdueAmount: number } | null;
+  fleet: Partial<Record<"available" | "rented" | "maintenance" | "unavailable", number>> | null;
+  maintenance: { dueSoon: number; overdue: number; scheduled: number; inProgress: number } | null;
+};
+
 export type DashboardResponse = {
+  overview: DashboardOverview;
   summary: DashboardCalendarSummary;
   events: DashboardCalendarEvent[];
   canManageBookings: boolean;
@@ -205,4 +232,26 @@ export type ReportsResponse = {
   }>;
   riskEvents: RiskReportRow[];
   highlights: string[];
+};
+
+export type ReportPeriod = "day" | "week" | "month" | "year";
+export type ReportSection = "overview" | "revenue" | "bookings" | "fleet" | "customers" | "telematics";
+export type ReportFormat = "money" | "count" | "hours";
+export type ReportSelection = {
+  period: ReportPeriod;
+  date: string;
+  section: ReportSection;
+  search?: string;
+  vehicleId?: number;
+  rentalType?: "self_drive" | "owners_driver";
+  page?: number;
+};
+export type ReportChart = { title: string; type: "line" | "bar" | "stacked" | "horizontal"; format: ReportFormat; series: Array<{ key: string; label: string }>; points: Array<{ label: string; [key: string]: string | number | null }> };
+export type ReportData = {
+  section: ReportSection;
+  period: { mode: ReportPeriod; startDate: string; endDate: string };
+  vehicles: Array<{ id: number; name: string }>;
+  metrics: Array<{ label: string; value: number | null; format: ReportFormat }>;
+  charts: ReportChart[];
+  table: null | { title: string; columns: Array<{ key: string; label: string; format: "text" | "money" | "count" | "hours" | "datetime" }>; rows: Array<Record<string, string | number | null>>; page: number; lastPage: number; total: number };
 };

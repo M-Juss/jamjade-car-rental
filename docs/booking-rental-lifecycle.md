@@ -1,5 +1,12 @@
 # Booking Rental Lifecycle
 
+The customer vehicle-details screen refreshes the server-backed profile and booking
+status on focus and when returning to the foreground, so completed bookings do not
+leave a stale Book Now lock. The action waits for the check; a failed check offers
+retry. Laravel remains authoritative when a booking is submitted. The change is in
+`mobile-frontend/app/browse/[vehicleId].tsx` and `components/browse/VehicleDetailsContent.tsx`.
+Mobile lint and TypeScript checks passed; device acceptance remains to be confirmed.
+
 ## State boundaries
 
 Booking, payment, vehicle operation, inspection, and telematics are separate state dimensions. The ordinary booking path is:
@@ -41,13 +48,17 @@ In standard mode, Start Rental is an authorized Jamjade web action and requires:
 - finalized Outgoing with the required signatures;
 - for both rental types, a `ready_for_release` telematics setup session with every required device-readiness and calibration step passed by the current operator;
 - eligible vehicle with no incompatible maintenance restriction;
-- approved Self Drive documents/age, or a valid assigned Driver for Admin's Driver.
+- for Self Drive, an eligible age, approved documents, and a saved emergency contact
+- for With Assigned Driver, a valid assigned Driver.
 
 Success moves the booking to `ongoing`, records a `status_changed` event in `booking_events`, marks the vehicle rented, and notifies the Customer. Customer and Driver mobile clients cannot start the booking.
 
-For timing-only development testing, `RENTAL_EARLY_START_TEST_MODE=true` permits early Outgoing Inspection, handover, mobile setup and rental release on the same rental start date in Asia/Manila for both rental types. It preserves every other readiness requirement and all eleven setup/calibration results. Future dates and expired bookings stay blocked; production/staging ignore the flag. Keep the broader handover test mode off for this use case. See [the timing-only setup](telematics-master-plan.md#existing-rental-and-handover-boundaries).
+For timing-only development testing, `RENTAL_EARLY_START_TEST_MODE=true` permits early Outgoing Inspection, handover, mobile setup and rental release on the same rental start date in Asia/Manila for both rental types. It preserves every other readiness requirement and all eight setup/calibration results. Future dates and expired bookings stay blocked; production/staging ignore the flag. Keep the broader handover test mode off for this use case. See [the timing-only setup](telematics-master-plan.md#existing-rental-and-handover-boundaries).
 
-Local/testing handover test mode relaxes the documented payment, age, document, and outgoing-inspection gates for flow testing; it still requires the confirmed/self-drive scope, an operational vehicle, booking-conflict checks, and a real passing phone-mount attempt for telematics release readiness. No successful payment, document approval, inspection, calibration, or other device result is fabricated.
+Local/testing handover test mode relaxes payment, age, document, emergency
+contact, and outgoing-inspection gates for flow testing. It requires a
+confirmed self-drive booking, an operational vehicle, booking-conflict checks,
+and a real passing phone-mount attempt for telematics release readiness.
 
 The testing timing exception allows Start Rental, staff handover and mobile setup for both Self Drive and With Assigned Driver before the scheduled time when the rental start date is today in Asia/Manila. With Assigned Driver retains its normal payment, inspection, age, assigned-Driver, setup and vehicle-readiness requirements; only its timing gate is relaxed. Otherwise time must be inside the booked interval. At/after the return deadline all starts are blocked. Neither agreed timestamp is moved, and the exception is ignored outside local/testing environments.
 
@@ -63,7 +74,13 @@ Outgoing is copied from Current, belongs to the booking, and never replaces Curr
 
 Self Drive signatures are Jamjade Personnel + Customer. Admin's Driver signatures are authorized Jamjade Personnel + Assigned Driver; no Customer signature is used.
 
-Staff selects **Finalize Inspection & Start Handover** for either rental type. Laravel finalizes the immutable Outgoing snapshot and starts handover in one transaction, passing the session through `setup_required` to `in_progress`. The wizard proceeds directly to Setup. An existing finalized inspection can use **Continue to Setup** without signing again; Start Handover also requires the current operator, server time within `[rental_start_at, rental_end_at)`, and required inspection signatures. Self Drive additionally requires approved Customer documents. Pickup may occur later anywhere inside the reserved interval, including a later calendar day. It never reduces the price or moves the agreed return deadline. Only then may retryable required checks be recorded. The six device-readiness checks lead to five explicitly consented foreground calibration captures supervised by Staff in a controlled area. The owning Customer operates Self Drive setup; the assigned Driver operates With Assigned Driver setup. Reassignment requires the new Driver to complete their own checks. Standard setup reaches `ready_for_release` only after all eleven effective checks pass; physical-device calibration validation is separate. See [calibration](telematics-master-plan.md#existing-calibration-and-sensor-conventions). The local/testing handover test mode is a documented Self Drive exception: a real passing phone-mount attempt enables the release readiness projection without inventing other check results or calibration evidence. Start Handover never starts the rental and does not replace the authorized Start Rental action, which atomically marks the session `released`. See the [central handover and release contract](telematics-master-plan.md#existing-rental-and-handover-boundaries).
+Staff selects **Finalize Inspection & Start Handover** for either rental type. Laravel finalizes the immutable Outgoing snapshot and starts handover in one transaction, passing the session through `setup_required` to `in_progress`. The wizard proceeds directly to Setup. An existing finalized inspection can use **Continue to Setup** without signing again; Start Handover also requires the current operator, server time within `[rental_start_at, rental_end_at)`, and required inspection signatures. Self Drive additionally requires approved Customer documents. Pickup may occur later anywhere inside the reserved interval, including a later calendar day. It never reduces the price or moves the agreed return deadline. Only then may retryable required checks be recorded. The six device-readiness checks lead to two explicitly consented foreground calibration captures (stationary and forward reference) supervised by Staff in a controlled area. The owning Customer operates Self Drive setup; the assigned Driver operates With Assigned Driver setup. Reassignment requires the new Driver to complete their own checks. Standard setup reaches `ready_for_release` only after all eight effective checks pass; physical-device calibration validation is separate. See [calibration](telematics-master-plan.md#existing-calibration-and-sensor-conventions). The local/testing handover test mode is a documented Self Drive exception: a real passing phone-mount attempt enables the release readiness projection without inventing other check results or calibration evidence. Start Handover never starts the rental and does not replace the authorized Start Rental action, which atomically marks the session `released`. See the [central handover and release contract](telematics-master-plan.md#existing-rental-and-handover-boundaries).
+
+In Admin and Staff Bookings, Prepare Rental and Rental Progress show Stationary
+followed by Forward Reference for both rental types. The web displays Laravel's
+saved check results and refreshes while handover is in progress. The mobile
+Forward Reference capture ends automatically when it has enough usable readings.
+Staff reviews readiness and uses **Start Rental** to confirm release.
 
 ## Telematics boundary
 
@@ -97,6 +114,12 @@ Returning releases only the rental restriction. `VehicleOperationalStatusService
 
 ## Settlement, restrictions, and completion
 
+The management Payment tab groups rental costs and customer return charges
+before the billed total, completed customer payments, and saved remaining
+balance. Assigned Driver charges appear separately. The booking detail
+response supplies `customerPaidAmount` using the same completed customer
+payment scope as receipts.
+
 Each completed positive PHP Customer payment issues a matching Rental Information and Payment Receipt pair after commit. Both identify the same receipt and payment totals; the detailed document includes accepted rental facts, itemized agreed pricing and the originally signed terms. Later Customer charges are separately identified. Each pair retains its original references, dates, amounts and bytes. New invoices are not issued, and historical document downloads/resends preserve their original files. Driver payments remain outside Customer documents. See [rental information and payment receipts](booking-financial-documents.md) for financial filtering, snapshots, delivery/retry and deployment details.
 
 Customer and Driver charge payments extend the existing PayPal checkout/capture path. Current unpaid responsible charges for a booking are linked to one checkout, locked during capture, and marked paid idempotently. The mobile settlement summary exposes each charge's description and `outstandingAmount`, calculates the displayed amount in integer cents, and compares the newly created order with that summary before opening PayPal; a mismatch abandons the order and reloads review. Laravel verifies the returned capture is completed PHP for the expected checkout amount, and Driver charge capture also rechecks the locked outstanding charges. Notifications are the action surface; payment and charge records remain the source of truth and notification history is retained.
@@ -114,6 +137,17 @@ An unresolved Driver-responsible charge blocks only a new assignment. The Driver
 `returned -> completed` requires finalized Incoming/return review, zero customer balance, and an explicit authorized Jamjade action. Driver debt does not block completion. Completion records server time, actor, booking status log, and activity.
 
 ## Interfaces and privacy
+
+Completed booking details include Driving Analysis for viewers with booking
+management and fleet permissions. It shows received driving events and sync
+status. See the [central telematics guide](telematics-master-plan.md#completed-rental-driving-analysis)
+for implementation, verification and pending coverage/scoring work.
+
+The Release step in `web-frontend/src/forms/booking/BookingWorkflowDialog.tsx`
+uses the existing booking summary card with three columns on wider screens so
+Vehicle, Customer, and Rental type are visible in one row. On narrow screens the
+fields stack for readability. Web lint and TypeScript checks passed. Browser
+verification was unavailable.
 
 The web booking row exposes a read-only View with progress and stage-specific records, Cancel while allowed, and a state-aware workflow. Continue Booking in the details view opens the next saved stage. Prepare Rental connects Driver assignment when needed, combined Outgoing Inspection/handover for supported rentals, Setup, and explicit Start Rental. Handover is no longer a separate wizard step. Process Return connects Incoming Inspection, inline charge entry and the combined Finalize Charges & Mark Returned confirmation, then advances directly to completion requirements. There is no separate Returned step in the workflow progress. Finish Booking resumes customer settlement and explicit Complete. Each successful save reloads the authoritative booking and advances within the dialog. If that reload fails, staff can retry the read without repeating the saved action. Closing and reopening resumes server state; unsaved form input is not persisted.
 
@@ -152,4 +186,14 @@ There is no pickup grace countdown. Only after the full reserved interval ends w
 
 New `2026-10-15-v2` agreements remove the PHP 10,000 advance participation fee and reconcile payment, cancellation, pickup and telematics wording. Historical signed contexts and issued documents are not rewritten.
 
-Self-drive concurrency — 2026-10-16: a Customer cannot create overlapping pending/confirmed/ongoing self-drive reservations on different vehicles. Adjacent dates and With Driver bookings remain allowed. Only one self-drive handover or ongoing rental may be operated at once, including when an older rental is overdue. Existing bookings are preserved for Staff resolution; no automatic cancellation or refund is performed.
+Self-drive concurrency — 2026-10-16: a Customer cannot create overlapping pending/confirmed/ongoing self-drive reservations on different vehicles. At that point, adjacent dates and With Driver bookings remained allowed. Only one self-drive handover or ongoing rental could be operated at once, including when an older rental was overdue. Existing bookings were preserved for Staff resolution; no automatic cancellation or refund was performed. The current single-booking rule is recorded below.
+
+Single active customer booking — 2026-11-11: Laravel now blocks a customer from creating any new booking while a pending, confirmed, ongoing, or returned booking remains open, including a different vehicle or rental type. The mobile browse flow mirrors this server rule by keeping vehicle discovery available while disabling the booking action with the same concise message. Completion, cancellation, or rejection clears the restriction; no existing booking is changed automatically.
+
+### Unpaid pending booking recovery
+
+Customers can reopen an unpaid pending booking in mobile, choose rental dates, review current pricing and sign the current agreement before starting another PayPal checkout. Vehicle, driver option, pickup location and coverage remain fixed. Laravel checks the customer's ownership and pending/unpaid state, vehicle and customer availability, current late-return policy and reviewed prices. Delivery bookings require a newly confirmed, unexpired quote for the new dates. The earlier signed agreement and delivery quote remain retained as historical records; no previous payment documents are changed.
+
+Only a checkout abandoned before capture or an explicitly declined first capture with no earlier uncertain attempt can be replaced. An approved, capturing, completed, or otherwise uncertain payment blocks changes and another checkout; the existing confirmation retry remains available for an uncertain approved capture. Provider creation errors retain the pending booking and attempt for reconciliation. This prevents a client error from being treated as proof that money was not taken. Checkout cancellation records an abandoned initial order rather than deleting its booking. These flows do not automatically refund or reconcile provider payments.
+
+A pending booking with an approved or capturing initial payment temporarily blocks overlapping vehicle reservations while the provider outcome is unresolved. Capture attempts are serialized by a two-minute lease and retain the original PayPal idempotency key; after a worker interruption a later retry may take over, and stale responses cannot change the newer attempt. Automatic retries stop five hours after the first capture attempt, within PayPal’s documented six-hour idempotency retention window; older uncertain payments require reconciliation. Staff cancellation/rejection and payment-deadline cancellation wait while a capture remains unresolved. Reconciliation is still required if an uncertain payment cannot be confirmed, including after its booking no longer meets capture eligibility. The revision archive migration refuses rollback while it contains agreements, and an approved or capturing PayPal payment also blocks rollback.

@@ -10,10 +10,10 @@ export type ReleaseMonitoringContext = {
 // A one-use, in-memory instruction. It never survives leaving this screen or
 // runtime loss, and it cannot restart monitoring after Stop or an interruption.
 export class ReleaseMonitoringPreparation {
-  private prepared: { context: ReleaseMonitoringContext; consent: LocationConsentInput } | null = null;
+  private prepared: { context: ReleaseMonitoringContext; consent: LocationConsentInput; includeMotion: boolean } | null = null;
 
-  arm(context: ReleaseMonitoringContext, consent: LocationConsentInput) {
-    this.prepared = { context: { ...context }, consent: { ...consent } };
+  arm(context: ReleaseMonitoringContext, consent: LocationConsentInput, includeMotion = false) {
+    this.prepared = { context: { ...context }, consent: { ...consent }, includeMotion };
   }
 
   clear() { this.prepared = null; }
@@ -30,8 +30,8 @@ export class ReleaseMonitoringPreparation {
       return null;
     }
     if (!released || !canMonitor || !foreground) return null;
-    const consent = this.prepared!.consent;
+    const { consent, includeMotion } = this.prepared!;
     this.clear();
-    return consent;
+    return { consent, includeMotion };
   }
 }

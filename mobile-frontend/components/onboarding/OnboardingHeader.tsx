@@ -7,7 +7,7 @@ import { ProgressSteps } from '@/components/onboarding/ProgressSteps';
 
 type OnboardingHeaderProps = {
   backDisabled?: boolean;
-  title: string;
+  title?: string;
   subtitle?: string;
   icon?: LucideIcon;
   currentStep?: number;
@@ -41,7 +41,7 @@ export function OnboardingHeader({
             disabled={backDisabled}
             onPress={onBackPress ?? (() => router.back())}
             className="h-11 w-11 items-center justify-center rounded-field border border-border bg-surface">
-            <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
+            <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
           </Pressable>
         ) : null}
         {navigationTitle ? (
@@ -73,7 +73,7 @@ export function OnboardingHeader({
         </View>
       ) : null}
 
-      <Text className="font-sans mt-section text-title font-semibold text-foreground">{title}</Text>
+      {title ? <Text className="font-sans mt-section text-title font-semibold text-foreground">{title}</Text> : null}
       {subtitle ? <Text className="font-sans mt-2 text-body text-secondary-foreground">{subtitle}</Text> : null}
     </View>
   );

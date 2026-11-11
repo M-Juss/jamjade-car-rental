@@ -149,7 +149,7 @@ export function ScheduleMaintenanceDialog({
                         id="maintenance-schedule-vehicle"
                         label="Vehicle"
                         required
-                        options={vehicles.map((vehicle) => ({ value: vehicle.id, label: vehicle.name }))}
+                        options={vehicles.map((vehicle) => ({ value: vehicle.id, label: [vehicle.name, vehicle.plateNumber].filter(Boolean).join(" ") }))}
                         value={field.value ?? ""}
                         onValueChange={field.onChange}
                         disabled={Boolean(fixedVehicleId)}

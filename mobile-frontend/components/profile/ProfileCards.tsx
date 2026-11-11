@@ -130,8 +130,8 @@ export function ProfileSectionCard({
 }) {
   return (
     <View className="rounded-card border border-border bg-surface p-card">
-      <View className="flex-row items-center gap-2.5 pb-3">
-        <Icon size={18} color={profileColors.brand} strokeWidth={2} />
+      <View className="mb-2 min-h-[32px] flex-row items-center gap-2">
+        <Icon size={16} color={profileColors.brand} strokeWidth={2} />
         <Text className="font-sans min-w-0 flex-1 text-section font-semibold text-foreground">{title}</Text>
         {actionLabel ? (
           <View className="rounded-full bg-success-surface px-3 py-1.5">
@@ -140,7 +140,7 @@ export function ProfileSectionCard({
         ) : null}
         {headerAction}
       </View>
-      <View className="border-t border-border pt-2">{children}</View>
+      <View className="border-t border-border pt-1">{children}</View>
     </View>
   );
 }
@@ -157,10 +157,11 @@ export function ProfileEditButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
       onPress={onPress}
-      className="min-h-[44px] flex-row items-center gap-1.5 rounded-field border border-border bg-background px-3 py-2">
-      <Icon size={14} color={themeColors.primary} strokeWidth={2.5} />
-      <Text className="font-sans text-[12px] font-medium text-primary">{label}</Text>
+      className="h-8 w-8 items-center justify-center rounded-field">
+      <Icon size={16} color={themeColors.primary} strokeWidth={2} />
     </Pressable>
   );
 }

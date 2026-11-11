@@ -14,10 +14,14 @@ import type {
   MobileAuthResponse,
   MobileCurrentUserResponse,
   MobileLoginPayload,
+  MobileRegistrationPending,
+  MobileRegistrationResendPayload,
+  MobileRegistrationVerifyPayload,
   MobileRegisterPayload,
 } from './types';
 
 const DEFAULT_DEVICE_NAME = `jamjade-${Platform.OS}`;
+const REGISTRATION_EMAIL_RESPONSE_TIMEOUT_MS = 60_000;
 
 export async function login(payload: MobileLoginPayload) {
   await nativeRecorder.lock();
@@ -34,11 +38,21 @@ export async function login(payload: MobileLoginPayload) {
   return { ...response.data, user: mapUserProfile(response.data.user) };
 }
 
-export async function register(payload: MobileRegisterPayload) {
-  const response = await apiPost<MobileAuthResponse>('/mobile/register', {
+export async function beginRegistration(payload: MobileRegisterPayload) {
+  const response = await apiPost<MobileRegistrationPending>('/mobile/register', {
     ...payload,
     device_name: payload.device_name ?? DEFAULT_DEVICE_NAME,
   }, {
+    allowNetworkFallback: true,
+    responseTimeoutMs: REGISTRATION_EMAIL_RESPONSE_TIMEOUT_MS,
+    skipAuth: true,
+  });
+
+  return response.data;
+}
+
+export async function verifyRegistration(payload: MobileRegistrationVerifyPayload) {
+  const response = await apiPost<MobileAuthResponse>('/mobile/register/verify', payload, {
     allowNetworkFallback: true,
     skipAuth: true,
   });
@@ -46,6 +60,16 @@ export async function register(payload: MobileRegisterPayload) {
   await persistApiAuthToken(response.data.token);
 
   return { ...response.data, user: mapUserProfile(response.data.user) };
+}
+
+export async function resendRegistrationCode(payload: MobileRegistrationResendPayload) {
+  const response = await apiPost<MobileRegistrationPending>('/mobile/register/resend', payload, {
+    allowNetworkFallback: true,
+    responseTimeoutMs: REGISTRATION_EMAIL_RESPONSE_TIMEOUT_MS,
+    skipAuth: true,
+  });
+
+  return response.data;
 }
 
 export async function getCurrentUser() {

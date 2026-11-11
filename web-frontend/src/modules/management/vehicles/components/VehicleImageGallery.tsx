@@ -23,14 +23,14 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="relative h-64 overflow-hidden rounded-2xl border border-border bg-background md:h-80">
+      <div className="relative h-64 overflow-hidden rounded-2xl border border-border bg-transparent md:h-80">
         <Image
           src={primaryImage}
           alt={alt}
           fill
           sizes="(min-width: 768px) 80vw, 100vw"
           unoptimized
-          className="object-cover"
+          className="object-contain"
         />
         {onRemoveImage && (
           <button
@@ -52,7 +52,7 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
             return (
               <div
                 key={`${image}-${index}`}
-                className="relative h-20 overflow-hidden rounded-xl border border-border bg-background md:h-24"
+                className="relative h-20 overflow-hidden rounded-xl border border-border bg-transparent md:h-24"
               >
                 <Image
                   src={image}
@@ -60,7 +60,7 @@ export function VehicleImageGallery({ images, alt, className = "", onRemoveImage
                   fill
                   sizes="(min-width: 768px) 20vw, 25vw"
                   unoptimized
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
                 {showMoreOverlay && (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#0B1220]/58 text-xl font-black text-primary-foreground">

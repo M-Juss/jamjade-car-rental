@@ -1,6 +1,6 @@
 # Booking cancellation, no-shows and external refunds
 
-Implemented in code 2026-10-16. Laravel is authoritative; owner authority uses the existing Admin role.
+Implemented in code 2026-10-16. Laravel is authoritative; refund actions retain their existing Admin permission and require owner verification.
 
 ## Reservation and payment
 
@@ -33,3 +33,7 @@ Web Booking History → View → Payment shows the cancellation/refund record an
 Apply `2026_10_15_000003_add_booking_agreement_and_cancellations.php`. It adds encrypted accepted rental context and cancellation/refund metadata without rewriting old rows. The 2026-10-19 metadata migration renames the accepted-context column to `rental_context`; see [financial documents](booking-financial-documents.md). Preserve APP_KEY and private issued PDFs. Do not roll back after issuing records without archival preservation.
 
 Regression tests cover the Manila midnight boundary, later-day pickup eligibility, no early no-show, management-only manual cancellation, removed mobile cancellation routes, Admin-only review, zero/partial/full decisions, refund ceilings, confirmation without a reference, repeat recording, retained original payments, price mismatch rejection and stable invoice bytes. Live payment providers, external fund transfers and physical mobile device checks remain separate verification.
+
+## Owner verification
+
+Every refund decision, including a zero decision, and recording an external refund require a one-time code from the active Owner. The Owner receives the action details by email and shares the code with the requester. See [roles and access](user-roles-and-access.md#owner-verification).

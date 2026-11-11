@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { tabListClassName, tabTriggerClassName } from "@/components/ui/tab-styles";
 import Image from "next/image";
 import { VehicleMaintenanceHistory } from "@/modules/management/maintenance/VehicleMaintenanceHistory";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -164,64 +165,60 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
         <span className="text-border">/</span><span className="min-w-0 text-xs font-semibold text-foreground">{vehicle.name}</span>
       </div>
 
-      <div>
-        <Card className="overflow-hidden rounded-2xl border border-border bg-surface shadow-none">
-          <CardContent className="relative p-5 pr-32 md:p-6 md:pr-48">
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:gap-5">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-background shadow-inner">
-                {heroImage ? (
-                  <div className="relative h-full w-full">
-                    <Image
-                      src={heroImage}
-                      alt={vehicle.name}
-                      fill
-                      sizes="80px"
-                      unoptimized
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  "🚗"
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-xl font-semibold text-foreground">{vehicle.name}</h1>
-                <div className="mt-2 grid gap-1.5">
-                  <p className="flex items-center gap-2 text-xs">
-                    <span className="w-11 shrink-0 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">Brand</span>
-                    <span className="min-w-0 rounded-md bg-muted px-2 py-0.5 font-semibold text-primary">{vehicle.brand}</span>
-                  </p>
-                  <p className="flex items-center gap-2 text-xs">
-                    <span className="w-11 shrink-0 text-xs font-semibold normal-case tracking-normal text-subtle-foreground">Model</span>
-                    <span className="min-w-0 rounded-md bg-background px-2 py-0.5 font-semibold text-foreground">{vehicle.model}</span>
-                  </p>
-                </div>
+      <Card className="border-border bg-surface py-3 shadow-none">
+        <CardContent className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative flex size-16 shrink-0 items-center justify-center">
+              {heroImage ? (
+                <Image
+                  src={heroImage}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  unoptimized
+                  className="object-contain"
+                />
+              ) : (
+                <span aria-hidden="true">🚗</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <h1 className="break-words text-lg font-semibold text-foreground">{vehicle.name}</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                <span className="text-muted-foreground">{[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}</span>
+                <span className="font-semibold text-foreground">
+                  {vehicle.plateNumber ? (
+                    <><span className="sr-only">Plate number: </span>{vehicle.plateNumber}</>
+                  ) : "Plate unavailable"}
+                </span>
               </div>
             </div>
-            <span className={`absolute right-5 top-5 rounded-lg border px-2.5 py-1 text-xs font-semibold md:right-6 md:top-6 ${statusStyle[getStatusLabel(vehicle)] ?? statusStyle.Unavailable}`}>{getStatusLabel(vehicle)}</span>
-            <p className="absolute bottom-5 right-5 text-xl font-semibold text-primary md:bottom-6 md:right-6">₱{vehicle.pricePerDay.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">/ day</span></p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${statusStyle[getStatusLabel(vehicle)] ?? statusStyle.Unavailable}`}>{getStatusLabel(vehicle)}</span>
+            <p className="whitespace-nowrap text-lg font-semibold text-primary">₱{vehicle.pricePerDay.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">/ day</span></p>
+          </div>
+        </CardContent>
+      </Card>
 
-      <nav aria-label="Vehicle detail sections" className="grid grid-cols-1 gap-1 rounded-2xl border border-border bg-surface p-1 shadow-none sm:grid-cols-3">
+      <nav aria-label="Vehicle detail sections" className={tabListClassName}>
         <Link
           href={`${vehiclePath}/${vehicleId}`}
-          className={`rounded-xl px-3 py-2.5 text-center text-xs font-semibold transition-colors ${section === "general" ? "bg-muted text-primary" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+          className={tabTriggerClassName}
           aria-current={section === "general" ? "page" : undefined}
         >
           General Information
         </Link>
         <Link
           href={`${vehiclePath}/${vehicleId}/condition`}
-          className={`rounded-xl px-3 py-2.5 text-center text-xs font-semibold transition-colors ${section === "condition" ? "bg-muted text-primary" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+          className={tabTriggerClassName}
           aria-current={section === "condition" ? "page" : undefined}
         >
           Vehicle Condition
         </Link>
         <Link
           href={`${vehiclePath}/${vehicleId}/maintenance`}
-          className={`rounded-xl px-3 py-2.5 text-center text-xs font-semibold transition-colors ${section === "maintenance" ? "bg-muted text-primary" : "text-muted-foreground hover:bg-background hover:text-foreground"}`}
+          className={tabTriggerClassName}
           aria-current={section === "maintenance" ? "page" : undefined}
         >
           Maintenance

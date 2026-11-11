@@ -19,6 +19,7 @@ class ListFleetRentalsRequest extends BaseFormRequest
         return [
             'search' => ['sometimes', 'nullable', 'string', 'max:160'],
             'status' => ['sometimes', 'string', Rule::in(FleetTrackerService::TRACKING_STATUSES)],
+            'tracking_state' => ['sometimes', 'string', Rule::in(array_keys(FleetTrackerService::TRACKING_FILTERS))],
             'rental_type' => ['sometimes', 'string', Rule::enum(RentalType::class)],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],

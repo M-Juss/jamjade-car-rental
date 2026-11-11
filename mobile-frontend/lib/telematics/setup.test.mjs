@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { deviceSetupProgress, handoverStatusCopy, resolveSetupView, setupOverview, SETUP_CHECK_ORDER, telematicsStage } from './setup.ts';
+import { CALIBRATION_CHECK_ORDER, deviceSetupProgress, handoverStatusCopy, resolveSetupView, setupOverview, SETUP_CHECK_ORDER, telematicsStage } from './setup.ts';
 
 function handover(overrides = {}) {
   return {
@@ -67,7 +67,7 @@ test('scheduled handover copy formats both date and time without throwing', () =
   assert.doesNotMatch(copy.description, /PHT|UTC|Asia\/Manila/);
 });
 
-const calibrationTypes = ['stationary_calibration', 'forward_calibration', 'braking_calibration', 'left_turn_calibration', 'right_turn_calibration'];
+const calibrationTypes = CALIBRATION_CHECK_ORDER;
 function overviewHandover(overrides = {}) {
   return handover({
     calibration: { nextStep: 'stationary_calibration', context: 'demo-context' },
@@ -107,13 +107,14 @@ test('all six actual device results unlock calibration with current server conte
   assert.equal(resolveSetupView(current, 'calibration'), 'overview');
 });
 
-test('calibration progress includes only the five required exercises', () => {
+test('calibration progress counts only stationary and forward, preserving unrelated history', () => {
   const current = overviewHandover();
   current.steps = current.steps.map((step) => ({ ...step, status: 'passed', attemptCount: 1 }));
   current.steps.push({ type: 'other_calibration', status: 'passed', attemptCount: 1 });
   current.steps.push({ type: 'stationary_calibration', status: 'passed', attemptCount: 1 });
-  assert.equal(setupOverview(current).calibration.passedCount, 5);
-  assert.equal(setupOverview(current).calibration.total, 5);
+  for (const type of ['braking_calibration', 'left_turn_calibration', 'right_turn_calibration']) current.steps.push({ type, status: 'failed', attemptCount: 1 });
+  assert.equal(setupOverview(current).calibration.passedCount, 2);
+  assert.equal(setupOverview(current).calibration.total, 2);
 });
 
 test('ready for release permits neither more captures nor opening the rental', () => {

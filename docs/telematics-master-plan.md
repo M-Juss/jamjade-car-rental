@@ -1,5 +1,25 @@
 # Telematics and RC Research: central implementation guide
 
+### Forward-reference sensor feedback — 2026-11-11
+
+`mobile-frontend/services/telematics/rental-motion-capture.ts` reports live
+forward-check feedback as soon as a valid sensor stream arrives, while retaining
+the stationary settling requirement before accepting movement. Three seconds
+without valid readings now ends the check with a retry message and cleans up the
+recorder instead of waiting indefinitely. The forward movement itself still has
+no fixed waiting deadline. Mobile lint, TypeScript and 23 capture/workflow tests
+passed; physical validation is pending.
+
+### Device setup disclosure — 2026-11-11
+
+Customer and Driver device setup now presents one explicit agreement covering
+background GPS and, for the RC demo profile, motion monitoring. Agree prepares
+both for the existing release checks; Not now cancels setup. Saved GPS-only
+consent is not reused as motion consent. `DeviceSetupDisclosureDialog.tsx` and
+`TelematicsSetupChecklist.tsx` own this flow; release and native permission gates
+remain unchanged. Mobile lint, TypeScript, and 11 release/motion tests passed;
+physical device acceptance is pending.
+
 Last reconciled: **2026-11-06**. Scope: Laravel, the Next.js management website,
 and the Android-only Expo application. The active workspace uses the native v2
 recorder, explicit resumable chunk upload and protected v2
@@ -364,8 +384,9 @@ reliability, an approved dataset or full Phase 3/5 completion.
 ### Agreed structure and identity
 
 One recording contains **one planned exercise**, with initial/final quiet periods.
-An exercise can contain multiple phases: FSS has starting and stopping; SW has
-one deviation and recovery. A recording is not assigned one automatic class.
+An exercise can contain multiple phases: FSS has starting and stopping, and
+Mixed Drive can contain several maneuvers in one evaluation run. Review assigns
+labels to intervals according to the observed maneuvers.
 
 | Entity | Identity and required contract | Lifecycle/meaning |
 | --- | --- | --- |
@@ -530,14 +551,342 @@ tests and the standalone build passed; web lint/types, 44 contract checks and
 the production build passed. The build required network access to fetch the
 existing Google Font.
 
+### Capstone baseline collection close — 2026-11-10
+
+The first RC demo integration component is the private local worker
+`backend/ml/infer_rc_demo.py`. It accepts versioned JSON containing
+1–100 uniquely identified windows, each with exactly 35 finite feature
+values in the frozen feature order. It verifies the trusted candidate
+and source provenance, then returns the predicted class and forest vote
+with the model checksum. Requests are bounded to 1 MiB and rejected
+without raw input in error messages. A check with a real development
+feature vector and invalid boolean, nonfinite and wrong-length inputs
+passed. Laravel routing, native streaming and the Admin demo interface
+are still required to expose this worker through the intended flow.
+
+Laravel now exposes local RC-demo window classification at
+`POST /admin/rc-research/demo/inference` through the existing stateful
+Admin authentication, CSRF and research throttle group. The
+`InferRcDemoRequest` validates version, unique window IDs and exactly
+35 finite numerical features. `RcDemoInferenceService` owns the
+15-second bounded worker invocation, verifies its model checksum and
+prediction contract, and returns a safe 503 on worker failure. The
+response is private/no-store. This standalone endpoint accepts experimental
+feature windows and does not persist events or establish sensor provenance.
+The connected session runtime below uses the same model contract.
+Verification passed the actual Laravel-to-worker smoke check, three
+endpoint tests and all 1,111 backend tests (6,729 assertions).
+The Android service now has a matching Zod request schema and an
+authenticated classification transport at
+`POST /api/mobile/rc-research/drive-monitoring/inference`.
+It uses the existing restricted Admin research token, profile gate
+and request validation. Four focused inference tests passed.
+This is the mobile prediction transport. The later runtime below connects
+native capture, reference/filter feature parity, session persistence and controls.
+
+The runtime feature transform now lives in
+`DriveMonitoringFeatureService`. It reuses the frozen 30 statistics
+and calculates the five temporal yaw inputs in the same order as
+the selected Python model. PHP and Python agreed on all five
+temporal values for all 505 development intervals. Focused checks
+also passed for mirrored turns, merged same-direction phases,
+zero yaw and a single sustained phase. Continuous native capture
+must preserve the same paired 20 ms grid and axis/unit conventions
+before calling this transform.
+
+The operator selected continued monitoring while the screen is locked
+with a persistent Stop notification. The native
+`startDriveMonitoring` entry point now reuses the recorder's foreground
+service, actor, encrypted originals and explicit stop/recovery behavior.
+It requires the Mixed Drive protocol, foreground user start, notification
+access, authorized research access and the existing reference/setup
+checks. Its notification is titled Drive Monitoring with Stop monitoring.
+The native release compilation and recorder unit suite passed.
+This entry point now connects to the native pipeline and uploader below.
+It is an Admin RC flow; rental monitoring remains a separate boundary.
+
+Drive Monitoring now has owner-bound session start/stop and batch
+receipt endpoints beneath the mobile research token boundary.
+Session creation requires explicit versioned consent, unchanged-mount
+confirmation and an owned, verified 5 Hz reference. Start retries use
+the same client UUID. A user row lock serializes competing starts.
+Stop retries retain their original end time. The batch endpoint
+serializes on the session, hashes each versioned request, and saves
+encrypted prediction receipts with a unique client batch ID. Identical
+retries return the receipt, changed retries conflict, and stopped
+sessions reject new batches. Raw features are not stored in those
+tables. The mobile Zod schemas and API service mirror the contracts.
+The focused tests cover retries, consent, reference ownership and
+post-stop batch behavior. Native scheduling and explicit foreground recovery
+connect to these endpoints.
+
+The native uploader now persists feature batches in an owner-bound
+AES-GCM/AtomicFile queue under the recorder's existing private storage.
+Its worker uses the configured HTTPS backend host allowlist, existing
+OkHttp/DNS client, disabled redirects, bounded responses and network
+timeouts. Credentials remain in memory. Acknowledgement requires the
+expected model/version and ordered window identities. Network failures
+retry with bounded exponential delay. Authorization/conflict/validation
+failures pause transfer with the encrypted batch retained. Queue access
+is serialized on the recorder actor and duplicate IDs require identical
+payloads. The queue is bounded by 100 batches and the 1 MiB metadata limit.
+The TypeScript transfer adapter validates each batch before enqueueing.
+
+The Stop path now ends sensor capture locally, then drains acknowledged
+batches before posting the idempotent server Stop request. A server receipt
+is required before removing each batch. Network failure retains the same
+batch identity and retries; authorization or content conflicts pause transfer.
+The encrypted queue also persists the session's completion intent and its
+local recording binding. After process loss, an explicit foreground transfer
+reconnection can drain that session and finish it without restarting sensors.
+Tokens remain memory-only. Transfer status exposes pending batch counts and
+unfinished session IDs. Collect shows Reconnect transfer when access or
+interrupted delivery needs attention. Process-loss recovery never restarts
+sensors. Queue capacity remains bounded;
+this is not an unlimited offline raw-sensor upload guarantee.
+
+The Admin website now offers **Drive Monitoring** under Insights at
+`/admin/drive-monitoring`. Its owner-scoped session list and detail poll the
+existing authenticated Laravel service every two seconds, showing received
+batch counts, last receipt, grouped events and expandable classification windows. Shared page
+heading, cards, controls and counted pagination follow Data Collection's
+management patterns. Open session status does not imply current connectivity;
+window votes are classifier votes, not a validated probability or behavior score.
+No sample sessions or predictions are seeded into the user's database.
+
+The earlier 50-test recorder / 1,118-test backend checkpoint verified the transfer
+foundation. The connected runtime and newer checks are recorded below.
+
+#### Connected Admin RC monitoring — 2026-11-10
+
+Mobile **Collect → Mixed Drive → Start monitoring** uses the existing setup
+check and an explicit consent dialog describing private feature transfer,
+unchanged mounting, background capture and Stop. Ordinary exercise recordings
+keep their previous behavior. Observer labels never enter live inference.
+`drive-monitoring-workflow.ts` obtains an owned prepared 5 Hz forward reference
+for the current research session and mount. Laravel recomputes it from verified
+originals, checks source hashes and saved reference equality, then snapshots the
+matrix/rest offsets encrypted on the monitoring session. A durable client start
+identity supports a lost-response retry. Failed starts close empty server
+reservations; queued windows must drain before server closure.
+
+`DriveMotionPipeline.kt` consumes the recorder actor's copied Android readings:
+
+- A 20 ms grid, linear interpolation across brackets no longer than 60 ms,
+  per-channel causal second-order Butterworth filtering at 5 Hz and 500 ms
+  segment warm-up match `RcMotionProcessing`. Gaps reset usable window history.
+- Native m/s² and rad/s units, resting mean subtraction and the saved
+  right-handed R/F/U matrix emit F/R/U components. Encrypted raw protocol 2
+  originals remain separate and retain their explicit original-upload flow.
+- Trailing windows contain 20/40/80/160/280 paired readings, every ten grid points.
+  Each has the frozen 30 statistics plus five temporal yaw features. The native
+  actor queues batches every second, including capture-relative times and nearby
+  vertical/pitch evidence around minimum forward force.
+
+`StoreDriveMonitoringBatchRequest` and the mobile Zod schema require the same
+versioned timing/evidence fields, complete window lengths, ordered ends, unique
+window IDs and finite measurements. Laravel rejects new out-of-order batches
+but returns existing receipts for identical retry identities. Raw feature vectors
+are not persisted in the ordinary session/batch tables.
+
+The selected forest remains unchanged. `ml/export_runtime_forest.py` exports its
+300 learned trees without fitting or reading reserved evaluation examples. The
+runtime artifact is encrypted in Laravel private storage with plaintext-content
+SHA-256 `cb4dbcbde174c7401b306c8edd7bd9445eedd6cae7db925c98f12c011d0fdbf1`.
+`RcRuntimeForestService` checks that hash, original model hash, class order and
+feature count before using float32 inputs, original split thresholds and
+averaged normalized leaf probabilities. `RcDemoInferenceService` invokes this
+PHP runtime; the original Python worker remains an offline reference. Model
+weights are not exposed to either frontend. Local-only inference remains enforced.
+
+Export/verification commands, from `backend/`:
+
+```sh
+ml/.venv/bin/python ml/export_runtime_forest.py
+ml/.venv/bin/python ml/verify_runtime_forest.py
+```
+
+All class probabilities were compared on 353 development examples and 656
+synthetic/float32 boundary cases. All 1,009 classifications matched; maximum
+absolute probability error was `2.220446049250313e-16`. A local 25-window service
+check fell from approximately 2,033 ms with per-request Python startup to 22 ms
+using the export. These are local compute timings, not phone-to-website latency
+or new classification-accuracy estimates.
+
+`DriveMonitoringEventService` persists experimental grouped events within the
+same locked batch transaction: harsh vote ≥0.65, 600 ms same-class grouping,
+1,200 ms corner hold/folding into an overlapping swerve, 50% reused-window swerve
+suppression and repeated braking-peak suppression. Braking with vertical peak
+≥2 m/s² and pitch-rate peak ≥0.8 rad/s needs review. Stop does not invent future
+sensor time to confirm a pending corner. Normal windows remain inspectable
+predictions and do not create harsh alerts. Event spans describe the first
+supporting analysis window, not reviewed ground-truth onset/offset times.
+The offline six-phase close-swerve heuristic is not in this first runtime;
+very close repeated swerves may merge and must not be used for validated grading.
+
+Checks passed: 53 native tests, including 181 windows from independent PHP
+synthetic synchronization/filter/projection fixtures (all 35 features compared);
+32 focused mobile workflow/recorder tests; mobile lint/TypeScript; web
+lint/TypeScript/production build; all 1,126 backend tests (6,808 assertions),
+followed by focused checks for final numeric/resource refinements; Pint and
+whitespace checks. The ARM64 standalone APK built and installed as a
+matching-certificate update without clearing phone data. Physical foreground,
+lock-screen, network-loss/recovery and populated browser acceptance remain
+separate checks. No extra training collection is required for these checks.
+
+Offline transfer is bounded by 100 batches and the existing 1 MiB queue-document
+limit. A full/unwritable queue interrupts capture visibly and keeps the raw
+original for review; it does not claim that every feature was delivered.
+Foreground reconnection can finish retained transfers after process death,
+logout or expired access; capture does not restart automatically. Background
+endurance, vibration/remount robustness, precise event timing and real-car
+validity are not established. Scores and final reports remain planned.
+
+First phone-to-Admin delivery check, 2026-11-10: the operator uploaded
+`S10-MD-R290` (18.54 s, verified original). Its monitoring session received
+14 batches / 372 classified windows through capture-relative time 18.2 s,
+then reached server status Stopped. All 372 predictions were `normal_motion`;
+no harsh events were stored. The authenticated Admin session detail visibly
+showed S10, 14 received batches, Stopped and no driving alerts. This establishes
+one short delivery/Stop check, not lock-screen, outage or driving accuracy
+acceptance. The original remains outside the frozen training/evaluation snapshot.
+
+Short screen-lock check, 2026-11-10: the operator confirmed the screen was locked
+during `S10-MD-R291` (36.97 s, verified stopped original). The monitoring session
+received 29 batches / 837 windows through elapsed time 36.6 s and closed
+successfully. All predictions were `normal_motion`; no events were stored.
+Receipts spanned 37 s with a maximum three-second receipt gap. Original required
+channels stayed near 50.5 Hz with no sequence gaps, duplicate or backward
+timestamps; maximum accelerometer gap was 43.87 ms and gyro gap 19.87 ms.
+This supports one short stationary lock-screen capture/delivery check on this
+Redmi, not background endurance or disconnected-network recovery acceptance.
+
+Short connection-recovery check, 2026-11-10: `S10-MD-R292` is a verified stopped
+45.41 s original. One monitoring session received 30 batches / 1,002 windows
+through elapsed time 43.4 s, across a maximum 34-second receipt interruption,
+and then reached Stopped. Recomputing the existing 50 Hz/5 Hz fixed-reference
+pipeline from its verified original channels produced exactly the same 1,002
+window identities: no missing, duplicate or unexpected delivered windows.
+Both required sensors stayed near 50.54 Hz with no sequence gaps and a maximum
+20.19 ms inter-event gap. All predictions were normal motion; no events were
+created. The suggested 15-second post-reconnection wait was operator guidance,
+not a configured timer or delivery guarantee. Retry timeouts/backoff and queue
+draining can take longer. This establishes one short recovery check, not
+unlimited offline capacity, process-death recovery or long-duration acceptance.
+
+Monitoring review refinement, 2026-11-10: the Admin session list now uses the
+shared responsive `ManagementTable` / `TableActionMenu` pattern from Data
+Collection. Details use the existing `MetadataList` and `SummaryList` for status,
+collection session, analyzed-through sensor time, batch receipts and closure.
+Stopped status does not claim that raw originals or every expected sample were
+delivered. Only the dedicated recovery audit above compared all expected windows.
+`DriveMonitoringSessionResource` adds `analyzed_through_ms`; the mobile response
+type recognizes the additive field without requiring an APK update.
+`DriveMonitoringController` returns event totals for the entire owner-bound
+session independently of its bounded latest-50 event preview. Detected, review
+and pending counts exclude suppressed events appropriately. Prediction details
+are collapsed and show ten rows per page from the latest ten batches, with
+interval bounds and classifier votes. Ended details stop polling; open details
+and the session list retain two-second polling. Manual refresh remains available.
+Permission/not-found errors stop retries and do not show a false empty state.
+Stopped sessions without receipts explicitly say no readings were received.
+
+The feature presentation lives in `DriveMonitoringModule.tsx`,
+`components/MonitoringSessionDetails.tsx` and `components/MonitoringPredictions.tsx`;
+requests/types remain in `services/research/drive-monitoring.service.ts`.
+No capture, inference, labels, dataset partitions or event-grouping rules changed.
+Browser review used the existing S10 sessions, verifying details, prediction
+page changes and back navigation at desktop and 390 px widths without horizontal
+overflow. Error/permission states were reviewed in code and the API regression
+tests; they were not visually simulated against the user's live backend.
+Verification for this refinement passed web lint, TypeScript and production
+build; mobile TypeScript for the additive response type; all 1,127 backend
+tests (6,815 assertions); Pint and `git diff --check`. The regression covers
+whole-session event totals remaining correct when the visible preview is capped
+at 50. No native rebuild or new RC capture is needed for this interface change.
+
+The operator closed further recording. Use the existing evidence to complete
+the capstone prototype. The selected classifier is the encrypted 35-feature
+random forest with checksum
+`4812bc8090d396b414db06ed9e6373b078ba610d43e4adf5e7fbf54133c14d18`
+and frozen dataset `pilot-split-v3`. Its reserved evaluation covers
+201 manually bounded intervals, with 197 correct and 0.9545 macro F1.
+Separate verification of the saved model/evaluation and all 14 Python
+trainer tests passed at collection close.
+
+The offline replay candidate uses five trailing window lengths (0.4,
+0.8, 1.6, 3.2 and 5.6 seconds), 0.2-second stride, a 0.65 forest vote,
+0.6-second same-class grouping, the 1.2-second corner hold, 50% reused
+window swerve deduplication, six-phase close-swerve splitting, and
+braking peak deduplication/ambiguity review documented below.
+These decisions use classifier output and sensor evidence. The
+close-swerve additions are heuristic events rather than new model
+predictions. Preserve that provenance during integration.
+
+The replay source hashes at collection close are
+`cfb3f00ac9592f41d962ff11160c5642e4b4c541866c3225045e67680fc2914b`
+for `backend/ml/replay_yaw_forest.py` and
+`29ce2a912a4604f31847dab9ca785c4e03464cae166fc535ad4a9fad4ea1f776`
+for `backend/ml/stream_replay_windows.php`.
+The latter reads private recordings locally. It is a replay tool.
+
+The connected Admin RC runtime now implements native ingestion, matching
+feature/window state, private inference and persistent grouped events. Physical
+acceptance, rental integration and post-drive scoring/reporting remain required.
+Preserve consent, pause/remount/reference checks,
+quality gaps, automatic-direction uncertainty, and Staff release gates.
+
+Report the 98.01% result as isolated RC interval classification.
+Session 10 checks cover few recordings from one setup. Braking
+ambiguity limits were designed from two confounded stops and require
+caution in grading. Bumps/body rocking can affect resting baselines.
+The close-swerve rule has one fresh confirming run. Phone handling,
+reverse transitions, rough-surface swerves, background endurance and
+full motion-to-website latency remain limitations. The absence of
+additional recordings is an explicit project constraint.
+
 ### Versioned exercise protocols
 
-New captures use [`rc-exercises-v3`](contracts/rc-collection-v1/catalog-v3.json). Versions 1 and 2 remain immutable for historical captures. Every definition is provisional until the
+New captures use [`rc-exercises-v6`](contracts/rc-collection-v1/catalog-v6.json). Versions 1–5 remain immutable for historical captures. Every definition is provisional until the
 applicable physical rehearsal. `SR`/`FR` are setup codes, not maneuver classes.
-Only FSS/HA/HB/LT/RT/RSS/SW appear in the ordinary exercise picker. Left and
-right turns expose a Normal or Harsh attempt intensity selector. Existing
+The ordinary exercise picker offers FSS, HA, HB, LT, RT, RSS, LC, SWL and SWR.
+Turns and directional swerves use the same Normal or Harsh attempt selector.
+The selected exercise code records the planned side and intensity. The saved
+observation records the actual initial deviation and whether the RC returned
+to the starting lane. Existing
 sessions keep their original session metadata and use the latest catalog for
 new captures.
+
+Catalog v6 adds **Mixed Drive (MD)** under **Collect → Maneuver trial**.
+The protocol uses the existing reference-first setup and records the
+exercise as one original. Planned severity is unspecified. The observer
+records the actual sequence and any contact, and web review labels each
+maneuver interval independently. Use a fresh evaluation session, rehearse
+the sequence, straighten between maneuvers, and keep the whole recording
+within 30 seconds for a single processing window. Mixed drives remain
+separate from the frozen pilot split.
+
+Laravel accepts MD with v6 in the manifest and collection contracts.
+Android binds the versioned catalog and the mobile picker uses its existing
+exercise renderer. The web abbreviation guide reads the same definition.
+The mobile catalog test checks all copies and verifies that the older
+protocol definitions match v5. The backend test uploads a sealed MD fixture,
+saves observations and reviews a turn and swerve in the same recording.
+Verification on 2026-11-10 passed all 1,108 backend tests, targeted Pint,
+17 mobile collection tests, mobile and web lint and TypeScript, and the
+web and ARM64 Android release builds. The APK's v6 asset matched the
+server catalog and its signing certificate matched the installed app.
+The in-place update succeeded on the Redmi. Collect opened, Mixed Drive
+was selectable, and the MD recording code appeared. The first physical
+Mixed Drive capture and upload remain pending.
+
+Version 5 verification completed on 2026-11-09. The backend suite passed
+1,100 tests, all 44 native recorder tests passed, mobile/web lint and type
+checks passed, and the web and Android release builds passed. The Android
+update was installed on the Redmi. Session S07 remained available. The
+Maneuver trial picker showed Lane Change, Swerve Left and Swerve Right, and
+Swerve Left showed Normal and Harsh attempt intensity choices. The phone was
+left on Swerve Left with Normal selected for the next trial.
 
 | Code | Planned exercise | Procedure focus |
 | --- | --- | --- |
@@ -547,7 +896,9 @@ new captures.
 | LT / RT | Left / Right Turn | One smooth turn from the RC's perspective, straighten, then stop |
 | HLT / HRT | Left / Right Turn with Harsh attempt selected | Same corner at a slightly higher controlled entry speed, steady throttle through the turn, then straighten and release to neutral |
 | RSS | Reverse Start-Stop | Reverse normally, release the lever to neutral, allow it to stop |
-| SW | Swerve Attempt | One planned deviation and recovery, then straighten and stop; ordinary corrections are not automatically swerving |
+| LC | Lane Change | Move to the adjacent lane, straighten in that lane, then stop |
+| SWL / SWR | Swerve Left / Right | Smoothly pass one obstacle on the selected side, return to the starting lane, straighten, then stop |
+| HSWL / HSWR | Swerve Left / Right with Harsh attempt selected | Use a quicker steering input at a controlled approach speed, clear the obstacle, then return, straighten and stop |
 | SR / FR | Stationary / Forward Reference | Dedicated setup evidence using the reference workflow |
 
 After starting, allow settling and about **five usable quiet seconds**, perform
@@ -565,6 +916,30 @@ spacing/radius remain provisional. Keep unmeasured dimensions null; a tile count
 can be recorded as a count without converting it to invented metres. A layout
 revision must record what changed. Keep cones/cables out of the wheel path;
 contacts are observations, not automatic harsh-event labels.
+
+**Lateral courses.** The original eight-cone offset course is a
+single lane change: A and B are in the starting lane, while C and D are in the
+adjacent lane. Steering back to straighten at C restores the heading while the
+RC stays in the adjacent lane. For new controlled trials, the
+obstacle-avoidance swerve course adds a return to the starting lane after
+clearing an obstacle marker. Distinguish course shape from severity. Either
+course can be driven smoothly or abruptly.
+
+The operator reports limited steering travel on this RC. Rehearse the
+obstacle course at a controlled low speed and leave enough forward distance
+for the RC to clear the marker, return and straighten without hitting cones.
+Course dimensions remain provisional until rehearsed. Use the observation to
+confirm whether the RC cleared the obstacle and returned to its lane. The first
+lateral deviation and severity remain separate from the maneuver label.
+
+Lane Change is a normal trial. Version 4 `SW` remains readable as obstacle
+avoidance with no preselected side or intensity. Data Collection shows `LC`
+for saved `SW` recordings bound to versions 1–3
+with the original `swerve_recovery` layout. Latest-label review exposes those
+legacy `swerving` intervals as effective `lane_change` intervals with the same
+bounds, evidence and severity. Original manifest/context codes, stored revisions
+and revision history retain their original values. The effective label is a
+course reinterpretation and does not add evidence about a trial.
 
 Show the selected maneuver's full protocol and layout before Start, a compact
 reminder while recording and the version used when reviewing an older record.
@@ -887,6 +1262,879 @@ are metadata/targets/grouping information, **not live model inputs**. Models mus
 not decode planned classes from file names. Only measured features and context
 actually available during operation can become inference inputs.
 
+### Local pilot interval export — 2026-11-08
+
+`RcPilotDatasetExportService` and the local-only Artisan command
+`rc-research:export-pilot` now export selected intervals from an encrypted frozen
+pilot snapshot. This is a researcher-operated local path, not a general web
+dataset approval/export feature or evidence of validated preprocessing.
+
+The current `pilot-split-v2` snapshot has SHA-256
+`4e87301fe430a1ca8f49cce0aa35d8df3c6949091fbbf33872a1a42692b06445`.
+It selects **99 development recordings** from S01/S02/S03/S05 and **60 final
+evaluation recordings** from S04/S06. Whole sessions and shared mount/reference
+dependencies stay together. Final evaluation remains reserved; export integrity
+checks do not authorize tuning against its measurements or labels.
+
+The exporter checks ownership, verified originals and source hashes, pinned
+annotation/observation revisions, processing/reference dependencies, completed
+trials and unresolved deviation flags. The clean baseline excludes complete
+contact/bump trials; historical originals and labels remain unchanged. Selected
+intervals require complete paired acceleration/gyroscope coverage on the saved
+20 ms grid, finite measurements and no warm-up or missing samples. The pinned
+5 Hz filter is experimental; exporting it does not establish that it is optimal.
+
+Private files remain encrypted under
+`backend/storage/app/private/rc-research-v2/datasets/exports/`. The encrypted
+manifest retains snapshot selection, exact original-time bounds, labels, units,
+hashes, processing settings and reference identity. Each recording file contains
+complete variable-length intervals, six vehicle-frame channels and source
+timestamp/state provenance. No rescaling, label-boundary shifts or fixed-length
+ML windows are introduced. Sensor nanosecond timestamps remain strings.
+
+Only the six measured acceleration/rotation channels are listed as model inputs.
+Names, session/surface identifiers, planned maneuvers and observer metadata are
+excluded as model features. Stationary intervals remain separate context with a
+null moving target. Targets are `normal_motion`, `harsh_acceleration`,
+`harsh_braking`, `harsh_cornering` and `swerving`. The snapshot explicitly permits
+confirmed legacy lateral movement with unknown severity; it preserves the original
+uncertain certainty and does not turn it into a harshness judgment.
+The frozen pilot splits use `swerving` for the old lane-change course. Their
+hashes and targets are historical. New lane-change and obstacle-avoidance
+intervals require a new target mapping and split before export. Pilot swerve
+metrics describe the original offset course.
+
+Verified export counts: development **460 intervals / 51,848 paired readings**
+(308 supervised moving intervals and 152 stationary context intervals); final
+evaluation **305 intervals / 31,952 paired readings** (185 supervised and 120
+stationary). Counts of readings are not counts of independent training examples.
+
+Run from `backend/` in the local environment:
+
+```sh
+php artisan rc-research:export-pilot pilot-split-v2
+php artisan rc-research:export-pilot pilot-split-v2 --verify
+php artisan rc-research:export-pilot pilot-split-v2 --stream=development
+```
+
+The stream verifies the encrypted package before yielding JSONL intervals; it
+does not persist plaintext. A separate `--stream=final_evaluation` reader exists
+for the eventual frozen evaluation procedure. Existing packages are not
+overwritten. Development interval statistics and the first session-based model
+comparison are implemented below. Reserved final evaluation and live integration
+remain pending.
+
+### Development interval features — 2026-11-08
+
+`RcPilotFeatureService` and the local-only `rc-research:extract-features` command
+implement **`rc-interval-statistics-v1`**. This first offline representation
+summarizes complete selected intervals from the frozen pilot development
+partition. It uses the existing PHP/Laravel runtime and introduces no package,
+API endpoint, web/mobile change, learned transform or trained model.
+
+Each of six vehicle-frame channels contributes five features, in stable order:
+**mean, population standard deviation, signed minimum, signed maximum and RMS**.
+That produces 30 numeric model inputs. Standard deviation uses Welford's M2/N;
+RMS is `sqrt(sum(value²)/N)`. All retain the channel's physical units. The
+population convention matches [NumPy's documented `ddof=0`
+definition](https://numpy.org/doc/stable/reference/generated/numpy.std.html);
+this reference does not mean NumPy is an installed application dependency.
+The earlier phone-axis `RcNativeChannelAnalysis` remains a separate original-stream
+diagnostic; it is not used to silently recalculate derived vehicle-frame features.
+
+The transform accepts complete finite paired readings on the saved 20 ms grid,
+checks exact half-open interval coverage, and rejects gaps, duplicates, reordered
+channels and numerical overflow. It does not clip peaks, resample, pad short
+events, rescale each interval or repeat minority examples. Original sensor files,
+processing runs and annotation revisions remain unchanged.
+
+The verified v2 development package contains **308 supervised examples**:
+248 `normal_motion`, 18 `harsh_acceleration`, 10 `harsh_braking`,
+17 `harsh_cornering` and 15 `swerving`. Another **152 stationary context
+intervals** have separate feature rows and no moving target. The training reader
+yields only the 308 supervised rows. Class balancing and development-only
+cross-validation belong to training; the current imbalance is retained honestly.
+
+Identity, target, exact bounds, sample count and duration are retained outside
+the numeric feature object for audit/grouping. Names, intended exercise,
+direction, operator reports and manual interval duration are not predictors.
+Feature construction reads only the development partition; the underlying export
+integrity check can verify reserved file checksums without using their values
+to choose features. S04/S06 remain reserved. Learned preprocessing and model
+selection must follow the [training-only fitting
+boundary](https://scikit-learn.org/stable/common_pitfalls.html#data-leakage).
+
+The immutable encrypted package is stored under
+`backend/storage/app/private/rc-research-v2/datasets/features/`, addressed by a
+fingerprint of the frozen source and feature definition. It pins source recording
+ciphertext hashes, snapshot hash, feature definition/order, units and partition.
+Verification recomputes every feature against its selected exported measurements;
+changed values, definitions, membership or provenance are rejected before streaming.
+
+```sh
+php artisan rc-research:extract-features pilot-split-v2
+php artisan rc-research:extract-features pilot-split-v2 --verify
+php artisan rc-research:extract-features pilot-split-v2 --stream
+```
+
+The stream emits development examples as JSONL in memory; private files stay
+encrypted. It has no final-evaluation extraction option at this stage.
+**This is an isolated-event baseline with human-selected boundaries.** These
+statistics discard temporal order and cannot establish continuous event detection,
+automatic direction, swerve recognition or live performance. Fixed live windows,
+sequence-sensitive features and independent live/offline parity remain separate
+validation work. A model must not use annotation boundaries as hidden runtime input.
+
+Verification on 2026-11-08: 31 focused export/feature Pest cases passed; the full
+backend suite passed 1,090 cases / 6,518 assertions; full Pint and `git diff --check`
+passed. An independent Python standard-library calculation matched all 13,800
+statistics across the 460 development intervals (`rel_tol=1e-10`, `abs_tol=1e-12`);
+the feature reader yielded exactly 308 supervised rows. Python was used only for
+this in-memory verification, with no new application dependency. Example:
+S03-HB-R088's selected braking interval 11.10–11.32 s contains 11 paired readings;
+forward mean is -2.2880, minimum -4.7884 and RMS 2.7954 m/s². These describe that
+selected interval, not a learned threshold or accuracy result.
+
+### First development model comparison — 2026-11-08
+
+The local `rc-research:train-pilot` command now uses `RcPilotTrainingService` to
+verify the frozen feature package, pass **development examples only** through
+memory to `backend/ml/train_pilot.py`, and encrypt the resulting comparison,
+predictions and fitted candidate models. This is **`rc-pilot-development-models-v1`**.
+No web/mobile inference route, alert, score or live detector is connected.
+
+The isolated `backend/ml/.venv` environment was created with Python **3.14.3**.
+`backend/ml/requirements.txt` pins scikit-learn **1.9.1**, NumPy **2.5.4**, SciPy
+**1.18.1**, joblib **1.6.0**, threadpoolctl **3.8.0**, narwhals **2.28.0** and
+cloudpickle **3.1.2**. Python verifies those package versions before training.
+The job records actual Python/package versions, input hash, trainer source hash,
+requirements hash, exact feature order and model parameters. No package index or
+external training service receives recordings or feature data.
+
+Three fixed comparisons, specified before the first run:
+
+- `majority_baseline`: scikit-learn `DummyClassifier(strategy=most_frequent)`.
+- `balanced_logistic`: `StandardScaler` followed by logistic regression, C=1,
+  `lbfgs`, 2,000 maximum iterations and balanced class weights. Scaling fits
+  **inside each training fold**, never on its held-out session.
+- `balanced_random_forest`: 300 trees, maximum depth 6, minimum leaf size 2,
+  square-root feature selection and `balanced_subsample` class weights.
+
+Seed is 42; numerical/tree work is restricted to one thread. No oversampling,
+synthetic data, feature search, hyperparameter search or probability-threshold
+tuning is performed. Class weights derive from each training fold's labels.
+The implementation follows scikit-learn's
+[DummyClassifier](https://scikit-learn.org/1.9/modules/generated/sklearn.dummy.DummyClassifier.html),
+[logistic regression](https://scikit-learn.org/1.9/modules/generated/sklearn.linear_model.LogisticRegression.html)
+and [Random Forest](https://scikit-learn.org/1.9/modules/generated/sklearn.ensemble.RandomForestClassifier.html)
+contracts for the installed version.
+
+Validation uses [LeaveOneGroupOut](https://scikit-learn.org/1.9/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html)
+with the **research session** as the group. Each of the 308 examples is predicted
+once by a model trained on the other development sessions. Related recording
+intervals never cross the session boundary. Each training fold must contain all
+five target classes or the job fails. S04/S06 remain excluded from fitting,
+candidate selection and feature/model tuning.
+
+The primary comparison is pooled out-of-session **macro-F1 across the same five
+classes**, with per-class precision/recall/F1, support, confusion matrices,
+session counts and individual error identities retained. Individual folds can
+have absent classes: S01 contains only normal examples, and S02 has no harsh
+braking/cornering. Their fixed-five-class fold macro-F1 includes zeros for absent
+classes and must not be compared as if each fold covered all maneuvers. The
+pooled comparison is not the average of those unequal-coverage fold scores.
+
+| Fixed comparison | Out-of-session accuracy | Pooled macro-F1 |
+| --- | ---: | ---: |
+| Majority baseline | 0.8052 | 0.1784 |
+| Balanced logistic regression | 0.9318 | 0.8512 |
+| Balanced Random Forest | 0.8831 | 0.6447 |
+
+The best initial development comparison is **balanced logistic regression**.
+It correctly predicts 287/308 intervals. Its normal/HA/HB/cornering/swerving
+recalls are respectively **238/248, 17/18, 10/10, 7/17 and 15/15**. Cornering
+precision is also 7/17: 10 normal intervals are false cornering predictions.
+All nine S03 harsh-turn intervals are missed when S03 is held out; seven become
+normal and two swerving. One S05 harsh corner becomes swerving. Random Forest
+misses all 15 swerving intervals in this comparison. These weaknesses remain
+visible and are not repaired by changing labels to match predictions.
+
+**Next research action: review development cornering errors and representation
+before freezing a candidate for final evaluation.** Session/surface differences,
+the mild older harsh-turn observations and the loss of temporal order are review
+questions, not established causes. Do not tune using reserved final sessions or
+claim continuous-drive, independent real-car or production accuracy from these
+isolated manually bounded intervals. The 10/10 braking result has only 10 examples.
+
+After scoring, each comparison is refitted on all development examples and saved
+as a candidate. Training-fit accuracy is not reported as validation. Candidate
+objects are standard-library pickle protocol 5 with SHA-256 checksums, carried
+inside an encrypted private package under
+`backend/storage/app/private/rc-research-v2/datasets/models/`. Only models created
+by this trusted local trainer may be loaded; no imported model upload/loader is
+exposed. The same pinned environment is required for reuse, consistent with
+[scikit-learn model persistence](https://scikit-learn.org/1.9/model_persistence.html).
+The trainer checks a serialization/prediction round trip before publishing.
+Existing packages are immutable; `--verify` checks source/code identity and saved
+candidate checksums without rerunning training.
+
+From `backend/`, setup and execution are:
+
+```sh
+python3 -m venv ml/.venv
+ml/.venv/bin/python -m pip install --only-binary=:all: -r ml/requirements.txt
+ml/.venv/bin/python -m unittest discover -s ml -p test_train_pilot.py
+php artisan rc-research:train-pilot pilot-split-v2
+php artisan rc-research:train-pilot pilot-split-v2 --verify
+```
+
+Checks completed: seven Python tests covering grouping, training-only scaling,
+metadata exclusion, invalid/reserved evidence, class coverage, minority-class
+metrics and model round trips; 32 focused backend export/feature/training cases;
+full backend **1,091 cases / 6,520 assertions**; full Pint; dependency `pip check`;
+the actual local training and saved-package verification. Final evaluation,
+continuous detection and phone/live feature parity remain pending.
+
+#### Turn-severity consistency review — 2026-11-09
+
+The operator clarified that S03's harsh turns used approximately half throttle
+or slightly more than the earlier normal attempts; some S05 normal turns used
+similar controller positions. This reports input and recollection, not measured
+vehicle speed or proof that the physical turns were identical.
+
+A read-only comparison used the unchanged frozen v2 development export and
+verified `rc-interval-statistics-v1` features: nine S03 harsh-turn intervals,
+ten S05 normal-turn intervals and eight S05 harsh-turn intervals. S03 was on
+tiles; S05 was on rough concrete. Only the selected labeled turn bounds were
+summarized. Lateral strength is `acceleration_right_rms`; turn-rate strength is
+`rotation_up_rms × 180/π`, displayed in degrees/second. Neither is a validated
+severity threshold. Values below are medians across recordings, with left/right
+directions kept separate:
+
+| Direction / saved label group | Count | Duration (s) | Lateral RMS (m/s²) | Turn-rate RMS (°/s) |
+| --- | ---: | ---: | ---: | ---: |
+| Left · S03 harsh | 5 | 2.38 | 0.532 | 38.05 |
+| Left · S05 normal | 5 | 4.15 | 0.294 | 22.78 |
+| Left · S05 harsh | 4 | 0.90 | 2.904 | 98.23 |
+| Right · S03 harsh | 4 | 1.91 | 0.332 | 45.50 |
+| Right · S05 normal | 5 | 3.02 | 0.317 | 30.23 |
+| Right · S05 harsh | 4 | 1.01 | 3.065 | 105.41 |
+
+The selected S03 harsh turns occupy a milder response group than S05 harsh
+turns, while their turn-rate RMS is higher than S05 normal turns. Across these
+27 intervals, S03's turn-rate RMS range is 36.21–48.16°/s and S05 normal's is
+21.42–31.92°/s. Lateral responses overlap particularly for right turns: Session 3
+Harsh Right Turn R120 (`S03-HRT-R120`) has lateral RMS 0.3525 m/s² versus Session 5
+Normal Right Turn R044 (`S05-RT-R044`) at 0.3520 m/s², but turn-rate RMS differs:
+46.48 versus 30.23°/s. A single lateral peak/strength measure therefore cannot
+establish equivalent maneuvers or justify relabeling.
+
+These descriptive comparisons do not establish a common physical harshness
+cutoff or isolate throttle effects from surface, course/radius, references and
+interval boundaries. They support reviewing a consistent severity rubric and
+development-session coverage; they do not prove that S03 should become normal
+or that mislabeled data is the sole cause of model errors. Original streams,
+annotations, dataset selection, candidate models and S04/S06 final reservations
+remain unchanged. Any agreed label revision requires a new frozen dataset and
+recomputed development comparison; the existing v2 result remains historical.
+
+#### Session 7 normal left turns on tiles — 2026-11-09
+
+The first three normal left turns, `S07-LT-R169`, `S07-LT-R170` and
+`S07-LT-R172`, were quicker through the corner than the reviewed S05 normal
+left turns on rough concrete. Their estimated turn intervals had turn-rate RMS
+of **28.0–30.7°/s** and lateral acceleration RMS of **0.409–0.465 m/s²**,
+compared with **21.4–25.1°/s** and **0.284–0.317 m/s²** on rough concrete.
+These are faster normal comparison runs. Surface, course and pace can all
+contribute to the difference.
+
+For the matched-pace Tiles comparison, the operator selected `S07-LT-R174`,
+`S07-LT-R175` and `S07-LT-R176`. Each has a saved 5 Hz processing run using
+`S07-FR-R168` and a reviewed first label revision with pre-launch stillness,
+normal launch, normal left turn, neutral-release slowdown and final stillness.
+The turn intervals are **5.75–9.75 s**, **6.00–10.50 s** and **5.00–9.75 s**,
+respectively. Boundaries are chart estimates supported by the operator's
+observations. All 15 labeled intervals had complete paired samples after filter
+warm-up. Preparation and labels were validated, saved and read back through
+`RcProcessingRunService` and `RcAnnotationService`. Selection here is for
+comparison and review before a future dataset freeze.
+
+#### Session 7 normal right turns on tiles — 2026-11-09
+
+`S07-RT-R179`, `S07-RT-R180` and `S07-RT-R181` are the reviewed normal right
+turn comparison runs. Each uses a saved 5 Hz processing run with `S07-FR-R168`
+and five reviewed intervals with complete paired samples. The estimated turn
+intervals are **4.50–8.00 s**, **5.50–8.50 s** and **5.75–9.00 s**. The median
+lateral acceleration and turn-rate RMS are **0.343 m/s²** and **28.4°/s**,
+compared with **0.317 m/s²** and **30.2°/s** for reviewed S05 normal right turns.
+The operator confirmed neutral release on R179 in observation revision 2.
+Processing results and label revisions were read back after saving.
+
+#### Session 7 harsh cornering on tiles — 2026-11-09
+
+`S07-HLT-R182`, `S07-HLT-R183`, `S07-HLT-R184`, `S07-HRT-R186`,
+`S07-HRT-R187` and `S07-HRT-R188` each have a saved 5 Hz processing run
+using `S07-FR-R168`. Each reviewed label revision covers the harsh turn,
+neutral-release slowdown and stillness before and after driving. The chart
+bounds are estimates supported by operator observations. Launches were left
+unlabeled where the launch and turn overlapped or launch severity lacked
+separate evidence. All 24 selected intervals had complete paired data after
+filter warm-up. Processing results and label revisions were read back after
+saving.
+
+#### Session 7 first obstacle swerve on tiles — 2026-11-09
+
+`S07-SWL-R189` is the first v5 Swerve Left normal pilot. The original is
+verified (15.80 s); the operator reported a left first deviation, neutral
+release, completion and small steering corrections. A saved 5 Hz run reuses
+`S07-FR-R168` and contains 767 paired 50 Hz rows. Reviewed annotation revision
+1 marks rest **0.75–3.25 s**, normal forward launch **3.40–4.25 s**, normal
+forward swerving **4.50–9.55 s** (first deviation left), neutral-release
+slowdown **10.00–10.30 s** and final rest **10.50–15.50 s**. The signal shows
+left steering, an opposite return, then a final straightening; the approximate
+interval boundaries are based on the chart and operator report. The original,
+processing run and label revision remain separate. This one run does not
+establish swerve detection accuracy or severity thresholds.
+
+Four further verified v5 normal left-swerve recordings, `S07-SWL-R190`,
+`S07-SWL-R191`, `S07-SWL-R193` and `S07-SWL-R194`, report the same left first
+deviation, neutral release and small steering corrections. Their 5 Hz
+reference-reused traces each show left steering, opposite return steering,
+final straightening and slowdown. Saved processing runs contain **787, 878,
+909 and 773** paired rows respectively. Each has annotation revision 1 with
+four reviewed intervals: initial rest, normal forward swerving, neutral-release
+braking and final rest. Launches remain unlabeled where isolated boundaries
+were not sufficiently clear. No contact or loose-mount flags were reported;
+physical obstacle clearance still rests on the operator's report. Five
+consistent pilots now exist, but a held-out swerve evaluation is still needed.
+
+Five normal right-swerve pilots, `S07-SWR-R195`, `S07-SWR-R197`,
+`S07-SWR-R198`, `S07-SWR-R199` and `S07-SWR-R200`, are now processed and
+reviewed against the same `S07-FR-R168` mount reference at 5 Hz. Each original
+is verified and has an operator report of right first deviation, completed
+obstacle return, neutral release and small steering corrections, without a
+reported contact or mount problem. Their fixed-frame yaw follows the mirrored
+right–left–right sequence; selected turn-rate peaks are approximately
+**23–33°/s**. Saved runs contain **753, 892, 799, 834 and 850** paired rows.
+Each annotation revision 1 has five reviewed intervals: initial rest, normal
+forward acceleration, normal forward swerving with right initial deviation,
+normal neutral-release braking and final rest. Boundaries were placed from
+the chart with the operator report; they are not independent stopwatch times.
+No repeat is indicated by these signals or reports. A separate held-out
+obstacle-course evaluation remains necessary before claiming classification
+accuracy; the labels do not establish physical obstacle clearance on their own.
+
+Seven v5 harsh-left attempts `S07-HSWL-R202`, `R204`, `R206`, `R207`,
+`R208`, `R209` and `R210` were compared using the same 5 Hz reference. The
+first three steering-phase peak rates in R202/R204/R206/R209/R210 are roughly
+**49–68°/s**, while the normal-left trials are roughly **23–36°/s**. R209
+repeats the complete left–right–left return at about **51/67/63°/s**; R210
+does so at about **49/53/50°/s**, a milder harsh variation. Both are verified,
+with operator-reported completed obstacle return and no contact flags. R207
+has an unusually sharp neutral-release slowdown; the operator confirmed no
+contact, so this is not recoded as a bump. R208's final correction is visibly
+smaller, and the operator clarified it did not fully return to the starting
+lane. Observation revision 2 records `completed_as_planned=false`, preserving
+the original revision. Keep R208 out of the clean completed-swerve subset.
+The six completed runs R202/R204/R206/R207/R209/R210 now have saved 5 Hz
+reference-reused processing runs and annotation revision 1. Each revision
+contains one reviewed forward swerving interval with `initial_deviation=left`
+and `severity=harsh`; selected bounds are respectively **5.00–7.75 s**,
+**4.00–6.50 s**, **4.50–7.25 s**, **5.00–7.50 s**, **4.25–7.00 s** and
+**5.25–8.25 s**. The measured turn rates separate these particular attempts
+from the normal-left pilots; no universal harsh threshold or detector has
+been established. Launches, braking and rest are deliberately unlabeled in
+these revisions because this review only adjudicated the obstacle maneuver.
+R208 remains without a reviewed completed-swerve label.
+
+For harsh-right obstacle avoidance in Session 7, `S07-HSWR-R212`, `R215`,
+`R216` and `R217` each show the required right–left–right yaw sequence with
+approximately **48–62°/s** phase peaks, compared with **23–33°/s** for the
+five normal-right pilots. Their originals and operator reports are verified,
+with completion and no reported contact or mount issue. Each now has a saved
+5 Hz reference-reused run and annotation revision 1 with one reviewed forward
+harsh-swerving interval (right first deviation): **3.75–6.50 s**,
+**5.75–8.25 s**, **4.75–7.75 s** and **4.00–7.00 s**, respectively. Launch,
+braking and rest remain unlabeled here. `S07-HSWR-R214` also has a fast
+right–left–right trace with peaks around **50–53°/s**. The operator subsequently
+confirmed a full obstacle return, straightening and no contact. Observation
+revision 2 preserves that correction; a saved 5 Hz run has **647** paired rows
+and annotation revision 1 marks the reviewed harsh swerve **4.50–7.25 s**.
+All five harsh-right pilots now have reviewed maneuver intervals, but their
+launch, braking and rest phases remain unlabeled.
+
+#### Session 8 held-out tiles review — 2026-11-10
+
+Session 8 has one verified forward reference (`S08-FR-R218`) and 16 verified
+v5 maneuver recordings: two each of normal and harsh left/right turns and
+normal and harsh left/right obstacle swerves. The operator reported all 16
+completed as planned with small steering corrections, neutral-release stops,
+and no contact or mount shift. The forward reference has a saved 5 Hz
+fixed-frame processing run using quiet **0.75–6.25 s**, launch **6.50–7.00 s**,
+and stop **11.80–12.30 s**. Its alignment calculation issued no warnings.
+Reference R218 now has reviewed annotation revision 1: pre-launch rest
+**0.75–6.25 s**, normal forward acceleration **6.50–7.00 s**,
+neutral-release braking **11.80–12.30 s**, and final rest **13.00–20.00 s**.
+The intervening travel remains unlabeled. The original, processing run and
+annotation remain separate records.
+Each maneuver now has a saved 5 Hz run reusing that reference and one
+reviewed maneuver interval. R224, R229 and R230 have annotation revision 2
+after their end boundaries were extended to include the final rotation;
+the other 13 remain at revision 1. The intervals below
+mark the observed steering phase; other phases remain unlabeled. Source is
+the operator report, with interval bounds checked against fixed-frame
+rotation. This review does not train, tune, select thresholds, or evaluate a
+model on Session 8.
+
+| Exercise | Recordings and reviewed interval (seconds) |
+| --- | --- |
+| Normal swerve left | R219 5.40–11.30; R220 6.30–11.90 |
+| Harsh swerve left | R222 3.90–7.10; R224 4.30–7.45 |
+| Normal swerve right | R226 4.90–10.70; R227 4.40–9.10 |
+| Harsh swerve right | R228 4.20–6.90; R229 3.90–7.00 |
+| Normal left turn | R230 4.90–7.95; R231 4.90–8.30 |
+| Harsh left turn | R233 5.40–6.80; R234 4.40–6.00 |
+| Normal right turn | R235 4.40–7.30; R236 4.90–8.20 |
+| Harsh right turn | R237 4.40–6.20; R238 4.90–6.80 |
+
+All 16 runs had paired accelerometer/gyroscope data and no processing
+warnings. The normal swerves show three steering phases with approximate
+peak yaw rates **25–39°/s**; harsh swerves show the same pattern around
+**48–68°/s**. Normal turns are approximately **32–44°/s** at peak; harsh
+turns **74–91°/s**. These are quality observations on reserved data, not
+fitted cutoffs or measured classification accuracy. Obstacle clearance is
+based on the operator's report, not a sensor-only proof.
+
+#### Next dataset snapshot: class and split audit — 2026-11-10
+
+This is a **design review**, not an exported or trained snapshot. The frozen
+`pilot-split-v2` must remain immutable for reproducibility. It has 15
+development and 12 reserved-evaluation intervals with the historical target
+`swerving`; those were the original offset/lane-change course, not the new
+obstacle-avoidance swerve. A new snapshot must map these to `lane_change`
+while preserving their saved movement labels and source revisions. Do not
+rewrite historical annotations to make the target name fit.
+
+The old selection has 21 uncertain/unknown-severity and six reviewed/normal
+intervals from that offset course. The new exporter accepts both as
+`lane_change` only with an explicit legacy selection basis; the reviewed six
+use `legacy_lane_change_course`. This keeps their stored labels intact while
+preventing ordinary reviewed obstacle swerves from being renamed as lane
+changes. The focused exporter test covers the distinction.
+
+The encrypted `pilot-split-v3` snapshot was frozen and exported on
+2026-11-10. Its snapshot SHA-256 is
+`7cc3b2efe0f3284af6bea681c879db0497890bdca92a69e112b6d5845dff7498`.
+It contains 220 recordings: 144 development (505 intervals, 60,217 readings)
+and 76 reserved final evaluation (321 intervals, 34,628 readings). Development
+moving-target counts are normal motion 254, harsh acceleration 18, harsh
+braking 10, harsh cornering 23, lane change 15, normal swerve 16, and harsh
+swerve 17. Reserved counts are 146, 13, 6, 16, 12, 4, and 4 respectively.
+There are also 152 development and 120 reserved stationary context intervals.
+The snapshot carries the unchanged S01–S06 selection, adds 33 reviewed S07
+and 12 reviewed S09 development recordings, and reserves 16 reviewed S08
+recordings. The exporter checked pinned original, reference, observation,
+annotation and processing identities, 5 Hz profiles, and complete paired
+20 ms coverage, then verified the encrypted package. The separate `--verify`
+command passed.
+
+#### Seven-class development comparison
+
+The v3 feature package contains 353 supervised intervals with 30 features
+each and 152 separate stationary context intervals. The trainer held out
+one whole research session at a time across S01, S02, S03, S05, S07, and S09.
+Feature extraction, training, and separate verification of both encrypted
+packages passed using `rc-research:extract-features pilot-split-v3` and
+`rc-research:train-pilot pilot-split-v3` with their respective `--verify` runs.
+
+| Candidate | Development accuracy | Seven-class macro F1 |
+| --- | ---: | ---: |
+| Majority baseline | 0.7195 | 0.1196 |
+| Balanced logistic regression | 0.8555 | 0.6572 |
+| Balanced random forest | 0.8697 | 0.6656 |
+
+Random forest ranked first by the preset macro F1 metric. It correctly
+classified 246/254 normal motion, 17/18 harsh acceleration, 10/10 harsh
+braking, 9/23 harsh cornering, 0/15 lane changes, 8/16 normal swerves,
+and 17/17 harsh swerves. It predicted normal swerve for 13 of the 15 lane
+changes, and lane change for eight of the 16 normal swerves. Logistic
+regression also missed all lane changes and half of the normal swerves.
+Review the development intervals for those two classes and harsh
+cornering before selecting a candidate for final evaluation. S04, S06,
+and S08 remain reserved. These scores cover manually bounded RC intervals.
+
+A development-only trace check compared all 15 lane-change intervals in
+S02/S05 with all 16 normal-swerve intervals in S07/S09. It counted signed
+vehicle yaw phases by requiring six consecutive 20 ms readings above a
+fraction of the interval's absolute yaw peak and merging adjacent retained
+runs of the same sign. At each exploratory fraction (15%, 25%, and 35%),
+all lane changes had two opposite phases and all normal swerves had three
+alternating phases. The third phase is consistent with straightening after
+the return to the starting lane. This suggests adding temporal yaw features
+to the development comparison. The check used manually bounded intervals
+from different sessions for the two classes. Its result is exploratory and
+the reserved sessions were excluded from the trace analysis.
+
+The local comparison `ml/compare_yaw_phases.py` adds one feature, the
+unsigned count of sustained yaw phases at the middle threshold (25% of
+the interval peak). From `backend/`, run
+`ml/.venv/bin/python ml/compare_yaw_phases.py`. The script reads verified
+development intervals and features through the existing artisan streams,
+joins them by interval identity, and reuses the same six session folds and
+estimator settings. It prints aggregate metrics for the 30-feature and
+31-feature comparisons.
+
+| Candidate | Accuracy with yaw phase count | Macro F1 with yaw phase count | Normal swerve correct | Lane change correct |
+| --- | ---: | ---: | ---: | ---: |
+| Balanced logistic regression | 0.8669 | 0.6917 | 16/16 | 0/15 |
+| Balanced random forest | 0.8924 | 0.7275 | 15/16 | 0/15 |
+
+The baseline scores reproduced exactly to four decimal places. Normal
+swerve recall improved from 8/16 for both models. The count is shared
+with other classes, including 18 normal-motion intervals with two
+phases and all 17 harsh swerves with three phases. Keep final evaluation
+reserved and treat this as exploratory because feature design used these
+same development sessions. The comparison produces aggregate results
+only. The existing encrypted candidate packages remain the 30-feature run.
+The seven Python trainer tests passed.
+
+The same script also compares 35 features by adding four measurements of
+the first two retained yaw phases: the smaller absolute angular area,
+the ratio of smaller to larger area, the shorter phase span, and the gap
+between phases. Area sums the absolute yaw rates of retained readings
+times 0.02 seconds. Phase span includes any gaps within a merged phase.
+Intervals with fewer than two phases receive zero for all four features.
+Mirroring left and right leaves these features identical.
+
+Among the two-phase examples, lane changes had a median smaller angular
+area of 0.962 rad and shorter phase span of 2.14 s (15 intervals).
+Normal motion had 0.003 rad and 0.12 s (18 intervals). With all 35
+features, logistic regression reached 0.9065 accuracy and 0.8618 macro
+F1. Random forest reached 0.9405 accuracy and 0.9060 macro F1. Both
+classified 15/15 lane changes and 16/16 normal swerves. Random forest
+classified 11/23 harsh corners, the largest remaining source of misses.
+The full development comparison and direct transform checks for zero yaw,
+single phases, merged runs, interphase gaps and mirrored signals passed.
+The 35-feature results remain exploratory because the features were
+designed using these development sessions.
+
+#### Reserved evaluation of the 35-feature forest
+
+The random forest was selected by development macro F1 before scoring the
+reserved partition. From `backend/`, `ml/.venv/bin/python
+ml/evaluate_yaw_forest.py freeze` fits the fixed 35-feature forest on all
+353 development intervals and publishes the encrypted candidate. The
+candidate checksum is
+`4812bc8090d396b414db06ed9e6373b078ba610d43e4adf5e7fbf54133c14d18`.
+Running the script with `evaluate` checks the frozen candidate, snapshot,
+and session separation before scoring S04, S06, and S08. Running it with
+`verify` checks the saved metrics against its predictions. The immutable
+candidate and evaluation report are stored under the private dataset
+models directory. The report retains the interval bounds and predicted
+class for each recording.
+
+The forest classified 197 of 201 supervised intervals from 76 reserved
+recordings correctly (98.01% accuracy, 0.9545 macro F1).
+
+| Class | Correct / actual | Precision |
+| --- | ---: | ---: |
+| Normal motion | 145/146 | 98.64% |
+| Harsh acceleration | 13/13 | 100% |
+| Harsh braking | 5/6 | 100% |
+| Harsh cornering | 15/16 | 93.75% |
+| Lane change | 11/12 | 100% |
+| Normal swerve | 4/4 | 80% |
+| Harsh swerve | 4/4 | 100% |
+
+The four errors were one normal-motion interval classified as harsh
+cornering, one harsh-braking and one harsh-cornering interval classified
+as normal motion, and one lane change classified as normal swerve.
+The freeze, evaluation and separate report verification passed. These
+results apply to manually bounded RC intervals, with four reserved
+examples per swerve severity. Continuous event detection, alert timing
+and real-car accuracy require separate validation.
+
+#### First sliding-window replay on development recordings
+
+From `backend/`, pipe `php ml/stream_replay_windows.php` into
+`ml/.venv/bin/python ml/replay_yaw_forest.py`. The local replay reads
+the 144 pinned development processing runs and uses the frozen forest.
+All 144 processing windows cover their originals within 20 ms. The
+replay evaluated 43,983 trailing windows of 0.4, 0.8, 1.6, 3.2, and 5.6
+seconds, advancing every 0.2 seconds and skipping missing or warm-up
+readings. It emits a harsh alert when a harsh class has the highest
+forest vote and reaches 0.65. Same-class votes within 0.6 seconds of
+each other extend the current alert. These settings are exploratory.
+
+Evaluation matches the first alert window to a same-class annotation
+at temporal IoU of at least 0.20, once per annotation. An alert on a
+mostly labeled nonharsh window is reported separately from an alert
+on unconfirmed time. The labels are used for scoring only.
+
+| Harsh class | Matched / labeled | Total alerts | Median delay from label start |
+| --- | ---: | ---: | ---: |
+| Acceleration | 18/18 | 19 | 0.39 s |
+| Braking | 9/10 | 10 | 0.30 s |
+| Cornering | 20/23 | 48 | 0.47 s |
+| Swerve | 17/17 | 18 | 1.35 s |
+
+The 95 alerts included 64 matches, four duplicates, four on mostly
+labeled nonharsh time, and 23 unconfirmed. Nineteen of the unconfirmed
+alerts came from harsh-swerve trial recordings. The replay used
+saved, aligned processing and the development recordings used to fit
+the model. The delay is a simulated sensor timestamp difference.
+Validation on continuous mixed drives and end-to-end alert timing
+remain separate work. The actual replay, PHP syntax, targeted Pint
+and `git diff --check` passed.
+
+The follow-up development audit found 18 corner alerts across all 17
+harsh-swerve recordings. Every corner alert window overlapped the
+labeled swerve and contained exactly one sustained yaw phase. Each
+window was shorter than the labeled maneuver and fell below the replay's
+0.20 overlap threshold. Twelve corner alerts had a later swerve alert
+whose first window overlapped the corner window. Five arrived within
+0.6 s, eleven within 1.2 s, and all twelve within 1.8 s. The other six
+had no overlapping first swerve alert window. These counts describe
+opportunities for alert arbitration. An actual delay rule needs a
+separate replay to measure its effect on genuine corners and delays.
+
+The development replay then compared immediate corner alerts with a
+1.2-second hold. An overlapping swerve prediction can absorb a corner
+only if available by the corner's deadline. The replay counts a corner
+still waiting at recording end separately. Matching uses the original
+prediction window and measures delay at the actual release time.
+Corner alerts fell from 48 to 36. Eleven folded into swerve alerts,
+and one was still pending at recording end. The replay matched 20 of
+23 labeled harsh corners in both variants. Median corner delay rose
+from 0.47 s to 1.67 s, with a maximum of 2.92 s. Other harsh alert
+counts stayed the same. The replay and boundary checks for overlap,
+the deadline, late predictions, and recording end passed. Keep the
+hold as a development candidate for independent mixed-drive replay.
+
+#### Session 10 normal mixed-drive replay
+
+The independent Tiles session used `S10-FR-R256` at 5 Hz and four
+Mixed Drives with two reviewed normal turns each. R258 and R262
+turned right then left. R263 and R264 turned left then right. None of
+these recordings is in the frozen pilot dataset. The replay checks
+the session, mount, reference, processing identity and saved labels.
+
+From `backend/`, pipe `php ml/stream_replay_windows.php session10-normal`
+into `ml/.venv/bin/python ml/replay_yaw_forest.py --session10-normal`.
+The replay evaluated 1,673 valid windows over about 80.01 seconds of
+recording, with 76.28 seconds of paired grid readings outside warm-up.
+It raised **zero harsh alerts** with either immediate alerts or the
+1.2-second corner hold. This first batch contains normal driving, so
+it measures false alerts on those runs. A fresh harsh-swerve run is
+needed to test whether the hold resolves competing alerts. Follow it
+with mixed recordings containing a distinct harsh corner and swerve.
+
+Session 10's first independent harsh-swerve check, `S10-HSWL-R266`,
+uses the same 5 Hz reference. The operator reported a completed
+left-first swerve and neutral release. Revision 1 marks the three
+aligned yaw phases at 3.14–4.98 s. Replay with `session10-swerve`
+and `--session10-swerve` scanned 247 windows. The immediate rule raised
+a corner alert at 3.60 s and a swerve alert at 4.20 s. The 1.2-second
+hold folded the corner into the swerve and kept its 4.20 s alert,
+1.06 s after the labeled onset. This is one independent recording.
+The four normal runs also replayed again with zero harsh alerts.
+
+The mirrored run, `S10-HSWR-R272`, uses R256 at 5 Hz and revision 1
+marks the right-first swerve at 3.06–4.92 s. The same replay selection
+now includes both recordings. For R272 the immediate rule raised
+a corner at 3.40 s and a swerve at 4.00 s, 0.94 s after labeled onset.
+The hold absorbed the corner and preserved the swerve at 4.00 s.
+Both rules also issued a duplicate swerve at 8.60 s from a 5.6 s
+window beginning at 3.00 s that still contained the original maneuver.
+The paired replay verified 454 windows and both labeled swerves.
+The corner hold addresses competing corner alerts. Duplicate swerves
+from long windows and the separation of genuine turns from nearby
+swerves remain open for mixed-drive evaluation.
+
+The close-transition test `S10-MD-R273` uses R256 at 5 Hz. Revision 1
+marks the operator-confirmed harsh left corner (4.22–5.30 s) and
+left-first harsh swerve (5.34–7.02 s). The `session10-close` /
+`--session10-close` replay scored 337 windows. Both rules matched both
+maneuvers. The immediate corner arrived at 4.60 s and the held corner
+at 5.80 s. The swerve arrived at 6.20 s in both variants. Both variants
+also raised unmatched harsh-braking alerts at 7.40 s and 10.20 s from
+windows that share the slowdown near 7.2 s. That interval remains
+unlabeled pending clarification. Replay, PHP syntax, targeted Pint
+and `git diff --check` passed.
+
+The second close-transition run, `S10-MD-R280`, has reviewed labels
+for the harsh left corner (4.78–6.12 s) and left-first harsh swerve
+(6.24–8.28 s). The operator confirmed a bump after straightening
+with the phone still fixed. Both replay rules matched both maneuvers.
+The corner was emitted at 5.20 s immediately or 6.40 s with the hold.
+The swerve was emitted at 7.20 s in both. Both rules also raised a
+braking alert at 9.00 s in the end-bump region and a duplicate swerve
+at 11.60 s from a window beginning at 6.00 s. The close-transition
+selection now replays R273 and R280 together (629 valid windows).
+
+The experimental swerve deduplication comparison runs after the
+corner hold. It suppresses a later harsh-swerve alert if its window
+covers at least half of an earlier emitted swerve's first window in
+the same recording. It uses only information available when the later
+alert fires. It removed R272's 8.60 s duplicate and R280's 11.60 s
+duplicate, preserving all four Session 10 first swerve detections and
+both mixed-drive corners at their original replay times. The normal
+runs still produced zero alerts. The 144-recording development replay
+had the same alert counts before and after deduplication. Direct
+checks covered the 50% boundary, separate windows, and alerts of
+other classes. Two distinct swerves close together remain an untested
+case for this rule.
+
+An in-memory replay of Session 10's two-swerve attempts found six
+alternating yaw phases in each run. In R287 the first three phases
+spanned 3.24–5.58 s and the next three 5.66–7.66 s. R286 had a
+similarly tight transition at 7.32–7.38 s and a reported bump during
+final straightening. The baseline grouped predictions into one
+swerve alert per recording, and the deduplication comparison
+suppressed zero alerts. These previews did not save label revisions.
+They show that the upstream grouping needs a close-maneuver check
+before deduplication can be assessed on this case.
+
+The close-swerve preview adds a second alert when a trailing 5.6-second
+window contains six sustained alternating yaw phases with gaps of at
+most 300 ms, a model swerve alert already supports the first three
+phases, and no emitted alert covers the second three phases. The
+second alert is timed at the window end. Run
+`php ml/stream_replay_windows.php session10-double-preview` piped
+into `ml/.venv/bin/python ml/replay_yaw_forest.py --session10-double-preview`.
+R287 emitted at 4.80 and 7.60 s, and R286 at 6.20 and 9.40 s. No
+extra events were added in the other eight Session 10 recordings or
+the 144 development runs. The two close recordings guided the rule
+and remain exploratory. R286 has an end bump and R287's lane return
+was qualified by the operator. No reviewed labels were written.
+Direct checks covered repeat suppression, a future seed alert, a
+single sequence and a long phase gap. PHP syntax and Pint passed.
+
+The next upload, `S10-MD-R289`, was replayed with the same settings
+using `session10-double-check` and `--session10-double-check`. The
+operator marked it completed with neutral release and no contact
+flag. The aligned replay scanned 342 windows. The classifier and
+corner hold produced one swerve alert at 5.00 s. The phase rule
+preserved it and added the second at 8.20 s. The corner hold absorbed
+an extra corner candidate at 4.40 s. No label revision was saved for
+this preview. It is one fresh check on the same RC and surface.
+
+The braking alert audit found that R273's 7.40 s and 10.20 s
+alerts both used the forward minimum of −13.60 m/s² at 7.32 s.
+The operator confirmed one neutral release. In R280, the 9.00 s
+alert window contains the reported end-bump region and a forward
+minimum of −6.56 m/s² at 8.94 s. Both windows also contain strong
+vertical motion and pitch rate. Their absolute vertical peaks
+were 6.50 and 3.20 m/s² and nearby peak pitch rates were 2.69 and
+1.72 rad/s. The ten reviewed development harsh-braking intervals
+had absolute vertical peaks of 0.84–1.29 m/s² and peak pitch rates
+of 0.22–0.48 rad/s. Both Session 10 recordings also show a roughly
+1.3–1.5 m/s² shift in the forward resting mean after the stop.
+These comparisons are diagnostic. They do not isolate the physical
+cause of the peaks or establish thresholds. Braking deduplication
+and an ambiguity rule for strong body motion remain separate checks.
+
+The experimental braking review now groups alerts that share the
+same minimum forward-acceleration sample timestamp in a recording.
+It retains the first prediction for review if both absolute vertical
+acceleration reaches 2.0 m/s² and pitch rate reaches 0.8 rad/s in
+the same window within 140 ms of that sample. Both limits are
+exploratory. The review uses available samples at alert time and
+does not change the forest or its input features. In R273 the 10.20 s
+alert was grouped with the 7.40 s alert, leaving one uncertain event.
+The end-bump alert in R280 was also marked uncertain. All ten
+development braking alerts stayed eligible, with nine matching
+the ten reviewed braking labels as before. The normal drives,
+isolated swerves and R289 had no braking alerts. This comparison
+used the two ambiguous runs to design the rule. A fresh contrast
+between a fast neutral-release stop and a deliberate applied brake
+is needed before using it beyond replay. The replays, boundary
+checks, PHP syntax and targeted Pint passed.
+
+Proposed new maneuver targets are `lane_change`, `normal_swerve`, and
+`harsh_swerve`, alongside the existing normal motion, harsh acceleration,
+harsh braking and harsh cornering targets. This is a proposed **seven-target**
+interval classifier. The exporter now validates the three new target names
+against movement, severity, certainty and source in a v2 snapshot schema;
+the historical v1 lateral snapshots remain readable. Feature extraction now
+accepts the three new targets without changing the 30 measured features, and
+the separate `train_pilot_v2.py` supports fixed-seven-class session-held-out
+comparison. The original `train_pilot.py` remains unchanged, and the frozen
+five-class model still verifies. The v3 snapshot and seven-class comparison
+are documented above. S07 offers 10 reviewed completed normal obstacle swerves
+(five per side) and 11 reviewed completed harsh obstacle swerves (six left,
+five right) as development candidates. S08 offers four reviewed normal and
+four reviewed harsh obstacle swerves (two per side) for reserved evaluation.
+S07 also has three reviewed normal and three reviewed harsh turns per side;
+S08 has two of each per side. Exclude S07's incomplete R208 and unlabeled
+trials. Review exact interval eligibility, original quality and class balance
+before fitting any model.
+
+Keep whole S07 in development and whole S08 in final evaluation, together
+with their mount/reference dependencies. Preserve existing S01/S02/S03/S05
+development and S04/S06 evaluation partitions for any carried-forward
+recordings. No selection, fitting or threshold adjustment may use S08 or
+S04/S06 measurements. The reserved S08 support is only four examples per
+swerve severity, so report per-class counts and individual errors; a high
+aggregate accuracy would not establish reliable real-world detection. The
+existing isolated-event features and model assume human-selected intervals;
+they cannot yet detect events continuously or prove live alert timing.
+The scoped mapping change is in `RcPilotDatasetExportService`; seven-target
+feature/trainer support is in `RcPilotFeatureService`, `RcPilotTrainingService`,
+`TrainRcPilot` and `backend/ml/train_pilot_v2.py`. The v2 trainer retains
+training-fold-only scaling, fixed candidate settings, whole-session folds,
+class-coverage checks and no reserved-evaluation access. The second development
+swerve session below supplies the missing fold coverage. No historical labels
+or model package were changed. Focused exporter/feature/training Pest tests,
+14 Python trainer tests, full Pint and existing `pilot-split-v2 --verify`
+passed. The v3 snapshot and export pin and verify those revisions and splits.
+
+#### Session 9 second development swerve session — 2026-11-10
+
+The new tiles development session has verified forward reference
+`S09-FR-R239` and 12 verified v5 obstacle swerves. Its saved 5 Hz reference
+uses quiet **0.75–6.50 s**, launch **6.70–7.20 s**, and neutral-release
+slowdown **12.20–12.70 s**; the fitted forward angle is **2.83°** from the
+phone top, start and stop are opposed by **15.65°**, and no processing
+warnings were emitted. Reference annotation revision 1 marks those three
+phases and final rest **13.20–20.00 s**; travel between them stays unlabeled.
+
+All 12 maneuver recordings report completion, correct first deviation,
+neutral release and small steering corrections, with no contact or mount
+shift flagged. Each now has a saved 5 Hz run reusing R239 and one reviewed
+forward-swerving interval in annotation revision 1:
+
+| Exercise | Recording and reviewed interval (seconds) |
+| --- | --- |
+| Normal swerve left | R240 5.10–10.95; R241 5.35–10.20; R242 5.40–11.00 |
+| Harsh swerve left | R243 4.50–7.45; R244 4.90–8.35; R245 4.55–7.65 |
+| Normal swerve right | R246 5.10–11.55; R247 4.10–10.00; R248 4.60–10.00 |
+| Harsh swerve right | R250 4.35–7.25; R251 4.35–7.40; R255 3.45–6.25 |
+
+Fixed-frame yaw shows the planned three-phase steering pattern in each run.
+The selected peak yaw rates are approximately **32–45°/s** for normal and
+**57–73°/s** for harsh attempts. All saved maneuver runs have paired data,
+no processing warning, and little rotation outside the reviewed intervals.
+These observations support interval quality, not physical obstacle clearance
+or a validated severity cutoff. R255 completes the planned three clean
+harsh-right attempts. The second-session
+class-coverage requirement for development validation is now met by S07 and
+S09, but the small class counts still limit confidence. S08 remains reserved;
+the v3 dataset and development comparison are documented above.
+
+The web label form now fills `direction=forward` when a directional v5 swerve
+interval is selected and hides that redundant control for a forward swerve.
+It also fills the protocol's first steering side and hides that matching
+choice. A differing saved side stays visible for review. The mobile observation
+form similarly fills the chosen swerve side and exposes the side selector when
+the operator marks the exercise incomplete or the saved side differs. Both
+fields remain in persisted data. No Laravel annotation contract or historical
+revision was changed. Web lint, TypeScript and eight focused form tests passed;
+mobile lint and TypeScript passed. The web production build was attempted but
+could not fetch the existing Poppins font from Google Fonts in this network
+environment; it did not complete. The Android release APK built successfully
+offline and was installed on the connected Redmi with app data retained.
+
 ### Mobile/web workflow and pilot preservation
 
 Target mobile navigation is **Collect / Recordings**, replacing historical v1 Data
@@ -1037,18 +2285,39 @@ UI. Existing Form Requests/Zod schemas are deliberately not changed in Phase 1.
 | Mobile stack | Expo SDK 54 (`~54.0.37`), React Native 0.81.5, `expo-sensors ~15.0.8`, Android-only local `modules/rc-recorder` Kotlin module | New development build required for the native recorder; Expo Go cannot capture v2 |
 | Builds | Generated Android project; development and standalone preview APK profiles | A successful build does not prove device reliability |
 | Research capture | Collect uses native independent original streams, fixed MN-82S preset, encrypted persistent collection groups/defaults/numbering, automatic phone power metadata, requested 20 ms updates and explicit native Start/Stop | Actual sensor axes/rates, lock-screen continuity, interruption and power behavior require Redmi validation |
-| Research storage and inspection | Encrypted local v2 originals, explicit chunk upload/retry and server verification; separate signal review, reference preparation and revisioned interval labels; bounded saved server processing with run-specific references and explicit experimental reuse for maneuver trials | V1 list retired; no validated filter setting, reusable accepted alignment, background transfer queue or dataset export; remote v2 deletion UI remains pending |
-| Calibration | Six readiness checks and five supervised foreground exercises, summary-only evidence | Provisional settings; moving RC/reference accuracy not established |
+| Research storage and inspection | Encrypted local v2 originals, explicit chunk upload/retry and server verification; signal review, reference preparation, revisioned labels, bounded saved processing and local encrypted frozen-pilot interval export | V1 list retired; validated filter settings, reusable accepted alignment, background transfer queue, general web dataset approval/export and remote v2 deletion UI remain pending |
+| Calibration | Six readiness checks, then supervised native stationary and forward captures with summary-only evidence | Provisional quality settings; physical Android verification pending |
 | Released rental GPS | Explicit foreground/background latest-location sharing, consent, pause/resume, server eligibility | No continuous rental motion collector, offline recording queue, or route-history collection in this flow |
 | Fleet website | Ongoing rentals, latest-location map, private Reverb invalidations and authorized rereads | No connected AI driving-event dashboard |
 | Notifications | Customer/Driver in-app records, unread counts, booking activity | No implemented report-ready flow or remote phone push delivery |
-| ML and score | Harsh-event enum values and data foundations | No trained model, training/inference pipeline, or behavior-score/report implementation found |
+| ML and score | Local versioned development comparison of majority, logistic regression and Random Forest candidates | Reserved final evaluation, continuous inference, behavior score and reports remain pending; development cornering errors require review |
 
 Existing enum values and old mock presentation components do not establish AI
 functionality. Research `eligible_for_training` is a provisional quality/annotation
 flag, not proof of correct axes, sound labels, independent splits, or model accuracy.
 
 ## Existing rental and handover boundaries
+
+Driver UI alignment — 2026-11-11: Driver Services and its dedicated detail route
+link to the existing `driver-telematics/[bookingId]` route, which already uses
+the same `TelematicsHandoverScreen`, setup checks, calibration, Full details,
+Activity and consented monitoring controls as Customer self-drive. Full details
+now explicitly renders the Driver audience of the shared booking content,
+avoiding Customer receipt requests and redacted zero-price/payment sections.
+Driver deliveries show their existing point/navigation without the Customer-only
+delivery-estimate request. Web assignment, outgoing/handover, setup status and
+Staff Start Rental keep the same authoritative backend workflow; no duplicated
+Driver setup engine or web contract was added. Services and detail refreshes
+reflect assignment/status changes, and access denial clears stale detail data.
+Verification: mobile TypeScript and scoped ESLint passed; 75 focused backend
+assignment, handover, release, location and motion tests passed (607 assertions).
+The initial focused invocation missed the shared Foundation fixture file; it
+passed after that existing fixture test file was included. Physical Driver setup,
+calibration and monitoring acceptance remain manual.
+The ARM64 standalone release build passed and the APK installed successfully
+on the connected Redmi using `adb install -r`, preserving app data. No Driver
+assignment, rental release, payment or sensor collection was performed during
+this UI update.
 
 Keep these implemented business rules while extending research:
 
@@ -1066,7 +2335,7 @@ Keep these implemented business rules while extending research:
   handover; Self Drive also requires verified Customer documents. Reassignment
   requires fresh readiness for the new Driver.
 - Standard release requires payment, inspection/signature, vehicle/operator, and
-  all eleven effective setup/calibration requirements. Staff's authorized
+  all eight effective setup/calibration requirements. Staff's authorized
   **Start Rental** is the only `ready_for_release -> released` action.
 - A booking has at most one post-release trip. Pause/resume stays in that trip.
 - Active default zones are copied into `booking_geofences` at release; all booking
@@ -1096,24 +2365,23 @@ Readiness order: `device_check`, `motion_permission`, `location_permission`,
 `background_location`, `gps_check`, `phone_mount`. These checks do not start
 continuous recording. A fresh setup GPS fix is quality evidence, not route history.
 
-Calibration order: stationary, forward, braking, left turn, right turn. Captures
+Calibration order: stationary, then forward reference. Captures
 are explicitly consented, supervised, foreground-only, and bounded. Cancel,
 navigation, or backgrounding stops capture. Laravel receives bounded summaries,
 not sample streams, and evaluates fresh context, order, consent, quality, and
 profile. A local success animation cannot replace server acceptance.
 
-Current geometry uses a gravity reference, horizontal acceleration projection,
-a learned forward reference, and projected angular motion. It is not a custom
-continuous Kalman/complementary/PCA fusion estimator or a speed/gear detector.
-Current profiles retain the first qualifying Forward sample at 3 m/s², subject
-to other quality gates. That single sample does not demonstrate sustained
-direction consistency. Stationary is six seconds; other configured maximums and
-RC overrides are in [configuration](../backend/config/telematics.php).
-The active profile is standard revision 4 or local/testing RC revision 5;
-profile/settings fingerprints bind attempts. These are operational demonstration
-settings, **not learned harsh-event thresholds or training labels**.
+Current native acquisition uses Android natural device XYZ and monotonic
+sensor timestamps. Stationary runs for six seconds. Forward uses the first
+coherent horizontal launch after the ready cue and retains its direction
+through the stop. The forward quality floor is the greater of 0.5 m/s²
+and three times parked horizontal RMS. The candidate needs at least seven
+samples over at least 120 ms and must pass coherence and other quality checks.
+These provisional settings need physical validation on the Redmi and RC.
+See [configuration](../backend/config/telematics.php).
 
-Important existing adapter details, verified by source inspection:
+Historical Expo protocol 3 and the released-rental local Stationary resume check
+use the following adapter conventions:
 
 - Current Expo linear acceleration is platform-processed, in m/s².
 - Installed Android DeviceMotion exports `accelerationIncludingGravity` as
@@ -1123,7 +2391,7 @@ Important existing adapter details, verified by source inspection:
   minus linear acceleration. Reference signs therefore depend on that adapter.
 - Expo exports rotation rate in degrees/second; direct Android gyroscope values
   use radians/second. `rotationAxes` maps Android alpha/beta/gamma to XYZ.
-- Current research's `gravity_timestamp_s` identifies the including-gravity
+- Historical Expo research's `gravity_timestamp_s` identifies the including-gravity
   measurement timestamp, not an independently retained native gravity event.
 - Screen orientation is not full three-dimensional attitude.
 
@@ -1137,6 +2405,383 @@ Sources: [installed Android adapter](../mobile-frontend/node_modules/expo-sensor
 [calibration math](../mobile-frontend/lib/telematics/calibration.ts),
 [foreground capture](../mobile-frontend/services/telematics/calibration-capture.ts),
 [server evaluation](../backend/app/Services/TelematicsCalibrationService.php).
+
+### Two-capture rental checklist — 2026-11-09
+
+The user approved replacing the five rental calibration exercises with stationary
+and forward reference captures. `TelematicsSetupService::requiredSteps()` now
+requires six existing device checks plus these two captures. The existing
+Customer/assigned-Driver ownership, consent/supervision, server-time, documents,
+payment/inspection/signature checks and Staff-only Start Rental remain in force.
+Completing forward calibration can make the setup ready for staff release;
+it does not release the rental, create a trip or start GPS/motion collection.
+
+Braking/left/right calibration enum values and stored attempts remain readable.
+New mobile attempts for those retired rental exercises are rejected. They do
+not count as device prerequisites or invalidate the current two references.
+The handover Resource returns the eight active checks and includes a retired
+exercise only when an applicable historical attempt exists; current-Driver
+ownership filtering still applies. Research exercise catalogs and recordings
+are unchanged. No stored setup/recording rows are deleted or rewritten.
+
+The policy change increments the standard/RC calibration profile revisions to
+5/6. Unreleased evidence from the previous profiled checklist requires fresh
+stationary/forward captures through the existing profile-restart mechanism.
+Released setups keep their recorded profile and read-only results. Mobile setup
+progress, calibration step counts, success transitions, disclosure copy and web
+booking calibration progress now use the two active stages.
+
+This checklist increment originally used Expo protocol 3 with a 3 m/s²
+single-sample forward rule. Native pre-release capture supersedes that rule.
+
+Sources: `TelematicsCalibrationService`, `TelematicsCalibrationProfileService`,
+`TelematicsSetupService`, `TelematicsHandoverResource`, mobile `lib/telematics/setup.ts`
+and existing calibration components, and web `booking-next-action.ts`.
+`StoreSetupAttemptRequest::calibrationEvidenceRules` and the mobile
+`calibrationEvidenceSchema` were reviewed together: their bounded-summary payload
+and field rules are unchanged. Available step types are enforced by the server
+workflow and the mobile active-step guard. No new API fields or native packages
+are introduced.
+
+### Native pre-release calibration
+
+Rental capture protocol 4 uses the Data Collection module's Android
+`SensorManager` source, natural device coordinates and requested 50 Hz rate.
+Accelerometer and gyro are joined on a 20 ms monotonic grid with brackets of at
+most 60 ms. The Android gravity channel uses brackets of at most 100 ms and
+provides the gravity and tilt measurement. Gaps remain missing. The native
+actor bounds the foreground buffer and cancels on background, when the operator
+cancels, or when the app stops polling the open Forward Reference capture.
+The app sends only the bounded summary to Laravel.
+
+Stationary measures residual vibration using raw acceleration minus Android
+gravity. The server derives the parked raw accelerometer mean from the summary
+and stores it with the stationary attempt. The mean establishes vertical.
+Forward subtracts that fixed parked mean and projects the first qualifying launch
+onto the horizontal plane. The direction assumes the supervised movement begins
+from rest and goes forward. The routine matches the research frame convention,
+while its launch estimator is distinct from the research inspector's manually
+reviewed PCA and Butterworth processing. Gyro readings are converted from rad/s
+to deg/s at the summary boundary. A pass establishes the reference for the
+current mount.
+
+Forward Reference has no countdown. It waits for steady readings before
+prompting the operator to move. The app starts a bounded evidence window when
+motion begins and submits it as soon as it meets the existing quality rules.
+After an unsuccessful window, the operator must stop safely and wait for the
+forward cue before trying again. The app checks for quiet readings to rearm.
+Inertial quiet alone cannot distinguish a stop from steady motion, so the
+operator and supervisor must confirm the vehicle is parked by observation.
+Neither idle time nor unsuccessful windows are submitted. Stationary keeps its
+six-second steady window and existing overall retry limit.
+Mobile lint, TypeScript, 23 focused calibration checks and the Android release
+build passed for this change. The in-place Redmi install reopened BK-94242
+with one of two calibration steps passed. A physical forward launch with the
+open capture remains to be verified.
+
+Laravel profile revisions are standard 6 and RC 7. Old profiled unreleased
+attempts restart at Stationary through the existing profile check. Released
+attempts retain their original protocol, profile and stored summaries. The
+released-rental local resume check still uses Expo. Staff completes release
+after both passes. An updated Android build and physical trial are required.
+
+Sources: [native capture](../mobile-frontend/modules/rc-recorder/android/src/main/java/com/jamjade/rcrecorder/RentalMotionCapture.kt),
+[mobile summary](../mobile-frontend/services/telematics/rental-motion-capture.ts),
+[server evaluation](../backend/app/Services/TelematicsCalibrationService.php).
+
+#### Restarting completed setup before release
+
+In mobile Telematics, expand Setup results and choose Restart setup. After
+confirmation, the operator returns to Device setup and repeats all six device
+checks plus Stationary and Forward Reference. The booking returns to setup in
+progress, so Staff release requires fresh results.
+
+The mobile `telematics-setup/restart` endpoint validates the current setup context
+and checks the operator and booking under the same lock used for release.
+`TelematicsSetupSession.reset_through_step_id` separates the new checks from
+immutable attempt history. Current results, calibration context, prerequisites,
+and release readiness use attempts after that boundary. The original booking
+and handover remain linked. Released rentals cannot restart setup this way.
+
+The full backend suite passed 1,139 tests, and the final restart regression
+passed with 42 assertions. Mobile lint, TypeScript, and the standalone APK
+build passed. The update was installed on the Redmi, and the button was verified
+on BK-94242 while its completed setup remained in place.
+
+#### Device setup completion
+
+When all six device checks pass, the mobile handover dialog shows a single
+completion message and the animated check shared with Calibration. Detailed
+check results are available under Setup results. Next opens Calibration through
+its existing eligibility and consent flow. The completion screen waits for
+the operator to tap Next.
+
+The mobile handover screen uses the shared `SetupSuccessCheck` component with
+reduced-motion support. Mobile lint, TypeScript, 18 focused setup and calibration
+transition tests, and the standalone Android build passed. The update was
+installed on the Redmi. For BK-94242, the completed Device setup dialog showed
+Next and opened Stationary calibration on tap.
+
+#### Calibration dialog layout and Android startup
+
+Stationary and Forward Reference share the existing dialog surface. Smaller
+illustrations and compact sensor rows keep instructions, measurements, and
+the recording action together. Sensor values, units, and applicable targets
+remain visible. On Android, `RcRecorderModule.beginRentalMotion` checks the host
+activity's resumed lifecycle state because the calibration dialog owns window
+focus. The bounded recorder still cancels when the app leaves the foreground.
+Mobile lint, TypeScript, 15 focused calibration checks, native unit tests, and
+the standalone build passed. The in-place Redmi update showed both sensor
+rows and the full Start recording button in the initial Stationary view of
+BK-94242. A physical capture through the updated dialog remains to be checked.
+
+Stationary now resets its elapsed time and candidate summary when the configured
+motion limits are exceeded or a sensor gap interrupts the window. After a
+300 ms settling period it automatically starts a new full stationary window.
+The gyroscope row displays the latest angular rate, while the submitted summary
+retains the peak for the successful window. The current six-second setup has a
+30-second retry deadline. Forward Reference keeps its separate movement timing.
+Illustrations now use explicit square layout dimensions to avoid extra space
+around the scaled artwork. Mobile lint, TypeScript, and 21 focused tests passed,
+including a gyro spike followed by a clean window and the persistent-motion timeout. The standalone APK built and installed on
+the Redmi. The initial Stationary dialog for BK-94242 showed both sensor rows and
+the full recording button with the larger illustration. The reset behavior was
+verified with simulated readings.
+
+### Connected rental RC motion monitoring — 2026-11-10
+
+#### Completed-rental Driving Analysis
+
+Coverage version 1 records merged motion-window intervals for new rental
+segments in `rental_motion_intervals`. `RentalMotionCoverageService` merges
+overlap/adjacency in the ingestion transaction after inference, and duplicate
+batch receipts return before modifying coverage. The read model merges absolute
+intervals across segments and clips them to release through vehicle receipt or
+trip end. It reports analyzed/uncovered milliseconds, coverage percentage, and
+gap count. The period includes parked and paused time. This measures analyzed
+sensor coverage, not time spent moving. Server capture start introduces the
+same startup timing approximation as event occurrence times.
+
+Earlier segments retain null coverage versions because accepted batches did not
+retain window timing. A rental containing one of those segments has unavailable
+coverage. Zero confirmed events remains distinct from missing coverage.
+Late accepted batches update coverage. An active segment keeps sync unconfirmed,
+and closed segments alone do not prove that all expected phone data arrived.
+The approved RC deduction rule starts at 100, subtracts two points per confirmed
+harsh acceleration/braking event and three per confirmed harsh cornering/swerve
+event, and floors the result at zero. `RentalDrivingScoreService` implements
+this versioned calculation (`rc-deductions-v1`). The approved presentation
+shows a provisional score with received coverage; no accepted motion batch
+means Not graded, never an automatic 100. All current scores remain provisional
+because upload reconciliation is not implemented. Review-required, suppressed
+and pending events do not contribute. Deductions count grouped events, not
+individual prediction windows. Late batches recompute the read model; no
+financial charges are created. A zero floor caps the displayed score even when
+raw deductions exceed 100. The weights are a project-defined behavior index, not
+validated risk ratios. Motion sensors cannot determine driver intent, road
+clearance or whether a maneuver was a necessary emergency response.
+Sources include `DriveMonitoringBatchService`, `RentalDrivingAnalysisResource`
+and the additive `2026_11_11_030000_add_rental_motion_coverage` migration.
+The local migration applied successfully. Backend suite verification passed
+1,142 tests; the subsequent targeted coverage checks passed 15 tests with 114
+assertions. PHP formatting, web lint, TypeScript and the production build passed.
+Browser verification and physical delayed-upload coverage checks are pending.
+
+Driving Analysis has an Insights sidebar entry for Admin and eligible Staff.
+The module lists completed bookings using the existing server pagination and
+search. Its Grade / 100 column shows the server-calculated provisional score
+or Not graded. Booking History's Driving Analysis action
+opens the selected rental via its booking ID. The detail includes booked
+vehicle, operator, rental dates,
+confirmed totals for the four harsh maneuver types, the event log, and sync
+status. Each row opens analysis through a compact eye action. The module lives in
+`web-frontend/src/modules/management/driving-analysis/DrivingAnalysisModule.tsx`.
+The page follows `BookingsModule.tsx` for responsive page padding, heading,
+table-contained search, row action menus, labeled mobile cells and pagination
+spacing. Detail metadata and analysis use the shared Card/CardContent layout.
+An individual analysis uses `VehicleDetailsPage.tsx` as its back-navigation
+precedent and omits the module heading. Its booking code links to Booking
+History with the booking details dialog selected.
+Vehicle links in both the list and detail show brand, vehicle name, model year,
+and plate number together, distinguishing vehicles with otherwise identical
+names, and open the existing vehicle details page.
+Booking codes in the rental list use the same link treatment and open the
+selected booking's History details dialog.
+Web lint, TypeScript and the production build passed. Twelve targeted backend
+tests passed with 99 assertions, including confirmed maneuver totals. Scoped
+PHP formatting and diff checks passed. Browser verification remains pending.
+
+Completed bookings expose Driving Analysis in the web booking details dialog
+for viewers with both booking management and fleet permissions. The read-only
+`GET /admin/bookings/{booking}/driving-analysis` endpoint uses
+`RentalDrivingAnalysisService` and `RentalDrivingAnalysisResource` to return
+the same trip-scoped event counts and bounded preview as Fleet Monitoring.
+An active motion segment marks sync unconfirmed. No receipts is displayed
+separately from received readings with no confirmed harsh events. A closed
+segment alone does not establish full-trip coverage.
+
+`BookingDetailsDialog.tsx` composes the existing `RentalDrivingEvents`
+component in the Driving Analysis tab, with estimated occurrence times, review
+states and scrollable event logs. Provisional grades and coverage measurement
+are implemented; final report reconciliation and report-ready notifications
+remain pending. Browser access
+was disabled during verification. The backend suite passed 1,140 tests,
+including completed-status and permission checks. Scoped PHP formatting,
+web lint, TypeScript and the production build passed.
+
+**Implemented first integration; physical rental-flow acceptance remains pending.**
+The RC holder is mechanically screw-fixed; the agreed phone placement keeps the
+camera/notch end toward the RC front. An untouched phone can reuse that alignment.
+A fixed holder alone does not verify a phone that has been removed and reinserted.
+For capstone Self Drive bookings, the selected vehicle remains a real catalog car,
+while the fixed Redmi on the RC supplies motion and GPS. No per-vehicle RC whitelist
+is used. `sensor_platform=rc` is stored separately from the booked vehicle; classifier
+results do not establish real-car accuracy. The shared operator boundary also
+supports the current assigned Driver for With Assigned Driver rentals.
+
+- Staff Start Rental remains the only release action. Native setup captures never
+  create trips or start motion monitoring. In Device Setup, the operator can
+  opt into Drive Monitoring alongside automatic GPS. The one-use preparation is
+  bound to the booking, operator and setup context and stays in memory while
+  Telematics is open. After release, the app starts GPS and waits for an
+  accepted GPS update before requesting the motion segment. Cancelling or
+  leaving Telematics clears a pending start. For an RC rental, manual Start or
+  Resume opens a Start/Cancel prompt in `TelematicsMonitoringControls.tsx`.
+  Start confirms the calibrated mount position and opts into both streams.
+  Mobile lint, TypeScript and the standalone Android build passed for this
+  prompt change, and the update installed on the Redmi. Verifying the prompt
+  during a physical resume still requires the operator's stationary check.
+  Consent `rental-rc-motion-v1` and server eligibility still gate each motion
+  segment. Consent version and time are stored. Segments attach to the same
+  `telematics_trip_id`.
+- `RentalMotionReferenceService` derives the runtime R/F/U matrix from the frozen
+  protocol-4 stationary/forward evidence in an RC calibration profile. It
+  orthogonalizes forward against up, preserves the parked raw acceleration offset,
+  and converts stationary gyro means from calibration deg/s back to native rad/s.
+  Legacy Expo calibration and standard-profile evidence cannot silently authorize
+  this RC-trained classifier. Training labels and observer directions are not
+  runtime inputs.
+- The Android `RentalDriveMonitoring` actor and non-exported foreground service
+  reuse `DriveMotionPipeline` and `DriveBatchUploader`: requested 50 Hz accel/gyro,
+  20 ms synchronization, 5 Hz causal filter, fixed vehicle frame, the unchanged
+  35-feature window definitions and private frozen forest. The explicit notification
+  has Stop readings. No boot or process-restart path starts sensors. Three seconds
+  without either sensor, an eight-hour lease, revoked upload access or exhausted
+  queue capacity stops capture. These interruption guards are engineering bounds,
+  not learned maneuver thresholds.
+- Rental features have a separate owner-bound Android Keystore/AES-GCM namespace
+  `rental-motion-v1`. Research originals and their keys/paths remain unchanged.
+  Only window features enter this queue; live rental raw samples are not persisted.
+  Tokens stay in memory, destinations are configured HTTPS hosts and the exact
+  booking/session path, and redirects are disabled. The queue is bounded by 100
+  batches and the existing 1 MiB encrypted-document plaintext limit; whichever is
+  reached first stops capture. Final unsaved windows can be lost on storage failure
+  and are reported rather than described as uploaded. Completed capture can drain
+  automatically while the foreground service survives. After process/account loss,
+  Finish sync reconnects existing encrypted batches without restarting sensors.
+- Explicit rental Pause and logout stop motion. GPS foreground exit/network
+  interruption is distinct from manual pause: motion may continue under its own
+  background consent while GPS is paused. Native offline feature transfer retries
+  independently. A manual GPS pause or physical receipt freezes the server capture
+  cutoff in integer milliseconds. Late delivery can include only windows within
+  that capture period, including after GPS resumes. Batch IDs/content hashes and
+  session watermarks prevent changed retries, duplicate events and reordering.
+- `useTelematicsHandover.ts` retains the last rental details on a temporary
+  refresh failure. `useTelematicsMonitoring.ts` leaves the active native motion
+  segment running through that failure, while a confirmed access denial or ended
+  rental still stops collection. Telematics keeps Pause available offline.
+  GPS uses its existing latest-fix policy, with no offline route history. After
+  reconnecting, the operator can resume GPS while motion continues. Mobile
+  lint, TypeScript, the standalone Android build and 30 focused tests passed.
+  A physical Wi-Fi loss and reconnect test remains pending.
+- The mobile Telematics controls use a single Start/Resume and Pause for the
+  rental. Pause clears an in-progress motion start and stops GPS and motion
+  collection. It records no replacement zero readings. The post-release Drive
+  Monitoring card in Activity shows motion status, pending batches and Finish sync, and can
+  close an interrupted server start without a local queue. GPS sharing choices,
+  zone snapshots and release gates continue to apply.
+  A successful rental monitoring refresh clears the previous connection warning
+  in `location-monitoring-session.ts` and leaves GPS paused until Resume.
+  Telematics groups GPS recovery in Activity and keeps motion action errors
+  beside the corresponding controls. Temporary motion status refresh failures
+  retain the last status. Mobile lint, TypeScript, the standalone Android build
+  and 22 focused tests passed. Physical layout and reconnect checks are pending.
+- Full details date-layout correction — 2026-11-11: rental and return blocks in
+  `TelematicsVehicleSummary.tsx` use natural content height instead of `flex-1`
+  inside the vertical date stack. The summary and its drawer wrapper cannot
+  shrink, preventing the dates from collapsing beside the vehicle image.
+  Timestamp formatting and monitoring behavior are unchanged. The standalone
+  ARM64 release build passed and the APK update installed successfully on the
+  Redmi with app data retained; visual review remains manual.
+- The vehicle summary is confined to Full details in
+  `TelematicsHandoverScreen.tsx`. Device setup and Calibration show their own
+  expandable checks inside `TelematicsSetupCards.tsx`. Both lists open by
+  default, with Restart setup under the device checks when eligible. The
+  shared tab header remains consistent across the three views. Activity starts with the compact
+  `RentalMotionMonitoring.tsx` card for released RC rentals, followed by GPS
+  recovery when needed and the activity feed. The card stays visible with local
+  status if its server request fails. Mobile lint, TypeScript and the Android
+  build passed. On the Redmi, BK-94242 showed both check lists open by default
+  and Drive Monitoring showed Paused above the Activity feed.
+  The Drive Monitoring status sits at the end of the shared card header.
+  Queued batches and sync actions are below. Booking-linked trip notices are
+  scoped to rental Activity by the [notification feed](mobile-notifications.md).
+  Mobile lint, TypeScript and the Android build passed for the card update. The
+  Redmi showed Paused beside the title. There were no pending batches to verify
+  the sync row on the device.
+- Fleet Monitoring's rental details read only that trip's motion events, whole-trip
+  event totals and latest receipt time. Existing Reverb fleet invalidations trigger detail refresh; a five-second poll
+  reconciles missed notices through the same service/client and Fleet permissions.
+  Latest 50 visible events have ten-row pagination; raw features, model weights and
+  calibration evidence are not exposed. Normal predictions are not harsh alerts.
+  Research Admin endpoints explicitly exclude rental-linked sessions.
+  `FleetTrackerController` orders rental events by the recorded server capture
+  start plus each event's first window offset. `FleetDrivingEventResource`
+  exposes that estimate as `occurred_at`, and `RentalDrivingEvents.tsx` displays
+  it in Manila time. This works for delayed uploads and existing sessions with a
+  capture start. A missing capture start leaves the event time unavailable.
+  Last received still reports upload freshness. The estimate can differ from
+  the sensor clock by the delay between server session creation and Android
+  capture startup. The backend suite (1,139 tests), scoped PHP formatting, web
+  lint, TypeScript and the web production build passed. The delayed-arrival
+  regression verifies event time and order independently of receipt time.
+
+Sources: `backend/app/Services/RentalMotionMonitoringService.php`,
+`RentalMotionReferenceService.php`, shared `DriveMonitoringBatchService.php`,
+`StartRentalMotionRequest`, `StoreRentalMotionBatchRequest`, migration
+`2026_11_10_200004_link_motion_sessions_to_rental_trips.php`,
+`mobile-frontend/services/telematics/rental-drive-monitoring.ts`,
+`components/telematics/RentalMotionMonitoring.tsx`, native `RentalDriveMonitoring.kt`
+and `RentalDriveMonitoringService.kt`, and web Fleet `RentalDrivingEvents.tsx`.
+Automatic start is coordinated by `useTelematicsMonitoring.ts` and the one-use
+`release-monitoring.ts` preparation. Mobile lint, TypeScript, the standalone
+Android build, and 28 focused tests passed, covering consent, GPS start/stop and
+cancellation during motion startup. The standalone update installed in place
+on the Redmi. The already-released booking showed motion paused and the shared
+Pause and Resume controls. Automatic start and stopping both streams still
+need a physical Android test.
+
+**Limits:** dynamic remount detection and post-release stationary/forward
+realignment remain unimplemented. The operator must not reuse this reference
+following a remount. The existing local GPS resume check is not accepted new
+alignment. Remote stop cannot immediately reach an offline phone; local Stop is
+immediate, server cutoff rejects later windows on reconnection. Long-duration and
+interrupted-rental physical checks remain pending. Rental scores, reports,
+report-ready notifications, precise route history and automatic retention/purge
+of motion receipts are not implemented by this integration. No new training data
+or model changes are introduced.
+
+Verification on 2026-11-10: full `composer test` passed **1,138 tests / 6,888
+assertions**; the final focused rental/research/GPS run passed **56 tests / 529
+assertions** after the operator-under-lock check. Mobile lint/type checks and
+**60 focused domain/workflow tests** passed, including startup cancellation and
+pending-transfer preservation. The native module compiled and its **53 unit tests**
+passed. Web lint, TypeScript and production build passed. Expo Doctor passed
+**18/18 checks**; the earlier offline dependency map check alone was not treated
+as a complete diagnostic. The additive development migration was applied without
+rewriting existing records. The standalone arm64 APK built successfully and was installed on the connected
+Redmi using `adb install -r`; no app-data clear or uninstall was performed. No new physical rental-motion trial, map
+crossing or graded drive was performed in this change.
 
 ## Existing RC Research v1
 
@@ -1738,6 +3383,10 @@ owner filtering, no-store headers and no private-path exposure:
 - `GET /admin/rc-research/native-recordings/{id}` (verified manifest/metadata).
 - `GET /admin/rc-research/native-recordings/{id}/window` with channel/start/end.
 
+The module’s visible name is **Data Collection**, including navigation and access
+messages. The existing research routes and versioned data identifiers retain their
+technical names.
+
 The `/admin/research` view lists native uploads only. The **Earlier trials (v1)**
 tab was removed on 2026-10-26. `/admin/research/native/{id}` uses the vehicle-detail
 breadcrumb pattern: Recordings / actual recording name, with the recording date
@@ -2328,7 +3977,8 @@ annotation review. Saving an unlabeled recording must not require a confirmed
 normal/harsh label. Preserve observer trial notes from the first pilot.
 
 Continue extending the native v2 Admin inspector toward these capabilities;
-interval labeling below is implemented, while dataset inclusion/export remain targets:
+interval labeling and the local frozen-pilot interval export are implemented,
+while general web dataset inclusion/export remain targets:
 
 - Session/trial browser, recording/upload/processing states, and quality summary.
 - Timestamped acceleration/rotation plots, axis toggles, zoom, and visible gaps.
@@ -2506,8 +4156,8 @@ the report increment without widening research tokens to unrelated mobile APIs.
 | --- | --- | --- |
 | 1. Recording contract/service | Local native v2 implemented with encrypted durable files, metadata, explicit lifecycle and recovery; compiled development APK | Actual independent timestamps, exportable recordings, screen-lock and interruption tests on Redmi remain required |
 | 2. Inspection workflow | Native v2 original review, explicit resumable upload, verified files, channel windows and revisioned interval annotations implemented; automatic transfer pending | Real trials visible and traceable; authorization/corruption/retry checks exercised; physical recovery, annotation review and broader network-failure testing remain |
-| 3. Reproducible processing | Local diagnostics and saved bounded server synchronization/filtering/projection with explicit experimental forward-reference reuse implemented; quality approval, accepted calibration, features/export remain pending | Original data preserved; plots reviewed; live/offline parity and rate comparisons |
-| 4. Dataset/model | Reviewed annotations, split sessions, baseline/model evaluation, versioned bundle | Held-out metrics, normal reverse/confounder tests, uncertainty and limits reported |
+| 3. Reproducible processing | Saved bounded synchronization/filtering/projection, experimental forward-reference reuse and versioned development interval statistics implemented; quality approval and accepted calibration remain pending | Original data preserved; plots reviewed; live/offline parity and rate comparisons |
+| 4. Dataset/model | Frozen pilot split, private interval/features packages and session-held-out development model comparison implemented | Reserved final metrics, cornering-error review, continuous normal/reverse/confounder tests and limits remain required |
 | 5. Live AI/report | Server-owned event ingestion, admin alerts, deduplication, finalization, score and notification | End-to-end delay, offline recovery, no duplicate deductions, incomplete-report handling, recipient access |
 
 The first end-to-end milestone is: **record on the mounted Redmi -> preserve through
@@ -3168,6 +4818,42 @@ unvalidated real-car AI deployment are outside the first prototype. GPS/geofence
 remain useful existing rental features; they are not required to label an indoor
 RC maneuver or establish a valid distance-based score.
 
+### Mid-trip phone remount
+
+The phone remains available for normal use throughout the rental. Scored motion
+requires it to stay secured in its calibrated position while the vehicle moves.
+If the operator needs to take the phone off the mount, they can park and pause
+the monitoring flow before removing it. Automatic detection of phone removal or
+rotation and unattended recalibration are outside the capstone scope. The
+current released-rental GPS flow uses manual Pause and Resume. Its
+[stationary resume check](../mobile-frontend/services/telematics/stationary-resume-check.ts)
+checks stillness while parked and does not recover the vehicle's forward axis.
+The foreground Expo capture in `calibration-capture.ts` resets its progress
+when motion or a reading gap invalidates the current window. It waits for a
+complete steady window using the configured stationary duration, currently six
+seconds, without an overall countdown. Cancel, leaving the screen, and a
+stalled sensor stream stop the check. The app discards the readings and
+rechecks rental eligibility before offering Resume. Mobile lint, TypeScript,
+the standalone Android build and 41 focused tests passed. The update installed
+in place on the Redmi and reopened BK-94242. The physical steady-window test
+remains pending.
+
+The planned motion resume flow starts with one explicit **Resume** action
+while parked with the phone secured. One foreground dialog guides the
+Stationary check and then cues a gentle, straight Forward Reference when its
+sensors are ready. Both captures use the native calibration conventions and
+have time limits. After both pass, the app confirms **Motion monitoring
+resumed** and continues the same trip with a fresh mount reference. Cancel,
+timeout or interruption leaves motion paused with a retry action. This guided
+resume belongs to the active trip and never rewrites handover evidence.
+
+For the planned score, treat a reported or observed remount as a break in valid
+motion coverage. Directional analysis after a remount needs a fresh stationary
+and forward reference for that mounting position. If the affected interval
+cannot be isolated or the remaining coverage is insufficient, report insufficient
+motion data rather than assigning a grade. GPS resume alone does not restore
+eligibility for motion grading.
+
 Never put raw motion streams in setup evidence, ordinary event metadata, logs,
 public files, or high-volume database JSON. Keep research file storage, metadata,
 derived artifacts, and significant occurrences distinct. Preserve consent,
@@ -3181,3 +4867,463 @@ Form Requests, Resources, schemas, services, native adapters, tests, and affecte
 client mapping together for contract changes. Preserve release snapshots and
 existing historical recordings. Ask about material uncertainty; do not invent
 thresholds, accuracy, completed work, permissions, or an approval requirement.
+
+### Driving Analysis detail layout
+
+The completed-rental detail reuses dashboard `KpiCard` components for the four
+confirmed harsh maneuver counts. Below them, responsive side-by-side cards show
+independently paginated maneuver and geofence logs with five records per page,
+followed by a paragraph summary
+of event totals, received motion coverage, synchronization and grading limits.
+The enclosing duplicate Analysis card and repeated coverage/count labels were
+removed. Booking geofence activity supplies crossings; GPS location history is
+not currently supplied to this report. Maneuver previews retain the API's bounded
+50-event limit; pagination does not imply a complete event export.
+The agreed provisional scoring rule is described in Completed-rental Driving Analysis.
+KPI cards show counts only. A Grading information button at the detail page
+top right uses the existing shared dialog shell to show the server-owned
+per-event weights and scoring limits. Below the paragraph summary, a Score
+calculation card lists all four category counts × weights, their deductions,
+total deductions and the subtraction from 100 with the provisional result.
+The zero floor remains explicit when deductions exceed 100. Rentals with no
+received motion readings show Not graded instead of a 100-point calculation.
+The detail metadata retains the provisional score with coverage.
+The report distinguishes unavailable geofence activity from an empty crossing
+list. Geofence entries use the booking detail response's latest 30 crossings;
+received maneuver previews are marked with their latest-event limit when totals
+exceed the returned list. Confirmed and review-required totals are separate in
+the summary. Legacy Fleet Monitoring presentation remains unchanged.
+Web lint, TypeScript, production build and diff checks passed for this refinement. Browser visual
+verification remains pending.
+
+Five-row pagination follow-up — 2026-11-11: `RentalDrivingEvents.tsx` reuses
+`TablePagination` below each Driving Analysis log with separate page state,
+five-row slices and page clamping when refreshed results shrink. Removed the
+fixed-height inner scrolling so the current five rows can display in full.
+API limits, whole-rental totals and the separate Fleet Monitoring ten-row
+presentation are unchanged. TypeScript and scoped ESLint passed; visual review
+remains manual.
+
+#### Provisional grading integration — 2026-11-11
+
+`GET /admin/driving-analysis` reuses `ListBookingsRequest` pagination/search,
+forces completed rentals and requires both manage-bookings and fleet access.
+`RentalDrivingAnalysisService::gradesForBookings` groups confirmed event totals
+and receipt existence across the bounded booking page in two database queries,
+without loading logs or encrypted receipt payloads. Grade metadata is returned
+beside the normal booking collection. Ordinary booking lists are unchanged.
+The detail endpoint and Fleet event response expose the same `grading` contract:
+policy version, provisional/not_graded status, nullable score, maximum,
+raw deductions and category count/points_each/deduction. The web service/types,
+table, metadata, KPI descriptions and paragraph report consume these values;
+the client does not recalculate points. Receipt existence proves some windows
+arrived, not complete coverage. Legacy received windows can be scored provisionally
+with coverage unavailable. GPS distance and grade bands are not invented.
+No mobile API or APK change is required for this web grading increment.
+Verification: 17 focused calculation/rental-monitoring tests passed with 136
+assertions, including receipt-free rentals, confirmed-only deductions, list/detail
+consistency, completed-only listing and permission denial. The full backend
+suite passed 1,147 tests with 7,009 assertions. Scoped Pint, web lint, TypeScript,
+production build and diff checks passed. Browser visual and physical delayed-upload
+acceptance remain pending; this increment does not finalize reports.
+
+Grading presentation update: `DrivingGradeDetails.tsx` owns the local rules
+dialog and calculation card. It reuses FormDialogContent/FormDialogHeader,
+Button and Card; calculations use API-provided values rather than client weights.
+The summary no longer repeats category arithmetic, and the KPI descriptions
+were removed. Backend grading and event contracts are unchanged.
+Web lint, TypeScript, production build and diff checks passed. Browser visual
+verification remains pending. No APK update is required.
+
+#### Completed rental and operator overview — 2026-11-11
+
+Driving Analysis now has Rentals and Operators tabs, reusing the Maintenance
+module's shared Tabs pattern and Dashboard KpiCard components. Four cards show
+completed rentals, operators with received motion batches, average provisional
+score, and confirmed harsh events. These totals cover all matching records,
+not just the paginated ten-row view. No received score produces a null average,
+shown as a dash; ungraded rentals never become zero or 100 in the average.
+Averages are per-rental arithmetic means of the individually floored RC scores,
+not risk/exposure-normalized driver rankings.
+
+Both read endpoints require manage bookings and view fleet tracker, use
+`ListDrivingAnalysisRequest` (search <=160, positive page, per_page 1–100,
+optional existing operator_id), and retain completed-only scope. The Rentals
+endpoint adds summary and recorded-operator metadata. The new
+`GET /admin/driving-analysis/operators` returns paginated
+`DrivingOperatorResource` records with operator ID/name, completed/monitored
+rental counts, average/latest provisional score and harsh-event total.
+`RentalDrivingOverviewService` performs SQL aggregation without loading raw
+telemetry, encrypted receipts or all booking models. BookingService accepts a
+server-built booking-ID subquery for normal paginated resource hydration;
+ordinary booking list clients and filters are unchanged.
+
+Attribution uses `telematics_trips.operator_user_id`, including retained
+soft-deleted user identities, rather than grouping by display name or the
+booking's current assignment. Missing trips do not invent operator records.
+Rental/detail displays use the recorded identity when present, with the existing
+booked operator as a fallback for historical records without trips. Only actual
+completed-trip operators can supply an operator-filter display name. Latest score
+means the latest received/scored rental by the normalized completed status-event
+time, then booking ID; null completion times sort before known times, with ID
+tie breaking. The operator row eye action opens a paginated dialog of that person’s completed
+bookings without changing the Operators tab or its search. The rental eye
+action/back navigation preserve the view query context.
+Booking and vehicle links retain their History/details destinations.
+
+Web types and service mappings mirror the new read contracts; the query Zod
+schema lives in `validations/driving-analysis/schemas.ts`. The overview component
+is `driving-analysis/components/DrivingAnalysisOverview.tsx`. Its tabs, KPI cards,
+search, scoped operator-clear control, loading/error/empty rows, labeled mobile
+cells and pagination reuse established management controls. All displayed grades
+remain provisional; this does not finalize uploads, send notifications or claim
+real-car accuracy. The removed grading-dialog paragraphs stay removed.
+Verification: the full backend suite passed 1,151 tests with 7,051 assertions;
+subsequent focused overview/rental checks passed 19 tests with 178 assertions,
+including score flooring, unknown-time tie breaking and scoped operator-filter
+names. The local application database executed the summary and operator queries
+successfully without printing personal records or changing data. Scoped Pint,
+web lint, TypeScript, production build and diff checks passed. Browser access
+is now available, but the verification tab reached sign-in, so populated visual
+and responsive browser checks remain pending. No APK reinstall is required.
+
+Web tab presentation now follows the shared vehicle-detail style across Driving
+Analysis, Fleet details and both recording inspectors. See
+[Uniform web tabs](web-ui-refinement.md#uniform-web-tabs--2026-11-11) for the
+shared source, responsive behavior and verification; this changes no telemetry,
+processing, scoring or annotation contracts.
+
+### Model Development navigation — 2026-11-11
+
+The Admin sidebar groups Data Collection and Drive Monitoring under **Model
+Development**, separating research/model work from completed-rental Driving
+Analysis. Driving Analysis is a main sidebar link directly after Fleet Monitoring,
+outside the Management disclosure, for authorized Admin and Staff users.
+The group reuses the existing Management disclosure renderer, including
+collapsed-sidebar expansion, keyboard focus, active child links and mobile
+navigation callbacks. Existing routes and Admin-only visibility remain in place.
+The section is defined in
+`web-frontend/src/modules/management/shell/config/module-registry.ts` and rendered
+by `shell/components/ManagementSidebarNav.tsx`.
+
+**Historical:** Admin Model Explorer previously included a frozen classifier view.
+Its read-only local endpoint uses
+saved, owner-bound examples from the pinned `pilot-split-v3` development partition
+and rejects a changed snapshot hash. It shows the prepared six-channel 20 ms
+signals, selectable one-feature calculations, observed per-class development
+ranges, the selected example's human label and the frozen forest's averaged
+normalized leaf scores. One selected tree can be expanded to inspect its exact
+float32 branch path and leaf scores. The API exposes only bounded development
+files and sets private no-store caching; it requires the Admin web session and
+the RC research profile. It does not change model training or inference.
+
+The class ranges are descriptive observations, not decision thresholds. The
+explainer does not reconstruct historical Drive Monitoring decisions because
+their receipts do not retain the input feature vectors. It does not promote
+examples or labels into training approval. Source: `backend/app/Services/ModelExplorerService.php`,
+`backend/app/Services/RcRuntimeForestService.php`,
+`web-frontend/src/modules/management/research/ModelExplorerModule.tsx`.
+
+Verification: focused Model Explorer, runtime-forest and Drive Monitoring feature
+tests passed (12 tests, 57 assertions); scoped Pint, web lint and TypeScript
+checks passed. The parent agent also completed the web production build and
+browser review of a prepared braking example, its feature calculation, range
+comparison and tree path. Full-suite failures in unrelated registration,
+booking-lifecycle, notification and reference-reuse tests remain outside this
+change.
+
+The earlier navigation-only check used the installed Node 24 binary after the
+default Homebrew Node failed to load its simdjson library. Its sandboxed build
+attempt stalled; the Model Explorer production build later passed outside the
+sandbox. The broader backend suite ran 1,167 tests: 1,154 passed, with 11
+failures and 2 errors in unrelated registration, booking-lifecycle, notification
+and reference-reuse coverage.
+
+#### Reviewed maneuver comparison — 2026-11-11
+
+Model Explorer opens on **Maneuver comparison**. The owner-bound local Admin API
+reads the latest manifest-matched annotation revision of each verified recording.
+The page filters reviewed normal and harsh cornering, acceleration and braking
+by surface, collection session and direction. It shows one Reviewed events row,
+counting every matching reviewed interval even when its measurements are
+unavailable. The summary shows mean, median and range for measured intervals,
+with differences computed as harsh minus normal. The histogram and per-surface
+means use the selected measurement. Two selected recordings can be plotted in
+seconds from their respective interval starts.
+
+Swerving has its own maneuver filter with initial left, right and unknown
+directions. It uses peak absolute yaw, lateral acceleration and interval duration.
+Historical swerving labels on the legacy lane-change course are excluded from
+this comparison, as are recordings without collection context to identify the course.
+
+The API uses the newest compatible saved 5 Hz run covering the full interval,
+with a reused fixed vehicle-frame reference and complete paired 20 ms readings
+outside warm-up. Cornering uses peak absolute yaw and lateral acceleration.
+Acceleration and braking use the peak longitudinal component in the direction
+of the maneuver. Durations use the reviewed interval boundaries.
+
+Contact review records store the earliest confirmed elapsed bump, cone or wall contact
+against the current observation revision. A flagged contact with unknown timing
+or a superseded contact review leaves the recording's measurements unavailable.
+A reviewed interval must end strictly before contact, and interpolation sources
+used by the interval must also predate contact. Contact mentioned only in notes
+requires manual review. The comparison leaves original annotations, frozen
+exports, training and inference intact.
+
+Source: `backend/app/Services/RcManeuverComparisonService.php`,
+`backend/app/Http/Controllers/Web/Admin/RcManeuverComparisonController.php`,
+`web-frontend/src/modules/management/research/components/ManeuverComparisonPanel.tsx`.
+Focused comparison and frozen explorer tests passed (9 tests, 75 assertions).
+Scoped Pint, web lint, TypeScript and the web production build passed. The full
+backend suite reported five failures or errors in booking date formatting and
+self-drive booking availability. The contact migration ran on the local database,
+and its saved runs returned measurements for all three maneuver types. Contact
+times require observer evidence and were left for manual review.
+
+The Model Explorer page now opens directly on the comparison. The frozen
+classifier tab and contact timing and refresh controls were removed from the
+page. Existing contact reviews still govern measurement eligibility, and the
+contact review endpoint remains available. Contact times cannot be entered
+through the comparison page.
+
+
+#### Driving Analysis filters and operator booking dialog — 2026-11-11
+
+Rentals places a growing full-row SearchInput first and the shared vehicle
+FilterSelect on its right, stacking them on phones. Vehicle choices include only
+vehicles referenced by non-deleted completed bookings across all result pages;
+searching/selecting a vehicle does not collapse the choice list to the current
+page. Labels and Driving Analysis vehicle links show brand, name and plate,
+without the model/year. Other vehicle modules retain their existing labels.
+`ListDrivingAnalysisRequest` and the matching Zod query schema accept nullable
+existing vehicle_id. Both backend overview scopes apply vehicle filtering before
+pagination and KPI aggregation. The Operators UI deliberately has a full-width
+search and no vehicle filter or hidden rental vehicle restriction.
+
+`OperatorBookingsDialog.tsx` uses the shared wide form-dialog shell and
+management table. It fetches paginated completed bookings from the existing
+Driving Analysis endpoint with the recorded operator_id, showing booking code,
+confirmed harsh-event count, deductions and that booking’s grade. Booking links
+open History; an eye link opens its full analysis with a return to Operators.
+Closing the dialog preserves the parent’s search. Server grading now exposes
+confirmed_events alongside score/deductions/breakdown so the client does not
+calculate domain event counts. No received readings remains Not graded and
+shows no numeric deduction. Column headings are Grade, Average grade and Latest
+grade; numeric cells include the denominator (for example 80 / 100).
+
+Verification: focused checks passed 23 tests with 206 assertions before the
+additional count assertions; the full Herd PHP suite subsequently passed 1,153
+tests with 7,081 assertions. The earlier composer-script attempt exceeded its
+300-second process timeout while invoking a different PHP binary, so that
+attempt is not reported as a pass. The completed full run used the repository’s
+same config-clear and artisan-test actions through the available Herd PHP.
+Scoped Pint, web lint, TypeScript and diff checks passed. Signed-in browser
+checks verified the filter is right of the growing search, vehicle filtering,
+full-width Operators search, dialog content, retained search after closing,
+per-booking analysis navigation, and 390 px dialog fit without page overflow.
+The temporary viewport was reset and Rentals left open with All vehicles.
+No phone reinstall or database migration is required.
+Final web lint, TypeScript and production build passed after the dialog's
+responsive action-cell widths and focus-return handling were completed.
+Action cells keep their compact desktop width without constraining stacked
+mobile labels; closing the operator dialog returns focus to its eye trigger.
+
+# Separate mobile monitoring entry — 2026-11-11
+
+Admin Collect now offers Drive Monitoring below Create group and New session
+in `mobile-frontend/forms/research/CollectionSetupForm.tsx`. The collection panel
+opens the chosen group's session in monitoring setup. Mixed Drive is hidden from
+the exercise picker; its historical MD protocol remains the internal monitoring
+contract. Existing recordings and protocol snapshots retain their original meaning.
+Mount confirmation, measured setup evidence, forward-reference requirements and
+explicit monitoring consent remain in the existing start workflow. Focused
+collection/monitoring checks passed (21 tests). Android acceptance is separate
+from compilation; repository TypeScript currently reports unrelated booking and
+profile-document errors. The ARM64 release APK built and installed successfully
+on the connected Android phone, preserving app data. The launch command succeeded;
+physical mounted capture and lock-screen acceptance remain unverified.
+
+### Uncertain driving-event terminology — 2026-11-11
+
+Driving Analysis, Fleet Monitoring and the research Drive Monitoring inspector
+now display classification status `review_required` as **Uncertain**, including
+badges, event totals and the drive-summary paragraph. This avoids implying that
+staff can reconstruct or verify the physical maneuver afterward. Such candidates
+remain logged and excluded from confirmed totals and score deductions. The
+persisted status and `event_summary.needs_review` API key remain unchanged.
+This wording change does not create an event-approval workflow or alter detector
+thresholds. Mobile uploader `review_required` is a separate transfer-recovery
+state and is not renamed as classification uncertainty. Research annotation
+review/certainty controls keep their existing human-labeling meaning.
+Web lint, TypeScript, production build and diff checks passed for this terminology
+update. No backend behavior, API status, stored data or APK change was needed.
+
+### Fleet Monitoring active rental cards — 2026-11-11
+
+The Tracking select now offers All statuses plus four operational groups:
+Updating (recent_location), Paused (paused), No recent updates
+(no_recent_updates), and Not tracking (not_started, awaiting_location, ended,
+unavailable). `tracking_state` is a validated grouped read filter implemented by
+`FleetTrackerService::TRACKING_FILTERS`; the existing precise status query and
+response statuses remain available. `ListFleetRentalsRequest` and the fleet Zod
+schema accept the same group values. Grouping never changes the underlying trip,
+consent, location recency cutoff, retention or map eligibility. The card continues
+to show the specific state rather than hiding the reason under a broad label.
+
+`FleetRentalResource` adds vehicle brand/model and a limited operator contact
+object (ID, name, phoneNumber), using the recorded trip operator when available,
+otherwise the renter for Self Drive or assigned Driver for With Assigned Driver.
+The fleet query eagerly loads only those fields, and operator/assigned-driver
+names participate in search. Existing fleet permissions and no-store responses
+protect the read; no account emails, credentials or raw telemetry are exposed.
+The web FleetRental type mirrors this response.
+
+The card header aligns the complete vehicle name (for example Toyota Hiace 2024)
+and booking code, with the plate below. Its body uses two columns: operator name
+and contact number, then rental and return date/time. Rental type and exact
+tracking state retain the compact footer. Missing contacts/identities have
+explicit unavailable text. `fleet-presentation.ts` composes brand/name/model
+without repeating a brand or model already included in the name; the card,
+map marker description and detail sheet reuse it. The sheet also exposes the
+operator contact. This Fleet-specific name includes model/year; Driving Analysis
+keeps its separately requested brand/name/plate presentation.
+
+Multiple ongoing rentals already use independent booking/trip records and
+booking-keyed map markers. Each needs its own active phone/operator source for
+simultaneous live collection. The map shows only valid, unexpired shared
+locations on the current filtered result page; three rentals fit the current
+page size. Co-located pins can overlap. Selecting a card/pin reads only that
+booking's motion logs. This establishes functional separation, not a large-fleet
+load test or physical three-phone acceptance.
+
+Verification: FleetTrackerTest passed (40 tests, 284 assertions), including three
+independent live rentals and trip-scoped maneuver logs. Scoped Pint, web lint,
+TypeScript, production build and `git diff --check` passed. Browser verification
+confirmed the grouped Paused filter, full vehicle heading, available operator
+contact and two-column card at desktop and 390px widths without page overflow.
+The full backend suite reported 1,188 passing tests out of 1,193: two booking
+date-format assertions and three booking-availability cases failed outside the
+Fleet changes; those unrelated behaviors were left unchanged.
+
+Fleet contact follow-up (2026-11-11): the authorized Fleet operator DTO now also
+includes the account email, eagerly selected for renter, assigned Driver and
+recorded trip operator. FleetVehicleCard displays it immediately below the name
+and above the phone, using the existing secondary-text style and wrapping.
+The 40 Fleet tests (284 assertions), scoped Pint, web lint and TypeScript passed;
+browser verification confirmed email placement and no card overflow.
+
+
+### Fleet detail sheet cards — 2026-11-11
+
+The Fleet detail sheet uses the established Card/CardContent surfaces in a
+responsive two-column layout: rental/operator/GPS information on the left and
+the existing trip-scoped Driving events component on the right, stacked on
+small screens. It displays the operator email and latest eligible latitude and
+longitude (six decimal places), retaining location-consent and expiry guards;
+no reverse-geocoding service or location-history collection was added.
+The Fleet Resource now returns `emergencyContacts` with name, relationship and
+phoneNumber from the booking customer's profile, eagerly loaded by
+FleetTrackerService. The section explicitly identifies these as customer
+emergency contacts, including for assigned-driver rentals; it does not substitute
+another person's contacts. Missing contacts/location have explicit empty states.
+No write DTO or mobile contract changes were needed.
+
+Checks: 41 Fleet tests (286 assertions), web lint, TypeScript, production build
+and diff whitespace checks passed. Browser checks confirmed two desktop cards and a single stacked
+column at 390px, with no detail-sheet horizontal overflow. Source paths:
+`backend/app/Services/FleetTrackerService.php`,
+`backend/app/Http/Resources/FleetRentalResource.php`,
+`web-frontend/src/services/fleet/types.ts`, and
+`web-frontend/src/modules/management/fleet-tracker/FleetTrackerModule.tsx`.
+
+Fleet header refinement (2026-11-11): Booking information uses the existing
+CardHeader/CardTitle above its details. The active Driving events header places
+last received beneath the title, refresh at the right, and the divider before
+event counts. Removed the RC readings label and duplicate top padding/border.
+The separate Driving Analysis rendering is unchanged. Web lint and TypeScript
+passed; browser checks confirmed the loaded timestamp, divider, refresh placement
+and no sheet overflow. No API or monitoring behavior changed.
+
+Fleet booking-code placement (2026-11-11): the code now appears directly below
+Booking information using CardDescription, replacing its duplicate sheet-header
+subtitle. The vehicle remains the sheet title. Browser verification, web lint,
+TypeScript and whitespace checks passed.
+
+Fleet card consistency (2026-11-11): Booking information and active Driving
+events now both compose CardHeader, CardTitle and CardDescription with the same
+minimum height and divider. Refresh uses CardAction; event content uses
+CardContent, removing the nested outer wrapper. Browser measurements confirmed
+matching 57px headers, padding, 14px titles and dividers. Web lint, TypeScript
+and whitespace checks passed. Driving Analysis and telemetry behavior unchanged.
+
+Driving Analysis displays the Drive summary and Score calculation directly on
+the page beneath the logs. Deduction rows align amounts on the right, with a
+single divider before the provisional score.
+
+### Rental monitoring startup transition — 2026-11-11
+
+The shared Customer/Driver monitoring hook preserves a consented motion start
+while GPS clears an earlier session and briefly reports paused. Once GPS startup
+has begun, a later pause, offline state or error still cancels the pending start.
+Motion remains separately consented and still requires the RC profile and a
+released rental. Device setup uses “Start device setup” before any device step
+has an attempt. Sources are `mobile-frontend/hooks/telematics/useTelematicsMonitoring.ts`
+and `mobile-frontend/components/telematics/TelematicsSetupCards.tsx`.
+
+Mobile lint, TypeScript and the standalone ARM64 release build passed. The
+connected device was no longer available when installation was attempted, so
+physical Customer and assigned Driver release/resume checks remain pending.
+The setup first-attempt action also avoids the restart confirmation.
+
+Activity now requests the newest ten booking notifications initially and
+refreshes them automatically while focused. Older entries load in pages of ten
+from the bottom. If newer entries arrive, the list resets to the newest page so
+its cursor cannot skip entries. Unread counts and booking filtering are retained.
+Implementation is in `mobile-frontend/hooks/telematics/useTelematicsActivity.ts`
+and `mobile-frontend/components/telematics/TelematicsActivity.tsx`.
+
+### Motion-only stop for geofence testing — 2026-11-11
+
+The Activity card also offers Start motion after a stopped capture is synced and
+closed. It requires active GPS, explicit confirmation that the calibrated phone
+has not moved, and the existing stationary resume check before starting a new
+motion segment. It does not restart GPS or validate a remounted phone. Customer
+and Driver share this component. Mobile lint, TypeScript and 13 existing motion
+and resume tests passed; the new control still needs physical device acceptance.
+
+The Activity tab's Drive Monitoring card offers Stop motion while the current
+rental's native motion capture is active. It verifies the active booking before
+calling the existing native stop and transfer-closure flow. GPS sharing and the
+main Pause control retain their existing behavior. The existing main pause/resume
+workflow can restart motion after the user completes its checks. This control is
+implemented in `mobile-frontend/components/telematics/RentalMotionMonitoring.tsx`.
+
+### Recorded maneuver times in mobile Activity
+
+The Customer and assigned Driver Activity tab reads a combined booking timeline
+from `GET /api/mobile/bookings/{booking}/activity`. It uses the same recorded
+maneuver time as Fleet Monitoring and Driving Analysis: the motion capture
+start plus the event's start offset. Geofence notices use their recorded
+crossing time. Other trip notices use their creation time. The feed orders
+entries by occurrence time and uses a stable cursor to load ten at a time.
+
+`RentalActivityService` uses the existing rental operator authorization and
+limits maneuver reads to the caller's motion segments for that booking's trip.
+Confirmed maneuvers appear as Detected and review-required maneuvers as
+Uncertain. Pending and suppressed events are omitted. The response contains
+summary fields only. Trip notices retain their existing read controls and unread
+counts. Maneuver entries are display-only and do not create inbox notifications.
+The mobile implementation is in `services/api/rental-activity.service.ts`,
+`hooks/telematics/useTelematicsActivity.ts` and
+`components/telematics/TelematicsActivity.tsx`.
+
+The focused motion and notification suite passed 36 tests with 290 assertions.
+PHP formatting, mobile lint and TypeScript passed. A read-only local MySQL
+check returned 20 entries across two pages with correct ordering and no
+duplicates, including 16 maneuvers. The full backend suite passed 1,230 of 1,235
+tests. Two booking date-format cases and three booking availability cases
+failed in existing booking tests.
+
+The final standalone ARM64 APK built and installed successfully on the Redmi
+using `adb install -r`. The signed-in Activity screen still needs a physical
+visual check.

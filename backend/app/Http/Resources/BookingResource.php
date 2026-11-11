@@ -8,6 +8,7 @@ use App\Models\CustomerDocument;
 use App\Services\BookingAttentionService;
 use App\Services\BookingGeofenceService;
 use App\Services\BookingReturnService;
+use App\Services\BookingService;
 use App\Services\LocationMonitoringService;
 use App\Services\RentalReadinessService;
 use App\Services\TelematicsCalibrationService;
@@ -57,6 +58,8 @@ class BookingResource extends JsonResource
             ] : null),
             'id' => $this->booking_code,
             'bookingCode' => $this->booking_code,
+            'canReviseUnpaid' => $request->user()?->id === $this->user_id && $this->relationLoaded('payments')
+                && app(BookingService::class)->canReviseUnpaidBooking($this->resource),
             'status' => $this->status->mobileLabel(),
             'statusKey' => $this->status->value,
             'adminStatus' => $this->status->adminLabel(),
@@ -67,8 +70,8 @@ class BookingResource extends JsonResource
             'model' => $this->vehicle?->model,
             'color' => $this->vehicle?->color,
             'image' => PublicStorageUrl::make($image),
-            'rentalDate' => $this->rental_start_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A'),
-            'returnDate' => $this->rental_end_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A'),
+            'rentalDate' => $this->rental_start_at?->copy()->setTimezone('Asia/Manila')->format('D, M j, Y - g:i A'),
+            'returnDate' => $this->rental_end_at?->copy()->setTimezone('Asia/Manila')->format('D, M j, Y - g:i A'),
             'rentalStartAt' => $this->rental_start_at?->toISOString(),
             'rentalEndAt' => $this->rental_end_at?->toISOString(),
             'duration' => $this->duration_days,
@@ -145,6 +148,10 @@ class BookingResource extends JsonResource
             'penaltyTotal' => $isDriverView ? 0 : (float) $this->penalty_total,
             'downPayment' => $isDriverView ? 0 : (float) $this->down_payment_amount,
             'totalAmount' => $isDriverView ? 0 : (float) $this->total_amount,
+            'customerPaidAmount' => $this->when(
+                $isManagement && ! $isDriverView && $this->relationLoaded('additionalCharges') && $this->relationLoaded('payments'),
+                fn () => (float) $this->successfulCustomerPayments()->sum('amount'),
+            ),
             'remainingBalance' => $isDriverView ? 0 : max((float) $this->remaining_balance, max((float) $this->total_amount - $paidAmount, 0)),
             'balanceDueAt' => $isDriverView ? null : $this->balance_due_at?->toISOString(),
             'confirmationEmailSentAt' => $this->confirmation_email_sent_at?->toISOString(),

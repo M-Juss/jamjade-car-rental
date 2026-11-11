@@ -162,7 +162,7 @@ function CheckoutScreen() {
               accessibilityRole="button"
               onPress={restartBooking}
               className="h-12 w-12 items-center justify-center rounded-field bg-surface">
-              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-title font-semibold text-foreground">Review Booking</Text>

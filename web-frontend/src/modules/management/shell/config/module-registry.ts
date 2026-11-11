@@ -28,13 +28,17 @@ export type ManagementModuleId =
   | "reports"
   | "personnel"
   | "deliveryPricing"
-  | "research";
+  | "research"
+  | "modelExplorer"
+  | "driveMonitoring"
+  | "drivingAnalysis";
 
 type ManagementSection =
   | "Overview"
   | "Rental Operations"
   | "Fleet Operations"
   | "Insights"
+  | "Model Development"
   | "Administration";
 
 export type ManagementModule = {
@@ -112,9 +116,10 @@ export const managementModules: readonly ManagementModule[] = [
     permission: "view fleet tracker",
     path: "fleet",
   },
+  { id: "drivingAnalysis", label: "Driving Analysis", section: "Insights", icon: BarChart3, permission: "view fleet tracker", path: "driving-analysis" },
   {
     id: "reports",
-    label: "Reports & Analytics",
+    label: "Reports and Analytics",
     section: "Insights",
     icon: BarChart3,
     permission: "view reports",
@@ -125,10 +130,11 @@ export const managementModules: readonly ManagementModule[] = [
     label: "Personnel",
     section: "Administration",
     icon: ShieldCheck,
-    adminOnly: true,
     path: "personnel",
   },
-  { id: "research", label: "RC Research", section: "Insights", icon: Activity, adminOnly: true, path: "research" },
+  { id: "research", label: "Data Collection", section: "Model Development", icon: Activity, adminOnly: true, path: "research" },
+  { id: "modelExplorer", label: "Model Explorer", section: "Model Development", icon: Activity, adminOnly: true, path: "model-explorer" },
+  { id: "driveMonitoring", label: "Drive Monitoring", section: "Model Development", icon: Activity, adminOnly: true, path: "drive-monitoring" },
   { id: "deliveryPricing", label: "Fee Pricing", section: "Administration", icon: PhilippinePeso, adminOnly: true, path: "delivery-pricing" },
 ] as const;
 
@@ -137,6 +143,7 @@ export const managementSections: readonly ManagementSection[] = [
   "Rental Operations",
   "Fleet Operations",
   "Insights",
+  "Model Development",
   "Administration",
 ];
 
@@ -161,6 +168,7 @@ export function managementModuleForPath(pathname: string, portal: ManagementPort
 export function managementModulesForPortal(portal: ManagementPortal, permissions: ReadonlySet<string> | null) {
   return managementModules.filter((module) => {
     if (portal === "admin") return true;
+    if (module.id === "personnel") return true;
     if (module.adminOnly || !module.permission) return false;
 
     return permissions?.has(module.permission) ?? false;

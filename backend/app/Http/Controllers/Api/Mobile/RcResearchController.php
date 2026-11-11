@@ -23,7 +23,7 @@ class RcResearchController extends Controller
 
     public function show(): JsonResponse
     {
-        return $this->noData('RC Research access confirmed.')
+        return $this->noData('Data Collection access confirmed.')
             ->header('Cache-Control', 'no-store');
     }
 

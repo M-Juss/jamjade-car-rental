@@ -75,7 +75,7 @@ it('preserves saved names through rename deactivation and unrelated edits', func
     expect($vehicle->fresh()->brand)->toBe('Toyota');
     $this->deleteJson("/admin/vehicle-configuration/{$brand->id}")->assertOk();
     $this->assertDatabaseHas('vehicle_configuration_options', ['id' => $brand->id, 'is_active' => false]);
-    $this->putJson("/admin/vehicles/{$vehicle->id}", ['brand' => 'Toyota', 'features' => ['Bluetooth'], 'price_per_day' => 3000])->assertOk();
+    verifiedOwnerWrite($this, 'PUT', "/admin/vehicles/{$vehicle->id}", ['brand' => 'Toyota', 'features' => ['Bluetooth'], 'price_per_day' => 3000])->assertOk();
     $other = availableVehicle(['brand' => 'Honda']);
     $this->putJson("/admin/vehicles/{$other->id}", ['brand' => 'Toyota'])->assertUnprocessable()->assertJsonValidationErrors('brand');
     $this->postJson('/admin/vehicle-configuration', ['section' => 'brand', 'name' => 'Toyota', 'is_active' => true])

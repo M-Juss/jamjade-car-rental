@@ -10,7 +10,7 @@ function normalizeRole(role: BackendRole): string | null {
 export function getUserRoleNames(user: AuthenticatedUser): UserRole[] {
   return (user.roles ?? [])
     .map(normalizeRole)
-    .filter((role): role is UserRole => role === "admin" || role === "staff" || role === "customer");
+    .filter((role): role is UserRole => role === "owner" || role === "admin" || role === "staff" || role === "customer");
 }
 
 export function getDashboardPathForUser(user: AuthenticatedUser) {

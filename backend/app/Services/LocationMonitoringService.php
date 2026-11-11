@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\RentalType;
 use App\Enums\TelematicsSetupStatus;
 use App\Models\Booking;
+use App\Models\DriveMonitoringSession;
 use App\Models\TelematicsTrip;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -150,6 +151,9 @@ class LocationMonitoringService
             if ($trip->status === 'started') {
                 $trip->update(['status' => 'paused', 'paused_at' => now(), 'location_session_hash' => null]);
                 $this->event($trip, 'trip_paused', $reason === 'interrupted');
+                if ($reason === 'manual') {
+                    DriveMonitoringSession::where('telematics_trip_id', $trip->id)->where('status', 'active')->whereNull('capture_closed_ms')->update(['capture_closed_ms' => now()->getTimestampMs()]);
+                }
             }
 
             return $booking;
@@ -166,6 +170,7 @@ class LocationMonitoringService
         if ($trip->status !== 'ended') {
             $this->event($trip, 'trip_ended');
         }
+        DriveMonitoringSession::where('telematics_trip_id', $trip->id)->where('status', 'active')->whereNull('capture_closed_ms')->update(['capture_closed_ms' => now()->getTimestampMs()]);
         $trip->update(['status' => 'ended', 'ended_at' => $trip->ended_at ?? now(), 'latest_location' => null, 'location_session_hash' => null]);
     }
 

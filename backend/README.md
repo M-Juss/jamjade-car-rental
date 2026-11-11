@@ -79,6 +79,14 @@ PayPal redirects and the management session remain under the web route group.
   `/api/mobile`. Public login/register and vehicle reads are throttled; the
   authenticated group uses `auth:sanctum`, `active_user`, and mobile throttles.
   Tokens are issued and persisted by the mobile client through SecureStore.
+- New mobile Customer registration first returns a pending email challenge
+  (`202`), without an account or token. `/mobile/register/verify` consumes a
+  six-digit code valid for 15 minutes and returns the authenticated account;
+  `/mobile/register/resend` replaces the code after a 60-second cooldown.
+  Both use request bodies for the opaque registration ID. Existing configured
+  Gmail SMTP handles delivery; no additional mail credentials are required.
+  Apply the pending-registration migration before using this flow. See
+  [registration contracts and limits](../docs/user-roles-and-access.md#mobile-registration-email-verification).
 - Laravel Form Requests under `app/Http/Requests/` define accepted input and
   normalization. API Resources under `app/Http/Resources/` define response
   shapes. Keep frontend Zod schemas, request types, and mappings synchronized

@@ -36,7 +36,7 @@ class SelfDriveVerificationController extends Controller
                 ->eligibleCustomers(User::role('customer')->select('users.id')));
         }
 
-        $page = $customers->with(['customerProfile', 'documents'])
+        $page = $customers->with(['customerProfile', 'documents'])->withExists('completeEmergencyContacts')
             ->orderByDesc('users.created_at')
             ->orderByDesc('users.id')
             ->paginate($request->integer('per_page', 15));
@@ -55,7 +55,7 @@ class SelfDriveVerificationController extends Controller
     {
         abort_unless($customer->hasRole('customer'), 404);
 
-        $customer->load(['customerProfile', 'documents' => fn ($query) => $query
+        $customer->load(['customerProfile', 'emergencyContacts', 'documents' => fn ($query) => $query
             ->whereIn('document_type', CustomerDocument::ALLOWED_DOCUMENT_TYPES)
             ->with(['reviewer', 'files'])]);
 

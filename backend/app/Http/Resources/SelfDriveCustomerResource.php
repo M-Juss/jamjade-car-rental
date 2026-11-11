@@ -19,6 +19,11 @@ class SelfDriveCustomerResource extends JsonResource
             'email' => $this->email,
             'contactNumber' => $this->phone_number,
             'createdAt' => $this->created_at?->toISOString(),
+            'emergencyContacts' => $this->whenLoaded('emergencyContacts', fn () => $this->emergencyContacts->map(fn ($contact) => [
+                'name' => $contact->name,
+                'relationship' => $contact->relationship,
+                'phoneNumber' => $contact->phone_number,
+            ])->values()),
             ...$summary,
             'documents' => $this->when($request->routeIs('admin.self-drive-verification.show'), fn () => collect(CustomerDocument::requiredSelfDriveDocumentsFor($this->resource))
                 ->map(fn (string $type) => [

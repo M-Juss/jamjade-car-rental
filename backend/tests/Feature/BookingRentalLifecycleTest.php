@@ -138,6 +138,27 @@ function completeTelematicsSetup(Booking $booking): void
     }
 }
 
+it('requires an emergency contact before releasing an existing self-drive booking', function () {
+    $booking = lifecycleBooking();
+    $actor = vehicleManagerUser();
+    finalizeLifecycleInspection($booking, 'outgoing', $actor, 1300);
+    completeTelematicsSetup($booking);
+    $booking->user->emergencyContacts()->delete();
+
+    expect(app(RentalReadinessService::class)->evaluate($booking)['emergencyContactOnFile'])->toBeFalse();
+    try {
+        app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor);
+        $this->fail('Release should require an emergency contact.');
+    } catch (ValidationException $exception) {
+        expect($exception->errors()['requirements'])->toBe(['emergencyContactOnFile']);
+    }
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+
+    addCustomerEmergencyContact($booking->user);
+    expect(app(BookingService::class)->transition($booking, BookingStatus::Ongoing, $actor)->status)
+        ->toBe(BookingStatus::Ongoing);
+});
+
 it('finalizes outgoing only inside the booked interval for either rental type', function (RentalType $type, string $clock, bool $eligible) {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17T09:00:00+08:00')->utc());
     config(['telematics.handover_test_mode' => false, 'telematics.early_start_test_mode' => false]);
@@ -799,7 +820,8 @@ function editableLifecycleCharge(RentalType $type = RentalType::SelfDrive): arra
 it('updates an individual open return charge and recalculates the Customer balance', function () {
     [$booking, $actor, $charge, $data] = editableLifecycleCharge();
     $data = [...$data, 'type' => 'cleaning', 'description' => 'Updated synthetic charge', 'amount' => 350.25];
-    $this->actingAs($actor)->putJson("/admin/bookings/{$booking->id}/additional-charges/{$charge->id}", ['charges' => [$data]])
+    $this->actingAs($actor);
+    verifiedOwnerWrite($this, 'PUT', "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}", ['charges' => [$data]])
         ->assertOk()->assertJsonPath('data.amount', 350.25)->assertJsonPath('data.description', $data['description']);
     expect($booking->fresh()->total_amount)->toBe('7350.25')
         ->and($booking->fresh()->remaining_balance)->toBe('350.25')
@@ -810,7 +832,8 @@ it('updates an individual open return charge and recalculates the Customer balan
 
 it('deletes an individual unpaid return charge and restores the Customer balance', function () {
     [$booking, $actor, $charge] = editableLifecycleCharge();
-    $this->actingAs($actor)->deleteJson("/admin/bookings/{$booking->id}/additional-charges/{$charge->id}")->assertOk();
+    $this->actingAs($actor);
+    verifiedOwnerWrite($this, 'DELETE', "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}")->assertOk();
     expect($booking->fresh()->total_amount)->toBe('7000.00')
         ->and($booking->fresh()->remaining_balance)->toBe('0.00')
         ->and($booking->fresh()->payment_status)->toBe(PaymentStatus::Paid);
@@ -821,10 +844,11 @@ it('deletes an individual unpaid return charge and restores the Customer balance
 it('adjusts Customer totals when an open charge moves between Customer and Driver', function () {
     [$booking, $actor, $charge, $data] = editableLifecycleCharge(RentalType::OwnersDriver);
     $endpoint = "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}";
-    $this->actingAs($actor)->putJson($endpoint, ['charges' => [[...$data, 'responsibility' => 'driver', 'amount' => 450]]])->assertOk();
+    $this->actingAs($actor);
+    verifiedOwnerWrite($this, 'PUT', $endpoint, ['charges' => [[...$data, 'responsibility' => 'driver', 'amount' => 450]]])->assertOk();
     expect($booking->fresh()->remaining_balance)->toBe('0.00')
         ->and($charge->fresh()->responsible_user_id)->toBe($booking->assigned_driver_id);
-    $this->putJson($endpoint, ['charges' => [[...$data, 'amount' => 125]]])->assertOk();
+    verifiedOwnerWrite($this, 'PUT', $endpoint, ['charges' => [[...$data, 'amount' => 125]]])->assertOk();
     expect($booking->fresh()->remaining_balance)->toBe('125.00')
         ->and($charge->fresh()->responsible_user_id)->toBe($booking->user_id);
 });
@@ -853,8 +877,9 @@ it('denies charge mutations without permission and across booking ownership boun
     $this->deleteJson($endpoint)->assertForbidden();
     $other = lifecycleBooking();
     $foreignEndpoint = "/admin/bookings/{$other->id}/additional-charges/{$charge->id}";
-    $this->actingAs($actor)->putJson($foreignEndpoint, ['charges' => [$data]])->assertNotFound();
-    $this->deleteJson($foreignEndpoint)->assertNotFound();
+    $this->actingAs($actor);
+    verifiedOwnerWrite($this, 'PUT', $foreignEndpoint, ['charges' => [$data]])->assertNotFound();
+    verifiedOwnerWrite($this, 'DELETE', $foreignEndpoint)->assertNotFound();
     $this->putJson($endpoint, ['charges' => [$data, $data]])->assertUnprocessable()->assertJsonValidationErrors('charges');
 });
 
@@ -866,8 +891,9 @@ it('locks charges with payment history including pending or failed checkouts', f
     ]);
     $payment->additionalCharges()->attach($charge->id, ['amount' => 50]);
     $endpoint = "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}";
-    $this->actingAs($actor)->putJson($endpoint, ['charges' => [[...$data, 'amount' => 100]]])->assertUnprocessable()->assertJsonValidationErrors('charges');
-    $this->deleteJson($endpoint)->assertUnprocessable()->assertJsonValidationErrors('charges');
+    $this->actingAs($actor);
+    verifiedOwnerWrite($this, 'PUT', $endpoint, ['charges' => [[...$data, 'amount' => 100]]])->assertUnprocessable()->assertJsonValidationErrors('charges');
+    verifiedOwnerWrite($this, 'DELETE', $endpoint)->assertUnprocessable()->assertJsonValidationErrors('charges');
     expect($charge->fresh()->amount)->toBe('200.00')
         ->and($payment->fresh()->additionalCharges()->count())->toBe(1);
 })->with(['creating', 'created', 'completed', 'failed', 'refunded']);
@@ -875,12 +901,13 @@ it('locks charges with payment history including pending or failed checkouts', f
 it('locks finalized and reviewed late charges against editing or deletion', function () {
     [$booking, $actor, $charge, $data] = editableLifecycleCharge();
     $late = app(AdditionalChargeService::class)->create($booking, [[...$data, 'type' => 'late_return']], $actor, true)[0];
-    $this->actingAs($actor)->putJson("/admin/bookings/{$booking->id}/additional-charges/{$late->id}", ['charges' => [$data]])->assertUnprocessable();
-    $this->deleteJson("/admin/bookings/{$booking->id}/additional-charges/{$late->id}")->assertUnprocessable();
+    $this->actingAs($actor);
+    verifiedOwnerWrite($this, 'PUT', "/admin/bookings/{$booking->id}/additional-charges/{$late->id}", ['charges' => [$data]])->assertUnprocessable();
+    verifiedOwnerWrite($this, 'DELETE', "/admin/bookings/{$booking->id}/additional-charges/{$late->id}")->assertUnprocessable();
     app(AdditionalChargeService::class)->finalizeReview($booking, $actor);
     $endpoint = "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}";
-    $this->putJson($endpoint, ['charges' => [$data]])->assertUnprocessable();
-    $this->deleteJson($endpoint)->assertUnprocessable();
+    verifiedOwnerWrite($this, 'PUT', $endpoint, ['charges' => [$data]])->assertUnprocessable();
+    verifiedOwnerWrite($this, 'DELETE', $endpoint)->assertUnprocessable();
     expect($booking->additionalCharges()->count())->toBe(2);
 });
 
@@ -920,9 +947,31 @@ it('finalizes charges and returns the vehicle together while Customer settlement
         ->and($saved->returnRecord->vehicle_received_at->toISOString())->toBe($receivedAt)
         ->and($saved->events()->where('event_type', 'return_charges_finalized')->count())->toBe(1);
     $this->postJson("/admin/bookings/{$booking->id}/complete")->assertUnprocessable();
-    $this->putJson("/admin/bookings/{$booking->id}/additional-charges/{$charge->id}", ['charges' => [[
+    verifiedOwnerWrite($this, 'PUT', "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}", ['charges' => [[
         'type' => 'fuel', 'description' => 'Locked charge', 'amount' => 300, 'responsibility' => 'customer',
     ]]])->assertUnprocessable();
+});
+
+it('shows only completed customer payments in the management booking breakdown', function () {
+    $booking = lifecycleBooking(RentalType::OwnersDriver, ['total_amount' => 8500]);
+    $booking->payments()->create([
+        'user_id' => $booking->user_id, 'provider' => 'paypal', 'purpose' => 'remaining_balance',
+        'status' => 'completed', 'currency' => 'PHP', 'amount' => 1500,
+    ]);
+    $booking->payments()->create([
+        'user_id' => $booking->assigned_driver_id, 'provider' => 'paypal', 'purpose' => 'driver_outstanding',
+        'status' => 'completed', 'currency' => 'PHP', 'amount' => 500,
+    ]);
+    $booking->payments()->create([
+        'user_id' => $booking->user_id, 'provider' => 'paypal', 'purpose' => 'remaining_balance',
+        'status' => 'pending', 'currency' => 'PHP', 'amount' => 400,
+    ]);
+
+    $this->actingAs(vehicleManagerUser())->getJson("/admin/bookings/{$booking->id}")
+        ->assertOk()
+        ->assertJsonPath('data.totalAmount', 8500)
+        ->assertJsonPath('data.customerPaidAmount', 8500)
+        ->assertJsonPath('data.remainingBalance', 0);
 });
 
 it('returns a zero-charge booking without completing it and makes retries safe after completion', function () {

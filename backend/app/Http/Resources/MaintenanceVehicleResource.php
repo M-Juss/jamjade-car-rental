@@ -33,6 +33,7 @@ class MaintenanceVehicleResource extends JsonResource
         return [
             'id' => (string) $this->id,
             'name' => $this->name,
+            'plateNumber' => $this->plate_number,
             'status' => $this->status->value,
             'statusLabel' => $this->status->label(),
             'currentOdometer' => $this->currentCondition?->odometer,

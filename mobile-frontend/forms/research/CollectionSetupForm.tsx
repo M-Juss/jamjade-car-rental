@@ -15,8 +15,10 @@ import { exerciseCatalog, type CollectionState, type ExerciseProtocol, type Setu
 import type { NativeGroupCatalog, NativePhonePower, NativeSetupProgress } from '@/lib/research/native-recorder';
 import { collectionExerciseFormSchema, collectionSessionFormSchema, type ExerciseCode } from '@/validation/research/collection';
 
-export function CollectionSessionForm({ catalog, collection, initialGroupId, busy, onOpen, onNewSession, onNewGroup }: {
-  catalog: NativeGroupCatalog; collection: CollectionState; initialGroupId: string | null; busy: boolean; onOpen: (id: string) => Promise<void>; onNewSession: (id: string) => void; onNewGroup: () => void;
+const intensityPairs = [['LT', 'HLT'], ['RT', 'HRT'], ['SWL', 'HSWL'], ['SWR', 'HSWR']] as const;
+
+export function CollectionSessionForm({ catalog, collection, initialGroupId, busy, onOpen, onNewSession, onNewGroup, onMonitoring }: {
+  catalog: NativeGroupCatalog; collection: CollectionState; initialGroupId: string | null; busy: boolean; onOpen: (id: string) => Promise<void>; onNewSession: (id: string) => void; onNewGroup: () => void; onMonitoring: (id: string) => Promise<void>;
 }) {
   const { control, handleSubmit, watch, formState: { isSubmitting } } = useForm<{ group_id: string }>({ resolver: zodResolver(collectionSessionFormSchema),
     defaultValues: { group_id: initialGroupId ?? collection.session?.recording_group_id ?? catalog.selected_group_id ?? catalog.groups[0]?.id ?? '' } });
@@ -39,6 +41,7 @@ export function CollectionSessionForm({ catalog, collection, initialGroupId, bus
       <View className="flex-1"><ActionButton density="compact" label="Create group" disabled={busy || isSubmitting} onPress={onNewGroup} /></View>
       {latest && <View className="flex-1"><ActionButton density="compact" label="New session" disabled={busy || isSubmitting || !latest.session_has_recordings} onPress={() => onNewSession(groupId)} /></View>}
     </View>
+    <ActionButton density="compact" label="Drive Monitoring" disabled={busy || isSubmitting || !groupId} onPress={() => void handleSubmit(v => onMonitoring(v.group_id))()} />
   </View></SectionCard>;
 }
 
@@ -48,10 +51,11 @@ export function CollectionSetupForm({ collection, groupName, nextNumber, initial
   onNotes: () => void; onCheck: () => Promise<void>; onCancelCheck: () => Promise<void>; onStart: (code: ExerciseCode) => Promise<void>;
 }) {
   const [references, setReferences] = useState(!collection.forward_reference_recorded), [confirmed, setConfirmed] = useState(false), [guide, setGuide] = useState<ExerciseProtocol | null>(null);
-  const { control, watch, setValue, handleSubmit } = useForm<{ protocol_code: ExerciseCode }>({ resolver: zodResolver(collectionExerciseFormSchema), defaultValues: { protocol_code: collection.forward_reference_recorded ? initialExercise ?? 'FSS' : 'FR' } });
+  const monitoring = initialExercise === 'MD';
+  const repeatCode = initialExercise && exerciseCatalog.protocols.some(p => p.code === initialExercise) ? initialExercise : 'FSS';
+  const { control, watch, setValue, handleSubmit } = useForm<{ protocol_code: ExerciseCode }>({ resolver: zodResolver(collectionExerciseFormSchema), defaultValues: { protocol_code: monitoring ? 'MD' : collection.forward_reference_recorded ? repeatCode : 'FR' } });
   const selectedCode = watch('protocol_code');
-  const exerciseCode = selectedCode === 'HLT' ? 'LT' : selectedCode === 'HRT' ? 'RT' : selectedCode;
-  const harshTurnCode = exerciseCode === 'LT' ? 'HLT' : exerciseCode === 'RT' ? 'HRT' : null;
+  const [exerciseCode, harshCode] = intensityPairs.find(pair => pair.some(code => code === selectedCode)) ?? [selectedCode, undefined];
   const protocol = exerciseCatalog.protocols.find(p => p.code === selectedCode)!;
   useEffect(() => { setConfirmed(false); }, [collection.mount?.id]);
   const session = collection.session, mount = collection.mount;
@@ -71,16 +75,16 @@ export function CollectionSetupForm({ collection, groupName, nextNumber, initial
       </View>
       <ResearchIconButton icon={Info} label="Research notes" onPress={onNotes} />
     </View>
-    <SectionCard density="compact" title={`S${String(session.session_number).padStart(2, '0')}-${selectedCode}-R${String(nextNumber).padStart(3, '0')}`} icon={ClipboardList}>
+    <SectionCard density="compact" title={monitoring ? 'Drive Monitoring' : `S${String(session.session_number).padStart(2, '0')}-${selectedCode}-R${String(nextNumber).padStart(3, '0')}`} icon={ClipboardList}>
       <View className="gap-3">
         {!collection.forward_reference_recorded && <Text className="font-sans text-caption text-warning">Capture a forward reference for this mount before a maneuver trial.</Text>}
-        <SelectWithLabel label="Purpose" options={[{ value: 'maneuver', label: 'Maneuver trial' }, { value: 'reference', label: 'Setup reference' }]} value={references ? 'reference' : 'maneuver'} disabled={busy || checking}
-          onValueChange={value => { const next = value === 'reference'; setReferences(next); setValue('protocol_code', next ? 'FR' : 'FSS'); }} />
-        <Controller control={control} name="protocol_code" render={({ field, fieldState }) => <SelectWithLabel label="Exercise" value={exerciseCode} onValueChange={field.onChange} disabled={busy || checking} error={fieldState.error?.message}
-          options={exerciseCatalog.protocols.filter(p => p.code !== 'HLT' && p.code !== 'HRT' && (references ? p.recording_kind !== 'maneuver_trial' : p.recording_kind === 'maneuver_trial')).map(p => ({ value: p.code, label: p.label, description: p.code }))} />} />
-        {harshTurnCode && <SelectWithLabel label="Planned intensity" value={selectedCode} disabled={busy || checking}
-          options={[{ value: exerciseCode, label: 'Normal' }, { value: harshTurnCode, label: 'Harsh attempt' }]}
-          onValueChange={value => setValue('protocol_code', value === harshTurnCode ? harshTurnCode : exerciseCode)} />}
+        {!monitoring && <SelectWithLabel label="Purpose" options={[{ value: 'maneuver', label: 'Maneuver trial' }, { value: 'reference', label: 'Setup reference' }]} value={references ? 'reference' : 'maneuver'} disabled={busy || checking}
+          onValueChange={value => { const next = value === 'reference'; setReferences(next); setValue('protocol_code', next ? 'FR' : 'FSS'); }} />}
+        {!monitoring && <Controller control={control} name="protocol_code" render={({ field, fieldState }) => <SelectWithLabel label="Exercise" value={exerciseCode} onValueChange={field.onChange} disabled={busy || checking} error={fieldState.error?.message}
+          options={exerciseCatalog.protocols.filter(p => p.code !== 'MD' && !intensityPairs.some(([, harsh]) => harsh === p.code) && (references ? p.recording_kind !== 'maneuver_trial' : p.recording_kind === 'maneuver_trial')).map(p => ({ value: p.code, label: p.label, description: p.code }))} />} />}
+        {harshCode && <SelectWithLabel label="Planned intensity" value={selectedCode} disabled={busy || checking}
+          options={[{ value: exerciseCode, label: 'Normal' }, { value: harshCode, label: 'Harsh attempt' }]}
+          onValueChange={value => setValue('protocol_code', value === harshCode ? harshCode : exerciseCode)} />}
         <Pressable accessibilityRole="button" onPress={() => setGuide(protocol)} className="min-h-control flex-row items-center gap-2">
           <BookOpen size={18} color={themeColors.primary} /><Text className="font-sans text-body font-semibold text-primary">Protocol & course</Text>
         </Pressable>
@@ -95,10 +99,10 @@ export function CollectionSetupForm({ collection, groupName, nextNumber, initial
         </View> : <Text className="font-sans text-caption text-secondary-foreground">Install the updated Android app to check stillness.</Text>}
         {phonePower?.battery_saver && <Text className="font-sans text-caption text-warning">Battery Saver is on.</Text>}
         {checkSupported && !checking && <Text className="font-sans text-caption text-secondary-foreground">{measured
-          ? 'Records motion and phone diagnostics locally, including with the screen locked.'
+          ? selectedCode === 'MD' ? 'Saves motion locally and sends AI feature windows while monitoring, including with the screen locked.' : 'Records motion and phone diagnostics locally, including with the screen locked.'
           : 'Measures motion until the phone is steady for five seconds. Movement resets the timer.'}</Text>}
         {checking ? <ActionButton density="compact" label="Cancel check" disabled={busy} onPress={() => void onCancelCheck()} />
-          : <ActionButton density="compact" label={measured ? 'Agree & start recording' : 'Agree & check setup'} variant="primary" disabled={!checkSupported || busy || !confirmed || needsReference}
+          : <ActionButton density="compact" label={measured ? selectedCode === 'MD' ? 'Start monitoring' : 'Agree & start recording' : 'Agree & check setup'} variant="primary" disabled={!checkSupported || busy || !confirmed || needsReference}
             onPress={() => { if (measured) void handleSubmit(v => onStart(v.protocol_code))(); else void onCheck(); }} />}
       </View>
     </SectionCard>

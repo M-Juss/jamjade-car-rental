@@ -9,5 +9,8 @@
       <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
         android:value="User-started, consented RC research accelerometer and gyroscope recording to encrypted local files with a visible Stop action, including while the screen is locked." />
     </service>
+    <service android:name="com.jamjade.rcrecorder.RentalDriveMonitoringService" android:exported="false" android:foregroundServiceType="specialUse" android:stopWithTask="false">
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started consented RC motion monitoring for released capstone rentals with encrypted feature buffering and a visible Stop action." />
+    </service>
   </application>
 </manifest>

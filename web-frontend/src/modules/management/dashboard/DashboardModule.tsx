@@ -1,5 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import { DashboardOperations } from "./DashboardOperations";
+import { DashboardSnapshot } from "./DashboardSnapshot";
+import { calendarDate, dashboardDateTime } from "./dashboard-format";
+import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
 
 import { usePathname } from "next/navigation";
@@ -7,8 +12,8 @@ import { DashboardAttentionPanel } from "./DashboardAttentionPanel";
 import { useEffect, useState, type CSSProperties } from "react";
 import {
   AlertCircle,
-  CalendarCheck,
   CalendarClock,
+  RefreshCw,
   CalendarDays,
   Car,
   ChevronLeft,
@@ -75,7 +80,7 @@ const localizer = dateFnsLocalizer({
 });
 
 const bookingStatusStyle: Record<DashboardCalendarEvent["status"], string> = {
-  confirmed: "border-blue-200 bg-muted text-primary",
+  confirmed: "border-border bg-muted text-primary",
   ongoing: "border-success-border bg-success-surface text-success",
 };
 
@@ -115,12 +120,12 @@ function periodLabel(date: Date, view: View) {
 }
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en-PH", {
+  return dashboardDateTime(value, {
     month: "short",
     day: "numeric",
     year: "numeric",
     hour: "numeric",
-    minute: "2-digit", }).format(new Date(value));
+    minute: "2-digit", });
 }
 
 function moveDate(date: Date, view: View, direction: -1 | 1) {
@@ -149,10 +154,14 @@ function maximumBookingsOnOneDay(events: RentalCalendarEvent[]) {
 
 export default function Dashboard() {
   const pathname = usePathname();
-  const bookingPath = pathname.startsWith("/staff") ? "/staff/booking" : "/admin/booking";
+  const basePath = pathname.startsWith("/staff") ? "/staff" : "/admin";
+  const bookingPath = `${basePath}/booking`;
   const [data, setData] = useState<DashboardResponse | null>(null);
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [currentDate, setCurrentDate] = useState(() => calendarDate());
   const [view, setView] = useState<View>("month");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [vehicleFilter, setVehicleFilter] = useState("all");
+  const [rentalFilter, setRentalFilter] = useState("all");
   const [selectedEvent, setSelectedEvent] =
     useState<DashboardCalendarEvent | null>(null);
   const [error, setError] = useState("");
@@ -188,7 +197,10 @@ export default function Dashboard() {
       format(range.end, "yyyy-MM-dd"),
     )
       .then((response) => {
-        if (active) setData(response);
+        if (active) {
+          setData(response);
+          setError("");
+        }
       })
       .catch(() => {
         if (active) setError(messageFromError());
@@ -237,49 +249,49 @@ export default function Dashboard() {
     );
   }
 
-  const events: RentalCalendarEvent[] = data.events.map((event) => ({
+  const vehicleOptions = Array.from(new Map(data.events.map((event) => [event.vehiclePlate || event.vehicleName, {
+    value: event.vehiclePlate || event.vehicleName,
+    label: event.vehiclePlate ? `${event.vehicleName} (${event.vehiclePlate})` : event.vehicleName,
+  }])).values());
+  const effectiveVehicle = vehicleOptions.some((option) => option.value === vehicleFilter) ? vehicleFilter : "all";
+  const events: RentalCalendarEvent[] = data.events.filter((event) =>
+    (statusFilter === "all" || event.status === statusFilter) &&
+    (effectiveVehicle === "all" || (event.vehiclePlate || event.vehicleName) === effectiveVehicle) &&
+    (rentalFilter === "all" || event.rentalType === rentalFilter)
+  ).map((event) => ({
     ...event,
-    title: event.bookingCode,
-    start: new Date(event.start),
-    end: new Date(event.end),
+    title: `${event.vehiclePlate || event.vehicleName} · ${event.bookingCode}`,
+    start: calendarDate(event.start),
+    end: calendarDate(event.end),
   }));
   const calendarExtraHeight =
     view === "month"
       ? Math.max(0, maximumBookingsOnOneDay(events) - 2) * 22
       : 0;
+  const hasSnapshot = data.overview.fleet !== null || data.overview.pendingDocuments !== null || data.overview.awaitingPayment !== null || data.overview.balances !== null || data.overview.maintenance !== null;
   const kpis = [
-    {
-      label: "Monthly Gross Receipts",
-      value: formatPhilippinePeso(data.summary.monthRevenue, true),
-      icon: PhilippinePeso,
-    },
-    {
-      label: "Confirmed Bookings",
-      value: data.summary.confirmedBookings.toLocaleString(),
-      icon: CalendarCheck,
-    },
-    {
-      label: "Active Rentals",
-      value: data.summary.activeRentals.toLocaleString(),
-      icon: Car,
-    },
-    {
-      label: "Today's Pickups",
-      value: data.summary.todaysPickups.toLocaleString(),
-      icon: CalendarClock,
-    },
+    { label: "Today’s Pickups", value: data.summary.todaysPickups.toLocaleString(), icon: CalendarClock },
+    { label: "Today’s Returns", value: data.overview.todaysReturns.toLocaleString(), icon: Clock3 },
+    { label: "Active Rentals", value: data.summary.activeRentals.toLocaleString(), icon: Car },
+    { label: "Monthly Gross Receipts", value: formatPhilippinePeso(data.summary.monthRevenue, true), icon: PhilippinePeso },
   ];
 
   return (
     <div
-      className="dashboard-page min-h-screen space-y-6 bg-background p-4 md:p-6 lg:flex lg:flex-col lg:gap-6 lg:space-y-0 lg:overflow-hidden lg:p-8"
+      className="dashboard-page min-h-screen space-y-6 bg-background p-4 md:p-6 lg:p-8"
       style={
         {
           "--dashboard-calendar-extra-height": `${calendarExtraHeight}px`,
         } as CSSProperties
       }
     >
-      <ManagementPageHeading className="shrink-0" title="Dashboard" description="View rental schedules, fleet totals, and bookings needing attention." />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <ManagementPageHeading title="Dashboard" description="Manage rental schedules, daily operations, and outstanding actions." />
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={retry} disabled={isLoading}><RefreshCw className={`size-4 ${isLoading ? "animate-spin" : ""}`} />Refresh</Button>
+        </div>
+      </div>
+      {error && <div role="alert" className="flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface p-3 text-sm text-destructive"><span>Dashboard could not refresh. Displaying the last loaded information.</span><Button variant="outline" size="sm" onClick={retry}>Retry</Button></div>}
 
       <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
         {kpis.map(({ label, value, icon }) => (
@@ -292,23 +304,16 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className={`grid min-w-0 gap-6 ${data.canManageBookings ? "xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_20rem]" : ""}`}>
-        <Card className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-none lg:flex lg:min-h-0 lg:flex-1">
-          <CardContent className="px-5 pb-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-            {error ? (
-              <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-destructive-border bg-destructive-surface px-3 py-2.5 text-sm text-destructive">
-                <span>{error}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive"
-                  onClick={retry}
-                >
-                  Retry
-                </Button>
+      <div className={`grid min-w-0 items-start gap-6 xl:items-stretch ${hasSnapshot ? "xl:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]" : ""}`}>
+        <Card className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-none">
+          <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5 xl:flex xl:flex-1 xl:flex-col">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base font-semibold">Rental calendar</h2>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground" aria-label="Calendar legend">
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-primary" />Confirmed</span>
+                <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-success" />Ongoing</span>
               </div>
-            ) : null}
-
+            </div>
             <div className="mb-4 flex shrink-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
               <div className="flex items-center gap-1.5">
                 <Button
@@ -322,7 +327,7 @@ export default function Dashboard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => changeDate(new Date())}
+                  onClick={() => changeDate(calendarDate())}
                 >
                   Today
                 </Button>
@@ -353,7 +358,13 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="relative overflow-x-auto lg:min-h-0 lg:flex-1">
+            <div className="mb-4 grid gap-2 sm:grid-cols-3">
+              <FilterSelect value={effectiveVehicle} onValueChange={setVehicleFilter} ariaLabel="Filter calendar by vehicle" options={[{ value: "all", label: "All vehicles" }, ...vehicleOptions]} />
+              <FilterSelect value={statusFilter} onValueChange={setStatusFilter} ariaLabel="Filter calendar by status" options={[{ value: "all", label: "All statuses" }, { value: "confirmed", label: "Confirmed" }, { value: "ongoing", label: "Ongoing" }]} />
+              <FilterSelect value={rentalFilter} onValueChange={setRentalFilter} ariaLabel="Filter calendar by rental type" options={[{ value: "all", label: "All rental types" }, { value: "Self-Drive", label: "Self-drive" }, { value: "Owner's Driver", label: "With driver" }]} />
+            </div>
+            {!isLoading && events.length === 0 && <p role="status" className="mb-3 text-sm text-muted-foreground">{data.events.length === 0 ? "No rentals scheduled in this period." : "No rentals match these filters."}</p>}
+            <div className="relative overflow-x-auto xl:flex xl:flex-1 xl:flex-col">
               {isLoading ? (
                 <div className="absolute inset-x-0 top-0 z-10 flex justify-end p-2 text-primary">
                   <Loader2
@@ -362,9 +373,10 @@ export default function Dashboard() {
                   />
                 </div>
               ) : null}
-              <div className="dashboard-calendar min-w-[560px] lg:h-full">
+              <div className="dashboard-calendar min-w-[560px] xl:flex xl:flex-1 xl:flex-col">
                 <Calendar<RentalCalendarEvent>
                   localizer={localizer}
+                  getNow={() => calendarDate()}
                   events={events}
                   date={currentDate}
                   view={view}
@@ -391,7 +403,7 @@ export default function Dashboard() {
                   components={{
                     event: ({ event }) => (
                       <span className="block truncate font-semibold">
-                        {event.bookingCode}
+                        {event.vehiclePlate || event.vehicleName} · {event.bookingCode}
                       </span>
                     ),
                   }}
@@ -401,10 +413,18 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {data.canManageBookings && (
-          <DashboardAttentionPanel bookings={data.attentionBookings} total={data.summary.bookingsNeedingAttention} bookingPath={bookingPath} />
+        {hasSnapshot && (
+          <aside className="min-w-0 xl:self-stretch" aria-label="Operational overview">
+            <DashboardSnapshot overview={data.overview} basePath={basePath} />
+          </aside>
         )}
       </div>
+
+      {data.canManageBookings && (
+        <DashboardAttentionPanel bookings={data.attentionBookings} total={data.summary.bookingsNeedingAttention} bookingPath={bookingPath} />
+      )}
+
+      <DashboardOperations overview={data.overview} basePath={basePath} />
 
       <Dialog
         open={Boolean(selectedEvent)}
@@ -496,7 +516,7 @@ export default function Dashboard() {
                         Assigned Driver
                       </dt>
                       <dd className="mt-1 text-sm font-semibold text-foreground">
-                        {selectedEvent.driverName || "Self-drive"}
+                        {selectedEvent.driverName || (selectedEvent.rentalType === "Self-Drive" ? "Self-drive" : "Not assigned")}
                       </dd>
                     </div>
                   </dl>
@@ -608,6 +628,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : null}
+          {selectedEvent && data.canManageBookings && <div className="shrink-0 border-t border-border px-5 py-4"><Button asChild className="w-full sm:w-auto"><Link href={`${bookingPath}?booking=${selectedEvent.id}`}>Open booking<ChevronRight className="size-4" /></Link></Button></div>}
         </DialogContent>
       </Dialog>
     </div>

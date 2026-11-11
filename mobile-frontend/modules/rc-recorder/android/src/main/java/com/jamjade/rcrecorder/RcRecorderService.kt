@@ -18,6 +18,7 @@ import android.os.PowerManager
 class RcRecorderService : Service() {
   companion object {
     const val START = "com.jamjade.rcrecorder.START"
+    const val MONITOR = "com.jamjade.rcrecorder.MONITOR"
     const val STOP = "com.jamjade.rcrecorder.STOP"
     private const val CHANNEL = "jamjade_rc_recording"
     private const val NOTIFICATION = 32107
@@ -29,16 +30,23 @@ class RcRecorderService : Service() {
   }
   private var wakeLock: PowerManager.WakeLock? = null
   private var started = false
+  private var monitoring = false
   private val instanceId = java.util.UUID.randomUUID().toString()
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     val engine = RcRecorderEngine.get(this)
     if (intent?.action == STOP) {
+      val manager = getSystemService(NotificationManager::class.java)
+      val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else Notification.Builder(this)
+      builder.setSmallIcon(android.R.drawable.ic_menu_compass).setContentTitle("Drive Monitoring")
+        .setContentText("Stopping capture and finishing transfer.").setOngoing(true).setShowWhen(false)
+        .setVisibility(Notification.VISIBILITY_PRIVATE)
+      if (monitoring) manager.notify(NOTIFICATION, builder.build())
       engine.requestStop()
       return START_NOT_STICKY
     }
-    if (intent?.action != START || intent.getStringExtra("config") == null || intent.getStringExtra("reservation") == null) {
+    if (intent?.action !in setOf(START, MONITOR) || intent?.getStringExtra("config") == null || intent.getStringExtra("reservation") == null) {
       stopSelf(); return START_NOT_STICKY
     }
     if (started) {
@@ -52,9 +60,10 @@ class RcRecorderService : Service() {
       if (Build.VERSION.SDK_INT >= 26) notifications.createNotificationChannel(NotificationChannel(CHANNEL, "RC recording", NotificationManager.IMPORTANCE_LOW))
       val stop = PendingIntent.getService(this, 1, Intent(this, RcRecorderService::class.java).setAction(STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
       val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else Notification.Builder(this)
-      builder.setSmallIcon(android.R.drawable.ic_menu_compass).setContentTitle("RC recording")
-        .setContentText("Motion is being saved on this phone.").setOngoing(true).setShowWhen(false)
-        .setVisibility(Notification.VISIBILITY_PRIVATE).addAction(Notification.Action.Builder(null, "Stop recording", stop).build())
+      monitoring = intent.action == MONITOR
+      builder.setSmallIcon(android.R.drawable.ic_menu_compass).setContentTitle(if (monitoring) "Drive Monitoring" else "RC recording")
+        .setContentText(if (monitoring) "Motion monitoring is active." else "Motion is being saved on this phone.").setOngoing(true).setShowWhen(false)
+        .setVisibility(Notification.VISIBILITY_PRIVATE).addAction(Notification.Action.Builder(null, if (monitoring) "Stop monitoring" else "Stop recording", stop).build())
       packageManager.getLaunchIntentForPackage(packageName)?.let {
         builder.setContentIntent(PendingIntent.getActivity(this, 2, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
       }

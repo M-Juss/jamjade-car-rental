@@ -27,7 +27,7 @@ The August normalization described a 29-column `bookings` table. The current mig
 
 ## Legacy account and document projections
 
-`users` remains the authoritative account table, while `customer_profiles.can_self_drive`, `verification_status`, and `passport_required` are workflow projections/compatibility fields. They are not a second account or identity source. Current self-drive eligibility is based on the active document workflow: approved driver's license and proof of address; legacy passport records may remain stored but passport is not a required or offered upload. `customer_documents` and its `customer_document_files` rows remain the authoritative document metadata and file-role storage.
+`users` remains the authoritative account table, while `customer_profiles.can_self_drive`, `verification_status`, and `passport_required` are workflow projections/compatibility fields. They are not a second account or identity source. Self-drive eligibility uses the customer's birthdate, approved driver's license and proof of address, and a complete record in `emergency_contacts`. Legacy passport records are historical. `customer_documents` and its `customer_document_files` rows remain the authoritative document metadata and file-role storage.
 
 ## Migration policy
 

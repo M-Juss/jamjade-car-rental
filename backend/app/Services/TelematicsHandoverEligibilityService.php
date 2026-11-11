@@ -54,7 +54,8 @@ class TelematicsHandoverEligibilityService
             'telematicsSetupSession.latestStationary',
             'vehicleInspections:id,booking_id,type,status',
             'vehicleInspections.signatures:id,inspection_id,signer_type',
-        ])->withExists(['telematicsSetupSession as has_setup_attempts' => fn ($query) => $query->whereHas('steps')])
+        ])->withExists(['telematicsSetupSession as has_setup_attempts' => fn ($query) => $query->whereHas('steps',
+            fn ($steps) => $steps->whereColumn('telematics_setup_steps.id', '>', 'telematics_setup_sessions.reset_through_step_id'))])
             ->paginate($perPage);
     }
 

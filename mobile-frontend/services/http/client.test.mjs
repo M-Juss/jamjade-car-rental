@@ -49,6 +49,89 @@ test('JSON requests retain bearer authentication and response envelopes', async 
   assert.equal((await client.apiPost('/example', { value: 2 })).data.id, 5);
 });
 
+test('slow registration mail responses outlast the short fallback deadline without replaying the POST', async () => {
+  let calls = 0;
+  const pending = { registrationId: '123e4567-e89b-42d3-a456-426614174000', email: 'slow@example.test' };
+  const client = clientWith(async (_url, options) => {
+    calls += 1;
+    await new Promise((resolve, reject) => {
+      const responseTimer = setTimeout(() => {
+        options.signal.removeEventListener('abort', abort);
+        resolve();
+      }, 150);
+      const abort = () => {
+        clearTimeout(responseTimer);
+        reject(new Error('Aborted'));
+      };
+      options.signal.addEventListener('abort', abort, { once: true });
+    });
+    return new Response(JSON.stringify({ success: true, data: pending }));
+  }, ['https://primary.example.test/api', 'https://fallback.example.test/api']);
+
+  const response = await client.apiPost('/mobile/register', { email: pending.email }, {
+    allowNetworkFallback: true,
+    responseTimeoutMs: 300,
+    skipAuth: true,
+  });
+
+  assert.equal(response.data.registrationId, pending.registrationId);
+  assert.equal(response.data.email, pending.email);
+  assert.equal(calls, 1, 'A successful delayed mail response must not be sent to a second API candidate.');
+});
+
+test('an explicit response timeout aborts a registration POST without retrying another API candidate', async () => {
+  let calls = 0;
+  const client = clientWith(async (_url, options) => {
+    calls += 1;
+    return new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(new Error('Aborted')), { once: true });
+    });
+  }, ['https://primary.example.test/api', 'https://fallback.example.test/api']);
+
+  await assert.rejects(
+    () => client.apiPost('/mobile/register/resend', { registration_id: 'registration-id' }, {
+      allowNetworkFallback: true,
+      responseTimeoutMs: 20,
+      skipAuth: true,
+    }),
+    (error) => error.status === 408 && error.message === 'The request timed out. Please try again.',
+  );
+  assert.equal(calls, 1, 'An ambiguous timed-out POST must not be replayed on a second API candidate.');
+});
+
+test('the default GET fallback deadline and transport-error failover remain available', async () => {
+  let calls = 0;
+  const client = clientWith(async (_url, options) => {
+    calls += 1;
+    if (calls === 1) {
+      await new Promise((resolve, reject) => {
+        const abort = () => reject(new Error('Aborted'));
+        options.signal.addEventListener('abort', abort, { once: true });
+      });
+    }
+    return new Response(JSON.stringify({ success: true, data: { source: 'fallback' } }));
+  }, ['https://primary.example.test/api', 'https://fallback.example.test/api']);
+
+  assert.equal((await client.apiGet('/mobile/me')).data.source, 'fallback');
+  assert.equal(calls, 2, 'The existing GET fallback timeout should still advance to the second candidate.');
+});
+
+test('an explicit-timeout POST can still fail over after an immediate transport error', async () => {
+  let calls = 0;
+  const client = clientWith(async () => {
+    calls += 1;
+    if (calls === 1) throw new Error('Unavailable');
+    return new Response(JSON.stringify({ success: true, data: { source: 'fallback' } }));
+  }, ['https://primary.example.test/api', 'https://fallback.example.test/api']);
+
+  assert.equal((await client.apiPost('/mobile/register', {}, {
+    allowNetworkFallback: true,
+    responseTimeoutMs: 300,
+    skipAuth: true,
+  })).data.source, 'fallback');
+  assert.equal(calls, 2, 'A clear transport failure remains eligible for fallback.');
+});
+
 test('PDF downloads use the authenticated transport without parsing binary as JSON', async () => {
   const client = clientWith(async (url, options) => {
     assert.equal(url, 'https://example.test/api/mobile/receipts/1/download');

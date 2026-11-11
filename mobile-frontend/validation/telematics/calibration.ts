@@ -10,7 +10,7 @@ const bounded = (min: number, max: number, integer = false) => z.preprocess(
 // Mirrors StoreSetupAttemptRequest::calibrationEvidenceRules. Server state,
 // freshness, recording quality and release readiness remain Laravel decisions.
 export const calibrationEvidenceSchema = z.object({
-  protocol_version: bounded(3, 3, true),
+  protocol_version: bounded(4, 4, true),
   context: z.string().regex(/^[a-f0-9]{64}$/),
   consent: acceptedBoolean,
   supervised: acceptedBoolean,
@@ -55,3 +55,5 @@ export const calibrationConsentSchema = z.object({
   supervised: z.boolean().refine(Boolean, 'Confirm staff supervision and that the vehicle is parked before continuing.'),
 });
 export type CalibrationConsentInput = z.infer<typeof calibrationConsentSchema>;
+
+export const restartSetupSchema = z.object({ context: z.string().regex(/^[a-f0-9]{64}$/) });

@@ -9,6 +9,7 @@ experimental settings, and dated verification; none is evidence of another.
 | Need | Active guide |
 | --- | --- |
 | Project-wide direction and stage status | [Project status and roadmap](project-status-and-roadmap.md) |
+| Programmer's architecture, current technologies, source map, and planned additions | [System architecture and technologies](system-architecture-and-technologies.md) |
 | Telematics, RC research, collection/inspection UI, calibration, fleet monitoring, AI and scoring | [Telematics and RC Research: central implementation guide](telematics-master-plan.md) |
 | Android-only configuration, builds, and dated platform checks | [Android-only mobile scope](android-only-mobile.md) |
 | Roles and authorization | [User roles and access](user-roles-and-access.md) |
@@ -16,6 +17,10 @@ experimental settings, and dated verification; none is evidence of another.
 
 `mobile-frontend` supports Android only. iOS and mobile-browser targets are
 retired; the separate Next.js website remains supported.
+
+The [first rental RC motion connection](telematics-master-plan.md#connected-rental-rc-motion-monitoring--2026-11-10)
+links separately consented native motion segments to an existing released rental
+trip. Physical rental-flow acceptance and dynamic remount realignment remain pending.
 
 ## Domain guides
 
@@ -27,7 +32,9 @@ defines the agreed RC workflow redesign. The linked JSON catalog/schema/examples
 remain machine-checked design artifacts. The central guide’s Phase 2 runtime
 boundary records the implemented pilot collection flow and narrower authoritative
 write DTOs; the three-step web review is implemented, while broader Redmi physical
-acceptance, v2 label confidence/dataset decisions and export remain pending.
+acceptance and v2 label confidence/general dataset decisions remain pending.
+The local encrypted frozen-pilot interval export is implemented; see its
+[contract and commands](telematics-master-plan.md#local-pilot-interval-export--2026-11-08).
 
 | Guide | Read when | Current boundary |
 | --- | --- | --- |

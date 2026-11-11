@@ -44,6 +44,19 @@ class User extends Authenticatable
         return $this->hasMany(EmergencyContact::class);
     }
 
+    public function completeEmergencyContacts(): HasMany
+    {
+        return $this->emergencyContacts()
+            ->whereRaw("TRIM(name) <> ''")
+            ->whereRaw("TRIM(relationship) <> ''")
+            ->whereRaw("TRIM(phone_number) <> ''");
+    }
+
+    public function hasCompleteEmergencyContact(): bool
+    {
+        return $this->complete_emergency_contacts_exists ?? $this->completeEmergencyContacts()->exists();
+    }
+
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);

@@ -50,7 +50,7 @@ export function RcDataPanel({ active, revision }: { active: boolean; revision: n
   return <View className="flex-1">
     <View className="w-full max-w-[640px] flex-row items-center gap-2 self-center px-screen pb-3">
       {selected ? <Pressable accessibilityRole="button" accessibilityLabel="Back to research data" disabled={deleting} onPress={() => setSelected(null)} className="min-h-control min-w-control items-center justify-center rounded-full active:bg-muted">
-        <ArrowLeft size={22} color={themeColors.foreground} /></Pressable> : null}
+        <ArrowLeft size={22} color={themeColors.foreground} strokeWidth={2} /></Pressable> : null}
       <Text accessibilityRole="header" className="font-sans flex-1 text-section font-semibold text-foreground">{selected ? 'Trial details' : 'Uploaded trials (v1)'}</Text>
       {!selected ? <Pressable accessibilityRole="button" accessibilityLabel="Refresh research data" disabled={loading} onPress={() => setRefresh(value => value + 1)}
         className="min-h-control min-w-control items-center justify-center"><RefreshCcw size={20} color={themeColors.primary} /></Pressable> : null}

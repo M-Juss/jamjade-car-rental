@@ -11,6 +11,8 @@ use App\Http\Resources\AdminVehicleResource;
 use App\Http\Resources\VehicleInspectionResource;
 use App\Models\Vehicle;
 use App\Models\VehicleInspection;
+use App\Services\OwnerVerificationService;
+use App\Services\VehicleConfigurationService;
 use App\Services\VehicleInspectionService;
 use App\Services\VehicleService;
 use App\Traits\ApiResponseTrait;
@@ -63,9 +65,20 @@ class VehicleController extends Controller
 
     public function update(VehicleRequest $request, Vehicle $vehicle): JsonResponse
     {
-        $vehicle = $this->vehicleService->update($vehicle, $request->validated());
+        $data = $request->validated();
 
-        return $this->success('Vehicle updated successfully.', new AdminVehicleResource($vehicle));
+        return app(OwnerVerificationService::class)->run($request, 'Change daily vehicle price', $vehicle->name.' ('.$vehicle->plate_number.')', $data,
+            function () use ($vehicle) {
+                VehicleConfigurationService::lock();
+
+                return Vehicle::query()->lockForUpdate()->findOrFail($vehicle->id);
+            },
+            function ($locked) use ($data) {
+                $updated = $this->vehicleService->update($locked, $data);
+
+                return $this->success('Vehicle updated successfully.', new AdminVehicleResource($updated));
+            },
+            fn ($locked) => array_key_exists('price_per_day', $data) && (float) $data['price_per_day'] !== (float) $locked->price_per_day);
     }
 
     public function destroy(Vehicle $vehicle): JsonResponse

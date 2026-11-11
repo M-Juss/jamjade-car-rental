@@ -8,8 +8,8 @@ export function ResearchState({ loading, error, onRetry, className, filtered }: 
   const denied = error instanceof ApiError && error.status === 403;
   const missing = error instanceof ApiError && error.status === 404;
   const Icon = loading ? Loader2 : denied ? ShieldAlert : error ? AlertCircle : Activity;
-  const title = loading ? "Loading recordings" : denied ? "Research is unavailable" : missing ? "Recording not found" : error ? "Recording could not be loaded" : filtered ? "No matching recordings" : "No recordings yet";
-  const description = loading ? "" : denied ? "Use an active Admin account with RC Research enabled." : missing ? "This recording may have been removed or belongs to another account." : error ? "Check your connection and try again." : filtered ? "Try another search or clear the filters." : "Upload a recording from RC Research on your phone to inspect it here.";
+  const title = loading ? "Loading recordings" : denied ? "Data Collection is unavailable" : missing ? "Recording not found" : error ? "Recording could not be loaded" : filtered ? "No matching recordings" : "No recordings yet";
+  const description = loading ? "" : denied ? "Use an active Admin account with Data Collection enabled." : missing ? "This recording may have been removed or belongs to another account." : error ? "Check your connection and try again." : filtered ? "Try another search or clear the filters." : "Upload a recording from Data Collection on your phone to inspect it here.";
   return <Card className={cn("rounded-2xl border border-border bg-surface shadow-none ring-0", className)}><CardContent className="flex min-h-64 flex-col items-center justify-center gap-3 p-6 text-center" role={error ? "alert" : "status"}>
     <Icon className={`size-7 text-primary ${loading ? "animate-spin" : ""}`} aria-hidden="true" />
     <div><p className="text-sm font-semibold">{title}</p>{description && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>}</div>

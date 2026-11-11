@@ -5,10 +5,15 @@ import {
   getProfile,
   login,
   logout,
-  register,
+  beginRegistration,
+  resendRegistrationCode,
   restoreSession,
+  verifyRegistration,
   updateAccountEmail,
   type MobileLoginPayload,
+  type MobileRegistrationPending,
+  type MobileRegistrationResendPayload,
+  type MobileRegistrationVerifyPayload,
   type MobileRegisterPayload,
   type MobileUser,
 } from '@/services/api';
@@ -33,7 +38,9 @@ type AuthContextValue = {
   onboardingRoute: CustomerOnboardingRoute | null;
   refreshProfile: () => Promise<MobileUser>;
   signIn: (payload: MobileLoginPayload) => Promise<MobileUser>;
-  signUp: (payload: MobileRegisterPayload) => Promise<MobileUser>;
+  beginRegistration: (payload: MobileRegisterPayload) => Promise<MobileRegistrationPending>;
+  verifyRegistration: (payload: MobileRegistrationVerifyPayload) => Promise<MobileUser>;
+  resendRegistrationCode: (payload: MobileRegistrationResendPayload) => Promise<MobileRegistrationPending>;
   signOut: (options?: { revokeRemoteToken?: boolean }) => Promise<void>;
   changeEmail: (values: UpdateAccountEmailInput) => Promise<void>;
 };
@@ -133,10 +140,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const session = await login(payload);
         return await applyUser(session.user);
       },
-      signUp: async (payload) => {
-        const session = await register(payload);
+      beginRegistration,
+      verifyRegistration: async (payload) => {
+        const session = await verifyRegistration(payload);
         return await applyUser(session.user);
       },
+      resendRegistrationCode,
       changeEmail: async (values) => {
         const updatedUser = await updateAccountEmail(values);
         setUser(updatedUser);

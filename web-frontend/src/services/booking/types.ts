@@ -76,6 +76,7 @@ export type BookingRecord = {
   discount: number;
   downPayment: number;
   totalAmount: number;
+  customerPaidAmount?: number;
   remainingBalance: number;
   paymentStatus: string;
   paymentStatusKey: PaymentStatus;
@@ -123,6 +124,7 @@ export type BookingRecord = {
 
 export type TelematicsHandover = {
   calibration: {
+    nextStep: string | null;
     profile: { id: "standard" | "rc_demo" | "legacy"; revision: number | null; fingerprint: string | null };
   };
   bookingCode: string;
@@ -133,6 +135,7 @@ export type TelematicsHandover = {
     operatorAssigned: boolean;
     operatorEligible: boolean;
     canStartHandover: boolean;
+    canWorkSetup: boolean;
     documentsVerified: boolean;
     rentalPeriodEligible: boolean;
     outgoingInspectionComplete: boolean;
@@ -169,6 +172,7 @@ export type BookingReadiness = {
   fullyPaid: boolean;
   ageEligible: boolean;
   documentsApproved: boolean;
+  emergencyContactOnFile: boolean;
   driverAssigned: boolean;
   driverEligible: boolean;
   vehicleOperational: boolean;

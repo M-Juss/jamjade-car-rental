@@ -15,6 +15,27 @@ Both files use the same immutable per-payment snapshot. Later payments get their
 
 Both PDFs embed Noto Sans and retain the established solid JamJade branding. Formal HTML email has an equivalent plain-text part. Document dates use Asia/Manila without visible timezone labels. Missing historical timestamps or transaction references remain “Not provided.”
 
+The email presentation uses a solid JamJade primary-blue backdrop, centered white
+card, prominent booking reference, rental details, and a separate payment summary
+from the immutable issued context. Its heading says “Booking confirmed” only when
+that snapshot is confirmed; other snapshots say “Payment received.” The individual
+payment, cumulative paid amount, remaining balance, receipt reference, and legacy
+invoice reference where applicable remain distinct. This restyles
+`resources/views/emails/bookings/confirmation.blade.php` and its plain-text
+counterpart; subjects, two PDF attachments, archived bytes, recipients, delivery
+tracking, and retry behavior retain their existing contracts. The related
+[registration email](user-roles-and-access.md#mobile-registration-email-verification)
+uses the same solid-blue/white-card visual direction and its own 15-minute code.
+
+Email styling verification on 2026-11-11: all 40 focused email, payment-document,
+and payment-notification tests passed (310 assertions) in one sequential run.
+This includes both email formats, confirmed versus other snapshot headings,
+legacy invoice references, stable attachments, retries, and delivery bookkeeping.
+Synthetic HTML rendered with sample details, and PHP formatting and
+`git diff --check` passed. The browser rejected local-file visual previews; Gmail
+inbox delivery and email-client rendering were not exercised. Existing PDF
+templates and stored PDF bytes were not restyled.
+
 Customer totals include completed positive PHP payments belonging to that Customer, excluding `driver_outstanding`. Driver-responsible charges and payments remain private to their flow. Additional charges appear once from `booking_additional_charges`, separately from the accepted rental pricing. Arithmetic uses integer cents at the document boundary. No invoice numbers, tax-registration, tax-calculation or government numbering contract is introduced.
 
 ## Issuance and stable copies
@@ -199,3 +220,16 @@ cleanup was checked afterward. No booking or payment was changed.
 
 iOS physical testing is unavailable; full mobile web export remains blocked by
 the existing native Maps import described above.
+
+## PDF presentation refinement — 2026-11-11
+
+Newly rendered rental information and receipts use a larger logo and company
+name, plain section headings, neutral table dividers, and terms without the blue
+left border. The issue date appears in the bottom-left document footer instead
+of the header. Booking and receipt references remain visible. Existing archived
+PDF bytes retain their issuance-time appearance.
+
+Changed the shared PDF header/styles and rental-information/receipt content
+partials. Verified the two-page rental document and one-page receipt through
+Dompdf and Poppler page images. All 33 focused payment-document and email tests
+passed (252 assertions). No financial records or issued files were replaced.

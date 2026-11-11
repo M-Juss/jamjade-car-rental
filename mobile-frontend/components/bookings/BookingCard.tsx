@@ -1,8 +1,8 @@
 import { themeColors } from '@/constants/theme';
-import { CalendarDays, Clock3, MapPin, Navigation } from 'lucide-react-native';
+import { CalendarDays, Clock3, MapPin, CreditCard, Navigation } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
-import { formatPeso, isTelematicsEnabled } from '@/lib/bookings/helpers';
+import { formatPeso } from '@/lib/bookings/helpers';
 import type { Booking } from '@/types/booking';
 
 import { VehicleImage } from '@/components/browse/BrowseComponents';
@@ -34,17 +34,25 @@ export function BookingCard({
   booking,
   onAction,
   onViewDetails,
+  audience = 'customer',
 }: {
   booking: Booking;
   onViewDetails: (booking: Booking) => void;
   onAction: (action: BookingAction, booking: Booking) => void;
+  audience?: 'customer' | 'driver';
 }) {
   const vehicleTitle = [booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(' ');
-  const hasTelematics = isTelematicsEnabled(booking);
-  const actions = getBookingActions(booking.status, {
+  const isDriver = audience === 'driver';
+  const driverBalance = booking.additionalCharges.reduce((total, charge) => total + charge.outstandingAmount, 0);
+  const actions: BookingAction[] = isDriver ? [
+    { key: 'view_details', label: 'View details', icon: CalendarDays, variant: 'secondary' },
+    ...(['Confirmed', 'Active', 'Ongoing'].includes(booking.status) ? [{ key: 'open_telematics' as const, label: 'Telematics', icon: Navigation, variant: 'primary' as const }] : []),
+    ...(driverBalance > 0 ? [{ key: 'pay_balance' as const, label: 'Pay charges', icon: CreditCard, variant: 'secondary' as const }] : []),
+  ] : getBookingActions(booking.status, {
     isSelfDrive: booking.driverType === 'Self-Drive',
   }).filter(
-    (action) => action.key !== 'payment_info' && action.key !== 'book_another_vehicle' && !(hasTelematics && action.key === 'open_telematics'),
+    (action) => action.key !== 'payment_info' && action.key !== 'book_another_vehicle'
+      && (action.key !== 'pay_balance' || booking.remainingBalance > 0),
   );
 
   const handleAction = (action: BookingAction) => {
@@ -67,7 +75,7 @@ export function BookingCard({
           <VehicleImage
             uri={booking.image}
             resizeMode="contain"
-            className="h-20 w-24 overflow-hidden rounded-field bg-background"
+            className="h-20 w-24 overflow-hidden rounded-field"
           />
           <View className="min-w-0 flex-1">
             <View className="flex-row items-center justify-between gap-2">
@@ -83,11 +91,12 @@ export function BookingCard({
         </Pressable>
       </View>
       <View className="mt-3 gap-2">
+        {isDriver && booking.customer?.name ? <Text className="font-sans text-body text-foreground">{booking.customer.name}</Text> : null}
         <DetailLine icon={CalendarDays} label="Rental" value={booking.rentalDate} />
         <DetailLine icon={Clock3} label="Return" value={booking.returnDate} />
         <DetailLine icon={MapPin} label="Pickup" value={booking.pickupLocation} />
       </View>
-      <View className="mt-3 flex-row flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+      {!isDriver ? <View className="mt-3 flex-row flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <View>
           <Text className="font-sans text-[12px] text-secondary-foreground">Total amount</Text>
           <Text className="font-sans mt-0.5 text-[20px] font-semibold text-foreground">
@@ -95,33 +104,22 @@ export function BookingCard({
           </Text>
         </View>
         <PaymentStatusBadge status={booking.paymentStatus} />
-      </View>
-      {hasTelematics ? (
-        <View className="mt-3">
-          <ActionButton
-            icon={Navigation}
-            label="Open Telematics"
-            variant="primary"
-            onPress={() =>
-              onAction(
-                { key: 'open_telematics', label: 'Open Telematics', icon: Navigation, variant: 'primary' },
-                booking,
-              )
-            }
-          />
-        </View>
-      ) : null}
-      <View className="mt-3 flex-row flex-wrap gap-2">
-        {actions.map((action) => (
-          <ActionButton
+      </View> : driverBalance > 0 ? <Text className="font-sans mt-3 text-caption font-medium text-foreground">Driver charges: {formatPeso(driverBalance)}</Text> : null}
+      <View className="mt-3 flex-row flex-wrap items-stretch gap-2">
+        {actions.map((action) => {
+          const label = action.key === 'view_details' ? 'View details'
+            : action.key === 'open_telematics' ? 'Telematics'
+              : action.key === 'pay_balance' ? isDriver ? 'Pay charges' : 'Pay balance' : action.label;
+          return <ActionButton
             key={action.key}
-            className="flex-grow"
+            accessibilityLabel={`${label} for ${booking.id}`}
+            className={isDriver && actions.length > 2 ? 'min-w-[45%] flex-1' : 'min-w-0 flex-1'}
+            density="compact"
             icon={action.icon}
-            label={action.label}
-            variant={action.variant}
-            onPress={() => handleAction(action)}
-          />
-        ))}
+            label={label}
+            variant={action.key === 'view_details' ? 'secondary' : action.variant}
+            onPress={() => handleAction(action)} />;
+        })}
       </View>
     </View>
   );

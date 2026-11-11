@@ -63,6 +63,15 @@ function something()
     // ..
 }
 
+function addCustomerEmergencyContact(User $user): void
+{
+    $user->emergencyContacts()->create([
+        'name' => 'Maria Dela Cruz',
+        'relationship' => 'Parent',
+        'phone_number' => '09123456789',
+    ]);
+}
+
 function customerUser(array $attributes = []): User
 {
     $user = User::factory()->create(array_merge([
@@ -88,6 +97,8 @@ function customerUser(array $attributes = []): User
             'status' => DocumentStatus::Approved,
         ]);
     }
+
+    addCustomerEmergencyContact($user);
 
     return $user;
 }
@@ -198,4 +209,23 @@ function withTestDeliveryQuote(User $user, array $payload, float $fee = 900, flo
 function lateReturnPolicyVersion(int $vehicleId): string
 {
     return app(LateReturnPricingService::class)->policy(Vehicle::findOrFail($vehicleId))['version'];
+}
+
+/** Execute a protected write through the same email-code exchange as the web client. */
+function verifiedOwnerWrite($test, string $method, string $url, array $data = [])
+{
+    if (! User::role('owner')->where('is_active', true)->exists()) {
+        $owner = User::factory()->create(['is_active' => true]);
+        $owner->assignRole('owner');
+    }
+    \Illuminate\Support\Facades\Mail::fake();
+    $issued = $test->json($method, $url, $data, ['X-Owner-Verification' => 'request']);
+    if ($issued->status() === 429) {
+        $test->travel(61)->seconds();
+        $issued = $test->json($method, $url, $data, ['X-Owner-Verification' => 'request']);
+    }
+    $issued->assertOk();
+    $code = \Illuminate\Support\Facades\Mail::sent(\App\Mail\OwnerVerificationMail::class)->last()->code;
+
+    return $test->json($method, $url, $data, ['X-Owner-Verification-Id' => $issued->json('data.verificationId'), 'X-Owner-Code' => $code]);
 }

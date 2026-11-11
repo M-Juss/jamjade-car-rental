@@ -14,6 +14,7 @@ class RcRecordingReviewService
     public function inspect(RcNativeRecording $record, array $manifest): array
     {
         $context = $record->collectionContext?->payload;
+        $legacyLaneChange = $record->collectionContext?->isLegacyLaneChange() ?? false;
         $observation = RcObservationRevision::where('recording_id', $record->id)->latest('revision')->first();
         $runs = RcProcessingRun::where('recording_id', $record->id);
         $referenceStatus = 'not_required';
@@ -49,8 +50,9 @@ class RcRecordingReviewService
 
         return [
             'collection' => $context ? [
-                'display_code' => $context['display_code'], 'session_number' => $context['session']['session_number'],
-                'mount_number' => $context['mount']['mount_number'], 'protocol_code' => $context['protocol_code'],
+                'display_code' => $record->collectionContext->reviewCode(), 'session_number' => $context['session']['session_number'],
+                'mount_number' => $context['mount']['mount_number'], 'protocol_code' => $legacyLaneChange ? 'LC' : $context['protocol_code'],
+                'original_protocol_code' => $context['protocol_code'],
                 'expected_stop_method' => $context['protocol_snapshot']['expected_stop_method'],
                 'preflight_result' => $context['preflight']['result'],
             ] : null,

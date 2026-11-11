@@ -16,11 +16,13 @@ import { themeColors } from '@/constants/theme';
 import { CollectionSessionForm, CollectionSetupForm } from '@/forms/research/CollectionSetupForm';
 import { NativeCollectionGroupForm } from '@/forms/research/NativeRecordingForm';
 import { ObservationForm } from '@/forms/research/ObservationForm';
-import { exerciseCatalog, recordingDisplay, type CollectionState, type CollectionStatus, type ExerciseProtocol } from '@/lib/research/collection';
+import { exerciseCatalog, recordingDisplay, reviewExerciseCode, type CollectionState, type CollectionStatus, type ExerciseProtocol } from '@/lib/research/collection';
 import { NATIVE_MOUNT_METHOD, type NativeRecorderState, type NativeRecording, type NativeCollectionGroup, type NativeGroupCatalog } from '@/lib/research/native-recorder';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/services/http';
 import { NativeRecorderError, nativeRecorder } from '@/services/telematics/native-recorder';
+import { startDriveMonitoring, recoverDriveMonitoringTransfer } from '@/services/telematics/drive-monitoring-workflow';
+import { getDriveMonitoringTransferStatus, type DriveTransferStatus } from '@/services/telematics/drive-monitoring-transfer';
 import type { ExerciseCode } from '@/validation/research/collection';
 import type { NativeCollectionGroupInput } from '@/validation/research/native-recorder';
 
@@ -39,6 +41,7 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   const [offset, setOffset] = useState(0), [filter, setFilter] = useState<'all' | 'current' | 'pilot'>('all');
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [transfer, setTransfer] = useState<DriveTransferStatus | null>(null);
   const [afterSave, setAfterSave] = useState<{ record: NativeRecording; uploaded: boolean } | null>(null);
   const [repeatExercise, setRepeatExercise] = useState<{ sessionId: string; mountId: string; code: ExerciseCode } | null>(null);
   const [progress, setProgress] = useState<{ id: string; label: string } | null>(null), [statuses, setStatuses] = useState<Record<string, CollectionStatus>>({}), [onlineStatus, setOnlineStatus] = useState(false);
@@ -52,6 +55,8 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
     const task = (async () => {
       try {
         const next = await nativeRecorder.status(), ended = previousActive.current && !next.active;
+        const delivery = await getDriveMonitoringTransferStatus();
+        if (mounted.current) setTransfer(delivery);
         previousActive.current = next.active;
         if (mounted.current) { setState(next); if (ended && next.current) { setSelected(next.current); setDetails(false); } }
         if ((withList || ended) && !next.active && !next.checking) {
@@ -118,12 +123,18 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
     const session = collection.session, evidence = state?.setup_check;
     if (!session || !evidence || !user) return;
     const protocol = exerciseCatalog.protocols.find(p => p.code === code)!;
-    await run(async () => {
-      await nativeRecorder.start(user.id, { recording_group_id: session.recording_group_id, surface: session.conditions.surface, slope: session.conditions.slope,
+    const capture = () => run(async () => {
+      const values = { recording_group_id: session.recording_group_id, surface: session.conditions.surface, slope: session.conditions.slope,
         mount_method: NATIVE_MOUNT_METHOD, recording_kind: protocol.recording_kind as 'maneuver_trial' | 'stationary_reference' | 'forward_reference',
-        protocol_code: code, preflight_id: evidence.id, consent: true });
+        protocol_code: code, preflight_id: evidence.id, consent: true as const };
+      if (code === 'MD' && collection.mount) await startDriveMonitoring(user.id, values, session.id, collection.mount.id);
+      else await nativeRecorder.start(user.id, values);
       setSelected(null);
     });
+    if (code === 'MD') Alert.alert('Start Drive Monitoring?', 'Keep the phone fixed in the same mount as your prepared forward reference. Motion feature windows will be sent to your private Admin monitoring view. Capture continues with the screen locked; use Stop to end it.', [
+      { text: 'Cancel', style: 'cancel' }, { text: 'Start monitoring', onPress: () => void capture() },
+    ]);
+    else await capture();
   };
   const stop = () => {
     if (stopping) return;
@@ -155,7 +166,8 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   const currentProtocol = current?.collection?.protocol_snapshot;
   const group = groups?.groups.find(g => g.id === collection.session?.recording_group_id);
   const latest = current?.collection?.observations?.at(-1);
-  const initialExercise = repeatExercise && repeatExercise.sessionId === collection.session?.id && repeatExercise.mountId === collection.mount?.id
+  const [monitoringSetup, setMonitoringSetup] = useState(false);
+  const initialExercise = monitoringSetup ? 'MD' : repeatExercise && repeatExercise.sessionId === collection.session?.id && repeatExercise.mountId === collection.mount?.id && repeatExercise.code !== 'MD'
     ? repeatExercise.code : undefined;
 
   const setupOpened = mode === 'collect' && Boolean(collection.session && collection.mount) && !sessionForm && !groupForm && !selected && !state?.active;
@@ -224,16 +236,25 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
         {error && <View className="gap-2"><Text accessibilityRole="alert" className="font-sans text-body text-destructive">{error}</Text><ActionButton density="compact" label="Verify access" disabled={busy} onPress={() => void run(async () => { if (user) await nativeRecorder.authorize(user.id); })} /></View>}
         {!nativeRecorder.collectionAvailable && <Text className="font-sans text-body text-secondary-foreground">Install the updated Android APK for guided collection.</Text>}
         {state?.error && <Text accessibilityRole="alert" className="font-sans text-body text-destructive">{state.error}</Text>}
+        {transfer && (transfer.finishing || transfer.unfinished_sessions.length > 0 || transfer.state === 'review_required' || transfer.state === 'access_required') && <SectionCard density="compact" title="Monitoring transfer" icon={Activity}>
+          <Text className="font-sans text-body text-foreground">{transfer.pending_batches} pending batches</Text>
+          <Text className="font-sans text-caption text-secondary-foreground">{transfer.state === 'retrying' ? 'Waiting for connection' : transfer.finishing ? 'Finishing transfer' : 'Reconnect to finish delivery'}</Text>
+          {transfer.state !== 'sending' && transfer.state !== 'retrying' && <ActionButton density="compact" label="Reconnect transfer" disabled={busy} onPress={() => void run(async () => {
+            const id = transfer.session_id ?? transfer.unfinished_sessions[0];
+            if (user && id) await recoverDriveMonitoringTransfer(user.id, id);
+          })} />}
+        </SectionCard>}
         {state?.active && <SectionCard density="compact" title={state.preparing ? 'Preparing sensors' : recordingDisplay(state.current ?? {}).title} icon={Activity}>
           {state.current ? <RecordingMetadata recording={state.current} className="mb-3" /> : null}
+          {state.monitoring && <InfoRow label="Monitoring" value={`${state.monitoring_paired ?? 0} paired readings${transfer?.state === 'retrying' ? ' — waiting for connection' : ''}`} />}
           <Text accessibilityLiveRegion="polite" className="font-sans mb-3 text-title font-semibold text-foreground">{((state.current?.duration_ms ?? 0) / 1000).toFixed(1)} s</Text>
           {currentProtocol && <><Text className="font-sans mb-2 text-body text-foreground">Rest ~5 s → {currentProtocol.steps.find(s => s.stage === 'exercise')?.instruction} → settle & rest ~5 s</Text>
             <Pressable accessibilityRole="button" onPress={() => setGuide(currentProtocol)} className="min-h-control flex-row items-center gap-2"><BookOpen size={18} color={themeColors.primary} /><Text className="font-sans text-body font-semibold text-primary">Protocol</Text></Pressable></>}
-          <ActionButton density="compact" label={stopping ? 'Saving…' : 'Stop & save'} variant="primary" disabled={stopping} onPress={stop} />
+          <ActionButton density="compact" label={stopping ? 'Saving…' : state.monitoring ? 'Stop monitoring' : 'Stop & save'} variant="primary" disabled={stopping} onPress={stop} />
         </SectionCard>}
         {mode === 'collect' && !state?.active && !selected && groups && nativeRecorder.collectionAvailable && <>
           {groupForm ? <NativeCollectionGroupForm disabled={busy} catalog={groups} onCreate={async values => { await createGroup(values); }} />
-            : !collection.session || !collection.mount || sessionForm ? <CollectionSessionForm catalog={groups} collection={collection} initialGroupId={sessionGroupId} busy={busy} onNewSession={newSession} onOpen={async id => { await run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: id })); setSessionGroupId(id); setSessionForm(false); }); }} onNewGroup={() => setGroupForm(true)} />
+            : !collection.session || !collection.mount || sessionForm ? <CollectionSessionForm catalog={groups} collection={collection} initialGroupId={sessionGroupId} busy={busy} onNewSession={newSession} onMonitoring={async id => { await run(async () => { const next = await nativeRecorder.collectionAction({ action: 'open', group_id: id }); setCollection(next); setSessionGroupId(id); setMonitoringSetup(true); setSessionForm(false); }); }} onOpen={async id => { setMonitoringSetup(false); await run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: id })); setSessionGroupId(id); setSessionForm(false); }); }} onNewGroup={() => setGroupForm(true)} />
               : <CollectionSetupForm key={collection.mount?.id} collection={collection} groupName={group?.name ?? 'Group unavailable'} nextNumber={group?.next_recording_number ?? 1} initialExercise={initialExercise} busy={busy} checking={state?.checking ?? false} evidence={state?.setup_check} stillness={state?.setup_progress} checkError={state?.setup_check_error} phonePower={state?.phone_power}
                 onNotes={() => setNotes(true)} onCheck={async () => { await run(() => nativeRecorder.beginCheck()); }}
                 onCancelCheck={async () => { await run(() => nativeRecorder.cancelCheck()); }} onStart={start} />}
@@ -249,7 +270,7 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
             <Pressable accessibilityRole="button" onPress={() => setDetails(true)} className="min-h-control flex-row items-center gap-2 border-t border-border"><Text className="font-sans flex-1 text-body text-primary">Sensor & setup details</Text><ChevronRight size={18} color={themeColors.primary} /></Pressable>
             {currentProtocol && <Pressable accessibilityRole="button" onPress={() => setGuide(currentProtocol)} className="min-h-control flex-row items-center gap-2"><Text className="font-sans flex-1 text-body text-primary">Saved protocol</Text><ChevronRight size={18} color={themeColors.primary} /></Pressable>}
           </SectionCard>
-          {current.collection && <ObservationForm key={current.recording_id} latest={latest} isSwerve={current.collection.protocol_code === 'SW'} disabled={busy} onDirtyChange={setDirty}
+          {current.collection && <ObservationForm key={current.recording_id} latest={latest} exercise={reviewExerciseCode(current.collection)} disabled={busy} onDirtyChange={setDirty}
             onSave={async values => {
               if (working.current) throw new NativeRecorderError('Another action is finishing. Try again.');
               working.current = true; setBusy(true);
@@ -279,7 +300,7 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
       onAnother={() => {
         const saved = afterSave?.record.collection;
         setRepeatExercise(saved?.protocol_snapshot.recording_kind === 'maneuver_trial'
-          ? { sessionId: saved.session.id, mountId: saved.mount.id, code: saved.protocol_code } : null);
+          ? { sessionId: saved.session.id, mountId: saved.mount.id, code: reviewExerciseCode(saved) } : null);
         setAfterSave(null); setSelected(null); setDetails(false); setDirty(false); setSessionForm(false); setGroupForm(false);
         if (mode !== 'collect') { continueCollection.current = true; onCollect(); }
       }}

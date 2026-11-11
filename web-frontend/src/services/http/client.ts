@@ -1,3 +1,4 @@
+import { requestOwnerVerification } from "./owner-verification";
 import { buildApiUrl } from "./config";
 import { ApiError, GENERIC_ERROR_MESSAGE } from "./errors";
 import type { ApiMethodOptions, ApiRequestOptions, ApiResponse } from "./types";
@@ -161,6 +162,26 @@ export async function apiFetch<TData = unknown>(
     } catch {
       throw new ApiError(GENERIC_ERROR_MESSAGE, 0);
     }
+  }
+
+  if (response.status === 428 && typeof window !== "undefined") {
+    response = await requestOwnerVerification(async (id) => {
+      headers.set("X-Owner-Verification", "request");
+      if (id) headers.set("X-Owner-Verification-Id", id);
+      else headers.delete("X-Owner-Verification-Id");
+      headers.delete("X-Owner-Code");
+      const issued = await sendRequest();
+      const result = await issued.json();
+      if (!issued.ok || (!result.data?.verificationId && result.data?.verificationRequired !== false)) {
+        throw new Error(issued.status === 429 ? "Please wait before requesting another code." : "The code could not be sent. Please try again later.");
+      }
+      return result.data;
+    }, async (id, code) => {
+      headers.delete("X-Owner-Verification");
+      headers.set("X-Owner-Verification-Id", id);
+      headers.set("X-Owner-Code", code);
+      return sendRequest();
+    });
   }
 
   const text = await response.text();

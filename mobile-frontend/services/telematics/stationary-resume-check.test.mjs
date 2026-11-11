@@ -34,6 +34,8 @@ function harness({ released = true, eligible = true, eligibleAfter = true, chang
     } };
     if (name === './calibration-capture') return { CalibrationCaptureAccessError: CaptureAccessError, captureCalibration: async (seconds, reference, signal, callbacks) => {
       calls.push('capture'); assert.equal(seconds, 6); assert.equal(reference, null); assert.equal(signal, request.signal);
+      assert.equal(callbacks.stationaryWindow.accepts(summary), true);
+      assert.equal(callbacks.stationaryWindow.accepts({ ...summary, rotation_peak: 20 }), false);
       if (denied) throw new CaptureAccessError(true);
       callbacks.onReading({ elapsedMs: 6000 });
       if (cancel) request.abort();

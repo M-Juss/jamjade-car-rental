@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TelematicsSetupStatus;
 use App\Enums\TelematicsSetupStepType;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,7 @@ class TelematicsSetupSession extends Model
         'started_at',
         'ready_at',
         'released_at',
+        'reset_through_step_id',
     ];
 
     protected function casts(): array
@@ -30,6 +32,7 @@ class TelematicsSetupSession extends Model
             'started_at' => 'datetime',
             'ready_at' => 'datetime',
             'released_at' => 'datetime',
+            'reset_through_step_id' => 'integer',
         ];
     }
 
@@ -41,6 +44,12 @@ class TelematicsSetupSession extends Model
     public function steps(): HasMany
     {
         return $this->hasMany(TelematicsSetupStep::class);
+    }
+
+    /** @return Collection<int, TelematicsSetupStep> */
+    public function currentAttempts(): Collection
+    {
+        return $this->steps->filter(fn (TelematicsSetupStep $step) => $step->id > ($this->reset_through_step_id ?? 0));
     }
 
     public function latestStationary(): HasOne

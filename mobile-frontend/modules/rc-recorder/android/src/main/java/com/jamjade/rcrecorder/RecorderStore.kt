@@ -14,7 +14,8 @@ import java.security.MessageDigest
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
-internal class RecorderStore(private val context: Context, val ownerHash: String) {
+internal class RecorderStore(private val context: Context, val ownerHash: String, private val scope: String = "rc-research-v2") {
+  init { require(scope in setOf("rc-research-v2", "rental-motion-v1")) }
   companion object {
     const val RECORD_LIMIT = 64L * 1024 * 1024
     const val OWNER_LIMIT = 2L * 1024 * 1024 * 1024
@@ -32,8 +33,8 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
     }
   }
 
-  private val root = File(context.noBackupFilesDir, "rc-research-v2/$ownerHash").apply { mkdirs() }
-  private val keyAlias = "jamjade_rc_v2_$ownerHash"
+  private val root = File(context.noBackupFilesDir, "$scope/$ownerHash").apply { mkdirs() }
+  private val keyAlias = if (scope == "rc-research-v2") "jamjade_rc_v2_$ownerHash" else "jamjade_rental_motion_v1_$ownerHash"
   private fun key(create: Boolean = false): SecretKey {
     val keys = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     (keys.getKey(keyAlias, null) as? SecretKey)?.let { return it }
@@ -98,6 +99,17 @@ internal class RecorderStore(private val context: Context, val ownerHash: String
 
   fun readManifest(id: String): JSONObject {
     return readDocument(File(directory(id), "manifest.rc2"), "$ownerHash/$id/manifest")
+  }
+
+  fun driveUploadQueue(): JSONObject {
+    val file = File(root, "drive-upload.rc2")
+    if (!file.exists() && !File(file.path + ".bak").exists()) return JSONObject().put("batches", JSONArray())
+    return readDocument(file, "$ownerHash/drive-upload")
+  }
+
+  fun saveDriveUploadQueue(value: JSONObject) {
+    key(true)
+    writeDocument(File(root, "drive-upload.rc2"), "$ownerHash/drive-upload", value)
   }
 
   private fun readDocument(file: File, aad: String): JSONObject {

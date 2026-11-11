@@ -29,16 +29,12 @@ class TelematicsHandoverResource extends JsonResource
         ]);
 
         $session = $this->telematicsSetupSession;
-        $latestSteps = $session?->steps
-            ->sortByDesc('attempt_number')
-            ->unique('step_type')
-            ->keyBy(fn (TelematicsSetupStep $step) => $step->step_type->value) ?? collect();
-        if ($session) {
-            $latestSteps = app(TelematicsCalibrationService::class)->latestSteps($session);
-            if ($this->rental_type === RentalType::OwnersDriver) {
-                $operatorId = app(TelematicsOperatorService::class)->operatorId($this->resource);
-                $latestSteps = $latestSteps->filter(fn (TelematicsSetupStep $step) => (int) $step->actor_user_id === (int) $operatorId);
-            }
+        $calibration = app(TelematicsCalibrationService::class);
+        $latestSteps = $session ? $calibration->latestSteps($session) : collect();
+        $attempts = $session?->currentAttempts() ?? collect();
+        if ($this->rental_type === RentalType::OwnersDriver) {
+            $operatorId = app(TelematicsOperatorService::class)->operatorId($this->resource);
+            $attempts = $attempts->filter(fn (TelematicsSetupStep $step) => (int) $step->actor_user_id === (int) $operatorId);
         }
         $hasTrip = $this->telematicsTrips->isNotEmpty();
         $eligibility = app(TelematicsHandoverEligibilityService::class)->evaluate($this->resource);
@@ -54,26 +50,29 @@ class TelematicsHandoverResource extends JsonResource
                 'secondaryImage' => PublicStorageUrl::make($this->vehicle?->images->get(1)?->image_path ?? $this->vehicle?->images->first()?->image_path),
             ],
             'eligibility' => $eligibility,
-            'calibration' => app(TelematicsCalibrationService::class)->projection($session),
+            'calibration' => $calibration->projection($session),
             'setup' => $session ? [
                 'status' => $eligibility['setupStatus'],
                 'startedAt' => $session->started_at?->toISOString(),
                 'readyAt' => $eligibility['setupStatus'] === $session->status->value ? $session->ready_at?->toISOString() : null,
                 'releasedAt' => $session->released_at?->toISOString(),
+                'canRestart' => $eligibility['setupStatus'] === TelematicsSetupStatus::ReadyForRelease->value
+                    && $eligibility['bookingConfirmed'] && $eligibility['rentalPeriodEligible']
+                    && $eligibility['customerSelfDriveAvailable'] && $eligibility['operatorEligible']
+                    && ($eligibility['testMode'] || $eligibility['documentsVerified'])
+                    && collect(TelematicsSetupService::requiredSteps())->every(
+                        fn (TelematicsSetupStepType $type) => $latestSteps->get($type->value)?->status === TelematicsSetupStepStatus::Passed
+                    ),
             ] : null,
-            'steps' => collect(TelematicsSetupService::requiredSteps())
-                ->map(function (TelematicsSetupStepType $type) use ($latestSteps, $session): array {
+            'steps' => collect(TelematicsSetupService::displayedSteps($session))
+                ->map(function (TelematicsSetupStepType $type) use ($latestSteps, $attempts): array {
                     $step = $latestSteps->get($type->value);
 
                     return [
                         'type' => $type->value,
                         'label' => self::stepLabel($type),
                         'status' => $step?->status->value ?? TelematicsSetupStepStatus::Pending->value,
-                        'attemptCount' => $session?->steps->filter(
-                            fn (TelematicsSetupStep $attempt) => $attempt->step_type === $type
-                                && ($this->rental_type !== RentalType::OwnersDriver
-                                    || (int) $attempt->actor_user_id === (int) app(TelematicsOperatorService::class)->operatorId($this->resource))
-                        )->count() ?? 0,
+                        'attemptCount' => $attempts->where('step_type', $type)->count(),
                         'startedAt' => $step?->started_at?->toISOString(),
                         'completedAt' => $step?->completed_at?->toISOString(),
                         'failureReason' => $step?->failure_reason,

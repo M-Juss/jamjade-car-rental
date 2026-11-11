@@ -21,7 +21,7 @@ export function ExerciseGuide({ protocol, onClose, onStop }: { protocol: Exercis
       </View>)}
       <Text className="font-sans text-caption text-secondary-foreground">Keep a clear buffer beyond C. Spacing is provisional; rehearse at low speed.</Text>
     </View>}
-    {protocol && ['left_turn', 'right_turn', 'swerve_recovery'].includes(protocol.layout_key) && <Text className="font-sans text-caption text-secondary-foreground">Radius and spacing are provisional. Rehearse the full movement before recording.</Text>}
+    {protocol && ['left_turn', 'right_turn', 'swerve_recovery', 'lane_change', 'swerve_obstacle_avoidance'].includes(protocol.layout_key) && <Text className="font-sans text-caption text-secondary-foreground">Radius and spacing are provisional. Rehearse the full movement before recording.</Text>}
   </ResearchDialog>;
 }
 

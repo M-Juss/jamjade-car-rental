@@ -1,6 +1,6 @@
 export type DrivingIntent = 'self-drive' | 'owner-driver' | 'not-sure' | null;
 
-export type SelfDriveStatus = 'not-eligible' | 'not-verified' | 'pending' | 'verified';
+export type SelfDriveStatus = 'not-eligible' | 'not-verified' | 'pending' | 'verified' | 'emergency-contact-required';
 
 export type DocumentVerificationStatus =
   | 'not-submitted'

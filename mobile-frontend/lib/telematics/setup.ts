@@ -43,10 +43,7 @@ export function telematicsStage(handover: MobileTelematicsHandover) {
   return deviceSetupProgress(handover).nextStep ? 'device_setup' : 'calibration';
 }
 
-const CALIBRATION_CHECK_ORDER = [
-  'stationary_calibration', 'forward_calibration', 'braking_calibration',
-  'left_turn_calibration', 'right_turn_calibration',
-] as const;
+export const CALIBRATION_CHECK_ORDER: readonly string[] = ['stationary_calibration', 'forward_calibration'];
 
 export type SetupOverviewStage = {
   passedCount: number;

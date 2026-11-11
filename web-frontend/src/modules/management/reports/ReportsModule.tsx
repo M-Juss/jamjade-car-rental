@@ -1,753 +1,380 @@
 "use client";
 
-import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
-
-import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
-import { TablePagination } from "@/components/common/tables/TablePagination";
-import { useTablePagination } from "@/components/common/tables/useTablePagination";
-
-import { useCallback, useEffect, useState } from "react";
-import {
-  AlertCircle,
-  BarChart3,
-  BookOpen,
-  Car,
-  CheckCircle2,
-  Clock3,
-  Loader2,
-  PhilippinePeso,
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { BarChart3, ChevronLeft, ChevronRight, Clock3, Download, Loader2, PhilippinePeso } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
+import { SearchInput } from "@/components/common/forms/SearchInput";
+import { ManagementTable, ManagementTableCell, TableCard } from "@/components/common/tables/ManagementTable";
+import { TablePagination } from "@/components/common/tables/TablePagination";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { GENERIC_ERROR_MESSAGE } from "@/services/http";
+import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatPhilippinePeso } from "@/lib/formatters/currency";
+import { appToast } from "@/lib/toast";
+import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
+import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import {
-  getReports,
-  type ReportRange,
-  type ReportsResponse,
+  downloadReport, getReports, type ReportChart, type ReportData, type ReportFormat,
+  type ReportPeriod, type ReportSection, type ReportSelection,
 } from "@/services/report";
 
-const chartConfig = {
-  revenue: { label: "Revenue", color: "#346EF6" },
-  bookings: { label: "Bookings", color: "#93C5FD" },
-  completed: { label: "Completed", color: "#346EF6" },
-  new: { label: "New", color: "#346EF6" },
-  returning: { label: "Returning", color: "#10B981" },
-  count: { label: "Events", color: "#F59E0B" },
-  value: { label: "Revenue", color: "#346EF6" },
-};
+const timeZone = "Asia/Manila";
+const earliestDate = "1900-01-01";
+const periods = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
+];
+const sections: Array<{ value: ReportSection; label: string }> = [
+  { value: "overview", label: "Overview" },
+  { value: "revenue", label: "Revenue" },
+  { value: "bookings", label: "Bookings" },
+  { value: "fleet", label: "Fleet Performance" },
+  { value: "customers", label: "Customer Insights" },
+  { value: "telematics", label: "Risk & Telematics" },
+];
+const rentalTypes = [
+  { value: "all", label: "All rental types" },
+  { value: "self_drive", label: "Self Drive" },
+  { value: "owners_driver", label: "With Assigned Driver" },
+];
+const colors = ["var(--primary)", "var(--success)", "var(--warning)", "var(--destructive)"];
+const metricIcons = { money: PhilippinePeso, count: BarChart3, hours: Clock3 };
 
-function messageFromError() {
-  return GENERIC_ERROR_MESSAGE;
+function todayInManila() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  return parts.filter((part) => part.type !== "literal").map((part) => part.value).join("-");
 }
 
-function statusBadge(status: string) {
-  const normalized = status.toLowerCase();
-
-  if (normalized === "completed" || normalized === "paid") return "border-success-border bg-success-surface text-success";
-  if (normalized === "ongoing" || normalized === "confirmed") return "border-blue-200 bg-muted text-primary";
-  if (normalized.includes("partial") || normalized === "pending") return "border-warning-border bg-warning-surface text-warning";
-  if (normalized === "cancelled" || normalized === "rejected" || normalized === "refunded") return "border-destructive-border bg-destructive-surface text-destructive";
-
-  return "border-border bg-background text-muted-foreground";
+function adjacentPeriod(date: string, period: ReportPeriod, direction: number) {
+  const start = new Date(`${date}T00:00:00Z`);
+  switch (period) {
+    case "day":
+      start.setUTCDate(start.getUTCDate() + direction);
+      break;
+    case "week":
+      start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7 + 7 * direction);
+      break;
+    case "month":
+      start.setUTCMonth(start.getUTCMonth() + direction, 1);
+      break;
+    case "year":
+      start.setUTCFullYear(start.getUTCFullYear() + direction, 0, 1);
+      break;
+  }
+  return start.toISOString().slice(0, 10);
 }
 
-function maintenanceBadge(status: string) {
-  if (status === "Good") return "border-success-border bg-success-surface text-success";
-  if (status === "Due") return "border-warning-border bg-warning-surface text-warning";
-  return "border-destructive-border bg-destructive-surface text-destructive";
+const calendarDate = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "UTC" });
+const reportDateTime = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone });
+const numbers = new Intl.NumberFormat("en-PH", { maximumFractionDigits: 2 });
+const compactNumbers = new Intl.NumberFormat("en-PH", { notation: "compact", maximumFractionDigits: 1 });
+
+function formatValue(
+  value: string | number | null | undefined,
+  format: ReportFormat | "text" | "datetime",
+  compact = false,
+) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (format === "datetime") return reportDateTime.format(new Date(value));
+  if (format === "text") return String(value);
+  if (format === "money") return formatPhilippinePeso(Number(value), compact);
+  const formatted = (compact ? compactNumbers : numbers).format(Number(value));
+  return format === "hours" ? `${formatted} hrs` : formatted;
 }
 
-function severityBadge(severity: string) {
-  const normalized = severity.toLowerCase();
+function ReportChartCard({ chart }: { chart: ReportChart }) {
+  const horizontal = chart.type === "horizontal";
+  const formatTick = (value: number) => formatValue(value, chart.format, true);
+  const config = Object.fromEntries(chart.series.map(({ key, label }, index) => [
+    key, { label, color: colors[index] },
+  ]));
+  const axes = (
+    <>
+      <CartesianGrid horizontal={!horizontal} vertical={horizontal} />
+      <XAxis
+        type={horizontal ? "number" : "category"}
+        dataKey={horizontal ? undefined : "label"}
+        allowDecimals={chart.format !== "count"}
+        tickLine={false}
+        axisLine={false}
+        minTickGap={20}
+        tickFormatter={horizontal ? formatTick : undefined}
+      />
+      <YAxis
+        type={horizontal ? "category" : "number"}
+        dataKey={horizontal ? "label" : undefined}
+        width={horizontal ? 122 : 54}
+        allowDecimals={chart.format !== "count"}
+        tickLine={false}
+        axisLine={false}
+        tickFormatter={horizontal ? undefined : formatTick}
+      />
+      <ChartTooltip
+        content={<ChartTooltipContent formatter={(value, key) => (
+          <div className="flex w-full items-center justify-between gap-3">
+            <span className="text-muted-foreground">{config[String(key)]?.label}</span>
+            <span className="font-medium tabular-nums">{formatValue(Number(value), chart.format)}</span>
+          </div>
+        )} />}
+      />
+      {chart.series.length > 1 && <ChartLegend content={<ChartLegendContent />} />}
+    </>
+  );
 
-  if (normalized === "low") return "border-success-border bg-success-surface text-success";
-  if (normalized === "medium") return "border-warning-border bg-warning-surface text-warning";
-  return "border-destructive-border bg-destructive-surface text-destructive";
+  return (
+    <Card className="min-w-0 rounded-2xl border border-border bg-surface shadow-none">
+      <CardHeader className="pb-2"><CardTitle className="text-sm">{chart.title}</CardTitle></CardHeader>
+      <CardContent className="pt-0">
+        <ChartContainer config={config} className="h-[250px] w-full">
+          {chart.type === "line" ? (
+            <LineChart data={chart.points} margin={{ right: 12 }}>
+              {axes}
+              {chart.series.map(({ key }) => (
+                <Line key={key} dataKey={key} stroke={config[key].color} strokeWidth={2} dot={false} isAnimationActive={false} />
+              ))}
+            </LineChart>
+          ) : (
+            <BarChart data={chart.points} layout={horizontal ? "vertical" : "horizontal"} margin={{ right: 12 }}>
+              {axes}
+              {chart.series.map(({ key }) => (
+                <Bar
+                  key={key}
+                  dataKey={key}
+                  fill={config[key].color}
+                  maxBarSize={40}
+                  isAnimationActive={false}
+                  stackId={chart.type === "stacked" ? "total" : undefined}
+                />
+              ))}
+            </BarChart>
+          )}
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  );
 }
 
-function EmptyState({ message }: { message: string }) {
-  return <div className="py-10 text-center text-sm text-muted-foreground">{message}</div>;
+function ReportTable({
+  table, onPageChange,
+}: {
+  table: NonNullable<ReportData["table"]>;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div>
+      <TableCard>
+        <CardHeader className="py-4"><CardTitle className="text-sm">{table.title}</CardTitle></CardHeader>
+        <ManagementTable>
+          <TableHeader>
+            <TableRow className="bg-background">
+              {table.columns.map(({ key, label }) => (
+                <TableHead key={key} className="px-4 py-3 text-xs">{label}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {table.rows.length === 0 ? (
+              <TableRow>
+                <ManagementTableCell colSpan={table.columns.length} className="py-10 text-center text-muted-foreground">
+                  No records found.
+                </ManagementTableCell>
+              </TableRow>
+            ) : table.rows.map((row, index) => (
+              <TableRow key={index}>
+                {table.columns.map(({ key, label, format }) => (
+                  <ManagementTableCell key={key} data-label={label} className="px-4 py-3 text-sm whitespace-normal">
+                    {formatValue(row[key], format)}
+                  </ManagementTableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </ManagementTable>
+      </TableCard>
+      <TablePagination
+        total={table.total}
+        page={table.page}
+        lastPage={table.lastPage}
+        onPageChange={onPageChange}
+        label="Report pagination"
+      />
+    </div>
+  );
 }
 
 export function ReportsAnalytics() {
-  const [data, setData] = useState<ReportsResponse | null>(null);
-  const [range, setRange] = useState<ReportRange>("12_months");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const { portal, user } = useManagementSession();
+  const [selection, setSelection] = useState<ReportSelection>(() => ({
+    period: "month", date: todayInManila(), section: "overview", page: 1,
+  }));
+  const [searchInput, setSearchInput] = useState("");
+  const [result, setResult] = useState<{ selection: ReportSelection; data: ReportData } | null>(null);
+  const [error, setError] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const data = result?.selection === selection ? result.data : null;
+  const search = searchInput.trim();
+  const searchPending = search !== (selection.search ?? "");
 
-  const load = useCallback(async () => {
-    try {
-      setData(await getReports(range));
-    } catch {
-      setError(messageFromError());
-    } finally {
-      setIsLoading(false);
-    }
-  }, [range]);
+  useEffect(() => {
+    if (!searchPending) return;
+
+    const timer = window.setTimeout(() => {
+      setError(false);
+      setSelection((current) => ({ ...current, search, page: 1 }));
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, searchPending]);
 
   useEffect(() => {
     let active = true;
-
-    getReports(range)
+    getReports(selection)
       .then((response) => {
-        if (active) setData(response);
+        if (active) setResult({ selection, data: response });
       })
       .catch(() => {
-        if (active) setError(messageFromError());
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
+        if (active) setError(true);
       });
+    return () => { active = false; };
+  }, [retry, selection]);
 
-    return () => {
-      active = false;
-    };
-  }, [range]);
-
-  const revenuePagination = useTablePagination(data?.revenueTransactions ?? [], range);
-  const bookingPagination = useTablePagination(data?.bookings ?? [], range);
-  const fleetPagination = useTablePagination(data?.fleet ?? [], range);
-  const customerPagination = useTablePagination(data?.customers ?? [], range);
-  const riskPagination = useTablePagination(data?.riskEvents ?? [], range);
-
-  if (!data && isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        <Loader2 className="mr-2 size-5 animate-spin" />
-        Loading reports and analytics
-      </div>
-    );
+  function update(next: Partial<ReportSelection>) {
+    setError(false);
+    setSelection((current) => ({ ...current, page: 1, ...next }));
   }
 
-  if (!data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <Card className="max-w-md rounded-2xl border border-border bg-surface shadow-none">
-          <CardContent className="p-5">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
-              <div>
-                <p className="font-semibold text-foreground">Reports could not be loaded</p>
-                <p className="mt-1 text-sm text-muted-foreground">{error}</p>
-              </div>
-            </div>
-            <Button
-              onClick={() => {
-                setIsLoading(true);
-                setError("");
-                void load();
-              }}
-              className="mt-4 w-full rounded-xl"
-            >
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      await downloadReport(selection);
+    } catch {
+      appToast.error("CSV could not be downloaded. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   }
 
-  const kpis = [
-    { label: "Gross Receipts", value: formatPhilippinePeso(data.summary.totalRevenue, true), icon: PhilippinePeso },
-    { label: "Refunds Returned", value: formatPhilippinePeso(data.refundSummary.amountReturned, true), icon: PhilippinePeso },
-    { label: "Net Receipts", value: formatPhilippinePeso(data.refundSummary.netReceipts, true), icon: PhilippinePeso },
-    { label: "Total Bookings", value: data.summary.totalBookings.toLocaleString(), icon: BookOpen },
-    { label: "Completed Rentals", value: data.summary.completedBookings.toLocaleString(), icon: CheckCircle2 },
-    { label: "Active Rentals", value: data.summary.activeRentals.toLocaleString(), icon: Car },
-  ];
-  const revenueBreakdown = data.revenueBreakdown
-    .filter((item) => item.label !== "Delivery Tolls")
-    .map((item) => item.label === "Delivery Fees" ? {
-      label: "Delivery Charges",
-      value: item.value + (data.revenueBreakdown.find((row) => row.label === "Delivery Tolls")?.value ?? 0),
-    } : item)
-    .slice(0, 4);
-  const revenueBreakdownIcons = [PhilippinePeso, Car, BarChart3, AlertCircle];
-  const fleetHighlightIcons = [BarChart3, Clock3, AlertCircle, Car];
+  const today = todayInManila();
+  const previous = adjacentPeriod(selection.date, selection.period, -1);
+  const next = adjacentPeriod(selection.date, selection.period, 1);
+  const rangeStart = new Date(`${adjacentPeriod(selection.date, selection.period, 0)}T00:00:00Z`);
+  const rangeEnd = new Date(`${next}T00:00:00Z`);
+  rangeEnd.setUTCDate(rangeEnd.getUTCDate() - 1);
+  const vehicles = result?.data.vehicles ?? [];
+  const charts = data?.charts.filter((chart) => chart.points.length > 0) ?? [];
+  const permissions = user?.permissions ?? [];
+  const canViewDrivingAnalysis = permissions.includes("manage bookings") && permissions.includes("view fleet tracker");
 
   return (
-    <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <ManagementPageHeading title="Reports & Analytics" description="Review revenue, bookings, and fleet performance." />
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {isLoading ? <span role="status" className="flex items-center text-primary"><Loader2 className="size-4 animate-spin" /><span className="sr-only">Updating reports</span></span> : null}
-          <FilterSelect
-            value={range}
-            onValueChange={(value: ReportRange) => {
-              setIsLoading(true);
-              setError("");
-              setRange(value);
+    <div className="min-w-0 space-y-5 bg-background p-4 md:p-6 lg:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <ManagementPageHeading title="Reports and Analytics" description={calendarDate.formatRange(rangeStart, rangeEnd)} />
+        <Button type="button" variant="outline" onClick={exportCsv} disabled={!data || searchPending || exporting}>
+          {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+          {exporting ? "Downloading..." : "Download CSV"}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+        <SearchInput
+          value={searchInput}
+          onValueChange={setSearchInput}
+          placeholder="Search reports..."
+          aria-label="Search reports by booking code, customer, or vehicle"
+          maxLength={160}
+          wrapperClassName="col-span-2 sm:min-w-[17rem] sm:flex-1"
+        />
+        <div className="col-span-2 flex w-full items-center gap-1 sm:w-auto">
+          <Button
+            type="button" variant="outline" size="icon" aria-label="Previous period"
+            disabled={previous < earliestDate} onClick={() => update({ date: previous })}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Input
+            type="date" aria-label="Report date" className="min-w-0 flex-1 bg-surface sm:w-[160px]"
+            value={selection.date} min={earliestDate} max={today}
+            onChange={(event) => {
+              if (event.target.value && event.target.validity.valid) update({ date: event.target.value });
             }}
-            ariaLabel="Select report period"
-            height="large"
-            className="bg-surface text-sm sm:w-[170px]"
-            options={[
-              { value: "6_months", label: "Last 6 months" },
-              { value: "12_months", label: "Last 12 months" },
-              { value: "this_year", label: "This year" },
-              { value: "all_time", label: "All time" },
-            ]}
           />
+          <Button
+            type="button" variant="outline" size="icon" aria-label="Next period"
+            disabled={next > today} onClick={() => update({ date: next })}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
         </div>
+        <FilterSelect<ReportPeriod>
+          value={selection.period}
+          onValueChange={(period) => update({ period })}
+          ariaLabel="Report period"
+          className="sm:w-[112px]"
+          options={periods}
+        />
+        <FilterSelect
+          value={selection.vehicleId ? String(selection.vehicleId) : "all"}
+          onValueChange={(value) => update({ vehicleId: value === "all" ? undefined : Number(value) })}
+          ariaLabel="Vehicle"
+          className="sm:w-[190px]"
+          options={[{ value: "all", label: "All vehicles" }, ...vehicles.map(({ id, name }) => ({ value: String(id), label: name }))]}
+        />
+        <FilterSelect
+          value={selection.rentalType ?? "all"}
+          onValueChange={(value) => update({ rentalType: value === "all" ? undefined : value as ReportSelection["rentalType"] })}
+          ariaLabel="Rental type"
+          className="sm:w-[186px]"
+          options={rentalTypes}
+        />
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-destructive-border bg-destructive-surface px-4 py-3 text-sm text-destructive">
-          <AlertCircle size={16} />
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-3">
-        {kpis.map(({ label, value, icon }) => (
-          <KpiCard
-            key={label}
-            label={label}
-            value={value}
-            icon={icon}
-          />
-        ))}
-      </div>
-
-      <Tabs defaultValue="overview" className="space-y-4">
-        <div>
-          <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-border bg-surface/60 p-1">
-            <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="revenue" className="text-sm">Revenue</TabsTrigger>
-            <TabsTrigger value="bookings" className="text-sm">Bookings</TabsTrigger>
-            <TabsTrigger value="fleet" className="text-sm">Fleet Performance</TabsTrigger>
-            <TabsTrigger value="customers" className="text-sm">Customer Insights</TabsTrigger>
-            <TabsTrigger value="risk" className="text-sm">Risk & Telematics</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Revenue Trend</CardTitle>
-                <CardDescription className="text-sm">Received payment performance by month</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ChartContainer config={chartConfig} className="h-[260px] w-full">
-                  <LineChart data={data.revenueTrend} margin={{ left: -16, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" />
-                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} tickFormatter={(value) => formatPhilippinePeso(Number(value), true)} />
-                    <ChartTooltip content={<ChartTooltipContent />} formatter={(value) => [formatPhilippinePeso(Number(value ?? 0)), "Revenue"]} />
-                    <Line type="monotone" dataKey="revenue" stroke="#346EF6" strokeWidth={2.5} dot={false} />
-                  </LineChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Booking Status Distribution</CardTitle>
-                <CardDescription className="text-sm">Booking status mix for the selected period</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex flex-col items-center gap-4 md:flex-row">
-                  <ChartContainer config={chartConfig} className="h-[220px] w-[220px] shrink-0">
-                    <PieChart>
-                      <Pie data={data.bookingStatusDistribution} dataKey="value" innerRadius={58} outerRadius={86} paddingAngle={2}>
-                        {data.bookingStatusDistribution.map((entry) => (
-                          <Cell key={entry.name} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                    </PieChart>
-                  </ChartContainer>
-                  <div className="w-full flex-1 space-y-2">
-                    {data.bookingStatusDistribution.map((item) => (
-                      <div key={item.name} className="flex items-center justify-between rounded-xl bg-background px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                          <span className="text-sm text-muted-foreground">{item.name}</span>
-                        </div>
-                        <span className="text-sm font-semibold text-foreground">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-            <Card className="rounded-2xl border border-border bg-surface shadow-none xl:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Monthly Booking Performance</CardTitle>
-                <CardDescription className="text-sm">Bookings created versus completed rentals</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <ChartContainer config={chartConfig} className="h-[260px] w-full">
-                  <BarChart data={data.bookingPerformance} margin={{ left: -16, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="bookings" fill="#93C5FD" radius={[6, 6, 0, 0]} />
-                    <Bar dataKey="completed" fill="#346EF6" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Recent Highlights</CardTitle>
-                <CardDescription className="text-sm">Insights calculated from current records</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2.5">
-                {data.highlights.map((item) => (
-                  <div key={item} className="flex items-start gap-2 rounded-xl bg-background px-3 py-2.5">
-                    <BarChart3 size={13} className="mt-0.5 shrink-0 text-primary" />
-                    <p className="text-sm text-muted-foreground">{item}</p>
-                  </div>
+      <Tabs value={selection.section} onValueChange={(section) => update({ section: section as ReportSection })} className="gap-4">
+        <TabsList aria-label="Report sections">
+          {sections.map(({ value, label }) => <TabsTrigger key={value} value={value}>{label}</TabsTrigger>)}
+        </TabsList>
+        <TabsContent value={selection.section} className="space-y-4">
+          {error ? (
+            <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive-border bg-destructive-surface p-4 text-destructive">
+              Report could not be loaded.
+              <Button variant="outline" size="sm" onClick={() => { setError(false); setRetry((value) => value + 1); }}>
+                Try again
+              </Button>
+            </div>
+          ) : !data ? (
+            <div role="status" className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Loading report...
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(160px,1fr))]">
+                {data.metrics.map((metric) => (
+                  <KpiCard key={metric.label} label={metric.label} value={formatValue(metric.value, metric.format)} icon={metricIcons[metric.format]} />
                 ))}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="revenue" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Month</CardTitle></CardHeader>
-              <CardContent className="pt-0">
-                <ChartContainer config={chartConfig} className="h-[260px] w-full">
-                  <AreaChart data={data.revenueTrend} margin={{ left: -16, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" />
-                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} tickFormatter={(value) => formatPhilippinePeso(Number(value), true)} />
-                    <ChartTooltip content={<ChartTooltipContent />} formatter={(value) => [formatPhilippinePeso(Number(value ?? 0)), "Revenue"]} />
-                    <Area type="monotone" dataKey="revenue" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.12} strokeWidth={2} />
-                  </AreaChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue by Rental Type</CardTitle></CardHeader>
-              <CardContent className="pt-0">
-                <ChartContainer config={chartConfig} className="h-[260px] w-full">
-                  <BarChart data={data.revenueByRentalType} margin={{ left: -6, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" vertical={false} />
-                    <XAxis dataKey="type" tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} tickFormatter={(value) => formatPhilippinePeso(Number(value), true)} />
-                    <ChartTooltip content={<ChartTooltipContent />} formatter={(value) => [formatPhilippinePeso(Number(value ?? 0)), "Revenue"]} />
-                    <Bar dataKey="value" fill="#346EF6" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {revenueBreakdown.map((item, index) => {
-              const Icon = revenueBreakdownIcons[index] ?? PhilippinePeso;
-
-              return (
-                <KpiCard
-                  key={item.label}
-                  label={item.label}
-                  value={formatPhilippinePeso(item.value, true)}
-                  icon={Icon}
-                />
-              );
-            })}
-          </div>
-
-          <div>
-            <TableCard>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Revenue Transactions</CardTitle></CardHeader>
-              <CardContent className="px-0 pb-0">
-                <div className="min-w-0">
-                  <Table>
-                    <colgroup>
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "15%" }} />
-                      <col style={{ width: "17%" }} />
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "12%" }} />
-                      <col style={{ width: "12%" }} />
-                      <col style={{ width: "12%" }} />
-                      <col />
-                    </colgroup>
-                    <TableHeader>
-                      <TableRow className="bg-background">
-                        {["Booking ID", "Customer", "Vehicle", "Rental Type", "Payment Method", "Amount", "Paid Date", "Status"].map((heading) => (
-                          <TableHead key={heading} className="px-4 py-3 text-xs">{heading}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {revenuePagination.total === 0 ? (
-                        <TableRow><TableCell colSpan={8}><EmptyState message="No revenue transactions found." /></TableCell></TableRow>
-                      ) : revenuePagination.rows.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell data-label="Booking ID" className="px-4 py-3 font-mono text-sm text-primary">{row.bookingId}</TableCell>
-                          <TableCell data-label="Customer" className="px-4 py-3 text-sm font-medium text-foreground">{row.customer}</TableCell>
-                          <TableCell data-label="Vehicle" className="px-4 py-3 text-sm text-muted-foreground">{row.vehicle}</TableCell>
-                          <TableCell data-label="Rental Type" className="px-4 py-3 text-sm text-muted-foreground">{row.rentalType}</TableCell>
-                          <TableCell data-label="Payment Method" className="px-4 py-3 text-sm text-muted-foreground">{row.paymentMethod}</TableCell>
-                          <TableCell data-label="Amount" className="px-4 py-3 text-sm font-semibold text-foreground">{formatPhilippinePeso(row.amount)}</TableCell>
-                          <TableCell data-label="Paid Date" className="px-4 py-3 text-sm text-muted-foreground">{row.paidDate ?? "N/A"}</TableCell>
-                          <TableCell data-label="Status" className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+              </div>
+              {charts.length > 0 && (
+                <div className={charts.length > 1 ? "grid gap-4 xl:grid-cols-2" : "grid gap-4"}>
+                  {charts.map((chart) => <ReportChartCard key={chart.title} chart={chart} />)}
                 </div>
-              </CardContent>
-            </TableCard>
-            <TablePagination {...revenuePagination} label="Revenue report pagination" disabled={isLoading} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="bookings" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-            <Card className="rounded-2xl border border-border bg-surface shadow-none xl:col-span-2">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Booking Volume</CardTitle></CardHeader>
-              <CardContent className="pt-0">
-                <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                  <LineChart data={data.bookingPerformance} margin={{ left: -16, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" />
-                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line dataKey="bookings" stroke="#346EF6" strokeWidth={2.2} dot={false} />
-                  </LineChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Cancellation Analytics</CardTitle></CardHeader>
-              <CardContent className="space-y-2.5">
-                <div className="rounded-xl bg-background p-3">
-                  <p className="text-xs text-muted-foreground">Cancellation & Rejection Rate</p>
-                  <p className="text-lg font-semibold text-destructive">{data.cancellation.rate}%</p>
-                </div>
-                <div className="rounded-xl bg-background p-3">
-                  <p className="text-xs text-muted-foreground">Cancelled</p>
-                  <p className="text-lg font-semibold text-foreground">{data.cancellation.cancelled}</p>
-                </div>
-                <div className="rounded-xl bg-background p-3">
-                  <p className="text-xs text-muted-foreground">Rejected</p>
-                  <p className="text-lg font-semibold text-foreground">{data.cancellation.rejected}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div>
-            <TableCard>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Booking Records</CardTitle></CardHeader>
-              <CardContent className="px-0 pb-0">
-                <div className="min-w-0">
-                  <Table>
-                    <colgroup>
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "15%" }} />
-                      <col style={{ width: "16%" }} />
-                      <col style={{ width: "13%" }} />
-                      <col style={{ width: "13%" }} />
-                      <col />
-                      <col style={{ width: "12%" }} />
-                      <col style={{ width: "10%" }} />
-                    </colgroup>
-                    <TableHeader>
-                      <TableRow className="bg-background">
-                        {["Booking ID", "Customer", "Vehicle", "Rental Date", "Return Date", "Monitoring Zones", "Total Cost", "Status"].map((heading) => (
-                          <TableHead key={heading} className="px-4 py-3 text-xs">{heading}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bookingPagination.total === 0 ? (
-                        <TableRow><TableCell colSpan={8}><EmptyState message="No booking records found." /></TableCell></TableRow>
-                      ) : bookingPagination.rows.map((row) => (
-                        <TableRow key={row.internalId}>
-                          <TableCell data-label="Booking ID" className="px-4 py-3 font-mono text-sm text-primary">{row.bookingId}</TableCell>
-                          <TableCell data-label="Customer" className="px-4 py-3 text-sm font-medium text-foreground">{row.customer}</TableCell>
-                          <TableCell data-label="Vehicle" className="px-4 py-3 text-sm text-muted-foreground">{row.vehicle}</TableCell>
-                          <TableCell data-label="Rental Date" className="px-4 py-3 text-sm text-muted-foreground">{row.rentalDate ?? "N/A"}</TableCell>
-                          <TableCell data-label="Return Date" className="px-4 py-3 text-sm text-muted-foreground">{row.returnDate ?? "N/A"}</TableCell>
-                          <TableCell data-label="Monitoring Zones" className="px-4 py-3 text-sm text-muted-foreground">{row.monitoringZones?.length ? row.monitoringZones.map((zone, index) => <span key={index} className="block font-medium text-foreground">{zone.name}</span>) : "—"}</TableCell>
-                          <TableCell data-label="Total Cost" className="px-4 py-3 text-sm font-semibold text-foreground">{formatPhilippinePeso(row.totalCost)}</TableCell>
-                          <TableCell data-label="Status" className="px-4 py-3"><Badge className={`border ${statusBadge(row.status)}`}>{row.status}</Badge></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </TableCard>
-            <TablePagination {...bookingPagination} label="Booking report pagination" disabled={isLoading} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="fleet" className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            {data.fleetHighlights.slice(0, 4).map((item, index) => {
-              const Icon = fleetHighlightIcons[index] ?? Car;
-
-              return (
-                <KpiCard
-                  key={item.label}
-                  label={item.label}
-                  value={item.value}
-                  description={item.sub}
-                  icon={Icon}
-                />
-              );
-            })}
-          </div>
-
-          <div>
-            <TableCard>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Fleet Performance Table</CardTitle></CardHeader>
-              <CardContent className="px-0 pb-0">
-                <div className="min-w-0">
-                  <Table>
-                    <colgroup>
-                      <col style={{ width: "22%" }} />
-                      <col />
-                      <col style={{ width: "12%" }} />
-                      <col style={{ width: "16%" }} />
-                      <col style={{ width: "12%" }} />
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "10%" }} />
-                    </colgroup>
-                    <TableHeader>
-                      <TableRow className="bg-background">
-                        {["Vehicle", "Model", "Total Bookings", "Received Revenue", "Utilization", "Maintenance", "Incidents"].map((heading) => (
-                          <TableHead key={heading} className="px-4 py-3 text-xs">{heading}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fleetPagination.total === 0 ? (
-                        <TableRow><TableCell colSpan={7}><EmptyState message="No fleet records found." /></TableCell></TableRow>
-                      ) : fleetPagination.rows.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell data-label="Vehicle" className="px-4 py-3 text-sm font-medium text-foreground">{row.vehicle}</TableCell>
-                          <TableCell data-label="Model" className="px-4 py-3 text-sm text-muted-foreground">{row.model ?? "N/A"}</TableCell>
-                          <TableCell data-label="Total Bookings" className="px-4 py-3 text-sm text-muted-foreground">{row.totalBookings}</TableCell>
-                          <TableCell data-label="Received Revenue" className="px-4 py-3 text-sm font-semibold text-foreground">{formatPhilippinePeso(row.revenue)}</TableCell>
-                          <TableCell data-label="Utilization" className="px-4 py-3 text-sm text-muted-foreground">{row.utilization}%</TableCell>
-                          <TableCell data-label="Maintenance" className="px-4 py-3"><Badge className={`border ${maintenanceBadge(row.maintenanceStatus)}`}>{row.maintenanceStatus}</Badge></TableCell>
-                          <TableCell data-label="Incidents" className="px-4 py-3 text-sm text-muted-foreground">{row.incidents}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </TableCard>
-            <TablePagination {...fleetPagination} label="Fleet report pagination" disabled={isLoading} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="customers" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">New vs Returning Customers</CardTitle></CardHeader>
-              <CardContent className="pt-0">
-                <ChartContainer config={chartConfig} className="h-[260px] w-full">
-                  <AreaChart data={data.newVsReturning} margin={{ left: -16, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" />
-                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Area type="monotone" dataKey="new" stroke="#346EF6" fill="#DBEAFE" fillOpacity={0.8} />
-                    <Area type="monotone" dataKey="returning" stroke="#10B981" fill="#D1FAE5" fillOpacity={0.65} />
-                  </AreaChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Customers with Cancellations</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {data.customerCancellationLeaders.length === 0 ? (
-                  <EmptyState message="No customer cancellations in this period." />
-                ) : data.customerCancellationLeaders.map((customer) => (
-                  <div key={customer.id} className="flex items-center justify-between gap-3 rounded-xl bg-background px-3 py-2.5">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{customer.name}</p>
-                      <p className="text-xs text-muted-foreground">{customer.email}</p>
-                    </div>
-                    <Badge className="border border-destructive-border bg-destructive-surface text-destructive">
-                      {customer.cancelledBookings}
-                    </Badge>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div>
-            <TableCard>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Customer Insights Table</CardTitle></CardHeader>
-              <CardContent className="px-0 pb-0">
-                <div className="min-w-0">
-                  <Table>
-                    <colgroup>
-                      <col style={{ width: "18%" }} />
-                      <col />
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "11%" }} />
-                      <col style={{ width: "13%" }} />
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "13%" }} />
-                    </colgroup>
-                    <TableHeader>
-                      <TableRow className="bg-background">
-                        {["Customer", "Email", "Total Bookings", "Completed", "Cancelled / Rejected", "Total Spent", "Last Booking"].map((heading) => (
-                          <TableHead key={heading} className="px-4 py-3 text-xs">{heading}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {customerPagination.total === 0 ? (
-                        <TableRow><TableCell colSpan={7}><EmptyState message="No customer records found." /></TableCell></TableRow>
-                      ) : customerPagination.rows.map((row) => (
-                        <TableRow key={row.id}>
-                          <TableCell data-label="Customer" className="px-4 py-3 text-sm font-medium text-foreground">{row.name}</TableCell>
-                          <TableCell data-label="Email" className="px-4 py-3 text-sm text-muted-foreground">{row.email}</TableCell>
-                          <TableCell data-label="Total Bookings" className="px-4 py-3 text-sm text-muted-foreground">{row.totalBookings}</TableCell>
-                          <TableCell data-label="Completed" className="px-4 py-3 text-sm text-success">{row.completedBookings}</TableCell>
-                          <TableCell data-label="Cancelled / Rejected" className="px-4 py-3 text-sm text-destructive">{row.cancelledBookings}</TableCell>
-                          <TableCell data-label="Total Spent" className="px-4 py-3 text-sm font-semibold text-foreground">{formatPhilippinePeso(row.totalSpent)}</TableCell>
-                          <TableCell data-label="Last Booking" className="px-4 py-3 text-sm text-muted-foreground">{row.lastBookingDate}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </TableCard>
-            <TablePagination {...customerPagination} label="Customer report pagination" disabled={isLoading} />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="risk" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Risk Event Analytics</CardTitle></CardHeader>
-              <CardContent className="pt-0">
-                {data.riskEventCounts.length === 0 ? (
-                  <EmptyState message="No telematics risk events in this period." />
-                ) : (
-                  <ChartContainer config={chartConfig} className="h-[260px] w-full">
-                    <BarChart data={data.riskEventCounts} margin={{ left: -10, right: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#F0F2F7" vertical={false} />
-                      <XAxis dataKey="type" tick={{ fontSize: 10, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#A0AABF" }} axisLine={false} tickLine={false} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="count" fill="#F59E0B" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ChartContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border border-border bg-surface shadow-none">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Risk Summary</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {data.riskSummary.length === 0 ? (
-                  <EmptyState message="No risk summary is available." />
-                ) : data.riskSummary.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between rounded-xl bg-background px-3 py-2.5">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">{item.count} events</p>
-                    </div>
-                    <Badge className={`border ${severityBadge(item.severity)}`}>{item.severity}</Badge>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div>
-            <TableCard>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Risk & Telematics Events</CardTitle></CardHeader>
-              <CardContent className="px-0 pb-0">
-                <div className="min-w-0">
-                  <Table>
-                    <colgroup>
-                      <col style={{ width: "10%" }} />
-                      <col style={{ width: "10%" }} />
-                      <col style={{ width: "16%" }} />
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "13%" }} />
-                      <col />
-                      <col style={{ width: "14%" }} />
-                      <col style={{ width: "10%" }} />
-                    </colgroup>
-                    <TableHeader>
-                      <TableRow className="bg-background">
-                        {["Event ID", "Booking ID", "Vehicle", "Customer", "Event Type", "Location", "Time Stamp", "Severity"].map((heading) => (
-                          <TableHead key={heading} className="px-4 py-3 text-xs">{heading}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {riskPagination.total === 0 ? (
-                        <TableRow><TableCell colSpan={8}><EmptyState message="No risk events found." /></TableCell></TableRow>
-                      ) : riskPagination.rows.map((row) => (
-                        <TableRow key={row.eventId}>
-                          <TableCell data-label="Event ID" className="px-4 py-3 font-mono text-sm text-primary">{row.eventId}</TableCell>
-                          <TableCell data-label="Booking ID" className="px-4 py-3 text-sm text-muted-foreground">{row.bookingId}</TableCell>
-                          <TableCell data-label="Vehicle" className="px-4 py-3 text-sm text-muted-foreground">{row.vehicle}</TableCell>
-                          <TableCell data-label="Customer" className="px-4 py-3 text-sm text-muted-foreground">{row.customer}</TableCell>
-                          <TableCell data-label="Event Type" className="px-4 py-3 text-sm text-foreground">{row.eventType}</TableCell>
-                          <TableCell data-label="Location" className="px-4 py-3 text-sm text-muted-foreground">{row.location}</TableCell>
-                          <TableCell data-label="Time Stamp" className="px-4 py-3 text-sm text-muted-foreground">{row.timestamp ?? "N/A"}</TableCell>
-                          <TableCell data-label="Severity" className="px-4 py-3"><Badge className={`border ${severityBadge(row.severity)}`}>{row.severity}</Badge></TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </TableCard>
-            <TablePagination {...riskPagination} label="Risk report pagination" disabled={isLoading} />
-          </div>
+              )}
+              {data.table && <ReportTable table={data.table} onPageChange={(page) => update({ page })} />}
+              {selection.section === "telematics" && canViewDrivingAnalysis && (
+                <Button variant="outline" asChild><Link href={`/${portal}/driving-analysis`}>Driving Analysis</Link></Button>
+              )}
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
 export default ReportsAnalytics;

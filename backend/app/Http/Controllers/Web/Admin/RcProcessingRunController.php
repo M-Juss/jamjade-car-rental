@@ -25,7 +25,7 @@ class RcProcessingRunController extends Controller
 
     private function recording(Request $request, string $id): RcNativeRecording
     {
-        abort_unless($this->access->enabled(), 403, 'RC Research is unavailable.');
+        abort_unless($this->access->enabled(), 403, 'Data Collection is unavailable.');
 
         return $this->research->recording($request->user(), $id);
     }

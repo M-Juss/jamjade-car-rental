@@ -64,14 +64,14 @@ test('duplicate timestamps and nonfinite readings do not inflate coverage', () =
 function evidence() {
   const capture = new CalibrationAccumulator(reference);
   capture.add([0, 0, 0], gravity, [0, 0, 0], 1, 50);
-  return { ...capture.summary(100), protocol_version: 3, context: 'a'.repeat(64), consent: true, supervised: true, started_at: '2026-10-16T01:00:00.000Z', ended_at: '2026-10-16T01:00:06.000Z' };
+  return { ...capture.summary(100), protocol_version: 4, context: 'a'.repeat(64), consent: true, supervised: true, started_at: '2026-10-16T01:00:00.000Z', ended_at: '2026-10-16T01:00:06.000Z' };
 }
 
 test('capture schema mirrors consent, scalar bounds, dates and forbidden extra fields', () => {
   assert.equal(calibrationEvidenceSchema.safeParse(evidence()).success, true);
   for (const override of [
     { consent: false }, { supervised: false }, { samples: [] }, { sample_count: 2001 },
-    { sample_count: 1.5 }, { sample_count: null }, { protocol_version: 1 }, { protocol_version: 2 }, { context: 'bad' },
+    { sample_count: 1.5 }, { sample_count: null }, { protocol_version: 1 }, { protocol_version: 2 }, { protocol_version: 3 }, { context: 'bad' },
     { gravity_x: Infinity }, { longitudinal_min: 1, longitudinal_max: 0 },
     { ended_at: '2026-10-16T00:59:00.000Z' },
     { horizontal_rms: null }, { linear_stddev: -1 }, { rotation_stddev: 2001 }, { noise_baseline: {} },

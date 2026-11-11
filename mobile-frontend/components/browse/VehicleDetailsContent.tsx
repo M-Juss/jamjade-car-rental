@@ -1,4 +1,4 @@
-import { ArrowLeft, Fuel, Gauge, Heart, Palette, Users } from 'lucide-react-native';
+import { ArrowLeft, Fuel, Gauge, Heart, LockKeyhole, Palette, Users } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ type VehicleDetailsContentProps = {
   isBookmarked: boolean;
   bookNowDisabled?: boolean;
   bookNowInfo?: string;
+  onRetryAvailability?: () => void;
   onBackPress: () => void;
   onBookmarkPress: () => void;
   onBookNow: () => void;
@@ -24,6 +25,7 @@ export function VehicleDetailsContent({
   isBookmarked,
   bookNowDisabled = false,
   bookNowInfo,
+  onRetryAvailability,
   onBackPress,
   onBookmarkPress,
   onBookNow,
@@ -47,7 +49,7 @@ export function VehicleDetailsContent({
 
   return (
     <View
-      className="flex-1 bg-muted"
+      className="flex-1 bg-background"
       style={{ paddingLeft: insets.left, paddingRight: insets.right }}>
       <ScrollView
         className="flex-1"
@@ -56,12 +58,12 @@ export function VehicleDetailsContent({
         <View
           className="mx-auto w-full max-w-[680px] px-4 pb-4"
           style={{ paddingTop: insets.top + 8 }}>
-          <View className="flex-row items-center justify-between gap-2">
+          <View className="flex-row items-center justify-between gap-2 border-b border-border pb-3">
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back to Browse"
               onPress={onBackPress}
-              className="h-11 w-11 shrink-0 items-center justify-center rounded-field bg-surface active:opacity-70">
+              className="h-11 w-11 shrink-0 items-center justify-center rounded-field active:opacity-70">
               <ArrowLeft size={22} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
             <Text
@@ -78,7 +80,7 @@ export function VehicleDetailsContent({
                 accessibilityLabel={isBookmarked ? `Remove ${vehicleTitle} bookmark` : `Bookmark ${vehicleTitle}`}
                 accessibilityState={{ selected: isBookmarked }}
                 onPress={onBookmarkPress}
-                className="h-11 w-11 items-center justify-center rounded-field bg-surface active:opacity-70">
+                className="h-11 w-11 items-center justify-center rounded-field active:opacity-70">
                 <Heart
                   size={22}
                   color={isBookmarked ? themeColors.primary : themeColors.foreground}
@@ -89,7 +91,7 @@ export function VehicleDetailsContent({
             </View>
           </View>
 
-          <Text accessibilityRole="header" className="font-sans mt-4 text-[26px] font-semibold leading-[31px] text-foreground">
+          <Text accessibilityRole="header" className="font-sans mt-3 text-[26px] font-semibold leading-[31px] text-foreground">
             {vehicleTitle}
           </Text>
 
@@ -149,6 +151,7 @@ export function VehicleDetailsContent({
             </Text>
             <Text
               className="font-sans mt-2 text-[15px] leading-[22px] text-muted-foreground"
+              style={{ textAlign: 'justify' }}
               numberOfLines={isDescriptionExpanded || !isDescriptionLong ? undefined : 3}>
               {description}
             </Text>
@@ -195,20 +198,26 @@ export function VehicleDetailsContent({
             {bookNowInfo}
           </Text>
         )}
-        <View className="min-h-16 flex-row flex-wrap items-center justify-between gap-3 rounded-card bg-foreground p-2 pl-5">
-          <Text className="font-sans shrink text-[24px] font-semibold text-surface">
+        {onRetryAvailability && (
+          <Pressable accessibilityRole="button" onPress={onRetryAvailability} className="mb-2 min-h-11 justify-center px-1">
+            <Text className="font-sans text-[14px] font-medium text-primary">Try again</Text>
+          </Pressable>
+        )}
+        <View className="min-h-control flex-row flex-wrap items-center justify-between gap-3 rounded-field border border-border bg-surface px-3 py-2">
+          <Text className="font-sans shrink text-[18px] font-semibold text-foreground">
             {formatPeso(vehicle.pricePerDay)}
-            <Text className="text-[13px] font-medium text-surface">/day</Text>
+            <Text className="text-[11px] font-medium text-secondary-foreground">/day</Text>
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={bookNowDisabled ? 'Book Now unavailable until your balance is settled' : `Book ${vehicleTitle}`}
+            accessibilityLabel={bookNowDisabled ? 'Book Now unavailable' : `Book ${vehicleTitle}`}
             accessibilityState={{ disabled: bookNowDisabled }}
             disabled={bookNowDisabled}
             onPress={onBookNow}
-            className={`min-h-12 items-center justify-center rounded-field px-6 py-3 ${
+            className={`min-h-11 flex-row items-center justify-center gap-2 rounded-field px-4 py-2 ${
               bookNowDisabled ? 'bg-surface' : 'bg-primary active:bg-primary-hover'
             }`}>
+            {bookNowDisabled && <LockKeyhole size={18} color={themeColors.mutedForeground} accessible={false} />}
             <Text className={`font-sans text-[15px] font-medium ${bookNowDisabled ? 'text-muted-foreground' : 'text-surface'}`}>
               Book Now
             </Text>

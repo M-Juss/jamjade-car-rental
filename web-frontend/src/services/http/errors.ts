@@ -15,3 +15,11 @@ export class ApiError extends Error {
     this.errors = errors;
   }
 }
+
+/** The requester closed owner verification without submitting the action. */
+export class OwnerVerificationCancelled extends Error {
+  constructor() {
+    super("Owner verification cancelled");
+    this.name = "OwnerVerificationCancelled";
+  }
+}

@@ -113,3 +113,160 @@ export and the web production build passed. The web build needed network access
 for the existing Poppins font. Callback fingerprints across 361 UI files and 591
 protected application files matched the starting snapshot. Browser access remains
 disabled; browser and Android visual verification are still pending.
+
+## Self-drive verification dialog — 2026-11-11
+
+Self-drive verification dialog follow-up — 2026-11-11: the existing
+`FormDialogHeader` now shows the customer's name and reuses its `endContent`
+slot for the server-derived review/eligibility badge beside Close. The duplicate
+customer-summary card was removed. Both document types use three metadata
+columns above their previews at `sm` and wider, stacking on smaller screens;
+rejection reasons span the metadata grid. Implemented in
+`src/modules/management/verification/VerificationModule.tsx`. Review actions,
+document previews and API contracts are unchanged. Visual confirmation is left
+for the user's manual review. TypeScript and scoped ESLint checks passed.
+The Admin-only Edit verification menu item appears only when at least one
+document is approved, in both desktop and mobile web lists. View customer
+retains pending-document review actions for Admin and Staff, so customers with
+no approved documents can still have their submissions reviewed.
+
+## Uniform web tabs — 2026-11-11
+
+The vehicle-detail section navigation is the approved visual reference for all
+website tabs: a full-width white surface with soft border, rounded strip and
+rounded pale-blue selected item, blue selected text, muted inactive text and
+consistent semibold typography/padding. `components/ui/tab-styles.ts` owns the
+shared list and trigger classes. Radix `TabsList`/`TabsTrigger` and vehicle
+route links reuse those classes; feature-level size, fill and grid overrides
+were removed so they cannot drift independently.
+
+Applied to Maintenance, Driving Analysis, Reports, Fleet detail tabs, booking
+details, native recording review and legacy recording review, plus the vehicle
+route navigation itself. Route links retain href/aria-current navigation;
+Radix tabs retain controlled values, panel associations, keyboard handling,
+disabled states and visible focus. Lists distribute available width equally;
+long labels scroll horizontally on narrow screens instead of shrinking text
+or overflowing the page. Booking's existing short mobile labels remain.
+Backend contracts, route destinations, selected-tab values and mobile app UI
+are unchanged. No additional library or APK rebuild is required.
+
+Verification: web lint, TypeScript, production build and diff checks passed.
+Signed-in browser checks confirmed the Maintenance tabs have equal desktop
+widths and the selected item uses the existing muted fill/primary text tokens.
+Maintenance selection and Driving Analysis Rentals/Operators switching worked.
+At 390 px, Driving Analysis had no page overflow, the six Reports tabs scrolled
+inside their 356 px strip, and the booking dialog's four tabs fit its 322 px
+strip. ArrowRight selected Rental and opened its matching booking panel.
+The temporary viewport override was reset and Maintenance was left open.
+Other consumers inherit the same shared source and compiled successfully;
+not every module's individual data state was exercised in the browser.
+
+## Calendar-centered dashboard — 2026-11-11
+
+The dashboard keeps the rental calendar as its main surface: approximately three
+quarters of the wide desktop content area, with a 660 px base calendar height and
+additional height for busy dates. The secondary rail contains the existing booking
+attention queue plus fleet status, pending follow-ups and outstanding customer
+balances. Today's pickups/remaining returns and the shared maintenance totals sit
+below. Smaller layouts stack the surfaces; the calendar scrolls within its own
+container without widening the page.
+
+The existing `KpiCard`, `FilterSelect`, `SummaryList`, content-card, dialog and
+booking-link patterns are reused. The top metrics are today's pickups, today's
+outstanding returns, active rentals and current-month gross receipts. Confirmed
+bookings remain as supporting context. Vehicle/status/rental-type filters apply to
+the visible calendar; daily operations and receipts retain their own explicit
+periods. Calendar event labels include the plate, and the event dialog links to
+the existing booking details/workflow. Pending bookings are labeled awaiting
+payment because successful payment automatically confirms them. The booking list
+accepts a validated initial `status` query parameter for this shortcut.
+
+`DashboardOverviewService` adds an `overview` read model to the established
+`GET /admin/dashboard?start=...&end=...` response. It restricts operation rows and
+balances to `manage bookings`, document counts to `review documents`, fleet totals
+to `manage vehicles`, and maintenance totals to `manage maintenance`; unavailable
+modules return null. Pending documents count the required customer documents,
+not files or historical passports. Customer additional charges already contribute
+to `remaining_balance`, so they are not added again. Cancelled/rejected/completed
+bookings and pending payment attempts are excluded from collectible balances.
+Fleet totals describe saved operational status, not a guarantee of availability
+for a requested future interval. Maintenance reuses the existing summary contract.
+
+The calendar date range, current-month receipt range, today queries and visible
+dates use Asia/Manila. Browser calendar fields are projected into Manila wall-clock
+time for the existing date-fns localizer. Scheduled confirmed/ongoing returns are
+excluded once physical receipt is recorded. Operation results are chronological,
+capped at 20, with the full total supplied separately. Refresh failures retain the
+last loaded data and expose retry; a successful refresh clears the error.
+
+Sources: `backend/app/Services/DashboardOverviewService.php`,
+`backend/app/Services/ReportService.php`,
+`backend/app/Http/Controllers/Web/Admin/DashboardController.php`,
+`web-frontend/src/services/report/types.ts`, and
+`web-frontend/src/modules/management/dashboard/`. The request contract remains
+`DashboardRequest` (`start` and `end`); the new calendar filters are local read
+controls and introduce no submission form or Zod contract.
+
+Verification: 36 focused dashboard/report/late-return tests passed (180 assertions).
+Web lint, TypeScript and production build passed using the installed Node 24
+runtime; the default Node 25 executable has a missing system library. The build
+needed network access for the existing Google Poppins font. Browser checks covered
+calendar filtering/empty state, month navigation, refresh, calendar-to-booking
+navigation and the pending-payment filter shortcut. Desktop and 390 px phone
+layouts were inspected; document width remained 390 px while the calendar stayed
+inside its horizontal scroll container. The full backend run passed 1,194 of
+1,199 tests (7,391 assertions): two date-label expectations in `BookingTimezoneTest`
+and three active-booking availability expectations in
+`SelfDriveBookingAvailabilityTest` failed outside these dashboard paths. No live
+bookings or customer data were changed during verification.
+
+`DashboardSnapshot.tsx` shows the four Maintenance counts on separate rows with
+right-aligned values. Fleet status uses tighter legend spacing and wraps whole
+entries on narrow cards so labels stay on one line. Web lint and TypeScript
+passed. Browser verification was unavailable because local browser use is disabled.
+
+## Reports and Analytics — 2026-11-11
+
+Reports and Analytics appears in the management navigation for Admin and Staff
+with `view reports`. The heading shows the selected date range. The toolbar
+starts with search, followed by the date picker, period, vehicle, and rental
+type. Search matches booking codes, customer names, and vehicle details and
+applies to charts, tables, and CSV. Maintenance records match vehicle details.
+Month is the default. The API converts the selected Manila calendar interval
+to UTC and uses an exclusive end. Charts group by hour for Day, day for Week
+and Month, and month for Year. Weeks begin on Monday. Current-period charts
+show elapsed time through the current interval. Detail tables use the shared
+10-record page size.
+
+`ReportAnalyticsService` reads completed PHP receipts by payment completion
+time and returned refunds by the recorded refund time. Historical receipts
+without a completion time use the existing creation-time fallback. Booking
+activity uses booking creation and status event timestamps. No-shows come from
+cancellation records. Fleet hours use the overlap of actual release and
+physical return with the period. Late returns compare physical return with the
+scheduled rental end. Maintenance completions use the vehicle filter and appear
+when all rental types are selected. Customer classification uses each renter's
+first completed rental across their history. Telematics uses started monitoring
+trips and recorded geofence exits and interruptions. The Driving Analysis link
+uses the same permissions as the destination.
+
+The CSV endpoint streams the selected tab's full filtered result using the same
+data sources as the report. Overview exports interval totals. Dates in CSV use
+Manila ISO timestamps and money is represented as numeric PHP values. The
+report view uses the existing JamJade tabs, cards, filters, charts and responsive
+tables. The report request is a set of read filters with server-side validation.
+
+Sources include `backend/app/Support/ReportPeriod.php`,
+`backend/app/Services/ReportAnalyticsService.php`,
+`backend/app/Http/Requests/Admin/Report/ReportAnalyticsRequest.php`, and
+`web-frontend/src/modules/management/reports/ReportsModule.tsx`.
+
+Verification covered all six report queries against local MySQL in a read-only
+transaction. The local database has payment, booking lifecycle, physical return,
+maintenance and monitoring start records. Its geofence exit and interruption
+log was empty. All 14 focused report and dashboard tests passed. PHP formatting,
+web lint, TypeScript and the production build passed. Browser checks used a
+synthetic database and covered the sidebar entry, desktop and 390 px layouts,
+filters, ten-row pages, the complete CSV download and retry after a failed
+request. The full backend suite reproduced five existing failures in booking
+time formatting and overlap handling.

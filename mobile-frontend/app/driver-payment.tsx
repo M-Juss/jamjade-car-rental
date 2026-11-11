@@ -78,7 +78,7 @@ export default function DriverPaymentScreen() {
 
       approved = true;
       await capturePayPalOrder(order.orderId);
-      setMessage('Driver balance paid successfully. You are eligible for new assignments again.');
+      setMessage('Driver charges paid successfully.');
       setBooking(await getDriverService(booking.id));
     } catch (error) {
       if (orderId && !approved) await abandonPayPalOrder(orderId).catch(() => undefined);
@@ -95,13 +95,14 @@ export default function DriverPaymentScreen() {
           <View className="flex-row items-center gap-3 py-3">
             <Pressable
               accessibilityLabel="Go back"
+              accessibilityRole="button"
               onPress={() => router.back()}
-              className="h-12 w-12 items-center justify-center rounded-field border border-border bg-surface">
-              <ArrowLeft color={themeColors.foreground} size={21} />
+              className="h-11 w-11 items-center justify-center rounded-field">
+              <ArrowLeft color={themeColors.foreground} size={21} strokeWidth={2} />
             </Pressable>
             <View className="min-w-0 flex-1">
-              <Text className="font-sans text-[24px] font-semibold text-foreground">Driver Balance</Text>
-              <Text className="font-sans text-[12px] font-medium text-secondary-foreground">{bookingId}</Text>
+              <Text className="font-sans text-title font-semibold text-foreground">Driver charges</Text>
+              <Text className="font-sans text-caption text-secondary-foreground">{bookingId}</Text>
             </View>
           </View>
 

@@ -4,13 +4,14 @@ export type DocumentType = "Proof of Address" | "Driver's License";
 
 export type FileType = "image" | "pdf";
 
-export type SelfDriveReviewStatus = "eligible" | "pending_review" | "needs_correction" | "documents_required" | "age_ineligible";
+export type SelfDriveReviewStatus = "eligible" | "pending_review" | "needs_correction" | "documents_required" | "age_ineligible" | "emergency_contact_required";
 
 export type SelfDriveCustomer = {
   id: number;
   name: string;
   email: string;
   contactNumber: string | null;
+  emergencyContacts?: { name: string; relationship: string; phoneNumber: string }[];
   createdAt: string | null;
   canSelfDrive: boolean;
   reviewStatus: SelfDriveReviewStatus;

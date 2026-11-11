@@ -21,7 +21,7 @@ class StorePersonnelRequest extends BaseFormRequest
 
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin') ?? false;
+        return $this->user()?->hasAnyRole(['admin', 'staff']) ?? false;
     }
 
     public function rules(): array
@@ -31,7 +31,7 @@ class StorePersonnelRequest extends BaseFormRequest
             'last_name' => ['required', 'string', 'max:80', 'regex:/^[\p{L} ]+$/u'],
             'email' => ['required', 'email', 'max:160', 'unique:users,email'],
             'phone_number' => ['nullable', 'string', 'regex:/^09\d{9}$/', 'unique:users,phone_number'],
-            'role' => ['required', 'string', Rule::in(['staff', 'driver']), Rule::exists('roles', 'name')->where('guard_name', 'web')],
+            'role' => ['required', 'string', Rule::in($this->user()->hasRole('owner') ? ['staff', 'driver', 'admin'] : ($this->user()->hasRole('admin') ? ['staff', 'driver'] : ['driver'])), Rule::exists('roles', 'name')->where('guard_name', 'web')],
             'is_active' => ['sometimes', 'boolean'],
             'modules' => ['prohibited'],
             'permissions' => ['prohibited'],

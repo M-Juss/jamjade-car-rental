@@ -143,6 +143,12 @@ test('offline startup and connection loss stop collection with no stored offline
   await h.tick();
   assert.equal(h.updates.length, 0);
   assert.equal(h.session.getSnapshot().phase, 'offline');
+  h.session.connectionRestored('OTHER');
+  assert.equal(h.session.getSnapshot().phase, 'offline');
+  h.session.connectionRestored('DEMO');
+  assert.equal(h.session.getSnapshot().phase, 'paused');
+  assert.equal(h.session.getSnapshot().message, null);
+  assert.equal(h.watches.length, 1);
   h.session.reset();
 });
 
@@ -268,4 +274,14 @@ test('background collection stops on network loss and rental receipt with no aut
   receipt.advance(16000); await receipt.send();
   assert.equal(receipt.session.getSnapshot().phase, 'paused');
   assert.equal(receipt.session.canContinueInBackground(), false);
+});
+
+test('foreground GPS exit reports an interruption rather than manually pausing motion', async () => {
+  const h = harness();
+  await h.session.start('DEMO', consent);
+  await h.send();
+  await h.session.stop('Foreground GPS stopped.', 'paused', false, 'interrupted');
+  await flush();
+  assert.equal(h.pauses.at(-1).reason, 'interrupted');
+  assert.equal(h.session.getSnapshot().phase, 'paused');
 });

@@ -1,16 +1,10 @@
 import { z } from 'zod';
+import { utf8ByteLength } from '@/validation/shared';
 
 const currentPasswordSchema = z
   .string()
   .min(1, 'Enter your current password.')
   .refine((value) => value.trim().length > 0, 'Enter your current password.');
-
-function utf8ByteLength(value: string) {
-  return Array.from(value).reduce((length, character) => {
-    const code = character.codePointAt(0) ?? 0;
-    return length + (code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4);
-  }, 0);
-}
 
 export const updateAccountEmailSchema = z.object({
   email: z

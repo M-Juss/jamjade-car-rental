@@ -104,7 +104,7 @@ it('rejects early no-show classification and retains all payments for a reviewed
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T14:00:00+08:00')->utc());
     $this->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Reserved period ended, no collection or cancellation recorded'])->assertOk()
         ->assertJsonPath('data.cancellation.kind', 'no_show')->assertJsonPath('data.cancellation.refundStatus', 'not_eligible');
-    $this->postJson("/admin/bookings/{$booking->id}/refund-review", ['amount' => 1000, 'reason' => 'Override'])->assertUnprocessable();
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/refund-review", ['amount' => 1000, 'reason' => 'Override'])->assertUnprocessable();
     expect($booking->successfulCustomerPayments()->sum('amount'))->toBe(3500)
         ->and($booking->fresh()->payment_status)->toBe(PaymentStatus::Paid);
 });
@@ -151,7 +151,8 @@ it('keeps historical customer cancellation records eligible for Admin refund rev
         'kind' => 'customer', 'reason' => 'Historical cancellation', 'recorded_by' => $booking->user_id,
     ]);
 
-    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/refund-review", [
+    $this->actingAs(policyAdmin());
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/refund-review", [
         'amount' => 1000, 'reason' => 'Historical refund approved',
     ])->assertOk()
         ->assertJsonPath('data.cancellation.kind', 'customer')
@@ -165,12 +166,13 @@ it('permits only Admin to decide a refund and requires actual-return confirmatio
     $staff = User::factory()->create();
     $staff->assignRole('staff');
     $this->actingAs($staff)->postJson("/admin/bookings/{$booking->id}/refund-review", ['amount' => 2000, 'reason' => 'Emergency accepted'])->assertForbidden();
-    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/refund-review", ['amount' => 3500.01, 'reason' => 'Too much'])->assertUnprocessable()->assertJsonValidationErrors('amount');
-    $this->postJson("/admin/bookings/{$booking->id}/refund-review", ['amount' => 2000.50, 'reason' => 'Partial refund approved'])->assertOk()->assertJsonPath('data.cancellation.refundStatus', 'approved');
+    $this->actingAs(policyAdmin());
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/refund-review", ['amount' => 3500.01, 'reason' => 'Too much'])->assertUnprocessable()->assertJsonValidationErrors('amount');
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/refund-review", ['amount' => 2000.50, 'reason' => 'Partial refund approved'])->assertOk()->assertJsonPath('data.cancellation.refundStatus', 'approved');
     $this->postJson("/admin/bookings/{$booking->id}/record-refund", [])->assertUnprocessable();
     expect($booking->fresh()->cancellation->refunded_at)->toBeNull();
-    $this->postJson("/admin/bookings/{$booking->id}/record-refund", ['confirmed' => true])->assertOk()->assertJsonPath('data.cancellation.refundStatus', 'refunded')->assertJsonPath('data.cancellation.refundAmount', 2000.5);
-    $this->postJson("/admin/bookings/{$booking->id}/record-refund", ['confirmed' => true])->assertOk();
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/record-refund", ['confirmed' => true])->assertOk()->assertJsonPath('data.cancellation.refundStatus', 'refunded')->assertJsonPath('data.cancellation.refundAmount', 2000.5);
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/record-refund", ['confirmed' => true])->assertOk();
     expect($booking->events()->where('event_type', 'refund_recorded')->count())->toBe(1)
         ->and($booking->successfulCustomerPayments()->sum('amount'))->toBe(3500);
     $report = app(ReportService::class)->analytics('all_time');

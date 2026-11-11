@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from '@/services/http';
+import { restartSetupSchema } from '@/validation/telematics/calibration';
 
 import { normalizeBookingImageUrl } from './booking.service';
 
@@ -30,6 +31,7 @@ export type MobileTelematicsHandover = {
     status: 'locked' | 'setup_required' | 'in_progress' | 'ready_for_release' | 'released';
     startedAt?: string | null;
     readyAt?: string | null;
+    canRestart?: boolean;
     releasedAt?: string | null;
   } | null;
   steps: Array<{
@@ -42,7 +44,7 @@ export type MobileTelematicsHandover = {
     failureReason?: string | null;
   }>;
   calibration: {
-    protocolVersion: 3;
+    protocolVersion: 3 | 4;
     profile: { id: 'standard' | 'rc_demo' | 'legacy'; revision: number | null; fingerprint: string | null };
     context: string | null;
     nextStep: string | null;
@@ -50,6 +52,7 @@ export type MobileTelematicsHandover = {
     completionLimits: { minimumDurationMs: number; minimumCoverage: number; minimumSamplesPerSecond: number };
     stationaryLimits: { linearRms: number; rotationPeak: number; yawDegrees: number; tiltDegrees: number; maxGapMs: number };
     noiseBaseline: { linearRms: number; horizontalRms: number; linearStddev: number; rotationRms: number; rotationStddev: number } | null;
+    parkedAcceleration: [number, number, number] | null;
     forwardLimits: { acceleration: number; durationMs: number; coherence: number; samples: number };
     movementLimits: { tiltDegrees: number; rotationPeak: number; yawDegrees: number; forwardAccelerationOnly: boolean; brakingAcceleration: number; turnDegrees: number; oppositeTurnDegrees: number; turnDominance: number };
     reference: { down: [number, number, number]; forward: [number, number, number] | null } | null;
@@ -69,6 +72,15 @@ export async function getCurrentTelematicsSetup() {
 export async function getBookingTelematicsSetup(bookingId: string, signal?: AbortSignal) {
   const response = await apiGet<MobileTelematicsHandover>(
     `/mobile/bookings/${encodeURIComponent(bookingId)}/telematics-setup`, { signal },
+  );
+
+  return mapHandover(response.data);
+}
+
+export async function restartBookingTelematicsSetup(bookingId: string, context: string) {
+  const response = await apiPost<MobileTelematicsHandover>(
+    `/mobile/bookings/${encodeURIComponent(bookingId)}/telematics-setup/restart`,
+    restartSetupSchema.parse({ context }),
   );
 
   return mapHandover(response.data);

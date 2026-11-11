@@ -315,14 +315,14 @@ export default function Vehicle() {
                     >
                       <TableCell data-label="Vehicle" className="px-4 py-3">
                         <div className="flex min-w-0 items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-xl bg-background flex items-center justify-center text-xl flex-shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-transparent flex items-center justify-center text-xl flex-shrink-0">
                             {getVehicleImage(v) ? (
                               <div
                                 aria-label={v.name}
                                 role="img"
-                                className="h-full w-full rounded-xl object-cover"
+                                className="h-full w-full rounded-xl object-contain"
                                 style={{
-                                  background: `center / cover no-repeat url("${getVehicleImage(v)}")`,
+                                  background: `center / contain no-repeat url("${getVehicleImage(v)}")`,
                                 }}
                               />
                             ) : (
@@ -351,7 +351,7 @@ export default function Vehicle() {
                       </TableCell>
                       <TableCell data-label="Status" className="px-4 py-3">
                         <span
-                          className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${statusStyle[getStatusLabel(v)] ?? statusStyle.Unavailable}`}
+                          className={`table-status-badge text-xs font-semibold px-2.5 py-1 rounded-lg border ${statusStyle[getStatusLabel(v)] ?? statusStyle.Unavailable}`}
                         >
                           {getStatusLabel(v)}
                         </span>

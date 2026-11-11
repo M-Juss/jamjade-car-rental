@@ -38,6 +38,10 @@ class RcAnnotationService
             }
             abort_unless(($current?->revision ?? 0) === (int) $input['base_revision'], 409, 'Labels changed. Reload the latest revision before saving.');
             abort_if(($current?->revision ?? 0) >= 1000, 409, 'Annotation revision limit reached.');
+            $swerve = array_search('swerving', array_column($items, 'movement'), true);
+            if ($swerve !== false && $record->collectionContext?->isLegacyLaneChange()) {
+                throw ValidationException::withMessages(["intervals.$swerve.movement" => 'Use Lane Change for the original offset course.']);
+            }
 
             return RcAnnotationRevision::create(['recording_id' => $record->id, 'reviewer_id' => $reviewer,
                 'revision' => ($current?->revision ?? 0) + 1, 'state' => $items === [] ? 'unlabeled'

@@ -45,7 +45,7 @@ export const formatBookingDate = (value: string) => {
 
   return new Intl.DateTimeFormat('en-US', {
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
   }).format(date);
 };

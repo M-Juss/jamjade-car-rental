@@ -18,7 +18,7 @@ export function StationaryResumeCheckDialog({ check, initialSettings }: {
           {check.needsSettings ? <ActionButton label="Open device settings" onPress={() => void Linking.openSettings().catch(() => Alert.alert('Settings unavailable', 'Open device Settings to allow motion access.'))} /> : null}
           <ActionButton label={check.error ? 'Retry check' : 'Start check'} variant="primary" disabled={!settings} onPress={() => void check.run()} />
         </View>}>
-    <Text className="font-sans text-caption leading-5 text-secondary-foreground">A short motion check runs on this phone. Readings are discarded afterward.</Text>
+    <Text className="font-sans text-caption leading-5 text-secondary-foreground">Keep the vehicle parked. If the phone moves, the check restarts. Readings are discarded afterward.</Text>
     {settings ? <StationaryCalibration purpose="resume" live={check.live} limits={settings.stationaryLimits}
       durationSeconds={settings.captureSeconds.stationary_calibration} rcDemo={settings.profile.id === 'rc_demo'} busy={check.busy} failureReason={check.error}>
       {null}

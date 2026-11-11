@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { CalibrationAccumulator, movementCaptureComplete, rotationAxes } from '../../lib/telematics/calibration.ts';
+import { CalibrationAccumulator, movementCaptureComplete, rotationAxes, stationaryWithinRange } from '../../lib/telematics/calibration.ts';
 
 function captureHarness({ available = true, granted = true, platform = 'android' } = {}) {
   let listener, stateListener, clock = 0, removed = 0, nextTimer = 0;
@@ -25,7 +25,7 @@ function captureHarness({ available = true, granted = true, platform = 'android'
       if (name === 'react-native') return { Platform: { OS: platform }, AppState: {
         currentState: 'active', addEventListener(_, callback) { stateListener = callback; return { remove() { stateListener = null; } }; },
       } };
-      if (name.endsWith('/calibration')) return { CalibrationAccumulator, movementCaptureComplete, rotationAxes };
+      if (name.endsWith('/calibration')) return { CalibrationAccumulator, movementCaptureComplete, rotationAxes, stationaryWithinRange };
       throw new Error(`Unexpected dependency: ${name}`);
     },
   });
@@ -56,6 +56,49 @@ function captureHarness({ available = true, granted = true, platform = 'android'
   };
 }
 const settle = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
+
+const stationaryWindow = {
+  limits: { linearRms: 0.35, rotationPeak: 6, yawDegrees: 5, tiltDegrees: 10, maxGapMs: 500 },
+  accepts: summary => summary.sensor_duration_ms >= 5950 && summary.sample_count >= 48,
+};
+
+test('resume waits through sustained movement and resets for a new full steady window', async () => {
+  const harness = captureHarness();
+  const readings = [];
+  const result = harness.capture(6, null, new AbortController().signal, { stationaryWindow, onReading: reading => readings.push(reading) });
+  await settle();
+  for (let time = 50; time <= 35000; time += 50) harness.emit(time, undefined, { acceleration: { x: 1 } });
+  assert.equal(harness.active, true);
+  assert.ok(readings.every(reading => reading.elapsedMs === 0));
+  for (let time = 35050; time < 38000; time += 50) harness.emit(time);
+  assert.ok(readings.some(reading => reading.elapsedMs > 2000));
+  harness.emit(38000, undefined, { rotation: { alpha: 20 } });
+  assert.equal(readings.at(-1).elapsedMs, 0);
+  for (let time = 38050; time <= 44000; time += 50) harness.emit(time);
+  assert.equal(harness.active, true);
+  harness.emit(44050);
+  const summary = await result;
+  assert.equal(Date.parse(summary.ended_at) - Date.parse(summary.started_at), 6000);
+  assert.equal(summary.rotation_peak, 0);
+  assert.equal(harness.active, false);
+  assert.equal(harness.timers, 0);
+});
+
+test('resume still stops when the stream stalls or the operator cancels', async () => {
+  for (const cancel of [false, true]) {
+    const harness = captureHarness();
+    const controller = new AbortController();
+    const result = harness.capture(6, null, controller.signal, { stationaryWindow });
+    const rejected = assert.rejects(result, cancel ? /paused/ : /did not stabilize/);
+    await settle();
+    for (let time = 50; time <= 500; time += 50) harness.emit(time);
+    if (cancel) controller.abort();
+    else harness.advance(3500);
+    await rejected;
+    assert.equal(harness.active, false);
+    assert.equal(harness.timers, 0);
+  }
+});
 
 test('unsupported runtimes cannot subscribe to calibration motion', async () => {
   for (const platform of ['ios', 'web']) {

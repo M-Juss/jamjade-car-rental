@@ -77,18 +77,39 @@ test('profile reads and saves map photos without changing the request contract',
   assert.equal(profile.profilePicture, photo, 'Mapping must not mutate the API record.');
 });
 
-test('sign-in, restoration, registration and email updates retain the corrected photo', async () => {
+test('sign-in, registration verification, restoration and email updates retain the corrected photo', async () => {
   const mapping = mappingFor('https://backend.example.test/api');
+  const persistedTokens = [];
+  const calls = [];
   const http = {
     apiGet: async () => ({ data: { user } }),
-    apiPost: async () => ({ data: { user, token: 'synthetic-token' } }),
+    apiPost: async (path, payload, options) => {
+      calls.push({ path, payload, options });
+      if (path === '/mobile/register' || path === '/mobile/register/resend') return { data: { registrationId: '123e4567-e89b-42d3-a456-426614174000', email: user.email, expiresAt: '2026-11-11T03:15:00Z', resendAvailableAt: '2026-11-11T03:01:00Z' } };
+      return { data: { user, token: 'synthetic-token' } };
+    },
     apiPut: async () => ({ data: user }),
-    persistApiAuthToken: async () => {},
+    persistApiAuthToken: async (token) => persistedTokens.push(token),
   };
   const auth = loadModule('./auth.service.ts', { './profile-mapping': mapping, '@/services/http': http, 'react-native': { Platform: { OS: 'android' } },
     '@/services/telematics/native-recorder': { nativeRecorder: { lock: async () => {} } },
   });
   const account = loadModule('./account.service.ts', { './profile-mapping': mapping, '@/services/http': http });
-  const results = [(await auth.login({})).user, (await auth.register({})).user, await auth.getCurrentUser(), await account.updateAccountEmail({})];
+  const loginResult = await auth.login({});
+  const pending = await auth.beginRegistration({ email: user.email, password: 'password', password_confirmation: 'password' });
+  assert.equal(pending.registrationId, '123e4567-e89b-42d3-a456-426614174000');
+  assert.equal(calls[1].options.responseTimeoutMs, 60_000);
+  assert.equal(calls[0].options.responseTimeoutMs, undefined, 'Sign-in keeps the default transport timeout behavior.');
+  assert.deepEqual(persistedTokens, ['synthetic-token'], 'Starting registration must not authenticate or persist a token.');
+  const resent = await auth.resendRegistrationCode({ registration_id: pending.registrationId });
+  assert.equal(resent.registrationId, pending.registrationId);
+  assert.equal(calls[2].options.responseTimeoutMs, 60_000);
+  assert.deepEqual(persistedTokens, ['synthetic-token'], 'Resending a code must not authenticate or persist a token.');
+  const verified = await auth.verifyRegistration({ registration_id: resent.registrationId, code: '123456' });
+  const results = [loginResult.user, verified.user, await auth.getCurrentUser(), await account.updateAccountEmail({})];
   for (const result of results) assert.equal(result.profile.profilePicture, 'https://backend.example.test/storage/profiles/example.jpg');
+  assert.deepEqual(calls.slice(0, 4).map(({ path }) => path), ['/mobile/login', '/mobile/register', '/mobile/register/resend', '/mobile/register/verify']);
+  assert.deepEqual(calls[2].payload, { registration_id: pending.registrationId });
+  assert.deepEqual(calls[3].payload, { registration_id: pending.registrationId, code: '123456' });
+  assert.deepEqual(persistedTokens, ['synthetic-token', 'synthetic-token']);
 });

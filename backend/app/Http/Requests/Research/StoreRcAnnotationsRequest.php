@@ -19,7 +19,7 @@ class StoreRcAnnotationsRequest extends BaseFormRequest
             'intervals.*' => ['required', 'array:start_ms,end_ms,movement,direction,severity,certainty,source,notes,initial_deviation'],
             'intervals.*.start_ms' => ['required', 'numeric', 'min:0', 'max:86400000'],
             'intervals.*.end_ms' => ['required', 'numeric', 'min:0', 'max:86400000'],
-            'intervals.*.movement' => ['required', 'in:stationary,acceleration,driving,braking,left_turn,right_turn,swerving,other'],
+            'intervals.*.movement' => ['required', 'in:stationary,acceleration,driving,braking,left_turn,right_turn,lane_change,swerving,other'],
             'intervals.*.direction' => ['required', 'in:forward,reverse,not_applicable,unknown'],
             'intervals.*.severity' => ['required', 'in:normal,harsh,not_applicable,unknown'],
             'intervals.*.certainty' => ['required', 'in:reviewed,uncertain'],
@@ -41,8 +41,8 @@ class StoreRcAnnotationsRequest extends BaseFormRequest
                     $validator->errors()->add("$key.start_ms", 'Use ordered, nonoverlapping intervals with end after start.');
                 }
                 $previous = $item['end_ms'];
-                if (isset($item['initial_deviation']) && $item['movement'] !== 'swerving') {
-                    $validator->errors()->add("$key.initial_deviation", 'Initial deviation is available for swerving intervals only.');
+                if (isset($item['initial_deviation']) && ! in_array($item['movement'], ['lane_change', 'swerving'], true)) {
+                    $validator->errors()->add("$key.initial_deviation", 'Initial deviation is available for lane change and swerve intervals.');
                 }
                 $stationary = $item['movement'] === 'stationary';
                 if ($stationary && ($item['direction'] !== 'not_applicable' || $item['severity'] !== 'not_applicable')) {

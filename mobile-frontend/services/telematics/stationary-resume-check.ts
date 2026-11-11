@@ -23,9 +23,9 @@ export async function runStationaryResumeCheck(bookingCode: string, signal: Abor
   if (!stationaryResumeSettingsValid(settings)) throw new Error('Check settings are unavailable. Close and try again.');
   onSettings(settings);
   onLive({ step: 'stationary_calibration', phase: 'preparing' });
-  // Start check is explicit consent for one bounded foreground recording.
-  // A new local reference measures stability during this check, without modifying setup.
+  // Start check explicitly allows a foreground stability check, without modifying setup.
   const summary = await captureCalibration(settings.captureSeconds.stationary_calibration, null, signal, {
+    stationaryWindow: { limits: stationaryLimits, accepts: (candidate) => stationaryResumeFailure(candidate, settings) === null },
     onReading: (reading) => { if (!signal.aborted) onLive({ step: 'stationary_calibration', phase: 'recording', reading }); },
   }).catch((failure: unknown) => {
     if (failure instanceof CalibrationCaptureAccessError) {

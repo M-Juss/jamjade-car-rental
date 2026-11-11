@@ -37,7 +37,7 @@ export function BookingStatusDisplay({ booking, className }: Props) {
 
   return (
     <div className={cn("flex max-w-44 flex-col items-start gap-1.5", className)}>
-      <span className={cn("inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-xs font-semibold [overflow-wrap:anywhere]", bookingStatusStyle[booking.statusKey])}>
+      <span className={cn("table-status-badge inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-xs font-semibold [overflow-wrap:anywhere]", bookingStatusStyle[booking.statusKey])}>
         {booking.adminStatus}
       </span>
       {note && (

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Mobile\BookingController;
 use App\Http\Controllers\Api\Mobile\CustomerReceiptController;
 use App\Http\Controllers\Api\Mobile\DeliveryQuoteController;
 use App\Http\Controllers\Api\Mobile\DocumentController;
+use App\Http\Controllers\Api\Mobile\DriveMonitoringSessionController;
 use App\Http\Controllers\Api\Mobile\DriverBookingController;
 use App\Http\Controllers\Api\Mobile\LocationMonitoringController;
 use App\Http\Controllers\Api\Mobile\NotificationController;
@@ -16,17 +17,23 @@ use App\Http\Controllers\Api\Mobile\ProfileController;
 use App\Http\Controllers\Api\Mobile\RcCollectionController;
 use App\Http\Controllers\Api\Mobile\RcNativeRecordingController;
 use App\Http\Controllers\Api\Mobile\RcResearchController;
+use App\Http\Controllers\Api\Mobile\RentalActivityController;
+use App\Http\Controllers\Api\Mobile\RentalMotionMonitoringController;
 use App\Http\Controllers\Api\Mobile\TelematicsController;
 use App\Http\Controllers\Api\Mobile\TelematicsSetupController;
 use App\Http\Controllers\Api\Mobile\VehicleController;
+use App\Http\Controllers\Web\Admin\RcDemoInferenceController;
 use App\Http\Middleware\RestrictRcResearchToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::middleware('throttle:mobile-auth')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->name('register');
+        Route::post('/register/resend', [AuthController::class, 'resendRegistration'])->name('register.resend');
         Route::post('/login', [AuthController::class, 'login'])->name('login');
     });
+    Route::post('/register/verify', [AuthController::class, 'verifyRegistration'])
+        ->middleware('throttle:10,1')->name('register.verify');
 
     Route::middleware('throttle:mobile-api')->group(function () {
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
@@ -35,6 +42,15 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
 
     Route::middleware(['auth:sanctum', RestrictRcResearchToken::class, 'active_user', 'throttle:mobile-api'])->group(function () {
         Route::get('/rc-research', [RcResearchController::class, 'show'])->name('rc-research.show');
+        Route::get('/rc-research/drive-monitoring/reference', [DriveMonitoringSessionController::class, 'reference'])->name('rc-research.drive-monitoring.reference');
+        Route::post('/rc-research/drive-monitoring/sessions/{session}/batches', [DriveMonitoringSessionController::class, 'batch'])
+            ->whereUuid('session')->middleware('throttle:60,1')->name('rc-research.drive-monitoring.sessions.batch');
+        Route::post('/rc-research/drive-monitoring/sessions', DriveMonitoringSessionController::class.'@store')
+            ->name('rc-research.drive-monitoring.sessions.store');
+        Route::post('/rc-research/drive-monitoring/sessions/{session}/stop', DriveMonitoringSessionController::class.'@stop')
+            ->whereUuid('session')->name('rc-research.drive-monitoring.sessions.stop');
+        Route::post('/rc-research/drive-monitoring/inference', RcDemoInferenceController::class)
+            ->middleware('throttle:60,1')->name('rc-research.drive-monitoring.inference');
         Route::get('/rc-research/native-access', [RcResearchController::class, 'nativeAccess'])->name('rc-research.native-access');
         Route::get('/rc-research/catalog', [RcCollectionController::class, 'catalog'])->name('rc-research.catalog');
         Route::get('/rc-research/native-recordings/status', [RcCollectionController::class, 'status'])->name('rc-research.native.status');
@@ -89,6 +105,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/telematics/rentals', [TelematicsSetupController::class, 'index'])->name('telematics.rentals.index');
         Route::get('/telematics/setup', [TelematicsSetupController::class, 'current'])->name('telematics.setup.current');
         Route::get('/bookings/{booking}/telematics-setup', [TelematicsSetupController::class, 'show'])->name('bookings.telematics-setup.show');
+        Route::post('/bookings/{booking}/telematics-setup/restart', [TelematicsSetupController::class, 'restart'])->name('bookings.telematics-setup.restart');
         Route::post('/bookings/{booking}/telematics-setup/steps/{step}/attempt', [TelematicsSetupController::class, 'attempt'])->name('bookings.telematics-setup.steps.attempt');
         Route::get('/driver/services', [DriverBookingController::class, 'index'])->name('driver.services.index');
         Route::get('/driver/services/{booking}', [DriverBookingController::class, 'show'])->name('driver.services.show');
@@ -98,6 +115,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
 
         Route::post('/payments', [PaymentController::class, 'store'])->middleware('role:customer')->name('payments.store');
         Route::post('/paypal/orders', [PayPalController::class, 'createOrder'])->middleware('role:customer')->name('paypal.orders.create');
+        Route::post('/bookings/{booking}/paypal/revise-order', [PayPalController::class, 'reviseOrder'])->middleware('role:customer');
         Route::post('/bookings/{booking}/paypal/orders', [PayPalController::class, 'createBalanceOrder'])->middleware('role:customer')->name('bookings.paypal.orders.create');
         Route::post('/driver/services/{booking}/paypal/orders', [PayPalController::class, 'createDriverOutstandingOrder'])->name('driver.services.paypal.orders.create');
         Route::post('/paypal/orders/{orderId}/capture', [PayPalController::class, 'captureOrder'])->name('paypal.orders.capture');
@@ -107,6 +125,15 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
         Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+
+        Route::get('/bookings/{booking}/activity', RentalActivityController::class)->name('bookings.activity');
+
+        Route::prefix('/bookings/{booking}/motion-monitoring')->name('motion-monitoring.')->group(function () {
+            Route::get('/', [RentalMotionMonitoringController::class, 'show']);
+            Route::post('/start', [RentalMotionMonitoringController::class, 'start'])->name('start');
+            Route::post('/sessions/{session}/batches', [RentalMotionMonitoringController::class, 'batch'])->whereUuid('session');
+            Route::post('/sessions/{session}/stop', [RentalMotionMonitoringController::class, 'stop'])->whereUuid('session');
+        });
 
         Route::prefix('/bookings/{booking}/location-monitoring')->group(function () {
             Route::get('/', [LocationMonitoringController::class, 'show']);

@@ -113,16 +113,17 @@ it('requires a reason for waivers and legacy manual pricing and blocks bypass th
     $actor = vehicleManagerUser();
     app(BookingReturnService::class)->receive($booking, $actor, now()->toISOString());
     incomingForLateReturn($booking);
-    $this->actingAs($actor)->postJson("/admin/bookings/{$booking->id}/review-late-charge", ['amount' => 0, 'responsibility' => 'customer'])->assertUnprocessable()->assertJsonValidationErrors('adjustment_reason');
+    $this->actingAs($actor);
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/review-late-charge", ['amount' => 0, 'responsibility' => 'customer'])->assertUnprocessable()->assertJsonValidationErrors('adjustment_reason');
     $this->postJson("/admin/bookings/{$booking->id}/additional-charges", ['charges' => [['type' => 'late_return', 'description' => 'Bypass', 'amount' => 400]]])->assertUnprocessable();
-    $this->postJson("/admin/bookings/{$booking->id}/review-late-charge", ['amount' => 0, 'responsibility' => 'customer', 'adjustment_reason' => 'Approved business waiver'])->assertOk();
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/review-late-charge", ['amount' => 0, 'responsibility' => 'customer', 'adjustment_reason' => 'Approved business waiver'])->assertOk();
     expect($booking->additionalCharges()->count())->toBe(0)->and($booking->fresh()->returnRecord->approved_late_charge)->toBe('0.00');
     $legacy = lateReturnBooking(5, 5401, false);
     app(BookingReturnService::class)->receive($legacy, $actor, now()->toISOString());
     incomingForLateReturn($legacy);
     expect(app(BookingReturnService::class)->estimate($legacy->fresh())['estimatedAmount'])->toBeNull();
-    $this->postJson("/admin/bookings/{$legacy->id}/review-late-charge", ['amount' => 300, 'responsibility' => 'customer'])->assertUnprocessable()->assertJsonValidationErrors('adjustment_reason');
-    $this->postJson("/admin/bookings/{$legacy->id}/review-late-charge", ['amount' => 300, 'responsibility' => 'customer', 'adjustment_reason' => 'Reviewed original signed agreement'])->assertOk();
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$legacy->id}/review-late-charge", ['amount' => 300, 'responsibility' => 'customer'])->assertUnprocessable()->assertJsonValidationErrors('adjustment_reason');
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$legacy->id}/review-late-charge", ['amount' => 300, 'responsibility' => 'customer', 'adjustment_reason' => 'Reviewed original signed agreement'])->assertOk();
 });
 
 it('requires late review before closing return charges and preserves vehicle restrictions', function () {

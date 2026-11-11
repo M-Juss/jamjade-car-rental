@@ -24,7 +24,7 @@ export function LocationSharingDisclosureDialog({ visible, policy, onCancel, onA
         <ScrollView className="shrink" contentContainerClassName="gap-4 p-card" showsVerticalScrollIndicator>
           <Text className="font-sans text-body leading-6 text-foreground">JamJade staff can see your rental’s latest location. On With Assigned Driver rentals, the booking Customer can see it too. Start only while safely parked.</Text>
           <Text className="font-sans text-body leading-6 text-secondary-foreground">Background sharing continues when the app is minimized and uses battery. Allow all the time access; Android shows a notification. App-open sharing stops when minimized.</Text>
-          <Text className="font-sans text-body leading-6 text-secondary-foreground">Closing the app may stop sharing. If interrupted, start again from Telematics. Only the latest GPS point is kept; no route history or motion readings are saved. The last point is cleared when staff receive the vehicle or within {policy.retentionHours + 1} hours.</Text>
+          <Text className="font-sans text-body leading-6 text-secondary-foreground">Closing the app may stop sharing. If interrupted, resume from Telematics. GPS keeps only the latest point, which is cleared when staff receive the vehicle or within {policy.retentionHours + 1} hours.</Text>
           <Text className="font-sans text-body leading-6 text-secondary-foreground">Zone entries and exits are saved for JamJade staff. Enabled alerts appear in your Activity and Notifications.</Text>
           <Text className="font-sans text-body leading-6 text-foreground">Choose a sharing mode to agree. You can pause at any time from Telematics.</Text>
         </ScrollView>

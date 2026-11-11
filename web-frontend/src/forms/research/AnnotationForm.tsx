@@ -16,7 +16,7 @@ import { appToast } from "@/lib/toast";
 import { ApiError } from "@/services/http";
 import { saveAnnotations, type AnnotationRevision } from "@/services/research/annotations.service";
 import type { NativeChannel, NativeRecording, NativeWindow } from "@/services/research/native-types";
-import { annotationRevisionSchema, movements, directions, severities, certainties, annotationSources, initialDeviations, type AnnotationValues } from "@/validations/research/annotations";
+import { annotationRevisionSchema, movements, directions, severities, certainties, annotationSources, initialDeviations, hasInitialDeviation, type AnnotationValues } from "@/validations/research/annotations";
 import { NativeSignalWindow } from "@/modules/management/research/components/NativeSignalWindow";
 import { SignalTimeline } from "@/modules/management/research/components/SignalTimeline";
 import { SignalSelectionControls } from "@/modules/management/research/components/SignalSelectionControls";
@@ -29,13 +29,16 @@ import type { ReferenceRange } from "@/modules/management/research/forward-refer
 
 const channels: NativeChannel[] = ["accelerometer"];
 const timingChannels: NativeChannel[] = ["accelerometer", "gyroscope"];
-const label = (value: string) => ({ driving: "Straight driving", not_applicable: "Not applicable", operator_report: "Operator report", signal_review: "Signals only", observed: "Direct observation", reviewed: "Reviewed", uncertain: "Uncertain / approximate" }[value] ?? humanize(value));
+const label = (value: string) => ({ driving: "Straight driving", swerving: "Swerve (obstacle avoidance)", not_applicable: "Not applicable", operator_report: "Operator report", signal_review: "Signals only", observed: "Direct observation", reviewed: "Reviewed", uncertain: "Uncertain / approximate" }[value] ?? humanize(value));
+const directionalSwerve = (code?: string) => code === "SWL" || code === "HSWL" || code === "SWR" || code === "HSWR";
+const expectedDeviation = (code?: string) => code === "SWL" || code === "HSWL" ? "left" : code === "SWR" || code === "HSWR" ? "right" : null;
 
-export function AnnotationForm({ record, origin, saved, onSaved, onReload, protocolCode }: {
-  protocolCode?: string; record: NativeRecording; origin: string; saved: AnnotationRevision | null; onSaved: (r: AnnotationRevision) => void; onReload: () => void;
+export function AnnotationForm({ record, origin, saved, onSaved, onReload, protocolCode, legacyLaneChange }: {
+  protocolCode?: string; legacyLaneChange?: boolean; record: NativeRecording; origin: string; saved: AnnotationRevision | null; onSaved: (r: AnnotationRevision) => void; onReload: () => void;
 }) {
   const id = useId();
-  const form = useForm<AnnotationValues>({ resolver: zodResolver(annotationRevisionSchema), defaultValues: { base_revision: saved?.revision ?? 0, intervals: saved?.intervals ?? [] } });
+  const savedValues = { base_revision: saved?.revision ?? 0, intervals: saved?.effective_intervals ?? saved?.intervals ?? [] };
+  const form = useForm<AnnotationValues>({ resolver: zodResolver(annotationRevisionSchema), defaultValues: savedValues });
   const array = useFieldArray({ control: form.control, name: "intervals" });
   // Subscribe for field edits, but read current values: structural field-array
   // updates can render before useWatch receives the new array.
@@ -101,8 +104,9 @@ export function AnnotationForm({ record, origin, saved, onSaved, onReload, proto
         return <div key={field.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3 text-xs">
           <div className="min-w-0 flex-1 space-y-2"><div className="flex flex-wrap justify-between gap-x-4 gap-y-1"><p className="font-medium">{label(item.movement)}</p><p className="text-muted-foreground">{seconds(item.start_ms)}–{seconds(item.end_ms)}</p></div>
             <MetadataList className="sm:grid-cols-3" items={[
-              { label: 'Direction', value: label(item.direction) }, { label: 'Severity', value: label(item.severity) }, { label: 'Certainty', value: label(item.certainty) },
-              ...(item.movement === 'swerving' ? [{ label: 'Initial deviation', value: item.initial_deviation ? label(item.initial_deviation) : 'Not recorded' }] : []),
+              ...(!directionalSwerve(protocolCode) || item.movement !== "swerving" ? [{ label: 'Travel direction', value: label(item.direction) }] : []),
+              { label: 'Severity', value: label(item.severity) }, { label: 'Certainty', value: label(item.certainty) },
+              ...(hasInitialDeviation(item.movement) && (!directionalSwerve(protocolCode) || item.movement !== "swerving" || item.initial_deviation !== expectedDeviation(protocolCode)) ? [{ label: 'Initial deviation', value: item.initial_deviation ? label(item.initial_deviation) : 'Not recorded' }] : []),
             ]} /></div>
           <div className="flex gap-1"><Button type="button" size="sm" variant={editing === index ? "secondary" : "outline"} onClick={() => setEditing(index)}>Edit</Button>
             <Button type="button" size="sm" variant="ghost" aria-label={`Remove interval ${index + 1} from draft`} onClick={() => { array.remove(index); setEditing(null); setPage(1); }}>Remove</Button></div>
@@ -116,25 +120,25 @@ export function AnnotationForm({ record, origin, saved, onSaved, onReload, proto
             min={0} max={record.duration_ms / 1000} step="any" value={Number.isFinite(items[editing][key]) ? items[editing][key] / 1000 : ""} error={errorAt?.[key]?.message}
             onChange={event => form.setValue(`intervals.${editing}.${key}`, event.target.value === "" ? NaN : Number(event.target.value) * 1000, { shouldValidate: true, shouldDirty: true })} />)}
           <SelectWithLabel id={`${id}-movement`} label="Movement" value={items[editing].movement} error={errorAt?.movement?.message}
-            options={movements.map(value => ({ value, label: label(value) }))} onValueChange={value => {
+            options={movements.filter(value => !legacyLaneChange || value !== "swerving").map(value => ({ value, label: label(value) }))} onValueChange={value => {
               const movement = movements.find(v => v === value); if (!movement) return;
               const interval = form.getValues(`intervals.${editing}`);
               form.setValue(`intervals.${editing}`, {
                 ...interval, movement,
-                direction: movement === "stationary" ? "not_applicable" : "unknown",
+                direction: movement === "stationary" ? "not_applicable" : directionalSwerve(protocolCode) && movement === "swerving" ? "forward" : "unknown",
                 severity: movement === "stationary" ? "not_applicable" : "unknown",
                 certainty: "uncertain",
-                initial_deviation: movement === "swerving" ? interval.initial_deviation ?? "unknown" : undefined,
+                initial_deviation: hasInitialDeviation(movement) ? interval.initial_deviation ?? (movement === "swerving" ? expectedDeviation(protocolCode) : null) ?? "unknown" : undefined,
               }, { shouldValidate: true, shouldDirty: true });
             }} />
-          {items[editing].movement === "swerving" && <SelectWithLabel id={`${id}-initial-deviation`} label="Initial deviation"
+          {hasInitialDeviation(items[editing].movement) && (!directionalSwerve(protocolCode) || items[editing].movement !== "swerving" || items[editing].initial_deviation !== expectedDeviation(protocolCode)) && <SelectWithLabel id={`${id}-initial-deviation`} label="Initial deviation"
             value={items[editing].initial_deviation ?? ""} error={errorAt?.initial_deviation?.message}
             options={initialDeviations.map(value => ({ value, label: label(value) }))} onValueChange={value => {
               const deviation = initialDeviations.find(option => option === value);
               if (deviation) form.setValue(`intervals.${editing}.initial_deviation`, deviation, { shouldValidate: true, shouldDirty: true });
             }} />}
-          <SelectWithLabel id={`${id}-direction`} label="Direction" value={items[editing].direction} error={errorAt?.direction?.message}
-            options={directions.map(value => ({ value, label: label(value) }))} onValueChange={value => { const v = directions.find(v => v === value); if (v) form.setValue(`intervals.${editing}.direction`, v, { shouldValidate: true, shouldDirty: true }); }} />
+          {(!directionalSwerve(protocolCode) || items[editing].movement !== "swerving" || items[editing].direction !== "forward") && <SelectWithLabel id={`${id}-direction`} label="Travel direction" value={items[editing].direction} error={errorAt?.direction?.message}
+            options={directions.map(value => ({ value, label: label(value) }))} onValueChange={value => { const v = directions.find(v => v === value); if (v) form.setValue(`intervals.${editing}.direction`, v, { shouldValidate: true, shouldDirty: true }); }} />}
           <SelectWithLabel id={`${id}-severity`} label="Assessment" value={items[editing].severity} error={errorAt?.severity?.message}
             options={severities.map(value => ({ value, label: label(value) }))} onValueChange={value => { const v = severities.find(v => v === value); if (v) form.setValue(`intervals.${editing}.severity`, v, { shouldValidate: true, shouldDirty: true }); }} />
           <SelectWithLabel id={`${id}-source`} label="Label source" value={items[editing].source} error={errorAt?.source?.message}
@@ -147,7 +151,7 @@ export function AnnotationForm({ record, origin, saved, onSaved, onReload, proto
       <FormFieldError message={form.formState.errors.intervals?.root?.message ?? form.formState.errors.intervals?.message} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy || conflict || !form.formState.isDirty}>{busy ? "Saving labels..." : "Save labels"}</Button>
-        <Button type="button" variant="outline" disabled={busy} onClick={() => { form.reset({ base_revision: saved?.revision ?? 0, intervals: saved?.intervals ?? [] }); setEditing(null); setPage(1); }}>Discard draft</Button>
+        <Button type="button" variant="outline" disabled={busy} onClick={() => { form.reset(savedValues); setEditing(null); setPage(1); }}>Discard draft</Button>
       </div>
     </fieldset>
     {form.formState.errors.root && <p role="alert" className="text-sm text-destructive">{form.formState.errors.root.message}</p>}

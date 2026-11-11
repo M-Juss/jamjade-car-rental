@@ -87,14 +87,17 @@ Keep the native abstraction behind `services/telematics/` and any Android-only
 local module; presentation components must not own sensors or network calls.
 
 - Current Self Drive and With Assigned Driver setup remains server-gated through
-  the handover read model. Preserve the six readiness checks, five consented
-  foreground calibration exercises, attempt history, operator/assignment checks,
+  the handover read model. Preserve the six readiness checks, two consented
+  foreground calibration captures (stationary then forward reference), attempt history, operator/assignment checks,
   server-time gates, and Staff Start Rental authority. Research trials do not
   require customer bookings or rental-release exceptions.
 - Current calibration submits bounded summaries only. Current post-release GPS
   uses a separately consented app-wide foreground or explicit background collector;
   the readiness task stays inert. Prepared one-use startup and local Stationary
   resume checks do not imply cold start or automatic recovery after Stop/runtime loss.
+  A separate consented native RC rental motion collector now attaches feature
+  segments to the existing released trip. Its physical rental acceptance and
+  dynamic remount realignment remain pending; use the central rental motion contract.
 - Current Admin Collect uses the local Kotlin v2 recorder with encrypted durable
   checkpoints, unlabeled saves, recovery and metadata review. Adapter 1.2.0 adds
   verified bounded exports, explicit resumable upload and encrypted transfer receipts.

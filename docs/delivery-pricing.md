@@ -92,3 +92,7 @@ Authenticated web visual verification was blocked by the expired browser session
 Follow-up on 2026-10-17: removed the mobile quote countdown, Your Delivery Requests card, saved-request service calls and quote-restoration URL handling. Expiry still gates review/payment; Reconfirm Location refreshes an expired price without forcing address/Note re-entry. Old delivery notification actions now start a fresh booking form. No backend expiry, accepted price or persisted financial record was changed.
 
 Follow-up verification: mobile lint, TypeScript and the three remaining quote-readiness checks passed. A read-only inspection of the mounted Android BookingForm confirmed zero saved-request cards and zero quote countdown labels. No booking data was changed. Reconfirmation after expiry and iOS UI were not exercised on-device in this follow-up.
+
+## Owner verification
+
+The Fee Pricing form saves delivery and late-return settings together after owner verification. The individual delivery and late-return write endpoints also require verification. Garage coordinates remain outside the combined form. See [roles and access](user-roles-and-access.md#owner-verification).

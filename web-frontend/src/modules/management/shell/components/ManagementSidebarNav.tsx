@@ -5,7 +5,7 @@ import { PendingCountBadge } from "@/components/common/PendingCountBadge";
 import type { ManagementNavigationCounts } from "@/services/management/navigation.service";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { FlaskConical, ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -47,10 +47,9 @@ const directModuleIds = new Set<ManagementModule["id"]>([
   "geofences",
   "verification",
   "fleetTracker",
+  "drivingAnalysis",
   "reports",
 ]);
-
-const temporarilyHiddenModuleIds = new Set<ManagementModule["id"]>(["reports"]);
 
 function initials(name?: string) {
   return (name ?? "User")
@@ -90,19 +89,21 @@ function ManagementSidebarNavContent({
 
   const visibleModules = useMemo(
     () => managementModulesForPortal(portal, permissions)
-      .filter((module) => !temporarilyHiddenModuleIds.has(module.id))
       .flatMap((module) => {
         const href = managementPath(portal, module.id);
         return href ? [{ ...module, href }] : [];
       }),
     [permissions, portal],
   );
+  const modelItems = visibleModules.filter((module) => module.section === "Model Development")
+    .sort((a, b) => ["research", "modelExplorer", "driveMonitoring"].indexOf(a.id) - ["research", "modelExplorer", "driveMonitoring"].indexOf(b.id));
   const mainItems = visibleModules.filter((module) => directModuleIds.has(module.id));
-  const managementItems = visibleModules.filter((module) => !directModuleIds.has(module.id));
+  const managementItems = visibleModules.filter((module) => !directModuleIds.has(module.id) && module.section !== "Model Development");
   const managementIsActive = managementItems.some(
     (module) => pathname === module.href || pathname.startsWith(`${module.href}/`),
   );
   const [managementOpen, setManagementOpen] = useState(true);
+  const [modelOpen, setModelOpen] = useState(true);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -130,7 +131,7 @@ function ManagementSidebarNavContent({
 
   const roleNames = user ? getUserRoleNames(user) : [];
   const isFullAccessManager = roleNames.includes("admin");
-  const roleLabel = roleNames.includes("admin") ? "Administrator" : roleNames.includes("staff") ? "Staff" : user?.email;
+  const roleLabel = roleNames.includes("owner") ? "Owner" : roleNames.includes("admin") ? "Administrator" : roleNames.includes("staff") ? "Staff" : user?.email;
 
   const renderLink = (module: (typeof visibleModules)[number], nested = false) => {
     const Icon = module.icon;
@@ -171,6 +172,44 @@ function ManagementSidebarNavContent({
     );
   };
 
+  const renderGroup = (label: string, navigationId: string, items: typeof visibleModules,
+    Icon: typeof Settings, open: boolean, active: boolean, toggle: () => void) => (
+    <>
+        {items.length > 0 ? (
+          <div className="mt-1">
+            <button
+              type="button"
+              aria-controls={navigationId}
+              aria-expanded={open}
+              aria-label={collapsed ? label : undefined}
+              onClick={toggle}
+              className={`group relative flex min-h-11 w-full items-center rounded-lg text-sm outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring ${
+                collapsed ? "justify-center px-0 text-muted-foreground" : "gap-3 px-3 text-muted-foreground"
+              } ${active ? "font-medium text-foreground" : ""}`}
+            >
+              <Icon size={18} aria-hidden="true" />
+              {!collapsed ? (
+                <>
+                  <span className="flex-1 text-left">{label}</span>
+                  <ChevronDown
+                    size={16}
+                    aria-hidden="true"
+                    className={`transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                  />
+                </>
+              ) : compactTooltip(label)}
+            </button>
+
+            {!collapsed && open ? (
+              <div id={navigationId} className="ml-[21px] mt-2 flex flex-col gap-0.5 border-l border-border pl-2">
+                {items.map((module) => renderLink(module, true))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+    </>
+  );
+
   return (
     <>
       <nav
@@ -179,38 +218,10 @@ function ManagementSidebarNavContent({
       >
         {mainItems.map((module) => renderLink(module))}
 
-        {managementItems.length > 0 ? (
-          <div className="mt-1">
-            <button
-              type="button"
-              aria-controls="management-subnavigation"
-              aria-expanded={managementOpen}
-              aria-label={collapsed ? "Management" : undefined}
-              onClick={toggleManagement}
-              className={`group relative flex min-h-11 w-full items-center rounded-lg text-sm outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring ${
-                collapsed ? "justify-center px-0 text-muted-foreground" : "gap-3 px-3 text-muted-foreground"
-              } ${managementIsActive ? "font-medium text-foreground" : ""}`}
-            >
-              <Settings size={18} aria-hidden="true" />
-              {!collapsed ? (
-                <>
-                  <span className="flex-1 text-left">Management</span>
-                  <ChevronDown
-                    size={16}
-                    aria-hidden="true"
-                    className={`transition-transform motion-reduce:transition-none ${managementOpen ? "rotate-180" : ""}`}
-                  />
-                </>
-              ) : compactTooltip("Management")}
-            </button>
-
-            {!collapsed && managementOpen ? (
-              <div id="management-subnavigation" className="ml-[21px] mt-2 flex flex-col gap-0.5 border-l border-border pl-2">
-                {managementItems.map((module) => renderLink(module, true))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {renderGroup("Management", "management-subnavigation", managementItems, Settings, managementOpen, managementIsActive, toggleManagement)}
+        {renderGroup("Model Development", "model-development-subnavigation", modelItems, FlaskConical, modelOpen,
+          modelItems.some((module) => pathname === module.href || pathname.startsWith(`${module.href}/`)),
+          () => { if (collapsed) { onExpandSidebar?.(); setModelOpen(true); } else { setModelOpen((open) => !open); } })}
       </nav>
 
       <div className="mt-3 border-t border-border px-3 pb-3 pt-3">

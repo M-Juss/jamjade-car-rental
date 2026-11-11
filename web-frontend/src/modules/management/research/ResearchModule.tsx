@@ -8,14 +8,14 @@ import { MetadataList } from "@/components/common/data-display/MetadataList";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/components/common/forms/FormDialogLayout";
 import { NativeRecordings } from "./NativeRecordings";
-import exerciseCatalog from "./rc-exercises-v3.json";
+import exerciseCatalog from "./rc-exercises-v6.json";
 
 export function ResearchModule() {
   const [revision, setRevision] = useState(0);
   const [guideOpen, setGuideOpen] = useState(false);
   return <section className="space-y-5 p-4 sm:p-6 lg:p-8">
     <header className="flex flex-wrap items-center justify-between gap-4">
-      <ManagementPageHeading title="RC Research" description="Review recordings, sensor signals and reference previews." />
+      <ManagementPageHeading title="Data Collection" description="Review driving recordings, prepare signals and label maneuvers." />
       <div className="flex shrink-0 items-center gap-2">
         <Button type="button" variant="outline" size="icon" className="size-11" aria-label="Refresh recordings" onClick={() => setRevision(value => value + 1)}>
           <RefreshCw className="size-4" aria-hidden="true" />

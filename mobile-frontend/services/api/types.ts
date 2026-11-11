@@ -24,6 +24,7 @@ export type MobileCustomerProfile = {
   profileCompletedAt?: string | null;
   emergencyContactSkippedAt?: string | null;
   canSelfDrive?: boolean;
+  selfDriveReviewStatus?: string;
   verificationStatus?: string | null;
   drivingIntent?: 'self_drive' | 'owner_driver' | 'not_sure' | null;
   joinedSince?: string | null;
@@ -54,6 +55,22 @@ export type MobileRegisterPayload = {
   password: string;
   password_confirmation: string;
   device_name?: string;
+};
+
+export type MobileRegistrationPending = {
+  registrationId: string;
+  email: string;
+  expiresAt: string;
+  resendAvailableAt: string;
+};
+
+export type MobileRegistrationVerifyPayload = {
+  registration_id: string;
+  code: string;
+};
+
+export type MobileRegistrationResendPayload = {
+  registration_id: string;
 };
 
 export type MobileAuthResponse = {
@@ -205,6 +222,7 @@ export type MobileBookingRecord = {
   backendId: number;
   id: string;
   bookingCode: string;
+  canReviseUnpaid?: boolean;
   status: 'Pending' | 'Confirmed' | 'Active' | 'Ongoing' | 'Returned' | 'Completed' | 'Rejected' | 'Cancelled';
   vehicleId: string;
   vehicleName: string;
@@ -219,6 +237,7 @@ export type MobileBookingRecord = {
   rentalEndAt: string;
   duration: number;
   pickupType: 'Delivery' | 'Shop Pickup';
+  ownerDriverCoverage?: 'metro_manila' | 'outside_manila' | null;
   pickupLocation: string;
   deliveryTime?: string | null;
   deliveryTimeLabel?: string | null;

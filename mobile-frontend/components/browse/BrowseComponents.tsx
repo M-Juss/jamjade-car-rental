@@ -1,4 +1,5 @@
 import {
+  Armchair,
   ArrowUpDown,
   Bluetooth,
   CalendarDays,
@@ -8,6 +9,7 @@ import {
   ChevronRight,
   CircleAlert,
   CircleCheck,
+  Cog,
   CreditCard,
   FileCheck2,
   Fuel,
@@ -17,6 +19,7 @@ import {
   MapPin,
   MapPinned,
   Navigation,
+  Palette,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -29,6 +32,7 @@ import {
   Image,
   Modal,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -279,43 +283,57 @@ export function BookingStepper({ step }: { step: 1 | 2 | 3 }) {
 
 export function SelectedVehicleSummary({ vehicle }: { vehicle: Vehicle }) {
   const vehicleTitle = [vehicle.brand, vehicle.name, vehicle.model].filter(Boolean).join(' ');
+  return <View className="rounded-card border border-border bg-surface p-card">
+    <VehicleSummaryContent title={vehicleTitle} image={vehicle.cardImage} pricePerDay={vehicle.pricePerDay}
+      color={vehicle.color} seats={vehicle.seats} transmission={vehicle.transmission} fuelType={vehicle.fuelType} />
+  </View>;
+}
+
+export function VehicleSummaryContent({ title, image, pricePerDay, color, seats, transmission, fuelType, hidePrice = false }: {
+  hidePrice?: boolean;
+  title: string;
+  image?: string | null;
+  pricePerDay: number;
+  color: string | null;
+  seats: number;
+  transmission: string;
+  fuelType: string;
+}) {
   const specs = [
-    { icon: Users, value: String(vehicle.seats), accessibilityLabel: `${vehicle.seats} seats` },
-    { icon: Gauge, value: vehicle.transmission, accessibilityLabel: vehicle.transmission },
-    { icon: Fuel, value: vehicle.fuelType, accessibilityLabel: vehicle.fuelType },
+    { icon: Palette, value: color || 'Not specified', label: 'Color' },
+    { icon: Armchair, value: `${seats} seater`, label: 'Seats' },
+    { icon: Cog, value: transmission, label: 'Transmission' },
+    { icon: Fuel, value: fuelType === 'Gasoline' ? 'Gas' : fuelType, label: 'Fuel type' },
   ];
 
   return (
-    <View className="flex-row gap-3 rounded-card border border-border bg-surface p-3">
+    <View>
       <VehicleImage
-        accessibilityLabel={vehicleTitle}
-        uri={vehicle.cardImage}
-        className="h-[104px] w-[104px] self-center rounded-card"
+        accessibilityLabel={title}
+        uri={image}
+        resizeMode="contain"
+        className="h-[140px] w-full"
       />
-      <View className="min-w-0 flex-1 gap-3 py-1">
-        <Text className="font-sans text-[18px] font-semibold leading-[22px] text-foreground">
-          {vehicleTitle}
+      <View className="mt-3 flex-row items-start justify-between gap-3">
+        <Text className="font-sans min-w-0 flex-1 text-[18px] font-semibold leading-[22px] text-foreground">
+          {title}
         </Text>
-        <View className="gap-2">
-          {specs.map(({ icon: Icon, value, accessibilityLabel }) => (
-            <View key={accessibilityLabel} accessibilityLabel={accessibilityLabel} className="flex-row items-center gap-2">
-              <Icon accessible={false} size={16} color={themeColors.primary} strokeWidth={2.2} />
-              <Text className="font-sans min-w-0 flex-1 text-[12px] font-medium leading-4 text-secondary-foreground">
-                {value}
-              </Text>
-            </View>
-          ))}
-          <View
-            accessibilityLabel={`Price ${formatPeso(vehicle.pricePerDay)} per day`}
-            className="flex-row items-center gap-2 border-t border-border pt-2">
-            <CreditCard accessible={false} size={16} color={themeColors.primary} strokeWidth={2.2} />
-            <Text className="font-sans min-w-0 flex-1 text-[15px] font-semibold leading-5 text-primary">
-              {formatPeso(vehicle.pricePerDay)}
-              <Text className="text-[11px] font-medium text-secondary-foreground"> / day</Text>
+        {!hidePrice ? <Text className="font-sans text-right text-[16px] font-semibold text-primary">
+          {formatPeso(pricePerDay)}
+          <Text className="text-[11px] font-medium text-secondary-foreground"> / day</Text>
+        </Text> : null}
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 border-t border-border pt-3"
+        contentContainerStyle={{ alignItems: 'center', columnGap: 12 }}>
+        {specs.map(({ icon: Icon, value, label }, index) => (
+          <View key={label} accessible accessibilityLabel={`${label}: ${value}`} className={cx('shrink-0 flex-row items-center gap-1.5', index < specs.length - 1 && 'border-r border-border pr-3')}>
+            <Icon accessible={false} size={16} color={themeColors.primary} strokeWidth={2} />
+            <Text numberOfLines={1} className="font-sans text-[12px] font-semibold text-foreground">
+              {value}
             </Text>
           </View>
-        </View>
-      </View>
+        ))}
+      </ScrollView>
     </View>
   );
 }

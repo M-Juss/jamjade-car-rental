@@ -9,9 +9,9 @@ import { useTablePagination } from "@/components/common/tables/useTablePaginatio
 import { getUserRoleNames } from "@/services/auth";
 import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Circle, Eye, Fence, Loader2, Pencil, Plus, RotateCcw, Trash2, XCircle } from "lucide-react";
+import { Circle, Eye, Fence, Loader2, Map, Pencil, Plus, RotateCcw, SquareDashed, Trash2, XCircle } from "lucide-react";
 import { TableActionMenu, type TableActionMenuItem } from "@/components/common/tables/TableActionMenu";
-import { SummaryList } from "@/components/common/data-display/SummaryList";
+import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -133,11 +133,13 @@ export function GeofenceLibraryModule() {
         {canManage ? <Button type="button" onClick={openCreate}><Plus />Create Default Zone</Button> : null}
       </div>
 
-      <SummaryList label="Geofence summary" items={[
-        { label: "active zones", value: loading || error ? "—" : activeCount },
-        { label: "circle zones", value: loading || error ? "—" : circleCount },
-        { label: "polygon zones", value: loading || error ? "—" : polygonCount },
-      ]} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+        {[
+          { label: "Active zones", value: loading || error ? "—" : activeCount, icon: Map },
+          { label: "Circle zones", value: loading || error ? "—" : circleCount, icon: Circle },
+          { label: "Polygon zones", value: loading || error ? "—" : polygonCount, icon: SquareDashed },
+        ].map((item) => <KpiCard key={item.label} {...item} />)}
+      </div>
 
       {error ? <Card className="rounded-2xl border border-destructive-border bg-destructive-surface shadow-none"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm text-destructive">{error}</p><Button type="button" size="sm" variant="outline" onClick={() => void load()}>Try Again</Button></CardContent></Card> : null}
 

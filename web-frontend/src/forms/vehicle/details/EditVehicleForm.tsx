@@ -24,7 +24,7 @@ import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { VehicleImageGallery } from "@/modules/management/vehicles/components/VehicleImageGallery";
 import { VehicleFeatureSelector } from "@/modules/management/vehicles/components/VehicleFeatureSelector";
 import { getVehicle, updateVehicle } from "@/services/vehicle";
-import { ApiError } from "@/services/http";
+import { ApiError, OwnerVerificationCancelled } from "@/services/http";
 import { useVehicleOptions, vehicleSelectOptions } from "@/modules/management/vehicles/use-vehicle-options";
 import { appToast } from "@/lib/toast";
 import {
@@ -127,6 +127,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
       appToast.success("Vehicle updated successfully.");
       router.push(`${vehiclePath}/${vehicleId}`);
     } catch (saveError) {
+      if (saveError instanceof OwnerVerificationCancelled) return;
       if (saveError instanceof ApiError && saveError.errors) {
         Object.entries(saveError.errors).forEach(([serverField, messages]) => {
           const field = serverField.startsWith("features.") ? "features" : serverField;

@@ -19,6 +19,7 @@ export type MovementCompletion = {
   maxGapMs: number;
 };
 export type CalibrationReading = {
+  forwardStatus?: 'ready' | 'measuring' | 'retry';
   elapsedMs: number;
   durationMs: number;
   acceleration: number;
@@ -56,8 +57,9 @@ export function forwardMotionFeedback(reading: CalibrationReading | undefined, l
     ? { state: 'building', progress: Math.min(0.95, progress) } as const : { state: 'waiting', progress: 0 } as const;
 }
 
-export function isCalibrationStep(value: string | null): value is CalibrationStep {
-  return value !== null && Object.prototype.hasOwnProperty.call(CALIBRATION_STEPS, value);
+export function isCalibrationStep(value: string | null): value is 'stationary_calibration' | 'forward_calibration' {
+  // Legacy exercise names remain readable, but cannot start new rental captures.
+  return value === 'stationary_calibration' || value === 'forward_calibration';
 }
 
 export function rcMovementFeedback(step: CalibrationStep, reading: CalibrationReading | undefined,
@@ -85,12 +87,12 @@ const unit = (a: Vector3): Vector3 => a.map((value) => value / magnitude(a)) as 
 
 // This ends native capture only. Laravel still evaluates the complete summary.
 export function movementCaptureComplete(summary: ReturnType<CalibrationAccumulator['summary']>, elapsedMs: number,
-  reference: MountReference, policy: MovementCompletion, forwardLimits: ForwardCalibrationLimits,
+  reference: MountReference, policy: MovementCompletion, forwardLimits: ForwardCalibrationLimits, sampleRate = 30,
 ) {
   const { quality, movement, step } = policy;
   if (elapsedMs < quality.minimumDurationMs || summary.sensor_duration_ms < elapsedMs * quality.minimumCoverage
     || summary.sensor_duration_ms > elapsedMs + 250 || summary.sample_count < elapsedMs / 1000 * quality.minimumSamplesPerSecond
-    || summary.sample_count > elapsedMs / 1000 * 30 + 5 || summary.max_gap_ms > policy.maxGapMs) return false;
+    || summary.sample_count > elapsedMs / 1000 * sampleRate + 5 || summary.max_gap_ms > policy.maxGapMs) return false;
   const gravity: Vector3 = [summary.gravity_x, summary.gravity_y, summary.gravity_z];
   const norm = magnitude(gravity);
   const meanTilt = Math.acos(Math.max(-1, Math.min(1, dot(unit(gravity), reference.down)))) * 180 / Math.PI;
@@ -98,7 +100,7 @@ export function movementCaptureComplete(summary: ReturnType<CalibrationAccumulat
   const forward: Vector3 = [summary.forward_x, summary.forward_y, summary.forward_z];
   if (step === 'forward_calibration' && (summary.forward_duration_ms > summary.sensor_duration_ms
     || summary.forward_sample_count > summary.sample_count
-    || summary.forward_sample_count > summary.forward_duration_ms / 1000 * 30 + 2
+    || summary.forward_sample_count > summary.forward_duration_ms / 1000 * sampleRate + 2
     || Math.abs(dot(forward, reference.down)) > magnitude(forward) * 0.05)) return false;
   return rcMovementFeedback(step, {
     elapsedMs, durationMs: elapsedMs, acceleration: summary.linear_rms, rotation: summary.rotation_peak,
@@ -138,6 +140,7 @@ export class CalibrationAccumulator {
   private forwardDuration = 0;
   private forwardSamples = 0;
   private forwardComplete = false;
+  private forwardRejected = false;
   private previousForwardSample = false;
 
   private resetForwardWindow() {
@@ -158,7 +161,7 @@ export class CalibrationAccumulator {
 
   // Retain the first qualifying direction so the later stop cannot cancel it.
   private learnForward(horizontal: Vector3, seconds: number) {
-    if (this.forwardComplete) return;
+    if (this.forwardComplete || this.forwardRejected) return;
     if (this.forwardLimits.durationMs === 0 && this.forwardLimits.samples === 1) {
       const acceleration = magnitude(horizontal);
       if (acceleration >= this.forwardLimits.acceleration) {
@@ -171,7 +174,10 @@ export class CalibrationAccumulator {
     }
     if (magnitude(horizontal) < this.forwardLimits.acceleration || seconds > 0.25) {
       if (this.validForwardWindow()) this.forwardComplete = true;
-      else this.resetForwardWindow();
+      else {
+        this.forwardRejected = this.firstLaunchOnly && this.previousForwardSample;
+        this.resetForwardWindow();
+      }
       this.previousForwardSample = false;
       return;
     }
@@ -180,9 +186,10 @@ export class CalibrationAccumulator {
       this.forwardMagnitudeSum += magnitude(horizontal);
       this.forwardDuration += seconds;
       this.forwardSamples++;
+      if (this.firstLaunchOnly && this.validForwardWindow()) this.forwardComplete = true;
       if (this.forwardDuration >= 0.75) {
         if (this.validForwardWindow()) this.forwardComplete = true;
-        else { this.resetForwardWindow(); return; }
+        else { this.forwardRejected = this.firstLaunchOnly; this.resetForwardWindow(); return; }
       }
     }
     this.previousForwardSample = true;
@@ -192,11 +199,13 @@ export class CalibrationAccumulator {
 
   private readonly forwardLimits: ForwardCalibrationLimits;
   private readonly maximumSamples: number;
+  private readonly firstLaunchOnly: boolean;
 
-  constructor(reference: MountReference | null, forwardLimits: ForwardCalibrationLimits = { acceleration: 0.5, durationMs: 500, coherence: 0.9, samples: 5 }, maximumSamples = 2000) {
+  constructor(reference: MountReference | null, forwardLimits: ForwardCalibrationLimits = { acceleration: 0.5, durationMs: 500, coherence: 0.9, samples: 5 }, maximumSamples = 2000, firstLaunchOnly = false) {
     if (!Number.isInteger(maximumSamples) || maximumSamples < 1 || maximumSamples > 10000) throw new Error('Invalid motion sample limit.');
     this.maximumSamples = maximumSamples;
     this.forwardLimits = forwardLimits;
+    this.firstLaunchOnly = firstLaunchOnly;
     this.reference = reference;
     this.learningForward = reference !== null && reference.forward === null;
   }

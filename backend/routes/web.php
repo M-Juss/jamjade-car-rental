@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Web\Admin\AdminInvitationController;
 use App\Http\Controllers\Web\Admin\AuthController;
 use App\Http\Controllers\Web\Admin\BookingController;
 use App\Http\Controllers\Web\Admin\BookingGeofenceController;
@@ -7,15 +8,20 @@ use App\Http\Controllers\Web\Admin\CustomerController;
 use App\Http\Controllers\Web\Admin\DashboardController;
 use App\Http\Controllers\Web\Admin\DeliveryPricingController;
 use App\Http\Controllers\Web\Admin\DocumentVerificationController;
+use App\Http\Controllers\Web\Admin\DriveMonitoringController;
+use App\Http\Controllers\Web\Admin\FeePricingController;
 use App\Http\Controllers\Web\Admin\FleetBroadcastAuthController;
 use App\Http\Controllers\Web\Admin\FleetTrackerController;
 use App\Http\Controllers\Web\Admin\GeofenceController;
 use App\Http\Controllers\Web\Admin\LateReturnPricingController;
 use App\Http\Controllers\Web\Admin\MaintenanceController;
 use App\Http\Controllers\Web\Admin\ManagementNavigationController;
+use App\Http\Controllers\Web\Admin\ModelExplorerController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\PersonnelController;
 use App\Http\Controllers\Web\Admin\RcAnnotationController;
+use App\Http\Controllers\Web\Admin\RcDemoInferenceController;
+use App\Http\Controllers\Web\Admin\RcManeuverComparisonController;
 use App\Http\Controllers\Web\Admin\RcNativeRecordingController;
 use App\Http\Controllers\Web\Admin\RcProcessingRunController;
 use App\Http\Controllers\Web\Admin\RcResearchController;
@@ -44,6 +50,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/navigation-counts', ManagementNavigationController::class)->name('navigation-counts');
         Route::middleware(['role:admin', 'throttle:60,1'])->prefix('rc-research')->name('rc-research.')->group(function () {
+            Route::get('/model-explorer/{example?}', ModelExplorerController::class)->where('example', '[0-9]{1,3}')->name('model-explorer');
+            Route::get('/model-explorer/maneuvers', [RcManeuverComparisonController::class, 'index'])->name('maneuvers.index');
+            Route::get('/model-explorer/maneuvers/{recording}/{annotation}/{index}', [RcManeuverComparisonController::class, 'signal'])
+                ->whereUuid(['recording', 'annotation'])->where('index', '[0-9]{1,2}')->name('maneuvers.signal');
+            Route::put('/model-explorer/maneuvers/{recording}/contact', [RcManeuverComparisonController::class, 'saveContact'])
+                ->whereUuid('recording')->name('maneuvers.contact');
+            Route::get('/drive-monitoring/sessions', [DriveMonitoringController::class, 'index'])->name('drive-monitoring.index');
+            Route::get('/drive-monitoring/sessions/{session}', [DriveMonitoringController::class, 'show'])
+                ->whereUuid('session')->name('drive-monitoring.show');
+            Route::post('/demo/inference', RcDemoInferenceController::class)->name('demo.inference');
             Route::get('/native-recordings/{recording}/annotations', [RcAnnotationController::class, 'show'])->whereUuid('recording')->name('annotations.show');
             Route::post('/native-recordings/{recording}/annotations', [RcAnnotationController::class, 'store'])->middleware('throttle:10,1')->whereUuid('recording')->name('annotations.store');
             Route::get('/native-recordings/{recording}/annotations/history', [RcAnnotationController::class, 'history'])->whereUuid('recording')->name('annotations.history');
@@ -89,6 +105,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::middleware('role_or_permission:admin|manage geofences')->get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
         Route::middleware('role:admin')->group(function () {
+            Route::put('/fee-pricing', [FeePricingController::class, 'update']);
             Route::get('/late-return-pricing', [LateReturnPricingController::class, 'show']);
             Route::put('/late-return-pricing', [LateReturnPricingController::class, 'update']);
             Route::get('/delivery-pricing', [DeliveryPricingController::class, 'show']);
@@ -104,9 +121,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         Route::middleware('permission:manage bookings')->group(function () {
+            Route::get('/driving-analysis', [BookingController::class, 'drivingAnalysisIndex'])
+                ->middleware('permission:view fleet tracker')->name('driving-analysis.index');
+            Route::get('/driving-analysis/operators', [BookingController::class, 'drivingOperators'])
+                ->middleware('permission:view fleet tracker')->name('driving-analysis.operators');
             Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
             Route::get('/bookings/drivers', [BookingController::class, 'drivers'])->name('bookings.drivers');
             Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
+            Route::get('/bookings/{booking}/driving-analysis', [BookingController::class, 'drivingAnalysis'])
+                ->middleware('permission:view fleet tracker')->name('bookings.driving-analysis');
             Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
             Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
             Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
@@ -160,9 +183,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::middleware('permission:view reports')->group(function () {
             Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+            Route::get('/reports/csv', [ReportController::class, 'csv'])->name('reports.csv');
             Route::get('/reports/pdf', [ReportController::class, 'pdf'])->name('reports.pdf');
             Route::get('/reports/excel', [ReportController::class, 'excel'])->name('reports.excel');
         });
+
+        Route::get('/fleet-tracker/{booking}/motion-monitoring', [FleetTrackerController::class, 'motion'])
+            ->middleware('permission:view fleet tracker')->name('fleet-tracker.motion');
 
         Route::get('/fleet-tracker', [FleetTrackerController::class, 'index'])
             ->middleware('permission:view fleet tracker')
@@ -182,9 +209,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 });
 
-Route::prefix('admin/personnel')->name('personnel.')->middleware(['auth', 'active_admin', 'role:admin'])->group(function () {
+Route::prefix('admin/personnel')->name('personnel.')->middleware(['auth', 'active_admin', 'role:admin|staff'])->group(function () {
     Route::get('/', [PersonnelController::class, 'index'])->name('index');
     Route::post('/users', [PersonnelController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [PersonnelController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [PersonnelController::class, 'destroy'])->name('users.destroy');
+});
+
+Route::prefix('admin/admins')->middleware(['auth', 'active_admin', 'role:owner', 'throttle:20,1'])->group(function () {
+    Route::get('/', [AdminInvitationController::class, 'index']);
+    Route::post('/users', [PersonnelController::class, 'storeAdmin']);
+    Route::delete('/invitations/{invitation}', [AdminInvitationController::class, 'cancel']);
+    Route::post('/{user}/revoke', [AdminInvitationController::class, 'revoke']);
 });

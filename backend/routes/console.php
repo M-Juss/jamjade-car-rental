@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PendingMobileRegistration;
 use App\Services\BookingEmailService;
 use App\Services\DeliveryQuoteService;
 use App\Services\LocationMonitoringService;
@@ -34,6 +35,13 @@ Schedule::command('telematics:purge-latest-locations')->hourly()->withoutOverlap
 
 Schedule::call(fn () => app(ReturnDeadlineService::class)->process())
     ->name('process-rental-return-deadlines')->everyMinute()->withoutOverlapping();
+
+Artisan::command('mobile-registration:purge', function () {
+    $count = PendingMobileRegistration::query()->where('absolute_expires_at', '<=', now())->delete();
+    $this->info("Expired pending registrations removed: {$count}.");
+})->purpose('Remove expired unverified mobile registrations');
+
+Schedule::command('mobile-registration:purge')->hourly()->withoutOverlapping();
 
 Artisan::command('booking-documents:retry {--include-failed : Retry failed deliveries as well as pending ones}', function (BookingEmailService $service) {
     $count = $service->retryPendingDocuments((bool) $this->option('include-failed'));

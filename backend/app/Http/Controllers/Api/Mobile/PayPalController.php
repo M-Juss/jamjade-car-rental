@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\CreatePayPalBalanceOrderRequest;
 use App\Http\Requests\Payment\CreatePayPalOrderRequest;
+use App\Http\Requests\Payment\RevisePayPalOrderRequest;
 use App\Http\Resources\BookingResource;
 use App\Services\PayPalCheckoutService;
 use App\Traits\ApiResponseTrait;
@@ -25,6 +26,13 @@ class PayPalController extends Controller
         );
 
         return $this->created('PayPal order created successfully.', $checkout);
+    }
+
+    public function reviseOrder(RevisePayPalOrderRequest $request, string $booking): JsonResponse
+    {
+        return $this->created('PayPal order created successfully.', $this->payPalCheckoutService->createOrder(
+            $request->user(), $request->validated(), $booking
+        ));
     }
 
     public function captureOrder(Request $request, string $orderId): JsonResponse

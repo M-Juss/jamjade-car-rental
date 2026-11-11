@@ -4,7 +4,7 @@ import { useRouter, type Href } from 'expo-router';
 import {
   Cake,
   CheckCircle2,
-  FileText,
+  FileCheck2,
   LockKeyhole,
   Mail,
   MapPin,
@@ -170,12 +170,12 @@ export default function ProfileScreen() {
                 canVerifyDocuments ? (
                   <ProfileEditButton
                     icon={requiredDocumentsVerified ? CheckCircle2 : ShieldCheck}
-                    label={requiredDocumentsVerified ? 'Verified' : 'Verify'}
+                    label={requiredDocumentsVerified ? 'View documents' : 'Verify'}
                     onPress={() => router.push('/profile/documents' as Href)}
                   />
                 ) : null
               }
-              icon={FileText}
+              icon={FileCheck2}
               title="Self-drive Verification">
               <View>
                 {CUSTOMER_DOCUMENT_DEFINITIONS.map((document, index) => (
@@ -186,6 +186,7 @@ export default function ProfileScreen() {
                     isLast={index === CUSTOMER_DOCUMENT_DEFINITIONS.length - 1}
                     key={document.id}
                     status={customer.documentStatuses[document.id]}
+                    onPress={() => router.push(`/profile/documents/${document.id}` as Href)}
                   />
                 ))}
               </View>

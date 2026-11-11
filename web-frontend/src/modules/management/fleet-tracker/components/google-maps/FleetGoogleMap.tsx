@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { loadGoogleMaps } from "@/lib/google-maps";
 import type { FleetRental } from "@/services/fleet/types";
 import { formatReturnDateTime } from "@/services/booking/return-time";
+import { fleetVehicleName } from "../../fleet-presentation";
 import { fleetStatusLabels } from "../../fleet-status";
 
 type Props = {
@@ -106,7 +107,7 @@ export function FleetGoogleMap({ rentals, selectedId, onSelect, loadingRentals }
       entry.label.className = `relative z-10 block rounded-lg border-2 border-surface px-2.5 py-1.5 text-xs font-semibold leading-4 shadow-none ${fill} ${selectedId === rental.id ? "ring-2 ring-primary ring-offset-2" : ""}`;
       entry.tip.className = `absolute bottom-[3px] left-1/2 z-20 size-3 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-surface ${fill}`;
       const label = rental.vehicle?.plateNumber || rental.bookingCode;
-      const description = `${rental.vehicle?.name ?? "Vehicle"}, ${label}, ${fleetStatusLabels[rental.tracking.status]}, last shared ${formatReturnDateTime(rental.tracking.lastLocationAt, true)}, accuracy ${Math.round(point.accuracy)} meters`;
+      const description = `${fleetVehicleName(rental.vehicle)}, ${label}, ${fleetStatusLabels[rental.tracking.status]}, last shared ${formatReturnDateTime(rental.tracking.lastLocationAt, true)}, accuracy ${Math.round(point.accuracy)} meters`;
       entry.label.textContent = label;
       entry.content.setAttribute("aria-label", description);
       entry.content.title = description;

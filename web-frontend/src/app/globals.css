@@ -91,7 +91,7 @@
   --warning-surface: #fff9e8;
   --warning-border: #ffe7a6;
   --border: #dde8ff;
-  --input: #8192ad;
+  --input: #dde8ff;
   --ring: var(--primary);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -130,12 +130,14 @@
 }
 
 @media (min-width: 1024px) {
-  .dashboard-page {
-    min-height: calc(100dvh + var(--dashboard-calendar-extra-height, 0px));
-  }
-
   .dashboard-calendar .rbc-calendar {
-    height: calc(540px + var(--dashboard-calendar-extra-height, 0px));
+    height: calc(430px + var(--dashboard-calendar-extra-height, 0px));
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-calendar .rbc-calendar {
+    flex: 1 0 auto;
   }
 }
 
@@ -231,6 +233,20 @@
   .dashboard-calendar .rbc-calendar {
     height: 600px;
   }
+}
+
+/* Use the longest review status to size table badges consistently. */
+[data-slot="table-cell"] :is([data-slot="badge"], .table-status-badge) {
+  display: inline-flex;
+  width: 11rem;
+  max-width: 100%;
+  height: auto;
+  min-height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Management tables share bounded columns, wrapping, and labeled phone rows. */

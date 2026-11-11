@@ -31,7 +31,7 @@ export function RcCollectionPanel({ active, onSaved, onBusyChange, onUnsavedChan
     <View className="w-full max-w-[640px] flex-row items-center gap-2 self-center px-screen pb-3">
       {flow.stage !== 'setup' ? <Pressable accessibilityRole="button" accessibilityLabel="Back" disabled={flow.busy === 'creating' || flow.busy === 'saving'}
         onPress={flow.back} className="min-h-control min-w-control items-center justify-center rounded-full active:bg-muted disabled:opacity-50">
-        <ArrowLeft size={22} color={themeColors.foreground} />
+        <ArrowLeft size={22} color={themeColors.foreground} strokeWidth={2} />
       </Pressable> : null}
       <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-section font-semibold text-foreground">{title}</Text>
       <Text className="font-sans text-caption text-secondary-foreground">{flow.stage === 'setup' ? '1 / 3' : flow.stage === 'recording' ? '2 / 3' : '3 / 3'}</Text>

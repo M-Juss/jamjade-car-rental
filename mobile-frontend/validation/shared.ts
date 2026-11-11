@@ -12,6 +12,13 @@ export function sanitizePhoneNumber(value: string) {
   return value.replace(/\D/g, '').slice(0, 11);
 }
 
+export function utf8ByteLength(value: string) {
+  return Array.from(value).reduce((length, character) => {
+    const code = character.codePointAt(0) ?? 0;
+    return length + (code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4);
+  }, 0);
+}
+
 export function requiredString(message: string) {
   return z.string().trim().min(1, { message });
 }

@@ -86,3 +86,55 @@ test('v3 keeps earlier protocols and binds both harsh turns in an existing sessi
     assert.equal(collectionContextSchema.safeParse({ ...input, catalog_version: 'rc-exercises-v2' }).success, false);
   }
 });
+
+test('v4 separates lane change and obstacle avoidance without changing other protocols', () => {
+  const root = new URL('../../', import.meta.url);
+  const canonical = readFileSync(new URL('../docs/contracts/rc-collection-v1/catalog-v4.json', root), 'utf8');
+  for (const path of ['assets/research/rc-exercises-v4.json', 'modules/rc-recorder/android/src/main/assets/rc-exercises-v4.json', '../backend/resources/research/rc-exercises-v4.json', '../web-frontend/src/modules/management/research/rc-exercises-v4.json']) {
+    assert.equal(readFileSync(new URL(path, root), 'utf8'), canonical);
+  }
+  const { protocols } = JSON.parse(canonical);
+  const previous = JSON.parse(readFileSync(new URL('assets/research/rc-exercises-v3.json', root), 'utf8'));
+  assert.deepEqual(protocols.filter(p => !['LC', 'SW'].includes(p.code)), previous.protocols.filter(p => p.code !== 'SW'));
+  assert.equal(protocols.find(p => p.code === 'LC').layout_key, 'lane_change');
+  assert.equal(protocols.find(p => p.code === 'SW').layout_key, 'swerve_obstacle_avoidance');
+  for (const code of ['LC', 'SW', 'HLT', 'HRT']) {
+    assert.equal(collectionContextSchema.safeParse({ ...fixture(), protocol_code: code, catalog_version: 'rc-exercises-v4' }).success, true);
+  }
+  assert.equal(collectionContextSchema.safeParse({ ...fixture(), protocol_code: 'LC', catalog_version: 'rc-exercises-v3' }).success, false);
+});
+
+test('v5 provides lane change and both swerve directions at each planned intensity', () => {
+  const root = new URL('../../', import.meta.url);
+  const canonical = readFileSync(new URL('../docs/contracts/rc-collection-v1/catalog-v5.json', root), 'utf8');
+  for (const path of ['assets/research/rc-exercises-v5.json', 'modules/rc-recorder/android/src/main/assets/rc-exercises-v5.json', '../backend/resources/research/rc-exercises-v5.json', '../web-frontend/src/modules/management/research/rc-exercises-v5.json']) {
+    assert.equal(readFileSync(new URL(path, root), 'utf8'), canonical);
+  }
+  const { protocols } = JSON.parse(canonical);
+  assert.equal(protocols.find(p => p.code === 'LC').planned_assessment, 'normal');
+  assert.equal(protocols.some(p => p.code === 'SW'), false);
+  for (const [code, assessment] of [['SWL', 'normal'], ['SWR', 'normal'], ['HSWL', 'harsh_attempt'], ['HSWR', 'harsh_attempt']]) {
+    assert.equal(protocols.find(p => p.code === code).planned_assessment, assessment);
+    const input = { ...fixture(), protocol_code: code, catalog_version: 'rc-exercises-v5' };
+    assert.equal(collectionContextSchema.safeParse(input).success, true);
+    assert.equal(collectionContextSchema.safeParse({ ...input, catalog_version: 'rc-exercises-v4' }).success, false);
+  }
+  assert.equal(collectionContextSchema.safeParse({ ...fixture(), protocol_code: 'SW', catalog_version: 'rc-exercises-v5' }).success, false);
+});
+
+test('v6 adds Mixed Drive while preserving prior protocol definitions', () => {
+  const root = new URL('../../', import.meta.url);
+  const canonical = readFileSync(new URL('../docs/contracts/rc-collection-v1/catalog-v6.json', root), 'utf8');
+  for (const path of ['assets/research/rc-exercises-v6.json', 'modules/rc-recorder/android/src/main/assets/rc-exercises-v6.json', '../backend/resources/research/rc-exercises-v6.json', '../web-frontend/src/modules/management/research/rc-exercises-v6.json']) {
+    assert.equal(readFileSync(new URL(path, root), 'utf8'), canonical);
+  }
+  const { protocols } = JSON.parse(canonical);
+  const previous = JSON.parse(readFileSync(new URL('assets/research/rc-exercises-v5.json', root), 'utf8'));
+  assert.deepEqual(protocols.filter(p => p.code !== 'MD'), previous.protocols);
+  assert.equal(protocols.find(p => p.code === 'MD').planned_assessment, 'unspecified');
+  const input = { ...fixture(), protocol_code: 'MD', catalog_version: 'rc-exercises-v6' };
+  assert.equal(collectionContextSchema.safeParse(input).success, true);
+  assert.equal(collectionContextSchema.safeParse({ ...input, catalog_version: 'rc-exercises-v5' }).success, false);
+  assert.equal(collectionContextSchema.safeParse({ ...input, protocol_code: 'HSWR' }).success, true);
+  assert.equal(collectionContextSchema.safeParse({ ...input, protocol_code: 'SW' }).success, false);
+});

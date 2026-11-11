@@ -15,7 +15,7 @@ export function telematicsDrawerPositions(height: number, topInset: number, bott
 
 export function TelematicsDrawer({ tab, onTab, expanded, onExpand, unread, summary, children }: {
   tab: TelematicsTab; onTab: (tab: TelematicsTab) => void; expanded: boolean;
-  onExpand: (expanded: boolean) => void; unread: number; summary: ReactNode; children: ReactNode;
+  onExpand: (expanded: boolean) => void; unread: number; summary?: ReactNode; children: ReactNode;
 }) {
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -57,7 +57,7 @@ export function TelematicsDrawer({ tab, onTab, expanded, onExpand, unread, summa
       <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Show map' : 'Expand booking panel'} accessibilityState={{ expanded }} onPress={() => onExpand(!expanded)} className="min-h-[32px] items-center justify-center">
         <View className="h-1 w-10 rounded-full bg-border" />
       </Pressable>
-      <View className="px-card">{summary}</View>
+      {summary ? <View className="shrink-0 px-card">{summary}</View> : null}
       <ScrollView ref={scroll} className="flex-1" contentInsetAdjustmentBehavior="never" showsVerticalScrollIndicator nestedScrollEnabled scrollEventThrottle={16}
         onTouchStart={(event) => { touchY.current = event.nativeEvent.pageY; }}
         onTouchEnd={(event) => { if (expanded && offsets.current[tab] <= 0 && event.nativeEvent.pageY - touchY.current > 55) onExpand(false); }}

@@ -289,3 +289,62 @@ it('keeps released zone edits and deletions denied through the website APIs', fu
     $this->deleteJson("/admin/bookings/{$booking->id}/monitoring-zones/{$zone->id}")->assertUnprocessable();
     $this->postJson("/admin/bookings/{$booking->id}/monitoring-zones", monitoringZonePayload())->assertUnprocessable();
 });
+
+it('detects reliable crossings within ten metres of the boundary without an extra buffer', function () {
+    Geofence::factory()->create(monitoringZonePayload());
+    $booking = releasedMonitoringBooking();
+    $service = app(TelematicsService::class);
+    $trip = $service->startTrip($booking->user, ['booking_id' => $booking->id, 'latitude' => 14.299, 'longitude' => 120.958]);
+    $send = function (float $distance) use ($service, $trip, $booking) {
+        $this->travel(11)->seconds();
+        $service->storeLocation($trip, [
+            'latitude' => 14.299 + rad2deg($distance / 6371008.8),
+            'longitude' => 120.958, 'accuracy' => 2, 'captured_at' => now(),
+        ], $booking->user);
+    };
+
+    $send(995);
+    expect($trip->geofenceStates()->firstOrFail()->inside)->toBeTrue();
+    $send(1005);
+    $send(1005);
+    expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(1);
+    $send(1001);
+    expect($trip->geofenceStates()->firstOrFail()->uncertain)->toBeTrue();
+});
+
+it('notifies the first reliable inside state without inventing an entry event', function () {
+    Geofence::factory()->create(monitoringZonePayload());
+    Geofence::factory()->create(monitoringZonePayload(['name' => 'Silent', 'notify_on_enter' => false]));
+    $booking = releasedMonitoringBooking();
+    $service = app(TelematicsService::class);
+    $trip = $service->startTrip($booking->user, ['booking_id' => $booking->id, 'latitude' => 14.299, 'longitude' => 120.958]);
+    $service->storeLocation($trip, ['latitude' => 14.299, 'longitude' => 120.958, 'accuracy' => 5, 'captured_at' => now()], $booking->user);
+    $this->travel(11)->seconds();
+    $service->storeLocation($trip, ['latitude' => 14.299, 'longitude' => 120.958, 'accuracy' => 5, 'captured_at' => now()], $booking->user);
+
+    expect($trip->events()->where('event_type', 'geofence_enter')->count())->toBe(0)
+        ->and($booking->user->notifications()->where('title', 'Inside zone')->count())->toBe(1);
+    $notice = $booking->user->notifications()->where('title', 'Inside zone')->firstOrFail();
+    expect($notice->data['event_type'])->toBe('geofence_initial_inside')
+        ->and($notice->data['zone_name'])->toBe('Office');
+});
+
+it('confirms a crossing after at least two reliable readings over five seconds', function () {
+    Geofence::factory()->create(monitoringZonePayload());
+    $booking = releasedMonitoringBooking();
+    $service = app(TelematicsService::class);
+    $trip = $service->startTrip($booking->user, ['booking_id' => $booking->id, 'latitude' => 14.299, 'longitude' => 120.958]);
+    $send = fn (float $latitude) => $service->storeLocation($trip, [
+        'latitude' => $latitude, 'longitude' => 120.958, 'accuracy' => 5, 'captured_at' => now(),
+    ], $booking->user);
+
+    $send(14.299);
+    $this->travel(1)->seconds();
+    $send(14.32);
+    $this->travel(4)->seconds();
+    $send(14.32);
+    expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(0);
+    $this->travel(1)->seconds();
+    $send(14.32);
+    expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(1);
+});

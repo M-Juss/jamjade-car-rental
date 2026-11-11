@@ -1,0 +1,4 @@
+// Shared by Radix panel tabs and route-based vehicle section links.
+export const tabListClassName = "flex w-full min-w-0 shrink-0 items-stretch gap-1 overflow-x-auto rounded-2xl border border-border bg-surface p-1 shadow-none";
+
+export const tabTriggerClassName = "inline-flex min-h-10 min-w-max flex-1 basis-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-center text-xs font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-muted data-[state=active]:text-primary aria-[current=page]:bg-muted aria-[current=page]:text-primary [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";

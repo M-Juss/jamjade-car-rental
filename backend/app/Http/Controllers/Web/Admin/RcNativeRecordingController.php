@@ -26,13 +26,13 @@ class RcNativeRecordingController extends Controller
 
     private function enabled(): void
     {
-        abort_unless($this->access->enabled(), 403, 'RC Research is unavailable.');
+        abort_unless($this->access->enabled(), 403, 'Data Collection is unavailable.');
     }
 
     public function index(ListRcNativeRecordingsRequest $request): JsonResponse
     {
         $this->enabled();
-        $query = RcNativeRecording::where('user_id', $request->user()->id)->with(['latestAnnotation', 'collectionContext:recording_id,display_code'])->withCount('chunks');
+        $query = RcNativeRecording::where('user_id', $request->user()->id)->with(['latestAnnotation', 'collectionContext:recording_id,display_code,payload'])->withCount('chunks');
         $sessions = $this->collection->recordingFilterSessions($request->user()->id);
         $groupId = $request->validated('group_id');
         $sessionId = $request->validated('session_id');
@@ -47,7 +47,18 @@ class RcNativeRecordingController extends Controller
         $search = $request->validated('search');
         if ($search !== null && $search !== '') {
             $term = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search).'%';
-            $query->where(fn ($q) => $q->whereRaw("name LIKE ? ESCAPE '!'", [$term])->orWhereHas('collectionContext', fn ($context) => $context->whereRaw("display_code LIKE ? ESCAPE '!'", [$term]))->orWhereRaw("surface LIKE ? ESCAPE '!'", [$term]));
+            $legacyMatches = [];
+            if (stripos($search, 'LC') !== false) {
+                $legacyTerm = str_ireplace('LC', 'SW', $term);
+                $legacyMatches = (clone $query)->withoutEagerLoads()
+                    ->whereHas('collectionContext', fn ($context) => $context->whereRaw("display_code LIKE ? ESCAPE '!'", [$legacyTerm]))
+                    ->with('collectionContext:recording_id,display_code,payload')
+                    ->get(['id'])->filter(fn (RcNativeRecording $record) => $record->collectionContext?->isLegacyLaneChange())
+                    ->modelKeys();
+            }
+            $query->where(fn ($q) => $q->whereRaw("name LIKE ? ESCAPE '!'", [$term])
+                ->orWhereHas('collectionContext', fn ($context) => $context->whereRaw("display_code LIKE ? ESCAPE '!'", [$term]))
+                ->orWhereRaw("surface LIKE ? ESCAPE '!'", [$term])->orWhereIn('id', $legacyMatches));
         }
 
         return $this->paginated('Native recordings fetched.', $query->latest('started_at')->orderByDesc('id')

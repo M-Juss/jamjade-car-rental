@@ -89,7 +89,7 @@ export function DocumentManagerScreen() {
               accessibilityRole="button"
               onPress={() => router.back()}
               className="h-11 w-11 shrink-0 items-center justify-center rounded-field border border-border bg-surface">
-              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
             <Text
               className="font-sans min-w-0 flex-1 text-center text-[22px] font-semibold leading-[27px] text-foreground"

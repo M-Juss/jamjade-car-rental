@@ -75,9 +75,8 @@ class StoreRcCollectionContextRequest extends BaseFormRequest
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }
-            if (in_array($this->input('protocol_code'), RcNativeProtocol::HARSH_TURN_CODES, true)
-                && $this->input('catalog_version') !== RcNativeProtocol::CURRENT_EXERCISE_CATALOG) {
-                $validator->errors()->add('protocol_code', 'Harsh turns require the updated exercise catalog.');
+            if (! RcNativeProtocol::exerciseSupported($this->input('protocol_code'), $this->input('catalog_version'))) {
+                $validator->errors()->add('protocol_code', 'This exercise requires an updated exercise catalog.');
             }
             $p = $this->input('preflight');
             $start = $p['start_elapsed_ns'];

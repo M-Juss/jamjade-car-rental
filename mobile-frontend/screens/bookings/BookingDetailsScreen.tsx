@@ -4,7 +4,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter, type Href } from "expo-router";
 import {
   ArrowLeft,
+  RotateCcw,
   Navigation,
+  CreditCard,
 } from "lucide-react-native";
 import {
   ActivityIndicator,
@@ -20,95 +22,16 @@ import {
   ActionButton,
   BookingEmptyState,
   BookingStatusBadge,
-  SectionCard,
-  getBookingActions,
-  type BookingAction,
 } from "@/components/bookings";
-import { canSelectTelematicsBooking } from "@/lib/telematics/setup";
-import { getBooking } from "@/services/api";
+import { getBooking, getDriverService } from "@/services/api";
+import { useAuth } from "@/providers/AuthProvider";
+import { ApiError } from "@/services/http";
 import type { Booking } from "@/types/booking";
-import { cx } from "@/components/bookings/utils";
-
-
-function DetailsActions({
-  booking,
-  onAction,
-}: {
-  booking: Booking;
-  onAction: (action: BookingAction, booking: Booking) => void;
-}) {
-  const actions = getBookingActions(booking.status, {
-    includeDetails: false,
-    isSelfDrive: booking.driverType === "Self-Drive",
-  }).filter(
-    (action) => action.key !== "pay_balance" || booking.remainingBalance > 0,
-  );
-  const primaryActionKeys: BookingAction["key"][] = [
-    "payment_info",
-    "pay_balance",
-    "open_telematics",
-    "book_again",
-    "book_another_vehicle",
-  ];
-  const primaryActions = actions.filter((action) =>
-    primaryActionKeys.includes(action.key),
-  );
-  const supportingActions = actions.filter(
-    (action) => !primaryActionKeys.includes(action.key),
-  );
-
-  if (actions.length === 0) {
-    return null;
-  }
-
-  return (
-    <SectionCard title="Actions" icon={Navigation}>
-      <View className="gap-4">
-        {primaryActions.length > 0 ? (
-          <View className="gap-3">
-            {primaryActions.map((action) => (
-              <ActionButton
-                key={action.key}
-                className="w-full"
-                icon={action.icon}
-                label={action.label}
-                variant={action.variant}
-                onPress={() => onAction(action, booking)}
-              />
-            ))}
-          </View>
-        ) : null}
-        {supportingActions.length > 0 ? (
-          <View
-            className={cx(
-              "gap-3",
-              primaryActions.length > 0 && "border-t border-border pt-4",
-            )}
-          >
-            {primaryActions.length > 0 ? (
-              <Text className="font-sans text-[11px] font-normal text-secondary-foreground">
-                More actions
-              </Text>
-            ) : null}
-            {supportingActions.map((action) => (
-              <ActionButton
-                key={action.key}
-                className="w-full"
-                icon={action.icon}
-                label={action.label}
-                variant={action.variant}
-                onPress={() => onAction(action, booking)}
-              />
-            ))}
-          </View>
-        ) : null}
-      </View>
-    </SectionCard>
-  );
-}
 
 export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const isDriver = user?.roles?.includes('driver') ?? false;
   const insets = useSafeAreaInsets();
   const [booking, setBooking] = useState<Booking | null>(null);
   const bookingRef = useRef(booking);
@@ -128,48 +51,29 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
     }
 
     try {
-      setBooking(await getBooking(bookingId));
-    } catch {
-      if (!quiet) setLoadError("Booking could not be loaded. Please try again.");
+      setBooking(await (isDriver ? getDriverService(bookingId) : getBooking(bookingId)));
+    } catch (error) {
+      if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
+        setBooking(null);
+        setLoadError(isDriver ? 'This service is no longer assigned to you.' : 'This booking is no longer available.');
+      } else if (!quiet) setLoadError("Booking could not be loaded. Please try again.");
     } finally {
       if (!quiet) setIsLoading(false);
     }
-  }, [bookingId]);
+  }, [bookingId, isDriver]);
 
   useFocusEffect(
     useCallback(() => {
       void loadBooking();
       const interval = setInterval(() => {
         const current = bookingRef.current;
-        if (current?.driverType === "Owner's Driver" && current.status === "Active") {
+        if (isDriver || (current?.driverType === "Owner's Driver" && current.status === "Active")) {
           void loadBooking(true);
         }
       }, 15000);
       return () => clearInterval(interval);
-    }, [loadBooking]),
+    }, [loadBooking, isDriver]),
   );
-
-  const handleAction = (action: BookingAction, selectedBooking: Booking) => {
-    if (action.key === "pay_balance" || action.key === "payment_info") {
-      router.push(
-        `/bookings/payment?bookingId=${encodeURIComponent(selectedBooking.id)}` as Href,
-      );
-      return;
-    }
-
-    if (
-      action.key === "open_telematics" &&
-      canSelectTelematicsBooking(selectedBooking)
-    ) {
-      router.push(`/telematics/${encodeURIComponent(selectedBooking.id)}` as Href);
-      return;
-    }
-
-    if (action.key === "book_another_vehicle" || action.key === "book_again") {
-      router.push("/" as Href);
-      return;
-    }
-  };
 
   if (isLoading) {
     return (
@@ -185,8 +89,8 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
         <BookingEmptyState
           title="Booking Not Found"
           subtitle={loadError ?? "We could not find that booking."}
-          buttonLabel="Back to Bookings"
-          onBrowsePress={() => router.replace("/bookings" as Href)}
+          buttonLabel={isDriver ? 'Back to Services' : 'Back to Bookings'}
+          onBrowsePress={() => router.replace(isDriver ? '/(driver)/services' : '/bookings' as Href)}
         />
       </View>
     );
@@ -216,7 +120,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <ArrowLeft
                 size={21}
                 color={themeColors.foreground}
-                strokeWidth={2.45}
+                strokeWidth={2}
               />
             </Pressable>
             <View className="min-w-0 flex-1">
@@ -233,9 +137,30 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
           </View>
 
           <View className="mt-section gap-4">
-            <BookingDetailsContent booking={booking} />
-
-            <DetailsActions booking={booking} onAction={handleAction} />
+            <BookingDetailsContent booking={booking} audience={isDriver ? 'driver' : 'customer'} />
+            {isDriver ? <View className="flex-row flex-wrap gap-2">
+              {['Confirmed', 'Active', 'Ongoing'].includes(booking.status) ? <ActionButton density="compact" className="min-w-[45%] flex-1"
+                label="Telematics" icon={Navigation} variant="primary" onPress={() => router.push(`/driver-telematics/${encodeURIComponent(booking.id)}` as Href)} /> : null}
+              {booking.additionalCharges.some(charge => charge.outstandingAmount > 0) ? <ActionButton density="compact" className="min-w-[45%] flex-1"
+                label="Pay charges" icon={CreditCard} onPress={() => router.push(`/driver-payment?bookingId=${encodeURIComponent(booking.id)}` as Href)} /> : null}
+            </View> : null}
+            {!isDriver && booking.canReviseUnpaid ? (
+              <ActionButton density="compact" className="self-start" icon={CreditCard} label="Edit dates and pay" variant="primary"
+                onPress={() => router.push(`/browse/booking?vehicleId=${encodeURIComponent(booking.vehicleId)}&bookingId=${encodeURIComponent(booking.id)}` as Href)} />
+            ) : null}
+            {!isDriver && booking.status === 'Pending' && booking.paymentStatus === 'Unpaid' && !booking.canReviseUnpaid ? (
+              <Text className="font-sans text-body text-secondary-foreground">Payment is awaiting confirmation. Contact JamJade if confirmation is unavailable.</Text>
+            ) : null}
+            {!isDriver && ['Completed', 'Cancelled', 'Rejected'].includes(booking.status) ? (
+              <ActionButton
+                density="compact"
+                className="self-start"
+                icon={RotateCcw}
+                label="Book Again"
+                variant="primary"
+                onPress={() => router.push("/" as Href)}
+              />
+            ) : null}
           </View>
         </View>
       </ScrollView>

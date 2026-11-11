@@ -59,6 +59,7 @@ class BookingService
     public function paginateForAdmin(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Booking::query()
+            ->when(isset($filters['booking_ids']), fn ($query) => $query->whereIn('bookings.id', $filters['booking_ids']))
             ->withExists([
                 'additionalCharges as customer_charges_outstanding' => fn ($query) => $query->where('responsibility', 'customer')->outstanding(),
                 'vehicleInspections as outgoing_finalized' => fn ($query) => $query->where('type', 'outgoing')->where('status', 'finalized'),
@@ -110,6 +111,19 @@ class BookingService
         return $this->createBooking($user, $data, null, true);
     }
 
+    public function canReviseUnpaidBooking(Booking $booking): bool
+    {
+        return $booking->status === BookingStatus::Pending && $booking->payment_status === PaymentStatus::Unpaid
+            && $booking->payments->every(fn (Payment $payment) => $payment->provider === 'paypal'
+                && ($payment->status === 'abandoned' || ($payment->status === 'failed'
+                    && data_get($payment->provider_response, 'details.0.issue') === 'ORDER_NOT_APPROVED')));
+    }
+
+    public function reviseAwaitingPayPalPayment(User $user, array $data, string $reference): Booking
+    {
+        return $this->createBooking($user, $data, null, true, $reference);
+    }
+
     public function finalizeReturn(Booking $booking, User $actor, ?string $reason = null, array $extra = []): Booking
     {
         return DB::transaction(function () use ($booking, $actor, $reason, $extra) {
@@ -143,6 +157,11 @@ class BookingService
                 throw ValidationException::withMessages([
                     'status' => ["Cannot transition booking from {$oldStatus->value} to {$targetStatus->value}."],
                 ]);
+            }
+
+            if (in_array($targetStatus, [BookingStatus::Cancelled, BookingStatus::Rejected], true)
+                && $booking->paypalCheckouts()->whereIn('status', ['approved', 'capturing'])->exists()) {
+                throw ValidationException::withMessages(['status' => ['Resolve the pending PayPal payment before ending this booking.']]);
             }
 
             if ($targetStatus === BookingStatus::Cancelled && $oldStatus === BookingStatus::Confirmed && $booking->rental_end_at->lt(now()) && trim($reason ?? '') === '') {
@@ -234,10 +253,29 @@ class BookingService
         User $user,
         array $data,
         ?UploadedFile $paymentProof,
-        bool $awaitingPayPal
+        bool $awaitingPayPal,
+        ?string $revisionReference = null
     ): Booking {
-        return DB::transaction(function () use ($user, $data, $paymentProof, $awaitingPayPal) {
+        return DB::transaction(function () use ($user, $data, $paymentProof, $awaitingPayPal, $revisionReference) {
             app(SelfDriveBookingAvailabilityService::class)->lockCustomer($user->id);
+            $existing = null;
+            if ($revisionReference !== null) {
+                $existing = Booking::query()->where('user_id', $user->id)
+                    ->where(fn ($q) => $q->where('booking_code', $revisionReference)->orWhere('id', $revisionReference))
+                    ->lockForUpdate()->firstOrFail();
+                $existing->load('payments');
+                if (! $this->canReviseUnpaidBooking($existing)) {
+                    throw ValidationException::withMessages(['booking' => ['This booking cannot be changed while a payment is completed or unresolved. Contact JamJade if payment confirmation is unavailable.']]);
+                }
+                if ((int) $data['vehicle_id'] !== $existing->vehicle_id || $data['driver_option'] !== $existing->rental_type->value
+                    || $data['pickup_location_type'] !== $existing->pickup_location_type
+                    || ($data['owner_driver_coverage'] ?? null) !== $existing->owner_driver_coverage
+                    || $data['pickup_location'] !== $existing->pickup_location || $data['return_location'] !== $existing->return_location) {
+                    throw ValidationException::withMessages(['booking' => ['Only rental dates can be changed for this booking.']]);
+                }
+            } else {
+                app(SelfDriveBookingAvailabilityService::class)->assertCustomerBookingAvailable($user);
+            }
             if ($this->additionalChargeService->hasOutstanding($user, AdditionalChargeResponsibility::Customer)) {
                 throw ValidationException::withMessages([
                     'booking' => ['Settle your outstanding Jamjade balance before creating a new booking.'],
@@ -257,9 +295,9 @@ class BookingService
             $start = CarbonImmutable::parse($data['rental_start_at'])->utc();
             $end = CarbonImmutable::parse($data['rental_end_at'])->utc();
             if ($rentalType === RentalType::SelfDrive) {
-                app(SelfDriveBookingAvailabilityService::class)->assertReservationAvailable($user, $start, $end);
+                app(SelfDriveBookingAvailabilityService::class)->assertReservationAvailable($user, $start, $end, $existing?->id);
             }
-            $this->assertVehicleScheduleAvailable($vehicle->id, $start, $end);
+            $this->assertVehicleScheduleAvailable($vehicle->id, $start, $end, $existing?->id);
 
             $durationDays = max(1, (int) ceil($start->diffInRealHours($end) / 24));
             $latePolicy = app(LateReturnPricingService::class)->policy($vehicle);
@@ -314,8 +352,8 @@ class BookingService
                 ? BookingStatus::Pending
                 : BookingStatus::Confirmed;
 
-            $booking = Booking::create([
-                'booking_code' => $this->generateBookingCode(),
+            $attributes = [
+                'booking_code' => $existing?->booking_code ?? $this->generateBookingCode(),
                 'user_id' => $user->id,
                 'vehicle_id' => $vehicle->id,
                 'rental_type' => $rentalType,
@@ -338,9 +376,28 @@ class BookingService
                 'remaining_balance' => max($totalAmount - $downPayment, 0),
                 'balance_due_at' => $paymentStatus === PaymentStatus::Partial ? BookingAgreement::balanceDeadline($start) : null,
                 'total_amount' => $totalAmount,
-                'notes' => $data['notes'] ?? null,
-            ]);
+                'notes' => $existing?->notes ?? ($data['notes'] ?? null),
+            ];
+            if ($existing) {
+                $terms = $existing->terms()->first();
+                $raw = $terms?->getRawOriginal() ?? [];
+                DB::table('booking_terms_revisions')->insert([
+                    'booking_id' => $existing->id, 'delivery_quote_id' => $existing->deliveryQuote()->value('id'),
+                    'customer_signature' => $raw['customer_signature'] ?? null, 'terms_version' => $raw['terms_version'] ?? null,
+                    'accepted_at' => $raw['accepted_at'] ?? null, 'late_return_policy' => $raw['late_return_policy'] ?? null,
+                    'rental_context' => $raw['rental_context'] ?? null, 'created_at' => $raw['created_at'] ?? now(),
+                    'updated_at' => $raw['updated_at'] ?? now(),
+                ]);
+                $terms?->delete();
+                $existing->update($attributes);
+                $booking = $existing;
+            } else {
+                $booking = Booking::create($attributes);
+            }
 
+            if ($existing && $quote) {
+                $booking->deliveryQuote()->update(['booking_id' => null]);
+            }
             $quote?->update(['status' => 'consumed', 'booking_id' => $booking->id]);
 
             $booking->terms()->create([
@@ -376,27 +433,31 @@ class BookingService
                 ]);
             }
 
-            $booking->events()->create([
-                'event_type' => 'status_changed',
-                'old_status' => null,
-                'new_status' => $bookingStatus,
-                'actor_user_id' => $user->id,
-                'reason' => $awaitingPayPal
-                    ? 'Booking created while awaiting PayPal payment.'
-                    : 'Booking automatically confirmed after successful payment.',
-            ]);
+            if (! $existing) {
+                $booking->events()->create([
+                    'event_type' => 'status_changed',
+                    'old_status' => null,
+                    'new_status' => $bookingStatus,
+                    'actor_user_id' => $user->id,
+                    'reason' => $awaitingPayPal
+                        ? 'Booking created while awaiting PayPal payment.'
+                        : 'Booking automatically confirmed after successful payment.',
+                ]);
 
-            activity()
-                ->causedBy($user)
-                ->performedOn($booking)
-                ->event('booking_created')
-                ->withProperties([
-                    'booking_code' => $booking->booking_code,
-                    'payment_provider' => $awaitingPayPal ? 'paypal' : null,
-                ])
-                ->log($awaitingPayPal
-                    ? 'Customer started a PayPal booking checkout.'
-                    : 'Customer created a booking.');
+                activity()
+                    ->causedBy($user)
+                    ->performedOn($booking)
+                    ->event('booking_created')
+                    ->withProperties([
+                        'booking_code' => $booking->booking_code,
+                        'payment_provider' => $awaitingPayPal ? 'paypal' : null,
+                    ])
+                    ->log($awaitingPayPal
+                        ? 'Customer started a PayPal booking checkout.'
+                        : 'Customer created a booking.');
+            } else {
+                activity()->causedBy($user)->performedOn($booking)->event('booking_dates_revised')->log('Customer revised unpaid booking dates and accepted updated terms.');
+            }
 
             if (! $awaitingPayPal) {
                 $this->notificationService->createForCustomerPayment($booking, $payment, bookingConfirmed: true);
@@ -428,6 +489,12 @@ class BookingService
         if ($approvedDocumentCount < count($requiredDocuments)) {
             throw ValidationException::withMessages([
                 'driver_option' => ['Self-drive rental requires approved customer documents.'],
+            ]);
+        }
+
+        if (! $user->hasCompleteEmergencyContact()) {
+            throw ValidationException::withMessages([
+                'driver_option' => ['Add an emergency contact in your profile before booking a self-drive vehicle.'],
             ]);
         }
     }

@@ -1,7 +1,8 @@
 import { DeviceMotion } from 'expo-sensors';
 import { AppState, Platform } from 'react-native';
 
-import { CalibrationAccumulator, movementCaptureComplete, rotationAxes, type CalibrationReading, type ForwardCalibrationLimits, type MountReference, type MovementCompletion, type Vector3 } from '@/lib/telematics/calibration';
+import { CalibrationAccumulator, movementCaptureComplete, rotationAxes, stationaryWithinRange, type CalibrationReading, type ForwardCalibrationLimits, type MountReference, type MovementCompletion, type Vector3 } from '@/lib/telematics/calibration';
+import type { StationaryResumeSettings, StationaryResumeSummary } from '@/lib/telematics/stationary-resume';
 
 export class CalibrationCaptureAccessError extends Error {
   constructor(readonly hardwareAvailable: boolean) {
@@ -10,12 +11,15 @@ export class CalibrationCaptureAccessError extends Error {
 }
 
 export async function captureCalibration(seconds: number, reference: MountReference | null, signal: AbortSignal,
-  callbacks: { onReady?: () => void; onReading?: (reading: CalibrationReading) => void; forwardLimits?: ForwardCalibrationLimits; completion?: MovementCompletion } = {},
+  callbacks: { onReady?: () => void; onReading?: (reading: CalibrationReading) => void; forwardLimits?: ForwardCalibrationLimits; completion?: MovementCompletion;
+    stationaryWindow?: { limits: StationaryResumeSettings['stationaryLimits']; accepts: (summary: StationaryResumeSummary) => boolean } } = {},
 ) {
   if (Platform.OS !== 'android') throw new Error('Calibration requires the Android app.');
   if (!Number.isFinite(seconds) || seconds < 3 || seconds > 30) throw new Error('Calibration settings could not be loaded. Refresh and try again.');
   const limits = callbacks.forwardLimits;
   const completion = callbacks.completion;
+  const stationary = callbacks.stationaryWindow;
+  const durationMs = seconds * 1000;
   if (completion && (!reference || !limits || !Object.values(completion.quality).every(Number.isFinite)
     || completion.quality.minimumDurationMs <= 0 || completion.quality.minimumDurationMs > seconds * 1000
     || completion.quality.minimumCoverage <= 0 || completion.quality.minimumCoverage > 1
@@ -33,7 +37,8 @@ export async function captureCalibration(seconds: number, reference: MountRefere
   if (signal.aborted || AppState.currentState !== 'active') throw new Error('Calibration paused. Return to this screen and start again while parked.');
 
   return new Promise<ReturnType<CalibrationAccumulator['summary']> & { started_at: string; ended_at: string }>((resolve, reject) => {
-    const accumulator = new CalibrationAccumulator(reference, limits);
+    let accumulator = new CalibrationAccumulator(reference, limits);
+    let streamReady = false;
     let start: number | null = null;
     let startedAt: string | null = null;
     let lastTimestamp: number | null = null;
@@ -44,6 +49,10 @@ export async function captureCalibration(seconds: number, reference: MountRefere
     let timer: ReturnType<typeof setTimeout> | undefined;
     let motionSubscription: ReturnType<typeof DeviceMotion.addListener> | undefined;
     let appSubscription: ReturnType<typeof AppState.addEventListener> | undefined;
+    const evidence = (elapsed: number, from: string) => ({
+      ...accumulator.summary(elapsed), started_at: from,
+      ended_at: stationary ? new Date(Date.parse(from) + elapsed).toISOString() : new Date().toISOString(),
+    });
     const finish = (error?: Error) => {
       if (finished) return;
       finished = true;
@@ -54,15 +63,19 @@ export async function captureCalibration(seconds: number, reference: MountRefere
       if (error) { reject(error); return; }
       const captureStart = start;
       if (captureStart === null || startedAt === null) { reject(new Error('No fresh motion stream was received. Keep the phone secured and try again.')); return; }
-      try { resolve({ ...accumulator.summary(performance.now() - captureStart), started_at: startedAt, ended_at: new Date().toISOString() }); }
+      try { resolve(evidence(performance.now() - captureStart, startedAt)); }
       catch (failure) { reject(failure); }
     };
     const cancel = () => finish(new Error('Calibration paused. Park safely before starting this step again.'));
+    const watchForReadings = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => finish(new Error('Motion readings did not stabilize. Keep the phone secured and try again.')), 3000);
+    };
     signal.addEventListener('abort', cancel, { once: true });
     appSubscription = AppState.addEventListener('change', (state) => { if (state !== 'active') cancel(); });
     try {
       DeviceMotion.setUpdateInterval(50);
-      timer = setTimeout(() => finish(new Error('Motion readings did not stabilize. Keep the phone secured and try again.')), 3000);
+      watchForReadings();
       motionSubscription = DeviceMotion.addListener((measurement) => {
         if (finished) return;
         const { acceleration, accelerationIncludingGravity: includingGravity, rotationRate } = measurement;
@@ -75,7 +88,10 @@ export async function captureCalibration(seconds: number, reference: MountRefere
         const linear: Vector3 = [acceleration.x, acceleration.y, acceleration.z];
         const gravity: Vector3 = [includingGravity.x - acceleration.x, includingGravity.y - acceleration.y, includingGravity.z - acceleration.z];
         try {
-          if (start === null) {
+          const timestamp = acceleration.timestamp;
+          const gap = previous ? Math.max(arrival - previous.arrival, (timestamp - previous.timestamp) * 1000) : 0;
+          if (stationary && timestamp > (lastTimestamp ?? previous?.timestamp ?? -Infinity)) watchForReadings();
+          if (!streamReady) {
             // Expo Android retains the last sensor events between subscriptions.
             // Require 200 ms of advancing timestamps that track arrival time;
             // a cached packet or a jump resets startup rather than capture quality.
@@ -84,17 +100,61 @@ export async function captureCalibration(seconds: number, reference: MountRefere
             if (!previous || sensorDelta <= 0 || sensorDelta > 250 || arrivalDelta > 250 || Math.abs(sensorDelta - arrivalDelta) > 100) steadySince = arrival;
             previous = { timestamp: acceleration.timestamp, arrival };
             if (arrival - steadySince < 200) return;
+            streamReady = true;
             start = arrival;
             startedAt = new Date().toISOString();
-            clearTimeout(timer);
-            timer = setTimeout(() => finish(), seconds * 1000);
+            if (!stationary) {
+              clearTimeout(timer);
+              timer = setTimeout(() => finish(), durationMs);
+            }
             callbacks.onReady?.();
           }
           if (finished) return;
           if (lastTimestamp !== null && acceleration.timestamp <= lastTimestamp) return;
           lastTimestamp = acceleration.timestamp;
-          const elapsed = arrival - start;
           const rotation = rotationAxes(rotationRate);
+          if (stationary) {
+            previous = { timestamp, arrival };
+            const reading: CalibrationReading = {
+              elapsedMs: 0, durationMs, acceleration: Math.hypot(...linear), rotation: Math.hypot(...rotation),
+              tilt: 0, yaw: 0, maxGapMs: gap,
+            };
+            const valid = Math.hypot(...gravity) >= 8 && Math.hypot(...gravity) <= 12 && stationaryWithinRange(reading, stationary.limits);
+            if (valid) {
+              start ??= arrival;
+              startedAt ??= new Date().toISOString();
+              reading.elapsedMs = arrival - start;
+              accumulator.add(linear, gravity, rotation, timestamp, reading.elapsedMs);
+              const summary = accumulator.summary(reading.elapsedMs);
+              reading.tilt = summary.max_tilt_degrees;
+              reading.yaw = summary.yaw_left_degrees + summary.yaw_right_degrees;
+              if (stationaryWithinRange(reading, stationary.limits)) {
+                if (reading.elapsedMs >= durationMs && stationary.accepts(evidence(reading.elapsedMs, startedAt))) {
+                  callbacks.onReading?.(reading);
+                  finish();
+                  return;
+                }
+                if (reading.elapsedMs < durationMs) {
+                  if (arrival - lastFeedback >= 200) {
+                    lastFeedback = arrival;
+                    callbacks.onReading?.(reading);
+                  }
+                  return;
+                }
+              }
+            }
+            const hadProgress = start !== null;
+            if (hadProgress) accumulator = new CalibrationAccumulator(reference, limits);
+            start = null;
+            startedAt = null;
+            if (hadProgress || arrival - lastFeedback >= 200) {
+              lastFeedback = arrival;
+              callbacks.onReading?.({ ...reading, elapsedMs: 0 });
+            }
+            return;
+          }
+          if (start === null) return;
+          const elapsed = arrival - start;
           accumulator.add(linear, gravity, rotation, acceleration.timestamp, elapsed);
           if (arrival - lastFeedback >= 200) {
             const summary = accumulator.summary(elapsed);

@@ -8,11 +8,11 @@ const consent = { consent: true, consent_version: 2, sharing_mode: 'foreground_b
 test('prepared consent starts nothing before server release, monitoring eligibility and foreground availability', () => {
   const pending = new ReleaseMonitoringPreparation();
   assert.equal(pending.take(context, true, true, true, 2), null);
-  pending.arm(context, consent);
+  pending.arm(context, consent, true);
   assert.equal(pending.take(context, false, true, true, 2), null);
   assert.equal(pending.take(context, true, false, true, 2), null);
   assert.equal(pending.take(context, true, true, false, 2), null);
-  assert.deepEqual(pending.take(context, true, true, true, 2), consent);
+  assert.deepEqual(pending.take(context, true, true, true, 2), { consent, includeMotion: true });
   assert.equal(pending.take(context, true, true, true, 2), null);
 });
 
@@ -22,7 +22,7 @@ test('stopping, cancellation, leaving the screen and a fresh runtime cannot auto
   pending.clear();
   assert.equal(pending.take(context, true, true, true, 2), null);
   pending.arm(context, consent);
-  pending.take(context, true, true, true, 2);
+  assert.deepEqual(pending.take(context, true, true, true, 2), { consent, includeMotion: false });
   // Startup failure, a later Stop or a later server refresh cannot reuse consent.
   assert.equal(pending.take(context, true, true, true, 2), null);
   assert.equal(new ReleaseMonitoringPreparation().take(context, true, true, true, 2), null);

@@ -108,10 +108,15 @@ class Booking extends Model
 
     public function scopeBlockingVehicleDates(Builder $query): Builder
     {
-        return $query->whereIn('status', [
-            BookingStatus::Confirmed->value,
-            BookingStatus::Ongoing->value,
-        ]);
+        return $query->where(function (Builder $query) {
+            $query->whereIn('status', [BookingStatus::Confirmed->value, BookingStatus::Ongoing->value])
+                ->orWhere(function (Builder $query) {
+                    $query->where('status', BookingStatus::Pending->value)
+                        ->whereHas('paypalCheckouts', fn (Builder $checkout) => $checkout
+                            ->whereIn('purpose', ['down_payment', 'full_payment'])
+                            ->whereIn('status', ['approved', 'capturing']));
+                });
+        });
     }
 
     public function scopeOverlappingSchedule(Builder $query, mixed $start, mixed $end): Builder

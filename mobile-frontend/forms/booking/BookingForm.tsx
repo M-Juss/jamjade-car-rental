@@ -37,6 +37,8 @@ import { isReadyDeliveryQuote } from '@/lib/browse/delivery-quotes';
 import { GarageLocationLink } from '@/components/browse/GarageLocationLink';
 import { DeliveryRouteForm } from '@/forms/booking/DeliveryRouteForm';
 import { quoteMatches, type DeliveryQuote } from '@/services/api/delivery.service';
+import { getBooking } from '@/services/api/booking.service';
+import type { Booking } from '@/types/booking';
 import { startBookingFlow } from '@/lib/browse/booking-flow';
 import { canReviewBooking, overlapsUnavailableDates } from '@/lib/browse/booking-readiness';
 import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
@@ -217,7 +219,10 @@ function SelectableCard({
 
 export function BookingForm() {
   const router = useRouter();
-  const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
+  const { vehicleId, bookingId } = useLocalSearchParams<{ vehicleId?: string; bookingId?: string }>();
+  const revisionId = firstParam(bookingId);
+  const [revision, setRevision] = useState<Booking | null>(null);
+  const [revisionError, setRevisionError] = useState<string | null>(null);
   const resolvedVehicleId = firstParam(vehicleId);
   const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
   const customer = useCustomer();
@@ -248,6 +253,25 @@ export function BookingForm() {
     },
     resolver: zodResolver(bookingFormSchema),
   });
+  useEffect(() => {
+    if (!revisionId) return;
+    let active = true;
+    getBooking(revisionId).then((current) => {
+      if (!active) return;
+      if (current.status !== 'Pending' || current.paymentStatus !== 'Unpaid' || current.vehicleId !== resolvedVehicleId) {
+        setRevisionError('This booking can no longer be changed.');
+        return;
+      }
+      setValue('driverOption', current.driverType === 'Self-Drive' ? 'self_drive' : 'owners_driver');
+      setValue('ownerDriverCoverage', current.ownerDriverCoverage ?? 'metro_manila');
+      setValue('pickupLocation', current.pickupType === 'Delivery' ? current.pickupLocation : '');
+      setValue('notes', current.notes ?? '');
+      setIsGaragePickup(current.pickupType !== 'Delivery');
+      setRevision(current);
+    }).catch(() => { if (active) setRevisionError('The booking could not be loaded.'); });
+    return () => { active = false; };
+  }, [revisionId, resolvedVehicleId, setValue]);
+
   const rentalDate = watch('rentalDate');
   const returnDate = watch('returnDate');
   const pickupLocation = watch('pickupLocation');
@@ -321,7 +345,10 @@ export function BookingForm() {
     Boolean(readyDeliveryQuote),
   );
 
-  if (isLoading) {
+  if (revisionId && revisionError) {
+    return <ErrorState title="Booking unavailable" subtitle={revisionError} actionLabel="View My Bookings" onAction={() => router.replace('/(tabs)/bookings' as Href)} />;
+  }
+  if (isLoading || (revisionId && !revision)) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={themeColors.primary} size="large" />
@@ -329,23 +356,23 @@ export function BookingForm() {
     );
   }
 
-  if (!bookingAvailability.canBook) {
-    const isBalanceBlocked = bookingAvailability.reason === 'balance';
+  if (!revisionId && !bookingAvailability.canBook) {
+    const isBookingBlocked = bookingAvailability.reason === 'balance' || bookingAvailability.reason === 'active_booking';
 
     return (
       <ErrorState
         actionLabel={
-          isBalanceBlocked
+          isBookingBlocked
             ? 'View My Bookings'
             : bookingAvailability.reason === 'profile'
               ? 'Complete Profile'
               : 'Back to Browse'
         }
         subtitle={bookingAvailability.message}
-        title={isBalanceBlocked ? 'Booking locked' : undefined}
+        title={isBookingBlocked ? 'Booking unavailable' : undefined}
         onAction={() =>
           router.replace(
-            isBalanceBlocked
+            isBookingBlocked
               ? ('/(tabs)/bookings' as Href)
               : bookingAvailability.reason === 'profile'
                 ? '/onboarding/basic-info'
@@ -462,7 +489,7 @@ export function BookingForm() {
       downPaymentAmount: breakdown.downPaymentAmount,
       remainingBalance: breakdown.remainingBalance,
     };
-    const flowId = startBookingFlow(booking);
+    const flowId = startBookingFlow(booking, revisionId);
 
     router.push(
       `/browse/checkout?flow=${encodeURIComponent(flowId)}&vehicleId=${encodeURIComponent(vehicle.id)}` as Href,
@@ -484,7 +511,7 @@ export function BookingForm() {
                   accessibilityRole="button"
                   onPress={() => router.back()}
                   className="h-12 w-12 items-center justify-center rounded-field bg-surface">
-                  <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
+                  <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
                 </Pressable>
                 <View className="min-w-0 flex-1">
                   <Text className="font-sans text-title font-semibold text-foreground">Booking Details</Text>
@@ -547,18 +574,15 @@ export function BookingForm() {
                     icon={browseIcons.Car}
                     title="Self-drive"
                     description="Drive the vehicle yourself."
-                    infoText={
-                      selfDriveAvailability.canSelfDrive
-                        ? "Self-drive requires approved identity, driver's license, and address documents before booking."
-                        : selfDriveAvailability.message
-                    }
+                    infoText={selfDriveAvailability.message}
                     isSelected={driverOption === 'self_drive'}
-                    disabled={!selfDriveAvailability.canSelfDrive}
+                    disabled={Boolean(revisionId) || !selfDriveAvailability.canSelfDrive}
                     onPress={() => handleDriverOptionChange('self_drive')}
                   />
                   <SelectableCard
                     icon={browseIcons.UserRound}
                     title="Owner's Driver"
+                    disabled={Boolean(revisionId)}
                     description="Request Jamjade driver support."
                     isSelected={driverOption === 'owners_driver'}
                     onPress={() => handleDriverOptionChange('owners_driver')}
@@ -584,6 +608,7 @@ export function BookingForm() {
                       <SelectableCard
                         icon={browseIcons.Car}
                         title="Jamjade Garage"
+                        disabled={Boolean(revisionId)}
                         description="Free"
                         isSelected={isGaragePickup}
                         onPress={handleGaragePickupChange}
@@ -591,6 +616,7 @@ export function BookingForm() {
                       <SelectableCard
                         icon={browseIcons.MapPin}
                         title="Custom location"
+                        disabled={Boolean(revisionId)}
                         description="Choose your delivery and end trip address."
                         isSelected={!isGaragePickup}
                         onPress={handleCustomPickupChange}
@@ -634,6 +660,7 @@ export function BookingForm() {
                     <SelectableCard
                       icon={browseIcons.MapPin}
                       title="Within Metro Manila"
+                      disabled={Boolean(revisionId)}
                       description={`${formatPeso(OWNER_DRIVER_METRO_MANILA_DAILY_RATE)} fixed per day.`}
                       isSelected={ownerDriverCoverage === 'metro_manila'}
                       onPress={() => {
@@ -645,6 +672,7 @@ export function BookingForm() {
                     <SelectableCard
                       icon={browseIcons.Navigation}
                       title="Outside Manila"
+                      disabled={Boolean(revisionId)}
                       description={`${formatPeso(OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE)} fixed per day.`}
                       isSelected={ownerDriverCoverage === 'outside_manila'}
                       onPress={() => {

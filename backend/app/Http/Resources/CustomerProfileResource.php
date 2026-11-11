@@ -50,6 +50,7 @@ class CustomerProfileResource extends JsonResource
             'profileCompletedAt' => $this->profile_completed_at?->toISOString(),
             'emergencyContactSkippedAt' => $this->emergency_contact_skipped_at?->toISOString(),
             'canSelfDrive' => $summary['canSelfDrive'],
+            'selfDriveReviewStatus' => $summary['reviewStatus'],
             'verificationStatus' => $verificationStatus,
             'drivingIntent' => $this->driving_intent,
             'accountStatus' => $summary['canSelfDrive'] ? 'Verified' : 'Pending',

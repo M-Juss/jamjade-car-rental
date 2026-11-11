@@ -135,7 +135,7 @@ export default function RemainingBalancePaymentScreen() {
               accessibilityLabel="Go back"
               onPress={() => router.back()}
               className="h-12 w-12 items-center justify-center rounded-field border border-border bg-surface">
-              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.45} />
+              <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
             </Pressable>
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-[25px] font-semibold text-foreground">Settle Balance</Text>

@@ -78,6 +78,8 @@ function getApiErrorMessage(status: number) {
 
 let activeApiBaseUrl: string | null = null;
 
+class ResponseTimeoutError extends Error {}
+
 export function getActiveApiBaseUrl() {
   return activeApiBaseUrl ?? API_BASE_URL;
 }
@@ -92,17 +94,18 @@ function canRetryOnAnotherApi(method: string, allowNetworkFallback?: boolean) {
 async function fetchWithFallbackTimeout(
   url: string,
   options: RequestInit,
-  useTimeout: boolean,
+  timeoutMs?: number,
 ) {
-  if (!useTimeout) {
+  if (timeoutMs === undefined) {
     return fetch(url, options);
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    API_NETWORK_FALLBACK_TIMEOUT_MS,
-  );
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   const requestSignal = options.signal;
   const abortFromRequest = () => controller.abort();
 
@@ -117,6 +120,12 @@ async function fetchWithFallbackTimeout(
       ...options,
       signal: controller.signal,
     });
+  } catch (error) {
+    if (timedOut) {
+      throw new ResponseTimeoutError();
+    }
+
+    throw error;
   } finally {
     clearTimeout(timeout);
     requestSignal?.removeEventListener('abort', abortFromRequest);
@@ -133,6 +142,7 @@ async function requestResponse(
     body,
     headers: requestHeaders,
     method: requestMethod,
+    responseTimeoutMs,
     skipAuth,
     ...fetchOptions
   } = options;
@@ -159,6 +169,7 @@ async function requestResponse(
   let response: Response | null = null;
   const apiCandidates = buildApiUrls(path, activeApiBaseUrl);
   const canFallback = canRetryOnAnotherApi(method, allowNetworkFallback);
+  const hasResponseTimeoutOverride = responseTimeoutMs !== undefined;
   let lastNetworkError: unknown;
 
   for (const [index, candidate] of apiCandidates.entries()) {
@@ -170,7 +181,11 @@ async function requestResponse(
         method,
         body: requestBody,
         headers,
-      }, canFallback && hasAnotherCandidate);
+      }, hasResponseTimeoutOverride
+        ? responseTimeoutMs
+        : canFallback && hasAnotherCandidate
+          ? API_NETWORK_FALLBACK_TIMEOUT_MS
+          : undefined);
       if (candidate.baseUrl) {
         activeApiBaseUrl = candidate.baseUrl;
       }
@@ -179,7 +194,7 @@ async function requestResponse(
     } catch (error) {
       lastNetworkError = error;
 
-      if (fetchOptions.signal?.aborted || !canFallback || !hasAnotherCandidate) {
+      if (fetchOptions.signal?.aborted || (hasResponseTimeoutOverride && error instanceof ResponseTimeoutError) || !canFallback || !hasAnotherCandidate) {
         break;
       }
     }
@@ -187,7 +202,9 @@ async function requestResponse(
 
   if (!response) {
     activeApiBaseUrl = null;
-    void lastNetworkError;
+    if (hasResponseTimeoutOverride && lastNetworkError instanceof ResponseTimeoutError) {
+      throw new ApiError('The request timed out. Please try again.', 408);
+    }
     throw new ApiError('Unable to connect right now. Please try again.', 0);
   }
 

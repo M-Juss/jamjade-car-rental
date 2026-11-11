@@ -39,6 +39,10 @@ export default function DriverNotificationsScreen() {
         router.push(`/driver-telematics/${encodeURIComponent(notification.bookingId)}?tab=activity` as Href);
         return;
       }
+      if (notification.bookingId) {
+        router.push(`/driver-services/${encodeURIComponent(notification.bookingId)}` as Href);
+        return;
+      }
       router.push('/(driver)/services');
     } catch {
       reportActionError('The notification action could not be opened. Please try again.');
@@ -69,7 +73,9 @@ export default function DriverNotificationsScreen() {
         onAction={handleAction}
         onClose={closeNotification}
         actionLabel={selectedNotification?.actionLabel ?? (
-          selectedNotification?.data?.action === 'pay_outstanding' ? 'Review & Pay' : 'View Services'
+          selectedNotification?.data?.action === 'pay_outstanding' ? 'Review & Pay'
+            : selectedNotification?.data?.action === 'view_telematics_activity' ? 'View activity'
+              : selectedNotification?.bookingId ? 'View service' : 'View Services'
         )}
         detailRows={[
           { label: 'Booking ID', value: selectedNotification?.bookingId },

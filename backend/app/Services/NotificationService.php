@@ -10,6 +10,7 @@ use App\Models\Notification;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\Cursor;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
@@ -18,10 +19,8 @@ class NotificationService
 {
     public function paginateForUser(User $user, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return Notification::query()
+        return $this->feed($user, $filters['booking_code'] ?? null)
             ->with('booking.vehicle')
-            ->where('user_id', $user->id)
-            ->when($filters['booking_code'] ?? null, fn ($query, string $code) => $query->whereHas('booking', fn ($booking) => $booking->where('booking_code', $code)))
             ->when($filters['category'] ?? null, fn ($query, string $category) => $query->where('category', $category))
             ->latest()
             ->orderByDesc('id')
@@ -30,10 +29,8 @@ class NotificationService
 
     public function cursorForUser(User $user, array $filters, int $perPage, ?string $cursor): CursorPaginator
     {
-        return Notification::query()
+        return $this->feed($user, $filters['booking_code'] ?? null)
             ->with('booking.vehicle')
-            ->where('user_id', $user->id)
-            ->when($filters['booking_code'] ?? null, fn ($query, string $code) => $query->whereHas('booking', fn ($booking) => $booking->where('booking_code', $code)))
             ->when($filters['category'] ?? null, fn ($query, string $category) => $query->where('category', $category))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -42,9 +39,19 @@ class NotificationService
 
     public function unreadCount(User $user, ?string $bookingCode = null): int
     {
-        return Notification::query()->where('user_id', $user->id)->whereNull('read_at')
-            ->when($bookingCode, fn ($query, string $code) => $query->whereHas('booking', fn ($booking) => $booking->where('booking_code', $code)))
-            ->count();
+        return $this->feed($user, $bookingCode)->whereNull('read_at')->count();
+    }
+
+    private function feed(User $user, ?string $bookingCode): Builder
+    {
+        $query = Notification::query()->where('user_id', $user->id);
+
+        if ($bookingCode !== null) {
+            return $query->where('category', 'trip')
+                ->whereHas('booking', fn ($booking) => $booking->where('booking_code', $bookingCode));
+        }
+
+        return $query->where(fn ($inbox) => $inbox->whereNull('booking_id')->orWhere('category', '!=', 'trip'));
     }
 
     public function createForBooking(Booking $booking, string $category, string $title, string $message, array $data = []): Notification
@@ -192,10 +199,7 @@ class NotificationService
 
     public function markAllAsRead(User $user, ?string $bookingCode = null): int
     {
-        return Notification::query()
-            ->where('user_id', $user->id)
-            ->whereNull('read_at')
-            ->when($bookingCode, fn ($query, string $code) => $query->whereHas('booking', fn ($booking) => $booking->where('booking_code', $code)))
+        return $this->feed($user, $bookingCode)->whereNull('read_at')
             ->update(['read_at' => now()]);
     }
 }

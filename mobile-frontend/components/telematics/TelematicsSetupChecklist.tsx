@@ -17,14 +17,13 @@ export function TelematicsSetupChecklist({
   disabled,
   onCheckSetup,
   monitoringPolicy,
-  rememberedConsent = null,
   consentLoading = false,
   isDriver = false,
 }: {
   handover: MobileTelematicsHandover;
   actingStep: DeviceSetupStep | null;
   disabled: boolean;
-  onCheckSetup: (consent: LocationConsentInput | null) => void;
+  onCheckSetup: (consent: LocationConsentInput | null, includeMotion: boolean) => void;
   monitoringPolicy?: LocationMonitoringPolicy;
   rememberedConsent?: LocationConsentInput | null;
   consentLoading?: boolean;
@@ -32,7 +31,7 @@ export function TelematicsSetupChecklist({
 }) {
   const [disclosureOpen, setDisclosureOpen] = useState(false);
   const continueRequested = useRef(false);
-  const pendingConsent = useRef<LocationConsentInput | null>(null);
+  const offerMotion = handover.calibration.profile.id === 'rc_demo';
   const canStart = !disabled && !actingStep && handover.eligibility.canWorkSetup;
   useFocusEffect(useCallback(() => () => {
     continueRequested.current = false;
@@ -42,19 +41,11 @@ export function TelematicsSetupChecklist({
     continueRequested.current = false;
     setDisclosureOpen(false);
   };
-  const finishDisclosure = () => {
-    if (!continueRequested.current) return;
-    continueRequested.current = false;
-    const consent = pendingConsent.current;
-    pendingConsent.current = null;
-    if (canStart) onCheckSetup(consent);
-  };
-  const continueSetup = (consent: LocationConsentInput | null) => {
+  const continueSetup = (consent: LocationConsentInput | null, includeMotion: boolean) => {
     if (!disclosureOpen || !canStart || continueRequested.current) return;
     continueRequested.current = true;
-    pendingConsent.current = consent;
     setDisclosureOpen(false);
-    finishDisclosure();
+    onCheckSetup(consent, includeMotion);
   };
   const progress = deviceSetupProgress(handover);
   const resetsCalibration = handover.steps.some((step) => step.type.endsWith('_calibration') && step.status === 'passed');
@@ -88,7 +79,7 @@ export function TelematicsSetupChecklist({
           {currentType ? DEVICE_SETUP_STEPS[currentType].guidance : 'Your device checks have passed.'}
         </Text>
         {current?.failureReason && !actingStep ? (
-          <Text className="font-sans text-body font-medium leading-6 text-destructive">
+          <Text accessibilityLiveRegion="polite" className="font-sans text-body leading-6 text-secondary-foreground">
             {current.failureReason}
           </Text>
         ) : null}
@@ -99,8 +90,8 @@ export function TelematicsSetupChecklist({
         disabled={!canStart || consentLoading}
         onPress={() => {
           if (!canStart || consentLoading) return;
-          if (rememberedConsent && !resetsCalibration) onCheckSetup(rememberedConsent);
-          else setDisclosureOpen(true);
+          continueRequested.current = false;
+          setDisclosureOpen(true);
         }}
       />
       {requiresSettings && !actingStep ? (
@@ -112,15 +103,15 @@ export function TelematicsSetupChecklist({
           onPress={() => { void Linking.openSettings(); }}
         />
       ) : null}
-      <DeviceSetupDisclosureDialog
+      {disclosureOpen ? <DeviceSetupDisclosureDialog
         visible={disclosureOpen && canStart}
         monitoringPolicy={monitoringPolicy}
-        rememberedConsent={rememberedConsent}
+        offerMotion={offerMotion}
         isDriver={isDriver}
         resetsCalibration={resetsCalibration}
         onCancel={cancelDisclosure}
         onContinue={continueSetup}
-       />
+       /> : null}
     </View>
   );
 }

@@ -4,6 +4,7 @@ import { z } from "zod";
 export const fleetQuerySchema = z.object({
   search: z.string().trim().max(160).nullable().optional(),
   status: z.enum(["not_started", "awaiting_location", "recent_location", "no_recent_updates", "paused", "ended", "unavailable"]).optional(),
+  tracking_state: z.enum(["updating", "paused", "no_updates", "not_tracking"]).optional(),
   rental_type: z.enum(["self_drive", "owners_driver"]).optional(),
   page: z.number().int().min(1).optional(),
   per_page: z.number().int().min(1).max(100).optional(),

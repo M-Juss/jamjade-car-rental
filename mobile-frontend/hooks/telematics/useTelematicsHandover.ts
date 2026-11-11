@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 
 import type { CalibrationLiveState } from '@/lib/telematics/calibration';
 import type { DeviceSetupStep } from '@/lib/telematics/setup';
-import { getBooking, getBookingTelematicsSetup, getBookings, getCurrentTelematicsSetup, getDriverService, type MobileTelematicsHandover } from '@/services/api';
+import { getBooking, getBookingTelematicsSetup, getBookings, getCurrentTelematicsSetup, getDriverService, restartBookingTelematicsSetup, type MobileTelematicsHandover } from '@/services/api';
 import { ApiError } from '@/services/http';
 import { runSetupChecks } from '@/services/telematics/setup-workflow';
 import { runCalibrationCheck } from '@/services/telematics/calibration-workflow';
@@ -19,8 +19,10 @@ export function useTelematicsHandover(bookingId?: string) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [accessLost, setAccessLost] = useState(false);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [actingStep, setActingStep] = useState<DeviceSetupStep | null>(null);
+  const [restartingSetup, setRestartingSetup] = useState(false);
   const [calibrationBusy, setCalibrationBusy] = useState(false);
   const [calibrationLive, setCalibrationLive] = useState<CalibrationLiveState | null>(null);
   const [calibrationRecording, setCalibrationRecording] = useState(false);
@@ -46,9 +48,12 @@ export function useTelematicsHandover(bookingId?: string) {
     if (setupResult.status === 'fulfilled') {
       setHandover(setupResult.value);
       setLoadError(null);
+      setAccessLost(!setupResult.value && Boolean(bookingId));
     } else {
-      setHandover(null);
-      setLoadError(setupResult.reason instanceof ApiError && [403, 404].includes(setupResult.reason.status)
+      const denied = setupResult.reason instanceof ApiError && [401, 403, 404].includes(setupResult.reason.status);
+      if (denied) setHandover(null);
+      setAccessLost(denied);
+      setLoadError(denied
         ? 'This booking is no longer available for telematics. Select another rental or return to your current rental.'
         : 'Telematics could not be refreshed. Check your connection and try again.');
     }
@@ -66,6 +71,7 @@ export function useTelematicsHandover(bookingId?: string) {
   useFocusEffect(useCallback(() => {
     focused.current = true;
     setHandover(null);
+    setAccessLost(false);
     setFeedback(null);
     setCalibrationLive(null);
     void refresh();
@@ -115,6 +121,36 @@ export function useTelematicsHandover(bookingId?: string) {
     }
   };
 
+  const restartSetup = async () => {
+    if (!handover?.setup?.canRestart || !handover.calibration.context || busy.current || loading || loadError || !focused.current) return false;
+    busy.current = true;
+    reading.current = false;
+    const request = ++generation.current;
+    const isCurrent = () => focused.current && request === generation.current;
+    setRestartingSetup(true);
+    setFeedback(null);
+    let shouldRefresh = false;
+    try {
+      const updated = await restartBookingTelematicsSetup(handover.bookingCode, handover.calibration.context);
+      if (!isCurrent()) return false;
+      setHandover(updated);
+      setCalibrationLive(null);
+      return true;
+    } catch (error) {
+      shouldRefresh = true;
+      if (isCurrent()) {
+        setFeedback({ failed: true, message: error instanceof ApiError
+          ? error.errors?.telematics_setup?.[0] ?? error.errors?.context?.[0] ?? 'Setup could not be restarted. Try again.'
+          : 'Setup could not be restarted. Check your connection and try again.' });
+      }
+      return false;
+    } finally {
+      busy.current = false;
+      setRestartingSetup(false);
+      if (focused.current && (shouldRefresh || !isCurrent())) void latestRefresh.current(true);
+    }
+  };
+
   const calibrate = async (consent: CalibrationConsentInput, restart = false) => {
     if (!handover || busy.current || loading || loadError || !focused.current) return;
     busy.current = true;
@@ -158,5 +194,5 @@ export function useTelematicsHandover(bookingId?: string) {
 
   const dismissCalibrationSuccess = useCallback(() => { setCalibrationLive(null); setFeedback(null); }, []);
 
-  return { handover, bookings, loading, loadError, bookingsError, actingStep, feedback, refresh, checkSetup, calibrationBusy, calibrationRecording, calibrationLive, dismissCalibrationSuccess, calibrate, cancelCalibration: () => calibrationAbort.current?.abort() };
+  return { handover, bookings, loading, loadError, accessLost, bookingsError, actingStep, feedback, refresh, checkSetup, restartSetup, restartingSetup, calibrationBusy, calibrationRecording, calibrationLive, dismissCalibrationSuccess, calibrate, cancelCalibration: () => calibrationAbort.current?.abort() };
 }

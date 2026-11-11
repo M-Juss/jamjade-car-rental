@@ -23,16 +23,21 @@ class RcAnnotationController extends Controller
 
     private function recording(Request $request, string $id): RcNativeRecording
     {
-        abort_unless($this->access->enabled(), 403, 'RC Research is unavailable.');
+        abort_unless($this->access->enabled(), 403, 'Data Collection is unavailable.');
 
         return $this->research->recording($request->user(), $id);
     }
 
     public function show(Request $request, string $recording): JsonResponse
     {
-        $revision = $this->recording($request, $recording)->annotationRevisions()->orderByDesc('revision')->first();
+        $record = $this->recording($request, $recording);
+        $revision = $record->annotationRevisions()->orderByDesc('revision')->first();
+        $resource = $revision ? new RcAnnotationRevisionResource($revision) : null;
+        if ($resource && $record->collectionContext?->isLegacyLaneChange()) {
+            $resource->forLegacyLaneChange();
+        }
 
-        return $this->success('Labels fetched.', $revision ? new RcAnnotationRevisionResource($revision) : null)->header('Cache-Control', 'private, no-store');
+        return $this->success('Labels fetched.', $resource)->header('Cache-Control', 'private, no-store');
     }
 
     public function history(ListRcNativeRecordingsRequest $request, string $recording): JsonResponse

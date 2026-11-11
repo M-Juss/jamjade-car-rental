@@ -22,7 +22,7 @@ class RcResearchController extends Controller
 
     public function index(ListRcResearchRecordingsRequest $request): JsonResponse
     {
-        abort_unless($this->access->enabled(), 403, 'RC Research is unavailable.');
+        abort_unless($this->access->enabled(), 403, 'Data Collection is unavailable.');
 
         return $this->paginated('Research recordings fetched.',
             $this->research->recordings($request->user(), $request->validated()), RcResearchTrialResource::class)
@@ -31,7 +31,7 @@ class RcResearchController extends Controller
 
     public function show(Request $request, string $trial): JsonResponse
     {
-        abort_unless($this->access->enabled(), 403, 'RC Research is unavailable.');
+        abort_unless($this->access->enabled(), 403, 'Data Collection is unavailable.');
         $record = $this->research->trial($request->user(), $trial);
 
         return $this->success('Research recording fetched.', [

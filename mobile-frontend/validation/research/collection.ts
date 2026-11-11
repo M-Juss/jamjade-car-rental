@@ -3,8 +3,9 @@ import { z } from 'zod';
 const uuid = z.uuid();
 const time = z.iso.datetime({ offset: true });
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
-export const exerciseCodeSchema = z.enum(['FSS', 'HA', 'HB', 'LT', 'HLT', 'RT', 'HRT', 'RSS', 'SW', 'SR', 'FR']);
-const catalogVersion = z.enum(['rc-exercises-v1', 'rc-exercises-v2', 'rc-exercises-v3']);
+export const directionalSwerveCodes = ['SWL', 'HSWL', 'SWR', 'HSWR'] as const;
+export const exerciseCodeSchema = z.enum(['FSS', 'HA', 'HB', 'LT', 'HLT', 'RT', 'HRT', 'RSS', 'LC', 'SW', ...directionalSwerveCodes, 'MD', 'SR', 'FR']);
+const catalogVersion = z.enum(['rc-exercises-v1', 'rc-exercises-v2', 'rc-exercises-v3', 'rc-exercises-v4', 'rc-exercises-v5', 'rc-exercises-v6']);
 const ns = z.string().regex(/^[1-9][0-9]{0,18}$/).refine(v => BigInt(v) <= 9223372036854775807n);
 const stats = z.object({ count: z.number().int().min(2).max(100000), rejected_count: z.literal(0),
   mean: z.array(z.number().min(-100000).max(100000)).length(3), std: z.array(z.number().min(0).max(100000)).length(3),
@@ -29,8 +30,14 @@ export const collectionContextSchema = z.object({ contract_version: z.literal('r
   session: sessionSchema, mount: mountSchema, preflight: preflightSchema, capture_number: z.number().int().min(1).max(999999999),
   protocol_code: exerciseCodeSchema, catalog_version: catalogVersion, protocol_sha256: hash,
 }).strict().superRefine((v, ctx) => {
-  if ((v.protocol_code === 'HLT' || v.protocol_code === 'HRT') && v.catalog_version !== 'rc-exercises-v3') {
-    ctx.addIssue({ code: 'custom', path: ['protocol_code'], message: 'Harsh turns require the updated exercise catalog.' });
+  const version = catalogVersion.options.indexOf(v.catalog_version) + 1;
+  const supported = v.protocol_code === 'MD' ? version === 6
+    : directionalSwerveCodes.some(code => code === v.protocol_code) ? version >= 5
+    : v.protocol_code === 'SW' ? version < 5
+    : v.protocol_code === 'LC' ? version >= 4
+    : !['HLT', 'HRT'].includes(v.protocol_code) || version >= 3;
+  if (!supported) {
+    ctx.addIssue({ code: 'custom', path: ['protocol_code'], message: 'This exercise requires an updated exercise catalog.' });
   }
   const p = v.preflight;
   if (v.mount.research_session_id !== v.session.id || p.mount_version_id !== v.mount.id) ctx.addIssue({ code: 'custom', path: ['mount'], message: 'Mount does not match this session.' });

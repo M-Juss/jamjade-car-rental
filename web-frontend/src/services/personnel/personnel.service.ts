@@ -48,3 +48,15 @@ export async function updatePersonnel(id: number, values: PersonnelAccountFormVa
 export async function deletePersonnel(id: number) {
   await apiDelete<null>(`/admin/personnel/users/${id}`);
 }
+
+export async function getAdmins() {
+  return (await apiGet<{ accounts: PersonnelUser[] }>("/admin/admins")).data.accounts;
+}
+
+export async function createAdmin(values: PersonnelAccountFormValues) {
+  return (await apiPost<{ user: PersonnelUser }>("/admin/admins/users", accountPayload(values))).data.user;
+}
+
+export async function revokeAdmin(id: number) {
+  await apiPost(`/admin/admins/${id}/revoke`, {});
+}

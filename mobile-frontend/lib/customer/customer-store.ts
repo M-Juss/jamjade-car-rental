@@ -164,13 +164,16 @@ export function hydrateCustomerFromUser(user: MobileUser) {
   const age = calculateAge(birthdate);
   const isBelow18 = age !== null && age < 18;
   const verificationStatus = profile?.verificationStatus;
-  const selfDriveStatus: SelfDriveStatus = isBelow18
-    ? 'not-eligible'
-    : profile?.canSelfDrive
-      ? 'verified'
-      : verificationStatus === 'pending_review'
-        ? 'pending'
-        : 'not-verified';
+  let selfDriveStatus: SelfDriveStatus = 'not-verified';
+  if (isBelow18) {
+    selfDriveStatus = 'not-eligible';
+  } else if (profile?.canSelfDrive) {
+    selfDriveStatus = 'verified';
+  } else if (profile?.selfDriveReviewStatus === 'emergency_contact_required') {
+    selfDriveStatus = 'emergency-contact-required';
+  } else if (verificationStatus === 'pending_review') {
+    selfDriveStatus = 'pending';
+  }
 
   updateCustomer((currentCustomer) => ({
     ...currentCustomer,
@@ -380,12 +383,14 @@ export function createCustomerProfile(profile: BasicCustomerProfileInput) {
 }
 
 export function updateEmergencyContact(emergencyContact: EmergencyContact) {
-  // TODO: Connect to PATCH /customer/emergency-contact when available.
   updateCustomer((currentCustomer) => {
     const nextCustomer = {
       ...currentCustomer,
       emergencyContact,
       emergencyContactSkipped: false,
+      selfDriveStatus: currentCustomer.selfDriveStatus === 'emergency-contact-required'
+        ? 'verified'
+        : currentCustomer.selfDriveStatus,
     };
 
     return {
@@ -534,6 +539,13 @@ export function getSelfDriveBookingAvailability(currentCustomer: Customer) {
     };
   }
 
+  if (currentCustomer.selfDriveStatus === 'emergency-contact-required') {
+    return {
+      canSelfDrive: false,
+      message: 'Add an emergency contact in your profile to book a self-drive vehicle.',
+    };
+  }
+
   if (currentCustomer.selfDriveStatus !== 'verified') {
     return {
       canSelfDrive: false,
@@ -572,6 +584,14 @@ export function getBookingAgeAvailability(currentCustomer: Customer) {
 }
 
 export function getBookingAvailability(currentCustomer: Customer) {
+  if (['pending', 'active', 'ongoing', 'returned'].includes(currentCustomer.bookingStatus)) {
+    return {
+      canBook: false,
+      message: 'Finish your active booking before creating another booking.',
+      reason: 'active_booking' as const,
+    };
+  }
+
   if (currentCustomer.hasOutstandingBalance) {
     return {
       canBook: false,

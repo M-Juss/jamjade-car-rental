@@ -213,6 +213,9 @@ export function bookingActionBlockers(
       "Resolve the customer's other active self-drive rental or handover first.",
     !ready.ageEligible && "The renter must meet the age requirement.",
     !ready.documentsApproved && "Self-drive documents must be approved.",
+    action === "start-rental" &&
+      ready.emergencyContactOnFile === false &&
+      "The renter must add an emergency contact before release.",
     !ready.driverAssigned && "Assign a driver before inspection.",
     !ready.driverEligible && "The assigned driver is not eligible.",
     !ready.vehicleOperational &&
@@ -225,6 +228,6 @@ export function bookingActionBlockers(
       "Finalize the Outgoing Inspection.",
     action === "start-rental" &&
       !ready.telematicsSetupReady &&
-      "Complete all telematics checks, including calibration, before release.",
+      "Complete Device Setup, Stationary, and Forward Reference in the mobile app before release.",
   ].filter((item): item is string => Boolean(item));
 }

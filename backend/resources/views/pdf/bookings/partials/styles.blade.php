@@ -56,7 +56,7 @@
         }
 
         .brand {
-            width: 43%;
+            width: 49%;
             vertical-align: middle;
         }
 
@@ -65,15 +65,15 @@
         }
 
         .brand-logo-cell {
-            width: 34px;
+            width: 52px;
             padding-right: 8px;
             vertical-align: middle;
         }
 
         .brand-logo {
             display: block;
-            width: 30px;
-            height: 30px;
+            width: 46px;
+            height: 46px;
             object-fit: contain;
         }
 
@@ -83,14 +83,14 @@
 
         .brand-name {
             color: #346EF6;
-            font-size: 12.5px;
+            font-size: 14px;
             font-weight: 700;
-            letter-spacing: 0.45px;
+            letter-spacing: 0.2px;
             white-space: nowrap;
         }
 
         .document-heading {
-            width: 57%;
+            width: 51%;
             text-align: right;
         }
 
@@ -121,7 +121,7 @@
         .header-divider {
             height: 1px;
             margin: 4px 0 8px;
-            background: #E6EEFF;
+            background: #DDE2EA;
         }
 
         .section {
@@ -137,18 +137,8 @@
             color: #17315F;
             font-size: 10px;
             font-weight: 700;
-            letter-spacing: 0.55px;
+            letter-spacing: 0.2px;
             text-transform: uppercase;
-        }
-
-        .section-title::before {
-            display: inline-block;
-            width: 3px;
-            height: 9px;
-            margin-right: 7px;
-            background: #346EF6;
-            content: "";
-            vertical-align: -1px;
         }
 
         .section-subtitle {
@@ -158,14 +148,14 @@
         }
 
         .info-grid {
-            border-top: 1px solid #E6EEFF;
+            border-top: 1px solid #DDE2EA;
             table-layout: fixed;
         }
 
         .info-grid td {
             width: 50%;
             padding: 1.5px 8px 1.5px 0;
-            border-bottom: 1px solid #E6EEFF;
+            border-bottom: 1px solid #DDE2EA;
             vertical-align: top;
             line-height: 1.15;
         }
@@ -173,7 +163,7 @@
         .info-grid td + td {
             padding-right: 0;
             padding-left: 14px;
-            border-left: 1px solid #EEF3FF;
+            border-left: 1px solid #E8EBF0;
         }
 
         .info-grid-three td {
@@ -196,7 +186,7 @@
             color: #6C7A96;
             font-size: 8px;
             font-weight: 700;
-            letter-spacing: 0.45px;
+            letter-spacing: 0.2px;
             text-transform: uppercase;
         }
 
@@ -230,12 +220,12 @@
         }
 
         .payment-table {
-            border-top: 1px solid #E6EEFF;
+            border-top: 1px solid #DDE2EA;
         }
 
         .payment-table td {
             padding: 1px 0;
-            border-bottom: 1px solid #EEF3FF;
+            border-bottom: 1px solid #E8EBF0;
             line-height: 1.2;
             word-wrap: break-word;
         }
@@ -267,9 +257,8 @@
 
         .terms-content {
             margin-top: 6px;
-            padding: 6px 0 0 10px;
-            border-top: 1px solid #E6EEFF;
-            border-left: 3px solid #346EF6;
+            padding: 6px 0 0;
+            border-top: 1px solid #DDE2EA;
         }
 
         .terms-section {
@@ -378,7 +367,7 @@
         .page-footer {
             margin-top: 7px;
             padding-top: 4px;
-            border-top: 1px solid #EEF3FF;
+            border-top: 1px solid #E8EBF0;
             color: #91A0B8;
             font-size: 7px;
         }

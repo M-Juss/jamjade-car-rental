@@ -35,6 +35,9 @@ export type Booking = {
   attention?: { key: string; label: string } | null;
   id: string;
   backendId: number;
+  canReviseUnpaid?: boolean;
+  vehicleId: string;
+  ownerDriverCoverage?: 'metro_manila' | 'outside_manila' | null;
   vehicleName: string;
   vehiclePlateNumber?: string | null;
   brand: string;

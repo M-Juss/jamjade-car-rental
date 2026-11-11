@@ -15,6 +15,12 @@ const STATUS_STYLES: Record<SelfDriveStatus, { bg: string; border: string; text:
     label: 'Self-drive not verified',
     text: 'text-secondary-foreground',
   },
+  'emergency-contact-required': {
+    bg: 'bg-warning-surface',
+    border: 'border-warning-border',
+    label: 'Emergency contact required',
+    text: 'text-warning',
+  },
   pending: {
     bg: 'bg-warning-surface',
     border: 'border-warning-border',

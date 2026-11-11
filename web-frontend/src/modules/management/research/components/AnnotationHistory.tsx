@@ -9,6 +9,7 @@ import { formatReturnDateTime } from "@/services/booking/return-time";
 import { humanize, seconds } from "../recording-analysis";
 import { ResearchState } from "./ResearchState";
 import { MetadataList } from "@/components/common/data-display/MetadataList";
+import { hasInitialDeviation } from "@/validations/research/annotations";
 
 export function AnnotationHistory({ recordingId }: { recordingId: string }) {
   const [page, setPage] = useState(1);
@@ -46,7 +47,7 @@ export function AnnotationHistory({ recordingId }: { recordingId: string }) {
       <MetadataList items={[
         { label: 'Direction', value: humanize(item.direction) }, { label: 'Severity', value: humanize(item.severity) },
         { label: 'Certainty', value: humanize(item.certainty) }, { label: 'Source', value: humanize(item.source) },
-        ...(item.movement === 'swerving' ? [{ label: 'Initial deviation', value: item.initial_deviation ? humanize(item.initial_deviation) : 'Not recorded' }] : []),
+        ...(hasInitialDeviation(item.movement) ? [{ label: 'Initial deviation', value: item.initial_deviation ? humanize(item.initial_deviation) : 'Not recorded' }] : []),
       ]} />
       {item.notes && <p className="whitespace-pre-wrap">{item.notes}</p>}
     </div>)}

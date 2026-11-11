@@ -28,6 +28,9 @@ class PayPalCheckout extends Payment
         'paypal_response',
         'captured_at',
         'failed_at',
+        'capture_attempt_token',
+        'capture_started_at',
+        'capture_first_started_at',
     ];
 
     protected function casts(): array
@@ -37,6 +40,8 @@ class PayPalCheckout extends Payment
             'provider_response' => 'array',
             'completed_at' => 'datetime',
             'failed_at' => 'datetime',
+            'capture_started_at' => 'datetime',
+            'capture_first_started_at' => 'datetime',
         ];
     }
 

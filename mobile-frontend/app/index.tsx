@@ -103,7 +103,6 @@ export default function LandingScreen() {
           className="shrink-0 justify-center px-screen"
           style={{ gap: isCompact ? 8 : 12, width: isLandscape ? contentWidth * 0.5 : '100%' }}>
           <View className="relative overflow-hidden rounded-card border border-border bg-muted px-4 py-4">
-            <View className="absolute left-4 right-4 top-0 h-1 rounded-full bg-primary" />
             <Text
               maxFontSizeMultiplier={welcomeTextScaleLimit}
               className={`font-sans text-center text-muted-foreground ${isCompact ? 'text-caption' : 'text-body'}`}>

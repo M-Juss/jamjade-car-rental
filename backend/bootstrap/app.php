@@ -27,7 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->statefulApi();
         // Native recording hashes bind exact UTF-8 bytes, including the final NDJSON newline.
-        $middleware->trimStrings(except: [fn (Request $request) => $request->is('api/mobile/rc-research/native-recordings*')]);
+        $middleware->trimStrings(except: [
+            fn (Request $request) => $request->is('api/mobile/rc-research/native-recordings*')
+                || $request->is('api/mobile/register/verify'),
+        ]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : route('login'));
 
         $middleware->alias([

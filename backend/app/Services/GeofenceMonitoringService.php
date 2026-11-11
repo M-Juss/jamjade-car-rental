@@ -34,6 +34,15 @@ class GeofenceMonitoringService
             $inside = $result['inside'];
             $state->uncertain = false;
             if ($state->inside === null || $state->inside === $inside) {
+                if ($state->inside === null && $inside && $zone->notify_on_enter) {
+                    app(NotificationService::class)->createForTelematicsParticipants(
+                        $trip->booking, 'Inside zone', 'Inside '.$zone->name_snapshot.'.', [
+                            'action' => 'view_telematics_activity', 'action_label' => 'View activity',
+                            'event_type' => 'geofence_initial_inside',
+                            'booking_geofence_id' => $zone->id, 'zone_name' => $zone->name_snapshot,
+                            'occurred_at' => $capturedAt->toISOString(),
+                        ]);
+                }
                 $state->fill(['inside' => $inside, 'candidate_inside' => null, 'candidate_count' => 0, 'candidate_started_at' => null])->save();
 
                 continue;

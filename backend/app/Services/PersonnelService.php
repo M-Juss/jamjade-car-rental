@@ -16,9 +16,9 @@ class PersonnelService
 {
     public function __construct(private readonly AdditionalChargeService $charges) {}
 
-    public function accounts(array $filters): LengthAwarePaginator
+    public function accounts(array $filters, User $actor): LengthAwarePaginator
     {
-        return $this->query()
+        return $this->query($actor)
             ->with('roles')
             ->when($filters['search'] ?? null, function (Builder $query, string $search) {
                 $query->where(function (Builder $query) use ($search) {
@@ -33,18 +33,21 @@ class PersonnelService
             ->paginate($filters['per_page'] ?? 20);
     }
 
-    public function summary(): array
+    public function summary(User $actor): array
     {
         return [
-            'total' => $this->query()->count(),
-            'active' => $this->query()->where('is_active', true)->count(),
-            'staff' => $this->query()->role('staff')->count(),
-            'drivers' => $this->query()->role('driver')->count(),
+            'total' => $this->query($actor)->count(),
+            'active' => $this->query($actor)->where('is_active', true)->count(),
+            'staff' => $this->query($actor)->role('staff')->count(),
+            'drivers' => $this->query($actor)->role('driver')->count(),
         ];
     }
 
     public function create(array $data, User $actor): User
     {
+        abort_unless($this->canManageRole($actor, $data['role'] ?? ''), 403);
+        abort_unless(in_array($data['role'] ?? null, ['staff', 'driver', 'admin'], true), 422);
+
         return DB::transaction(function () use ($data, $actor) {
             $user = User::create([
                 ...$this->accountFields($data),
@@ -67,7 +70,7 @@ class PersonnelService
         return DB::transaction(function () use ($account, $data, $actor) {
             $user = User::query()->lockForUpdate()->findOrFail($account->id);
 
-            if ($user->roles()->count() !== 1 || ! $user->hasAnyRole(['staff', 'driver'])) {
+            if ($user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name) || ! $this->canManageRole($actor, $data['role']) || ($user->hasRole('admin') && $data['role'] !== 'admin') || (! $user->hasRole('admin') && $data['role'] === 'admin')) {
                 throw ValidationException::withMessages([
                     'role' => ['Only Staff and Driver accounts can be updated here.'],
                 ]);
@@ -134,7 +137,7 @@ class PersonnelService
         DB::transaction(function () use ($account, $actor) {
             $user = User::query()->lockForUpdate()->findOrFail($account->id);
 
-            if ($user->roles()->count() !== 1 || ! $user->hasAnyRole(['staff', 'driver'])) {
+            if ($user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name)) {
                 throw ValidationException::withMessages([
                     'personnel' => ['Only Staff and Driver accounts can be deleted.'],
                 ]);
@@ -168,9 +171,19 @@ class PersonnelService
         });
     }
 
-    private function query(): Builder
+    private function query(User $actor): Builder
     {
-        return User::query()->role(['staff', 'driver'])->has('roles', '=', 1);
+        return User::query()->role($actor->hasRole('owner') ? ['staff', 'driver', 'admin'] : ['staff', 'driver'])->has('roles', '=', 1);
+    }
+
+    private function canManageRole(User $actor, string $role): bool
+    {
+        return match ($role) {
+            'admin' => $actor->hasRole('owner'),
+            'staff' => $actor->hasRole('admin'),
+            'driver' => $actor->hasAnyRole(['admin', 'staff']),
+            default => false,
+        };
     }
 
     private function accountFields(array $data): array

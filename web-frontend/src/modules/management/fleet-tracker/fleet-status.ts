@@ -9,3 +9,11 @@ export const fleetStatusLabels: Record<FleetTrackingStatus, string> = {
   ended: "Ended",
   unavailable: "Unavailable",
 };
+
+export const fleetTrackingFilters = [
+  { value: "all", label: "All statuses" },
+  { value: "updating", label: "Updating" },
+  { value: "paused", label: "Paused" },
+  { value: "no_updates", label: "No recent updates" },
+  { value: "not_tracking", label: "Not tracking" },
+] as const;

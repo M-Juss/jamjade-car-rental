@@ -134,7 +134,7 @@ export default function CarShowcase() {
                         isSelected ? "scale-100 opacity-100" : "scale-[0.78] opacity-55"
                       }`}
                     >
-                      <div className="relative min-h-0 flex-1 overflow-hidden bg-muted">
+                      <div className="relative min-h-0 flex-1 overflow-hidden bg-transparent">
                         {image ? (
                           <Image
                             src={image}
@@ -142,14 +142,14 @@ export default function CarShowcase() {
                             fill
                             sizes="(min-width: 1280px) 44vw, (min-width: 1024px) 54vw, (min-width: 640px) 64vw, 86vw"
                             unoptimized
-                            className="object-cover"
+                            className="object-contain"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                             No vehicle image
                           </div>
                         )}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-foreground/90 to-transparent px-6 pb-6 pt-20 sm:px-8">
+                        <div className="absolute inset-x-0 bottom-0 bg-foreground/85 px-6 py-5 sm:px-8">
                           <div className="flex items-end justify-between gap-3">
                             <div className="min-w-0">
                               <h3 className="text-2xl font-semibold text-white sm:text-4xl">{vehicle.name}</h3>

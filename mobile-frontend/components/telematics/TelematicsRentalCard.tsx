@@ -25,7 +25,7 @@ export function TelematicsRentalCard({ rental, unavailable, onOpen, onDetails, o
   const label = disabled ? status : state.action;
   const Icon = disabled ? LockKeyhole : ArrowRight;
   return (
-    <View className="w-full max-w-[440px] self-center overflow-hidden rounded-card border border-border bg-muted">
+    <View className="w-full max-w-[440px] self-center overflow-hidden rounded-card border border-border bg-surface">
       <View className="px-card pt-card">
         <View className="flex-row flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <Text className="font-sans min-w-0 flex-1 text-[20px] font-semibold leading-6 text-foreground">{rental.vehicleName || 'Your vehicle'}</Text>

@@ -1,66 +1,28 @@
-import { ScrollView, Text, View } from 'react-native';
-import { Armchair, CalendarDays, Car, Cog, CreditCard, Fuel, MapPinned, Navigation, Palette, ReceiptText } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import { CalendarDays, Car, CreditCard, MapPinned, Navigation, ReceiptText, UserRound } from 'lucide-react-native';
 import { BookingTimeline, InfoRow, PaymentStatusBadge, PricingBreakdown, SectionCard } from '@/components/bookings';
 import { DeliveryLocationDetails } from '@/components/bookings/DeliveryLocationDetails';
+import { DeliveryLocationLink } from '@/components/bookings/DeliveryLocationLink';
+import { DeliveryPointMap } from '@/components/bookings/DeliveryPointMap';
 import { BookingReceipts } from '@/components/payments/BookingReceipts';
 import { TelematicsMap } from '@/components/telematics/TelematicsMap';
-import { VehicleImage } from '@/components/browse/BrowseComponents';
-import { cx } from '@/components/bookings/utils';
-import { themeColors } from '@/constants/theme';
+import { VehicleSummaryContent } from '@/components/browse/BrowseComponents';
 import { formatPeso } from '@/lib/bookings/helpers';
 import type { Booking } from '@/types/booking';
 
-export function BookingDetailsContent({ booking }: { booking: Booking }) {
+export function BookingDetailsContent({ booking, audience = 'customer' }: { booking: Booking; audience?: 'customer' | 'driver' }) {
+  const isDriver = audience === 'driver';
   return <View className="gap-4">
     <SectionCard title="Vehicle Information" icon={Car}>
-              <VehicleImage
-                uri={booking.image}
-                accessibilityLabel={[booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(' ')}
-        resizeMode="cover"
-        className="mb-4 h-[140px] w-full rounded-card bg-muted"
-      />
-      <View className="mb-4 flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <Text className="font-sans text-[22px] font-semibold leading-[26px] text-foreground">
-            {[booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(" ")}
-          </Text>
-        </View>
-        <Text className="font-sans text-right text-[17px] font-semibold text-primary">
-          {formatPeso(booking.pricePerDay)}
-          <Text className="text-[11px] font-normal text-secondary-foreground">
-            {" "}
-            / day
-          </Text>
-        </Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ alignItems: "center", columnGap: 12 }}
-      >
-        {[
-          { icon: Palette, label: "Color", value: booking.color || "Not specified" },
-          { icon: Armchair, label: "Seats", value: `${booking.seats} seater` },
-          { icon: Cog, label: "Transmission", value: booking.transmission },
-          { icon: Fuel, label: "Fuel type", value: booking.fuelType === "Gasoline" ? "Gas" : booking.fuelType },
-        ].map(({ icon: Icon, label, value }, index, specs) => (
-          <View
-            key={label}
-            accessible
-            accessibilityLabel={`${label}: ${value}`}
-            className={cx(
-              "shrink-0 flex-row items-center gap-1.5",
-              index < specs.length - 1 && "border-r border-border pr-3",
-            )}
-          >
-            <Icon accessible={false} size={16} color={themeColors.primary} strokeWidth={2.35} />
-            <Text numberOfLines={1} className="font-sans text-[12px] font-semibold text-foreground">
-              {value}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
+      <VehicleSummaryContent title={[booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(' ')}
+        image={booking.image} pricePerDay={booking.pricePerDay} hidePrice={isDriver} color={booking.color}
+        seats={booking.seats} transmission={booking.transmission} fuelType={booking.fuelType} />
     </SectionCard>
+
+    {isDriver ? <SectionCard title="Customer" icon={UserRound}>
+      <InfoRow label="Name" value={booking.customer?.name || 'Not provided'} />
+      <InfoRow label="Contact number" value={booking.customer?.phoneNumber || 'Not provided'} />
+    </SectionCard> : null}
 
     <SectionCard title="Rental Schedule" icon={CalendarDays}>
       <InfoRow label="Rental Date" value={booking.rentalDate} />
@@ -75,9 +37,15 @@ export function BookingDetailsContent({ booking }: { booking: Booking }) {
       ) : null}
       <InfoRow label="Pickup Location" value={booking.pickupLocation} />
       {booking.notes && !booking.deliveryLocation ? <InfoRow label="Note" value={booking.notes} /> : null}
-      {booking.deliveryLocation && (
+      {booking.deliveryLocation && !isDriver && (
         <DeliveryLocationDetails booking={booking} />
       )}
+      {booking.deliveryLocation && isDriver ? <View className="mt-3 gap-3">
+        {booking.deliveryLocation.point ? <DeliveryPointMap point={booking.deliveryLocation.point} /> : null}
+        {booking.notes ? <InfoRow label="Note" value={booking.notes} /> : null}
+        <DeliveryLocationLink location={booking.deliveryLocation} navigate />
+      </View> : null}
+      {isDriver ? <InfoRow label="Return location" value={booking.returnLocation} /> : null}
     </SectionCard>
 
     {booking.sharedVehicleLocation ? <SectionCard title="Vehicle location" icon={Navigation}>
@@ -87,7 +55,7 @@ export function BookingDetailsContent({ booking }: { booking: Booking }) {
       </View>
     </SectionCard> : null}
 
-    <SectionCard title="Pricing Breakdown" icon={ReceiptText}>
+    {!isDriver ? <><SectionCard title="Pricing Breakdown" icon={ReceiptText}>
       <PricingBreakdown booking={booking} />
     </SectionCard>
 
@@ -110,7 +78,7 @@ export function BookingDetailsContent({ booking }: { booking: Booking }) {
       ) : null}
     </SectionCard>
 
-    <BookingReceipts key={booking.id} bookingReference={booking.id} />
+    <BookingReceipts key={booking.id} bookingReference={booking.id} /></> : null}
 
     {booking.cancellation ? (
       <SectionCard title="Cancellation and refund" icon={ReceiptText}>

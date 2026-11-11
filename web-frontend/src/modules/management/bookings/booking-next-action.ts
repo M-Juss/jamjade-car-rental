@@ -1,11 +1,30 @@
 import type { BookingRecord } from "@/services/booking";
 
 export const TELEMATICS_DEVICE_STEPS = ["device_check", "motion_permission", "location_permission", "background_location", "gps_check", "phone_mount"];
-export const TELEMATICS_CALIBRATION_STEPS = ["stationary_calibration", "forward_calibration", "braking_calibration", "left_turn_calibration", "right_turn_calibration"];
+const TELEMATICS_CALIBRATION_STEPS = [
+  { type: "stationary_calibration", label: "Stationary" },
+  { type: "forward_calibration", label: "Forward Reference" },
+] as const;
 
 export function setupStepsPassed(booking: BookingRecord, types: string[]) {
   const steps = booking.telematicsHandover?.steps ?? [];
   return types.every((type) => steps.some((step) => step.type === type && step.status === "passed"));
+}
+
+export function bookingCalibrationProgress(booking: BookingRecord) {
+  const handover = booking.telematicsHandover;
+  const steps = TELEMATICS_CALIBRATION_STEPS.map(({ type, label }) => {
+    const saved = handover?.steps.find((step) => step.type === type);
+    return { type, label, status: saved?.status ?? "pending", failureReason: saved?.failureReason };
+  });
+  return {
+    steps,
+    passed: steps.filter((step) => step.status === "passed").length,
+    total: steps.length,
+    next: handover?.setup?.status === "in_progress" && handover.eligibility?.canWorkSetup
+      ? steps.find((step) => step.type === handover.calibration.nextStep)
+      : undefined,
+  };
 }
 
 export type BookingNextAction =
@@ -27,8 +46,7 @@ export function nextBookingAction(booking: BookingRecord): BookingNextAction | n
     if (!booking.rentalProgress?.outgoingFinalized && !booking.telematicsHandover?.eligibility?.testMode) return "outgoing";
     if (booking.telematicsSetupStatus === "ready_for_release") return "start-rental";
     if (booking.telematicsSetupStatus === "in_progress") {
-      return setupStepsPassed(booking, TELEMATICS_DEVICE_STEPS)
-        ? "calibration-pending" : "view-setup";
+      return bookingCalibrationProgress(booking).next ? "calibration-pending" : "view-setup";
     }
     if (booking.telematicsSetupStatus === "released") return "view-setup";
     return "prepare-handover";

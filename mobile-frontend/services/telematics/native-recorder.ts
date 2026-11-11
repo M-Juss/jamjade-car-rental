@@ -7,6 +7,7 @@ import { nativeCollectionGroupName, type NativeRecorderState, type NativeRecordi
 import { apiGet, apiPost, getApiAuthToken } from '@/services/http';
 import { nativeCollectionGroupFormSchema, nativeCollectionGroupSchema, nativeRecordingSchema, type NativeCollectionGroupInput, type NativeRecordingInput } from '@/validation/research/native-recorder';
 import { nativeManifestUploadSchema, nativeChunkUploadSchema, nativeUploadIdSchema } from '@/validation/research/native-upload';
+import type { DriveReference } from '@/services/api/drive-monitoring.service';
 
 type NativeAccess = { owner_id: string; valid_for_seconds: number; expires_at: string; capture_protocol_version: 2; upload_available: boolean };
 type NativeUploadReceipt = { id: string; client_recording_id: string; manifest_sha256: string; state: 'incomplete' | 'verified';
@@ -35,6 +36,16 @@ function moduleOrThrow() {
     throw new NativeRecorderError('Install the updated Android development build for collection groups and phone power information.');
   }
   return nativeModule;
+}
+
+export async function ensureMotionNotificationPermission(purpose: 'recording' | 'monitoring' = 'recording') {
+  if (Number(Platform.Version) < 33) return;
+  const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS, {
+    title: purpose === 'recording' ? 'Recording notification' : 'Monitoring notification',
+    message: 'Show the recording status and a Stop action while the screen is locked.',
+    buttonPositive: 'Continue', buttonNegative: 'Cancel',
+  });
+  if (result !== PermissionsAndroid.RESULTS.GRANTED) throw new NativeRecorderError(`Allow ${purpose} notifications before starting.`);
 }
 
 export const nativeRecorder = {
@@ -67,22 +78,22 @@ export const nativeRecorder = {
     const module = nativeModule;
     if (module) await mutate(() => module.lock());
   },
-  async start(ownerId: number, values: NativeRecordingInput) {
+  async start(ownerId: number, values: NativeRecordingInput, runtime?: {
+    session_id: string; research_session_id: string; mount_version_id: string; reference: DriveReference;
+  }) {
     const revision = accessRevision;
-    if (AppState.currentState !== 'active') throw new NativeRecorderError('Open RC Research before starting.');
+    if (AppState.currentState !== 'active') throw new NativeRecorderError('Open Data Collection before starting.');
     const config = nativeRecordingSchema.parse(values);
     await this.authorize(ownerId);
-    if (Number(Platform.Version) >= 33) {
-      const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS, {
-        title: 'Recording notification', message: 'Show the recording status and a Stop action while the screen is locked.',
-        buttonPositive: 'Continue', buttonNegative: 'Cancel',
-      });
-      if (result !== PermissionsAndroid.RESULTS.GRANTED) throw new NativeRecorderError('Allow recording notifications before starting.');
-    }
+    await ensureMotionNotificationPermission();
     await mutate(async () => {
       checkRevision(revision);
-      if (AppState.currentState !== 'active') throw new NativeRecorderError('Open RC Research before starting.');
-      await moduleOrThrow().start(JSON.stringify(config));
+      if (AppState.currentState !== 'active') throw new NativeRecorderError('Open Data Collection before starting.');
+      if (runtime) {
+        const module = moduleOrThrow();
+        if (!module.startDriveMonitoring) throw new NativeRecorderError('Install the updated JamJade APK for Drive Monitoring.');
+        await module.startDriveMonitoring(JSON.stringify(config), JSON.stringify(runtime));
+      } else await moduleOrThrow().start(JSON.stringify(config));
     });
   },
   async stop() { await moduleOrThrow().stop(); },
@@ -171,10 +182,10 @@ export const nativeRecorder = {
   },
   async beginCheck() {
     const revision = accessRevision;
-    if (AppState.currentState !== 'active') throw new NativeRecorderError('Open RC Research before checking.');
+    if (AppState.currentState !== 'active') throw new NativeRecorderError('Open Data Collection before checking.');
     await mutate(async () => {
       checkRevision(revision);
-      if (AppState.currentState !== 'active') throw new NativeRecorderError('Open RC Research before checking.');
+      if (AppState.currentState !== 'active') throw new NativeRecorderError('Open Data Collection before checking.');
       await moduleOrThrow().beginCheck();
     });
   },

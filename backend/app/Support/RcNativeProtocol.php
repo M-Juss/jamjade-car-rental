@@ -13,13 +13,27 @@ class RcNativeProtocol
 
     public const MAX_RECORDING_BYTES = 67108864;
 
-    public const CURRENT_EXERCISE_CATALOG = 'rc-exercises-v3';
+    public const CURRENT_EXERCISE_CATALOG = 'rc-exercises-v6';
 
-    public const EXERCISE_CATALOGS = ['rc-exercises-v1', 'rc-exercises-v2', self::CURRENT_EXERCISE_CATALOG];
+    public const EXERCISE_CATALOGS = ['rc-exercises-v1', 'rc-exercises-v2', 'rc-exercises-v3', 'rc-exercises-v4', 'rc-exercises-v5', self::CURRENT_EXERCISE_CATALOG];
 
-    public const EXERCISE_CODES = ['FSS', 'HA', 'HB', 'LT', 'HLT', 'RT', 'HRT', 'RSS', 'SW', 'SR', 'FR'];
+    public const DIRECTIONAL_SWERVE_CODES = ['SWL', 'HSWL', 'SWR', 'HSWR'];
+
+    public const EXERCISE_CODES = ['FSS', 'HA', 'HB', 'LT', 'HLT', 'RT', 'HRT', 'RSS', 'LC', 'SW', ...self::DIRECTIONAL_SWERVE_CODES, 'MD', 'SR', 'FR'];
 
     public const HARSH_TURN_CODES = ['HLT', 'HRT'];
+
+    public static function exerciseSupported(string $code, string $catalog): bool
+    {
+        return match (true) {
+            $code === 'MD' => $catalog === 'rc-exercises-v6',
+            in_array($code, self::DIRECTIONAL_SWERVE_CODES, true) => in_array($catalog, ['rc-exercises-v5', 'rc-exercises-v6'], true),
+            $code === 'SW' => ! in_array($catalog, ['rc-exercises-v5', 'rc-exercises-v6'], true),
+            $code === 'LC' => in_array($catalog, ['rc-exercises-v4', 'rc-exercises-v5', 'rc-exercises-v6'], true),
+            in_array($code, self::HARSH_TURN_CODES, true) => in_array($catalog, ['rc-exercises-v3', 'rc-exercises-v4', 'rc-exercises-v5', 'rc-exercises-v6'], true),
+            default => true,
+        };
+    }
 
     public const CHANNELS = ['accelerometer' => [1, 'm/s²'], 'gyroscope' => [4, 'rad/s'],
         'gravity' => [9, 'm/s²'], 'linear_acceleration' => [10, 'm/s²'], 'rotation_vector' => [11, 'native_rotation_vector']];
@@ -83,8 +97,7 @@ class RcNativeProtocol
                 'chunks' => 'present|array|max:2000', 'chunk_inventory_sha256' => 'required|regex:/^[a-f0-9]{64}$/D',
             ])->validate();
             $binding = $m['collection_binding'] ?? [];
-            if (in_array($binding['protocol_code'] ?? null, self::HARSH_TURN_CODES, true)
-                && $binding['catalog_version'] !== self::CURRENT_EXERCISE_CATALOG) {
+            if ($binding !== [] && ! self::exerciseSupported($binding['protocol_code'], $binding['catalog_version'])) {
                 self::invalid();
             }
             $start = self::ns($m['started_elapsed_ns'] ?? null);

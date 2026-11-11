@@ -34,10 +34,10 @@ class ReportService
 
     public function dashboardData(string $start, string $end, bool $canManageBookings): array
     {
-        $rangeStart = CarbonImmutable::parse($start)->startOfDay();
-        $rangeEnd = CarbonImmutable::parse($end)->endOfDay();
-        $monthStart = now()->toImmutable()->startOfMonth();
-        $monthEnd = now()->toImmutable()->endOfMonth();
+        $rangeStart = CarbonImmutable::parse($start, 'Asia/Manila')->startOfDay()->utc();
+        $rangeEnd = CarbonImmutable::parse($end, 'Asia/Manila')->endOfDay()->utc();
+        $monthStart = now()->toImmutable()->setTimezone('Asia/Manila')->startOfMonth()->utc();
+        $monthEnd = now()->toImmutable()->setTimezone('Asia/Manila')->endOfMonth()->utc();
         $bookings = Booking::query()
             ->with([
                 'user:id,name,email,phone_number',
@@ -93,7 +93,10 @@ class ReportService
                 'confirmedBookings' => Booking::where('status', BookingStatus::Confirmed->value)->count(),
                 'activeRentals' => Booking::where('status', BookingStatus::Ongoing->value)->count(),
                 'todaysPickups' => Booking::where('status', BookingStatus::Confirmed->value)
-                    ->whereBetween('rental_start_at', [now()->startOfDay(), now()->endOfDay()])
+                    ->whereBetween('rental_start_at', [
+                        now()->setTimezone('Asia/Manila')->startOfDay()->utc(),
+                        now()->setTimezone('Asia/Manila')->endOfDay()->utc(),
+                    ])
                     ->count(),
             ],
             'events' => $bookings

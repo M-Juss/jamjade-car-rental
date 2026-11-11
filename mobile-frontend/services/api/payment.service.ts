@@ -7,8 +7,9 @@ import type {
   PayPalOrderResponse,
 } from './types';
 
-export async function createPayPalOrder(payload: PayPalOrderPayload) {
-  const response = await apiPost<PayPalOrderResponse>('/mobile/paypal/orders', {
+export async function createPayPalOrder(payload: PayPalOrderPayload, bookingReference?: string) {
+  const path = bookingReference ? `/mobile/bookings/${encodeURIComponent(bookingReference)}/paypal/revise-order` : '/mobile/paypal/orders';
+  const response = await apiPost<PayPalOrderResponse>(path, {
     delivery_quote_id: payload.deliveryQuoteId,
     vehicle_id: payload.vehicleId,
     rental_start_at: toBookingTimestamp(payload.rentalStartAt),

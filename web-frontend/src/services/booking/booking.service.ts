@@ -1,7 +1,9 @@
+import { drivingAnalysisQuerySchema } from "@/validations/driving-analysis/schemas";
 import { refreshManagementCounts } from "@/services/management/navigation.service";
 import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/services/http";
 import type { BookingRecord, DriverCandidate } from "./types";
+import type { RentalDrivingEvents, RentalDrivingGrade } from "@/services/fleet/fleet.service";
 import type { VehicleConditionFormValues } from "@/validations/vehicle/schemas";
 import { toConditionRequest } from "@/services/vehicle/vehicle.service";
 
@@ -46,6 +48,53 @@ export async function cancelBooking(booking: BookingRecord, reason: string) {
 export async function getBooking(booking: BookingRecord | number) {
   const id = typeof booking === "number" ? booking : booking.backendId;
   return (await apiGet<BookingRecord>(`/admin/bookings/${id}`)).data;
+}
+
+export type DrivingAnalysisSummary = {
+  completed_rentals: number; operators_monitored: number;
+  average_score: number | null; harsh_events: number;
+};
+export type DrivingOperator = {
+  id: number; name: string | null; completed_rentals: number; monitored_rentals: number;
+  average_score: number | null; latest_score: number | null; harsh_events: number;
+};
+export type DrivingVehicleOption = { value: string; label: string };
+export type RecordedOperator = { id: number | null; name: string | null };
+
+type DrivingAnalysisFilters = { page: number; search: string; operatorId?: string | null; vehicleId?: string | null };
+function drivingAnalysisParams(filters: DrivingAnalysisFilters) {
+  const values = drivingAnalysisQuerySchema.parse({ page: filters.page, search: filters.search,
+    per_page: TABLE_PAGE_SIZE, operator_id: filters.operatorId, vehicle_id: filters.vehicleId });
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+  }
+  return params;
+}
+
+export async function getDrivingOperators(filters: DrivingAnalysisFilters) {
+  const response = await apiGet<DrivingOperator[]>(`/admin/driving-analysis/operators?${drivingAnalysisParams(filters)}`);
+  return { operators: response.data, vehicleOptions: (response.meta?.vehicle_options ?? []) as DrivingVehicleOption[], summary: response.meta?.summary as DrivingAnalysisSummary,
+    total: Number(response.meta?.total ?? 0), lastPage: Number(response.meta?.last_page ?? 1) };
+}
+
+export async function getDrivingAnalysisBookings(filters: DrivingAnalysisFilters) {
+  const params = drivingAnalysisParams(filters);
+  const response = await apiGet<BookingRecord[]>(`/admin/driving-analysis?${params}`);
+  return {
+    bookings: response.data,
+    grades: (response.meta?.driving_grades ?? {}) as Record<string, RentalDrivingGrade>,
+    vehicleOptions: (response.meta?.vehicle_options ?? []) as DrivingVehicleOption[],
+    recordedOperators: (response.meta?.recorded_operators ?? {}) as Record<string, RecordedOperator>,
+    operatorFilter: (response.meta?.operator_filter ?? null) as RecordedOperator | null,
+    summary: response.meta?.summary as DrivingAnalysisSummary,
+    total: Number(response.meta?.total ?? 0),
+    lastPage: Number(response.meta?.last_page ?? 1),
+  };
+}
+
+export function getBookingDrivingAnalysis(bookingId: number, signal?: AbortSignal) {
+  return apiGet<RentalDrivingEvents>(`/admin/bookings/${bookingId}/driving-analysis`, { signal });
 }
 
 async function bookingAction(booking: BookingRecord, action: "start" | "complete" | "finalize-return") {

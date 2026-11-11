@@ -31,7 +31,7 @@ export function TelematicsRentalDashboard({ handover, booking, onBookingDetails 
             <Text className="font-sans text-caption font-semibold text-success">Rental ongoing</Text>
           </View>
         </View>
-        <VehicleImage uri={booking?.image} resizeMode="contain" className="mx-card mt-3 h-44 rounded-field bg-background" accessibilityLabel={rentalVehicleName(booking)} />
+        <VehicleImage uri={booking?.image} resizeMode="contain" className="mx-card mt-3 h-44 rounded-field" accessibilityLabel={rentalVehicleName(booking)} />
         <View className="p-card">
           <Text className="font-sans text-title font-semibold text-foreground">{rentalVehicleName(booking)}</Text>
           {booking?.vehiclePlateNumber ? <Text className="font-sans mt-1 text-body text-secondary-foreground">{booking.vehiclePlateNumber}</Text> : null}

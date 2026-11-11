@@ -32,10 +32,10 @@ class RestrictRcResearchToken
         abort_unless($researchToken && $request->bearerToken()
             && $token->abilities === [RcResearchAccessService::TOKEN_ABILITY]
             && $this->research->enabled()
-            && $request->user()->hasRole(UserRole::Admin->value), 403, 'RC Research access is unavailable.');
+            && $request->user()->hasRole(UserRole::Admin->value), 403, 'Data Collection access is unavailable.');
 
         abort_unless($request->routeIs('mobile.rc-research.*', 'mobile.me'), 403,
-            'This session is limited to RC Research.');
+            'This session is limited to Data Collection.');
 
         return $next($request);
     }

@@ -26,9 +26,9 @@ class DocumentVerificationService
             ->where('document_type', $documentType)
             ->first();
 
-        if ($existingDocument && ! $existingDocument->trashed() && $existingDocument->status !== DocumentStatus::Rejected) {
+        if ($existingDocument && ! $existingDocument->trashed() && $existingDocument->status === DocumentStatus::Pending) {
             throw ValidationException::withMessages([
-                'document_type' => ['Pending or approved documents cannot be replaced.'],
+                'document_type' => ['This document is pending review. Wait for the review before submitting changes.'],
             ]);
         }
 
@@ -37,26 +37,37 @@ class DocumentVerificationService
             'front_file_path' => $this->storeFile($files['front_file'] ?? null, $user),
             'back_file_path' => $this->storeFile($files['back_file'] ?? null, $user),
         ];
-        $oldPaths = $existingDocument
-            ? collect([
-                $existingDocument->file_path,
-                $existingDocument->front_file_path,
-                $existingDocument->back_file_path,
-            ])->filter()->unique()->all()
-            : [];
+        $oldPaths = [];
 
         try {
             $document = DB::transaction(function () use (
                 $user,
                 $data,
                 $documentType,
-                $existingDocument,
+                &$oldPaths,
                 $storedPaths,
             ) {
+                User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $existingDocument = CustomerDocument::withTrashed()
+                    ->where('user_id', $user->id)
+                    ->where('document_type', $documentType)
+                    ->lockForUpdate()
+                    ->first();
+                if ($existingDocument && ! $existingDocument->trashed() && $existingDocument->status === DocumentStatus::Pending) {
+                    throw ValidationException::withMessages([
+                        'document_type' => ['This document is pending review. Wait for the review before submitting changes.'],
+                    ]);
+                }
+
                 $document = $existingDocument ?? new CustomerDocument([
                     'user_id' => $user->id,
                     'document_type' => $documentType,
                 ]);
+                $oldPaths = collect([
+                    $document->file_path,
+                    $document->front_file_path,
+                    $document->back_file_path,
+                ])->filter()->unique()->all();
 
                 if ($document->trashed()) {
                     $document->restore();
@@ -107,7 +118,7 @@ class DocumentVerificationService
 
     public function review(CustomerDocument $document, User $reviewer, DocumentStatus $status, ?string $reason = null): CustomerDocument
     {
-        if ($document->status !== DocumentStatus::Pending) {
+        if ($document->status === $status || ($document->status !== DocumentStatus::Pending && ! $reviewer->hasRole('admin'))) {
             throw ValidationException::withMessages([
                 'status' => ['Only pending documents can be reviewed.'],
             ]);
@@ -138,7 +149,7 @@ class DocumentVerificationService
                     [
                         'action_label' => 'View Verification Status',
                         'priority' => 'success',
-                        'full_message' => "Status: Approved. Jamjade accepted your {$label}. Self-drive becomes available after every required document is approved.",
+                        'full_message' => "Status: Approved. Jamjade accepted your {$label}. To use self-drive, make sure all required documents are approved and add an emergency contact in your profile.",
                     ]
                 );
             } else {

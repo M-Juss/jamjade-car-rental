@@ -96,7 +96,7 @@ function GuestCatalogHeader() {
           hitSlop={8}
           onPress={() => router.replace('/' as Href)}
           className="h-12 w-12 items-center justify-center rounded-field border border-border bg-surface">
-          <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2.5} />
+          <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
         </Pressable>
 
         <View className="min-w-0 flex-1">

@@ -11,11 +11,18 @@ use App\Models\PayPalCheckout;
 use App\Services\BookingEmailService;
 use App\Services\BookingService;
 use App\Services\NotificationService;
+use App\Services\PaymentDeadlineService;
+use App\Services\PayPalCheckoutService;
+use App\Services\PayPalClient;
 use Database\Seeders\RoleAndPermissionSeeder;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -192,4 +199,121 @@ it('combines confirmation and balance details for bookings created with a record
         ->and($notification->title)->toBe('Booking confirmed')
         ->and($notification->data['remaining_balance'])->toEqual(1750)
         ->and($notification->full_message)->toContain('due by');
+});
+
+it('retries an interrupted capture only after its lease expires with the same provider idempotency key', function () {
+    $checkout = notificationCheckout();
+    $checkout->update(['status' => 'capturing', 'capture_started_at' => now(), 'capture_attempt_token' => (string) Str::uuid()]);
+    Sanctum::actingAs($checkout->booking->user);
+    $this->mock(PayPalClient::class, function ($mock) use ($checkout) {
+        $mock->shouldReceive('captureOrder')->once()->with('SUMMARY-ORDER-1', "jamjade-capture-{$checkout->id}")
+            ->andReturn(['status' => 'COMPLETED', 'purchase_units' => [['payments' => ['captures' => [[
+                'id' => 'SUMMARY-CAPTURE-1', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'PHP', 'value' => '3500.00'],
+            ]]]]]]);
+    });
+    $this->postJson('/api/mobile/paypal/orders/SUMMARY-ORDER-1/capture')->assertUnprocessable();
+    $checkout->update(['capture_started_at' => now()->subMinutes(3)]);
+    $this->postJson('/api/mobile/paypal/orders/SUMMARY-ORDER-1/capture')->assertOk();
+    expect($checkout->fresh()->status)->toBe('completed');
+});
+
+it('does not let a stale capture response overwrite a newer attempt', function () {
+    $checkout = notificationCheckout();
+    $newToken = (string) Str::uuid();
+    Sanctum::actingAs($checkout->booking->user);
+    $this->mock(PayPalClient::class, function ($mock) use ($checkout, $newToken) {
+        $mock->shouldReceive('captureOrder')->once()->andReturnUsing(function () use ($checkout, $newToken) {
+            $checkout->update(['capture_attempt_token' => $newToken, 'status' => 'capturing']);
+
+            return ['status' => 'COMPLETED', 'purchase_units' => [['payments' => ['captures' => [[
+                'id' => 'SUMMARY-CAPTURE-1', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'PHP', 'value' => '3500.00'],
+            ]]]]]];
+        });
+    });
+    $this->postJson('/api/mobile/paypal/orders/SUMMARY-ORDER-1/capture')->assertUnprocessable();
+    expect($checkout->fresh()->capture_attempt_token)->toBe($newToken)
+        ->and($checkout->fresh()->status)->toBe('capturing')
+        ->and($checkout->booking->fresh()->status)->toBe(BookingStatus::Pending);
+});
+
+it('reserves vehicle dates while capture is unresolved', function () {
+    $checkout = notificationCheckout();
+    $checkout->update(['status' => 'capturing', 'capture_started_at' => now()]);
+    $booking = $checkout->booking;
+    expect(fn () => app(BookingService::class)->assertVehicleScheduleAvailable($booking->vehicle_id, $booking->rental_start_at, $booking->rental_end_at))
+        ->toThrow(ValidationException::class);
+    $checkout->update(['status' => 'failed']);
+    app(BookingService::class)->assertVehicleScheduleAvailable($booking->vehicle_id, $booking->rental_start_at, $booking->rental_end_at);
+});
+
+it('does not let a stale capture error unlock a newer attempt', function () {
+    $checkout = notificationCheckout();
+    $newToken = (string) Str::uuid();
+    $this->mock(PayPalClient::class, function ($mock) use ($checkout, $newToken) {
+        $mock->shouldReceive('captureOrder')->once()->andReturnUsing(function () use ($checkout, $newToken) {
+            $checkout->update(['capture_attempt_token' => $newToken, 'status' => 'capturing']);
+            throw new RuntimeException('Simulated delayed provider error');
+        });
+    });
+    expect(fn () => app(PayPalCheckoutService::class)->captureOrder($checkout->booking->user, 'SUMMARY-ORDER-1'))
+        ->toThrow(RuntimeException::class);
+    expect($checkout->fresh()->capture_attempt_token)->toBe($newToken)
+        ->and($checkout->fresh()->status)->toBe('capturing');
+});
+
+it('rechecks failed payment evidence when reserving a replacement checkout', function () {
+    $checkout = notificationCheckout();
+    $checkout->update(['status' => 'failed', 'provider_response' => ['status' => 'COMPLETED']]);
+    $booking = $checkout->booking->fresh(['terms']);
+    $this->mock(PayPalClient::class, fn ($mock) => $mock->shouldNotReceive('createOrder'));
+    $method = new ReflectionMethod(PayPalCheckoutService::class, 'createCheckout');
+    expect(fn () => $method->invoke(app(PayPalCheckoutService::class), $booking->user, $booking,
+        'full_payment', 3500, 'exp://test/return', 'exp://test/cancel'))
+        ->toThrow(ValidationException::class);
+});
+
+it('keeps an uncertain previous capture locked when a later retry is not approved', function () {
+    $checkout = notificationCheckout();
+    $checkout->update(['status' => 'approved']);
+    $this->mock(PayPalClient::class, function ($mock) {
+        $mock->shouldReceive('captureOrder')->once()->andReturnUsing(function () {
+            throw new RequestException(new Illuminate\Http\Client\Response(
+                new Response(422, ['Content-Type' => 'application/json'], json_encode(['details' => [['issue' => 'ORDER_NOT_APPROVED']]]))
+            ));
+        });
+    });
+    expect(fn () => app(PayPalCheckoutService::class)->captureOrder($checkout->booking->user, 'SUMMARY-ORDER-1'))
+        ->toThrow(RequestException::class);
+    expect($checkout->fresh()->status)->toBe('approved');
+    expect(app(BookingService::class)->canReviseUnpaidBooking($checkout->booking->fresh(['payments'])))->toBeFalse();
+});
+
+it('does not end a booking while capture is unresolved', function () {
+    $checkout = notificationCheckout();
+    $checkout->update(['status' => 'capturing', 'capture_started_at' => now()]);
+    $actor = vehicleManagerUser();
+    expect(fn () => app(BookingService::class)->transition($checkout->booking, BookingStatus::Cancelled, $actor, 'Customer request'))
+        ->toThrow(ValidationException::class);
+    expect($checkout->booking->fresh()->status)->toBe(BookingStatus::Pending);
+});
+
+it('does not retry an uncertain capture beyond the conservative idempotency window', function () {
+    $checkout = notificationCheckout();
+    $checkout->update(['status' => 'approved', 'capture_first_started_at' => now()->subHours(5)->subMinute()]);
+    $this->mock(PayPalClient::class, fn ($mock) => $mock->shouldNotReceive('captureOrder'));
+    expect(fn () => app(PayPalCheckoutService::class)->captureOrder($checkout->booking->user, 'SUMMARY-ORDER-1'))
+        ->toThrow(ValidationException::class);
+    expect($checkout->fresh()->status)->toBe('approved');
+});
+
+it('defers a payment deadline cancellation while the balance capture is unresolved', function () {
+    $checkout = notificationCheckout(1750, BookingStatus::Confirmed);
+    $checkout->update(['purpose' => 'remaining_balance', 'status' => 'capturing', 'capture_started_at' => now()]);
+    $booking = $checkout->booking;
+    $booking->update(['payment_status' => PaymentStatus::Partial, 'balance_due_at' => now()->subMinute()]);
+    expect(app(PaymentDeadlineService::class)->process()['cancelled'])->toBe(0)
+        ->and($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+    $checkout->update(['status' => 'failed']);
+    expect(app(PaymentDeadlineService::class)->process()['cancelled'])->toBe(1)
+        ->and($booking->fresh()->status)->toBe(BookingStatus::Cancelled);
 });

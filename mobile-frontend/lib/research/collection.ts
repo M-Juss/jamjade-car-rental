@@ -1,4 +1,4 @@
-import catalog from '@/assets/research/rc-exercises-v3.json';
+import catalog from '@/assets/research/rc-exercises-v6.json';
 import { recordingPresentation } from './recording-presentation';
 import type { CollectionContextInput, ObservationInput, ResearchSession } from '@/validation/research/collection';
 
@@ -23,10 +23,17 @@ export const observationFlagLabels: Record<ObservationInput['flags'][number], st
   steering_corrections: 'Steering corrections', unexpected_reverse: 'Unexpected reverse', unexpected_turn: 'Unexpected turn', bump: 'Bump',
   cone_contact: 'Cone contact', phone_shift: 'Phone shifted', holder_loose: 'Holder loose', interrupted: 'Interrupted', not_sure: 'Not sure',
 };
+export function reviewExerciseCode(collection: RecordingCollection) {
+  return collection.protocol_code === 'SW' && collection.protocol_snapshot.layout_key === 'swerve_recovery' ? 'LC' : collection.protocol_code;
+}
+
 export function recordingTitle(record: { context?: { name?: string }; collection?: RecordingCollection | null }) {
-  return record.collection?.display_code ?? record.context?.name ?? 'Unavailable recording';
+  const collection = record.collection;
+  if (!collection) return record.context?.name ?? 'Unavailable recording';
+  return collection.protocol_code !== reviewExerciseCode(collection)
+    ? collection.display_code.replace('-SW-', '-LC-') : collection.display_code;
 }
 
 export function recordingDisplay(record: { context?: { name?: string; surface?: string }; collection?: RecordingCollection | null }) {
-  return recordingPresentation({ name: record.context?.name, displayCode: record.collection?.display_code, surface: record.context?.surface });
+  return recordingPresentation({ name: record.context?.name, displayCode: record.collection ? recordingTitle(record) : null, surface: record.context?.surface });
 }

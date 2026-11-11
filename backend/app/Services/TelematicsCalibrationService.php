@@ -16,29 +16,33 @@ class TelematicsCalibrationService
 {
     public function __construct(private readonly TelematicsCalibrationProfileService $profiles) {}
 
-    public const STEPS = [
-        'stationary_calibration', 'forward_calibration', 'braking_calibration',
-        'left_turn_calibration', 'right_turn_calibration',
-    ];
+    public const STEPS = ['stationary_calibration', 'forward_calibration'];
+
+    public const PROTOCOL_VERSION = 4;
+
+    private const SAMPLE_RATE = 50;
+
+    // Retained only to read persisted attempts; these are no longer rental checks.
+    public const RETIRED_STEPS = ['braking_calibration', 'left_turn_calibration', 'right_turn_calibration'];
 
     public function latestSteps(TelematicsSetupSession $session)
     {
         $session->loadMissing('steps', 'booking.assignedDriver', 'booking.assignment');
-        $attempts = $session->steps;
+        $attempts = $session->currentAttempts();
         if ($session->booking?->rental_type === RentalType::OwnersDriver) {
             $operatorId = app(TelematicsOperatorService::class)->operatorId($session->booking);
             $attempts = $attempts->filter(fn ($step) => (int) $step->actor_user_id === (int) $operatorId);
         }
         $latest = $attempts->sortByDesc('attempt_number')->unique('step_type')
             ->keyBy(fn ($step) => $step->step_type->value);
-        $previousId = $latest->reject(fn ($step) => in_array($step->step_type->value, self::STEPS, true))->max('id') ?? 0;
+        $previousId = $latest->reject(fn ($step) => in_array($step->step_type->value, [...self::STEPS, ...self::RETIRED_STEPS], true))->max('id') ?? 0;
 
         // Re-running any device check or earlier calibration invalidates later
         // calibration projections, while retaining every immutable attempt.
         foreach (self::STEPS as $type) {
             $step = $latest->get($type);
             if (! $step || $step->id <= $previousId
-                || ($session->status === TelematicsSetupStatus::InProgress && isset($step->evidence['protocol_version']) && (int) $step->evidence['protocol_version'] !== 3)
+                || ($session->status === TelematicsSetupStatus::InProgress && isset($step->evidence['protocol_version']) && (int) $step->evidence['protocol_version'] !== self::PROTOCOL_VERSION)
                 || ($session->status !== TelematicsSetupStatus::Released && ! $this->profiles->matches($step->evidence))) {
                 $latest->forget($type);
                 $previousId = PHP_INT_MAX;
@@ -72,7 +76,7 @@ class TelematicsCalibrationService
     public function projection(?TelematicsSetupSession $session): array
     {
         $latest = $session ? $this->latestSteps($session) : collect();
-        $deviceReady = collect(TelematicsSetupStepType::cases())
+        $deviceReady = collect(TelematicsSetupService::requiredSteps())
             ->reject(fn ($type) => in_array($type->value, self::STEPS, true))
             ->every(fn ($type) => $latest->get($type->value)?->status === TelematicsSetupStepStatus::Passed);
         $stationary = $latest->get('stationary_calibration');
@@ -90,9 +94,11 @@ class TelematicsCalibrationService
         $reference ??= $stationary?->evidence['mount_reference'] ?? null;
         $noiseBaseline = $stationary?->status === TelematicsSetupStepStatus::Passed
             ? ($stationary->evidence['noise_baseline'] ?? null) : null;
+        $parkedAcceleration = $stationary?->status === TelematicsSetupStepStatus::Passed
+            ? ($stationary->evidence['parked_acceleration'] ?? null) : null;
 
         return [
-            'protocolVersion' => 3,
+            'protocolVersion' => $session?->status === TelematicsSetupStatus::Released && ! $parkedAcceleration ? 3 : self::PROTOCOL_VERSION,
             'profile' => $this->profiles->identity($profile),
             'context' => $session ? $this->context($session) : null,
             'nextStep' => $deviceReady ? collect(self::STEPS)->first(fn ($type) => $latest->get($type)?->status !== TelematicsSetupStepStatus::Passed) : null,
@@ -121,6 +127,7 @@ class TelematicsCalibrationService
             'movementLimits' => $this->movementLimits($limits),
             'reference' => $reference,
             'noiseBaseline' => $noiseBaseline,
+            'parkedAcceleration' => $parkedAcceleration,
         ];
     }
 
@@ -141,15 +148,20 @@ class TelematicsCalibrationService
     public function context(TelematicsSetupSession $session): string
     {
         $session->loadMissing('steps');
-        $ids = $session->steps->sortByDesc('attempt_number')->unique('step_type')->sortBy(fn ($step) => $step->step_type->value)->pluck('id')->implode(',');
+        $ids = $session->currentAttempts()->sortByDesc('attempt_number')->unique('step_type')->sortBy(fn ($step) => $step->step_type->value)->pluck('id')->implode(',');
 
         $fingerprint = $this->profiles->active()['fingerprint'];
 
-        return hash_hmac('sha256', "{$session->id}:{$ids}:{$fingerprint}", config('app.key'));
+        $boundary = $session->reset_through_step_id ? ":{$session->reset_through_step_id}" : '';
+
+        return hash_hmac('sha256', "{$session->id}:{$ids}:{$fingerprint}{$boundary}", config('app.key'));
     }
 
     public function evaluate(TelematicsSetupSession $session, TelematicsSetupStepType $type, array $evidence): array
     {
+        if (! in_array($type->value, self::STEPS, true)) {
+            throw ValidationException::withMessages(['step' => ['This exercise is no longer part of rental calibration.']]);
+        }
         $rules = StoreSetupAttemptRequest::calibrationEvidenceRules();
         // The same request contract applies when invoked through a service.
         $nested = ['evidence' => ['required', 'array:'.implode(',', array_keys($rules))]];
@@ -193,7 +205,7 @@ class TelematicsCalibrationService
             $values['sensor_duration_ms'] < $qualityMs * $limits['minimum_coverage'],
             $values['sensor_duration_ms'] > $duration + 250,
             $values['sample_count'] < ($qualityMs / 1000) * $limits['minimum_samples_per_second'],
-            $values['sample_count'] > ($duration / 1000) * 30 + 5,
+            $values['sample_count'] > ($duration / 1000) * self::SAMPLE_RATE + 2,
             $values['max_gap_ms'] > $limits['maximum_gap_ms'] => 'Motion readings were interrupted or too sparse. Repeat this step.',
             $values['yaw_left_degrees'] + $values['yaw_right_degrees'] > $values['rotation_peak'] * $values['sensor_duration_ms'] / 1000 + 0.01,
             abs($values['linear_rms'] ** 2 - $linearMeanSquared - $values['linear_stddev'] ** 2) > 0.0001,
@@ -203,8 +215,8 @@ class TelematicsCalibrationService
             max(abs($values['longitudinal_min']), abs($values['longitudinal_max'])) > $values['linear_rms'] * sqrt($values['sample_count']) + 0.01 => 'The motion summary is inconsistent. Repeat this step.',
             $norm < 8, $norm > 12 => 'Gravity readings were not usable. Keep the phone secured and repeat this step.',
             $type !== TelematicsSetupStepType::StationaryCalibration && ! $referenceDown => 'Restart stationary calibration to establish the phone position.',
-            ! in_array($type, [TelematicsSetupStepType::StationaryCalibration, TelematicsSetupStepType::ForwardCalibration], true) && empty($projection['reference']['forward']) => 'Repeat forward calibration to establish the vehicle direction.',
             $type === TelematicsSetupStepType::ForwardCalibration && ! $projection['noiseBaseline'] => 'Repeat stationary calibration to measure parked vibration.',
+            $type === TelematicsSetupStepType::ForwardCalibration && ! $projection['parkedAcceleration'] => 'Repeat stationary calibration to restore the parked reference.',
             $values['max_tilt_degrees'] > $tiltLimit,
             $type !== TelematicsSetupStepType::StationaryCalibration && $meanTilt > $tiltLimit => 'The phone position changed too much. Secure it and restart calibration.',
             default => null,
@@ -218,7 +230,7 @@ class TelematicsCalibrationService
                 || $values['forward_duration_ms'] < $limits['minimum_forward_duration_ms']
                 || $values['forward_sample_count'] < $projection['forwardLimits']['samples']
                 || $values['forward_sample_count'] > $values['sample_count']
-                || $values['forward_sample_count'] > $values['forward_duration_ms'] / 1000 * 30 + 2
+                || $values['forward_sample_count'] > $values['forward_duration_ms'] / 1000 * self::SAMPLE_RATE + 2
                 || $values['forward_duration_ms'] > $values['sensor_duration_ms']
                 || $forwardNorm > $values['linear_rms'] * sqrt($values['sample_count'] / max(1, $values['forward_sample_count'])) + 0.01
                 || $forwardVertical > $forwardNorm * 0.05
@@ -228,14 +240,6 @@ class TelematicsCalibrationService
                     || $values['rotation_peak'] > $movement['rotationPeak']
                 ))
                 ? 'A clear forward movement was not recorded. Repeat only when staff says it is safe.' : null,
-            TelematicsSetupStepType::BrakingCalibration => $values['longitudinal_min'] > -$limits['minimum_longitudinal_acceleration']
-                ? 'A clear slowing movement was not recorded. Repeat only when staff says it is safe.' : null,
-            TelematicsSetupStepType::LeftTurnCalibration => $values['yaw_left_degrees'] < $limits['minimum_turn_degrees'] || $values['yaw_right_degrees'] > $limits['maximum_opposite_turn_degrees']
-                || $values['yaw_left_degrees'] < $values['yaw_right_degrees'] * $movement['turnDominance']
-                ? 'A clear left turn was not recorded. Repeat only when staff says it is safe.' : null,
-            TelematicsSetupStepType::RightTurnCalibration => $values['yaw_right_degrees'] < $limits['minimum_turn_degrees'] || $values['yaw_left_degrees'] > $limits['maximum_opposite_turn_degrees']
-                || $values['yaw_right_degrees'] < $values['yaw_left_degrees'] * $movement['turnDominance']
-                ? 'A clear right turn was not recorded. Repeat only when staff says it is safe.' : null,
             default => 'This calibration step is unavailable.',
         };
 
@@ -243,8 +247,16 @@ class TelematicsCalibrationService
         unset($values['context']);
         $values['calibration_profile'] = $profile;
         if ($failure === null && $type === TelematicsSetupStepType::StationaryCalibration) {
-            $down = array_map(fn ($value) => $value / $norm, $gravity);
+            // Native linear = raw accelerometer minus Android gravity.
+            // The summary's gravity points down, so linear minus down recovers raw.
+            $parked = array_map(fn ($axis, $i) => (float) $values["linear_mean_{$axis}"] - $gravity[$i], ['x', 'y', 'z'], [0, 1, 2]);
+            $parkedNorm = sqrt(array_sum(array_map(fn ($value) => $value ** 2, $parked)));
+            if ($parkedNorm < 8 || $parkedNorm > 12) {
+                return [TelematicsSetupStepStatus::Failed, $values, 'Parked acceleration was not usable. Keep the phone secured and repeat this step.'];
+            }
+            $down = array_map(fn ($value) => -$value / $parkedNorm, $parked);
             $values['mount_reference'] = ['down' => $down, 'forward' => null];
+            $values['parked_acceleration'] = $parked;
             $values['noise_baseline'] = [
                 'linearRms' => (float) $values['linear_rms'],
                 'horizontalRms' => (float) $values['horizontal_rms'],

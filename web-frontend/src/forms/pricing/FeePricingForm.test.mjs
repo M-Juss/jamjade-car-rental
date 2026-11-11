@@ -5,7 +5,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { feePricingSchema } from "../../validations/pricing/schemas.ts";
-import { ApiError } from "../../services/http/errors.ts";
+import { ApiError, OwnerVerificationCancelled } from "../../services/http/errors.ts";
 
 // Exercise the actual form handlers using the repository's existing VM renderer pattern.
 // Services are in-memory fakes; these checks never update real pricing.
@@ -65,15 +65,21 @@ function harness(options = {}) {
     "@/components/ui/button": { Button: "button" },
     "@/components/ui/card": { Card: "card", CardAction: "action", CardContent: "content", CardHeader: "header", CardTitle: "title" },
     "@/lib/toast": { appToast: Object.fromEntries(["success", "error", "info"].map(kind => [kind, message => toasts.push({ kind, message })])) },
-    "@/services/http": { ApiError },
+    "@/services/http": { ApiError, OwnerVerificationCancelled },
     "@/validations/pricing/schemas": { feePricingSchema },
     "@/services/booking/late-return-pricing.service": {
       getLateReturnPricing: async () => { if (options.loadError) throw options.loadError; return late; },
-      saveLateReturnPricing: async input => { calls.push({ kind: "late", input: { ...input } }); if (options.saveLate) return options.saveLate(input); for (const key of Object.keys(late)) late[key] = Number(input[key]); return { ...late }; },
     },
     "@/services/delivery/delivery.service": {
       getDeliveryPricing: async () => delivery,
-      saveDeliveryPricing: async input => { calls.push({ kind: "delivery", input: { ...input } }); if (options.saveDelivery) return options.saveDelivery(input, delivery); for (const key of ["minimum_fee", "included_km", "per_km_rate"]) delivery[key] = Number(input[key]); return { ...delivery }; },
+    },
+    "@/services/pricing/fee-pricing.service": {
+      saveFeePricing: async input => {
+        calls.push({ kind: "fee", input: { ...input } });
+        if (options.saveFee) return options.saveFee(input, { late, delivery });
+        for (const key of Object.keys(late)) late[key] = Number(input[key]);
+        for (const key of ["minimum_fee", "included_km", "per_km_rate"]) delivery[key] = Number(input[key]);
+      },
     },
   };
   const exports = {};
@@ -147,41 +153,41 @@ test("successful updates lock the card and submit no garage fields", async () =>
   const view = harness(); await view.render(); await view.configure();
   await view.edit("small_vehicle_hourly_rate", "250"); await view.edit("minimum_fee", "175.25");
   await view.submit();
-  assert.deepEqual(view.calls, [
-    { kind: "late", input: { small_vehicle_hourly_rate: "250", large_vehicle_hourly_rate: "300" } },
-    { kind: "delivery", input: { minimum_fee: "175.25", included_km: "1", per_km_rate: "25" } },
-  ]);
+  assert.deepEqual(view.calls, [{ kind: "fee", input: {
+    small_vehicle_hourly_rate: "250", large_vehicle_hourly_rate: "300",
+    minimum_fee: "175.25", included_km: "1", per_km_rate: "25",
+  } }]);
   assert.equal(view.toasts.filter(toast => toast.kind === "success").length, 1);
   assert.ok(view.button("Configure"));
   assert.equal(view.input("minimum_fee").props.disabled, true);
 });
 
-test("a partial 422 save retains edits, maps errors and retries only the failed group", async () => {
-  const view = harness({ saveDelivery: async () => { throw new ApiError("Validation", 422, { minimum_fee: ["Review the minimum fee."] }); } });
+test("a 422 save retains edits and maps validation errors", async () => {
+  const view = harness({ saveFee: async () => { throw new ApiError("Validation", 422, { minimum_fee: ["Review the minimum fee."] }); } });
   await view.render(); await view.configure();
   await view.edit("small_vehicle_hourly_rate", "250"); await view.edit("minimum_fee", "175");
   await view.submit();
   assert.equal(view.values.minimum_fee, "175");
   assert.equal(view.defaults.minimum_fee, "150");
-  assert.equal(view.defaults.small_vehicle_hourly_rate, "250");
+  assert.equal(view.defaults.small_vehicle_hourly_rate, "200");
   assert.equal(view.errors.minimum_fee.message, "Review the minimum fee.");
-  assert.match(view.errors.root.message, /Late return rates saved/);
   assert.equal(view.toasts.filter(toast => toast.kind === "success").length, 0);
   assert.ok(view.button("Save"));
-  view.options.saveDelivery = undefined;
+  view.options.saveFee = undefined;
   await view.submit();
-  assert.deepEqual(view.calls.map(call => call.kind), ["late", "delivery", "delivery"]);
+  assert.deepEqual(view.calls.map(call => call.kind), ["fee", "fee"]);
   assert.ok(view.button("Configure"));
 });
 
-test("Cancel after a partial save keeps confirmed rates and discards only unsaved edits", async () => {
-  const view = harness({ saveDelivery: async () => { throw new Error("Offline"); } });
-  await view.render(); await view.configure();
-  await view.edit("small_vehicle_hourly_rate", "250"); await view.edit("minimum_fee", "175");
-  await view.submit(); await view.cancel();
-  assert.equal(view.values.small_vehicle_hourly_rate, "250");
-  assert.equal(view.values.minimum_fee, "150");
-  assert.ok(view.button("Configure"));
+test("cancelling owner verification keeps the draft without a toast or error", async () => {
+  const view = harness({ saveFee: async () => { throw new OwnerVerificationCancelled(); } });
+  await view.render(); await view.configure(); await view.edit("minimum_fee", "175");
+  await view.submit();
+  assert.equal(view.values.minimum_fee, "175");
+  assert.equal(view.defaults.minimum_fee, "150");
+  assert.deepEqual(view.errors, {});
+  assert.deepEqual(view.toasts, []);
+  assert.ok(view.button("Save"));
 });
 
 test("load failures keep Configure disabled", async () => {
@@ -193,7 +199,7 @@ test("load failures keep Configure disabled", async () => {
 });
 
 test("Cancel refreshes authoritative values when a save response was lost", async () => {
-  const view = harness({ saveDelivery: async (input, server) => { server.minimum_fee = Number(input.minimum_fee); throw new Error("Response lost after commit"); } });
+  const view = harness({ saveFee: async (input, server) => { server.delivery.minimum_fee = Number(input.minimum_fee); throw new Error("Response lost after commit"); } });
   await view.render(); await view.configure(); await view.edit("minimum_fee", "175");
   await view.submit();
   assert.equal(view.defaults.minimum_fee, "150");
@@ -205,7 +211,7 @@ test("Cancel refreshes authoritative values when a save response was lost", asyn
 
 test("a pending save disables actions and ignores duplicate submissions", async () => {
   let finish;
-  const view = harness({ saveLate: () => new Promise(resolve => { finish = resolve; }) });
+  const view = harness({ saveFee: () => new Promise(resolve => { finish = resolve; }) });
   await view.render(); await view.configure();
   await view.edit("small_vehicle_hourly_rate", "250");
   const first = view.submit();

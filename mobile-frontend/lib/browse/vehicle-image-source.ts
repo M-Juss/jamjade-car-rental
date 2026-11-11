@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 // Match the original upload, not the vehicle/model, so replacement photos stay current.
 const transparentVehicleImages: Record<string, ImageSourcePropType> = {
+  'UDEO7laaeVUfknxJp8NpRbBICIpYay8zSyWT3alt.jpg': require('../../assets/images/vehicles/toyota-vios-red.png'),
   '44Uk0Cq0cGPjXmtZBNMQ58e6IzANtaugZ7pkQQmD.jpg': require('../../assets/images/vehicles/honda-brv-2020.png'),
   'JneuHefkuFQfyDuBYIO05nbp0pFqd8gejYfo9YpA.jpg': require('../../assets/images/vehicles/toyota-avanza-2022.png'),
   'Z5P2AorYIAMFLngtJQSFBpLFgVSgZ4YemlWdH5gz.jpg': require('../../assets/images/vehicles/toyota-hiace-2019.png'),

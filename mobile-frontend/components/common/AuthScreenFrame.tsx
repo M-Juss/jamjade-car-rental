@@ -7,12 +7,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { themeColors } from '@/constants/theme';
 import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'verification';
 
-export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: AuthMode }>) {
+export function AuthScreenFrame({
+  mode,
+  children,
+  description,
+  onBack,
+  disableBack = false,
+  hideFooter = false,
+}: PropsWithChildren<{ mode: AuthMode; description?: string; onBack?: () => void; disableBack?: boolean; hideFooter?: boolean }>) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isLogin = mode === 'login';
+  const isVerification = mode === 'verification';
 
   return (
     <View className="flex-1 bg-background">
@@ -23,42 +31,38 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}>
           <View className="w-full max-w-[460px] self-center px-screen">
-            <View className="mb-section min-h-11 flex-row items-center justify-between gap-3 border-b border-border pb-3 pt-1">
+            <View className="mb-section min-h-12 flex-row items-center gap-3 border-b border-border pb-3 pt-1">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={isVerification ? 'Back to registration' : 'Back to welcome'}
+                accessibilityState={{ disabled: disableBack }}
+                disabled={disableBack}
+                onPress={onBack ?? (() => router.replace('/'))}
+                className={`h-11 w-11 shrink-0 items-center justify-center rounded-field ${disableBack ? 'opacity-50' : ''}`}>
+                <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
+              </Pressable>
               <View
                 accessible
                 accessibilityLabel="JamJade Car Rental"
-                className="shrink flex-row items-center gap-1">
+                className="min-w-0 flex-1 flex-row items-center justify-center gap-2">
                 <Image
                   source={require('@/assets/images/JamJadeLogo-solid.png')}
                   resizeMode="contain"
                   accessible={false}
-                  // Keep the full square asset visible; only its transparent margins extend past the header row.
-                  style={{ height: 56, width: 56, marginTop: -2, marginBottom: -6, flexShrink: 0 }}
+                  style={{ height: 48, width: 48, flexShrink: 0 }}
                 />
-                <View className="shrink">
-                  <Text
-                    className="font-sans text-[13px] font-semibold leading-[13px] text-primary"
-                    style={{ includeFontPadding: false }}>
-                    JamJade{'\n'}Car Rental
-                  </Text>
-                </View>
+                <Text className="font-sans shrink text-body font-semibold text-primary">JamJade Car Rental</Text>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Back to welcome"
-                onPress={() => router.replace('/')}
-                className="h-11 w-11 shrink-0 items-center justify-center rounded-field bg-surface">
-                <ArrowLeft size={21} color={themeColors.foreground} />
-              </Pressable>
+              <View className="w-11 shrink-0" />
             </View>
             <Text accessibilityRole="header" className="font-sans text-center text-title font-semibold text-foreground">
-              {isLogin ? 'Welcome back' : 'Create an account'}
+              {isLogin ? 'Welcome back' : isVerification ? 'Verify your email' : 'Create an account'}
             </Text>
             <Text className="font-sans mt-2 text-center text-body text-secondary-foreground">
-              {isLogin ? 'Sign in to continue your journey.' : 'Your next journey starts here.'}
+              {description ?? (isLogin ? 'Sign in to continue your journey.' : 'Your next journey starts here.')}
             </Text>
             <View className="mt-section rounded-card border border-border bg-surface p-card">{children}</View>
-            <View className="mt-4 flex-row flex-wrap items-center justify-center">
+            {!hideFooter ? <View className="mt-4 flex-row flex-wrap items-center justify-center">
               <Text className="font-sans text-[14px] text-secondary-foreground">
                 {isLogin ? 'New to JamJade?' : 'Already have an account?'}
               </Text>
@@ -70,7 +74,7 @@ export function AuthScreenFrame({ mode, children }: PropsWithChildren<{ mode: Au
                   {isLogin ? 'Create account' : 'Sign in'}
                 </Text>
               </Pressable>
-            </View>
+            </View> : null}
           </View>
         </KeyboardFormScrollView>
       </View>

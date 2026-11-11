@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut } from '@/services/http';
-import { mapCustomerProfile, mapUserProfile } from './profile-mapping';
+import { mapCustomerDocument, mapCustomerProfile, mapUserProfile } from './profile-mapping';
 
 import type {
   EmergencyContactPayload,
@@ -16,6 +16,7 @@ export async function getProfile() {
     ...response.data,
     profile: mapCustomerProfile(response.data.profile),
     user: mapUserProfile(response.data.user),
+    documents: response.data.documents.map(mapCustomerDocument),
   };
 }
 

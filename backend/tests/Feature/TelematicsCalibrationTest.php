@@ -45,7 +45,7 @@ function calibrationEvidence(Booking $booking, string $type, array $overrides = 
     $linearRms = $type === 'forward_calibration' ? max(0.25, $forwardMagnitude * sqrt($forwardSamples / ($seconds * 20)) * 1.1) : ($shortMovement ? 0.3 : 0.1);
 
     return array_merge([
-        'protocol_version' => 3,
+        'protocol_version' => 4,
         'context' => app(TelematicsCalibrationService::class)->context($booking->fresh('telematicsSetupSession.steps')->telematicsSetupSession),
         'consent' => true, 'supervised' => true,
         'started_at' => now()->utc()->subSeconds($seconds)->format('Y-m-d\TH:i:s.v\Z'),
@@ -78,7 +78,7 @@ function postCalibration(Booking $booking, string $type, array $overrides = [])
     ]);
 }
 
-it('evaluates five ordered captures and allows only staff to release the rental', function () {
+it('evaluates two ordered captures and allows only staff to release the rental', function () {
     $booking = calibrationReadyBooking();
     Sanctum::actingAs($booking->user);
     foreach (TelematicsCalibrationService::STEPS as $index => $type) {
@@ -87,6 +87,8 @@ it('evaluates five ordered captures and allows only staff to release the rental'
     expect($booking->telematicsTrips()->count())->toBe(0);
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")
         ->assertOk()->assertJsonPath('data.setup.status', 'ready_for_release')
+        ->assertJsonCount(8, 'data.steps')
+        ->assertJsonPath('data.calibration.nextStep', null)
         ->assertJsonMissing(['evidence'])->assertJsonMissing(['sample_count']);
 
     $started = app(BookingService::class)->transition($booking, BookingStatus::Ongoing, vehicleManagerUser());
@@ -104,6 +106,60 @@ it('rejects skipped steps and stale context without recording an attempt', funct
     $this->postJson($url, ['evidence' => $evidence])->assertUnprocessable();
     expect($booking->fresh('telematicsSetupSession')->telematicsSetupSession->steps()->where('step_type', 'stationary_calibration')->count())->toBe(1);
 });
+
+it('rejects new braking and turn attempts while retaining the two-step release flow', function (string $type) {
+    $booking = calibrationReadyBooking();
+    Sanctum::actingAs($booking->user);
+    postCalibration($booking, $type)->assertUnprocessable()->assertJsonValidationErrors('step');
+    expect($booking->fresh('telematicsSetupSession')->telematicsSetupSession->steps()->where('step_type', $type)->count())->toBe(0);
+    postCalibration($booking, 'stationary_calibration')->assertOk();
+    postCalibration($booking, 'forward_calibration')->assertOk()
+        ->assertJsonCount(8, 'data.steps')->assertJsonPath('data.setup.status', 'ready_for_release');
+    postCalibration($booking, 'stationary_calibration')->assertUnprocessable();
+})->with(TelematicsCalibrationService::RETIRED_STEPS);
+
+it('preserves recorded historical exercises without treating them as device prerequisites', function () {
+    $booking = calibrationReadyBooking();
+    Sanctum::actingAs($booking->user);
+    postCalibration($booking, 'stationary_calibration')->assertOk();
+    postCalibration($booking, 'forward_calibration')->assertOk();
+    $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
+    foreach (TelematicsCalibrationService::RETIRED_STEPS as $type) {
+        $session->steps()->create(['step_type' => $type, 'attempt_number' => 1, 'status' => 'failed',
+            'started_at' => now(), 'completed_at' => now(), 'actor_user_id' => $booking->user_id]);
+    }
+    $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk()
+        ->assertJsonCount(11, 'data.steps')->assertJsonPath('data.steps.8.type', 'braking_calibration')
+        ->assertJsonPath('data.steps.8.status', 'failed')->assertJsonPath('data.calibration.nextStep', null)
+        ->assertJsonPath('data.steps.7.status', 'passed');
+    app(BookingService::class)->transition($booking->fresh(), BookingStatus::Ongoing, vehicleManagerUser());
+    $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk()
+        ->assertJsonCount(11, 'data.steps')->assertJsonPath('data.setup.status', 'released');
+    expect($session->steps()->whereIn('step_type', TelematicsCalibrationService::RETIRED_STEPS)->count())->toBe(3);
+});
+
+it('restarts unfinished five-exercise profile evidence without deleting previous captures', function (string $profileId) {
+    config(['telematics.calibration_profile' => $profileId]);
+    $booking = calibrationReadyBooking();
+    Sanctum::actingAs($booking->user);
+    postCalibration($booking, 'stationary_calibration')->assertOk();
+    postCalibration($booking, 'forward_calibration')->assertOk();
+    $session = $booking->fresh('telematicsSetupSession.steps')->telematicsSetupSession;
+    $oldProfile = app(TelematicsCalibrationProfileService::class)->active();
+    $oldProfile['revision']--;
+    unset($oldProfile['fingerprint']);
+    $oldProfile['fingerprint'] = hash('sha256', json_encode($oldProfile, JSON_THROW_ON_ERROR));
+    foreach ($session->steps->whereIn('step_type', [TelematicsSetupStepType::StationaryCalibration, TelematicsSetupStepType::ForwardCalibration]) as $step) {
+        $step->update(['evidence' => [...$step->evidence, 'calibration_profile' => $oldProfile]]);
+    }
+    $session->update(['status' => 'in_progress']);
+    $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk()
+        ->assertJsonPath('data.calibration.nextStep', 'stationary_calibration')
+        ->assertJsonPath('data.calibration.reference', null)->assertJsonPath('data.steps.6.attemptCount', 1);
+    postCalibration($booking, 'stationary_calibration')->assertOk()->assertJsonPath('data.steps.6.attemptCount', 2);
+    postCalibration($booking, 'forward_calibration')->assertOk()
+        ->assertJsonPath('data.setup.status', 'ready_for_release')->assertJsonPath('data.steps.7.attemptCount', 2);
+})->with(['standard', 'rc_demo']);
 
 it('rejects missing consent, supervision, invalid payloads and raw sensor streams', function (array $override, string $field) {
     $booking = calibrationReadyBooking();
@@ -130,24 +186,22 @@ it('records a real failed quality result and permits a fresh retry', function (a
     [['max_tilt_degrees' => 30]],
 ]);
 
-it('requires the expected direction for movement and turns', function () {
+it('requires a clear forward reference before declaring calibration ready', function () {
     $booking = calibrationReadyBooking();
     Sanctum::actingAs($booking->user);
     postCalibration($booking, 'stationary_calibration')->assertOk();
     postCalibration($booking, 'forward_calibration', ['forward_z' => -0.1])->assertOk()->assertJsonPath('data.steps.7.status', 'failed');
-    postCalibration($booking, 'forward_calibration')->assertOk();
-    postCalibration($booking, 'braking_calibration', ['longitudinal_min' => -0.1])->assertOk()->assertJsonPath('data.steps.8.status', 'failed');
-    postCalibration($booking, 'braking_calibration')->assertOk();
-    postCalibration($booking, 'left_turn_calibration', ['yaw_left_degrees' => 0, 'yaw_right_degrees' => 30])->assertOk()->assertJsonPath('data.steps.9.status', 'failed');
-    postCalibration($booking, 'left_turn_calibration')->assertOk();
-    postCalibration($booking, 'right_turn_calibration', ['yaw_right_degrees' => 30, 'yaw_left_degrees' => 30])->assertOk()->assertJsonPath('data.steps.10.status', 'failed');
+    postCalibration($booking, 'forward_calibration')->assertOk()
+        ->assertJsonPath('data.setup.status', 'ready_for_release')
+        ->assertJsonPath('data.calibration.nextStep', null);
 });
 
-it('invalidates later calibration after a new stationary reference or device attempt', function () {
+it('invalidates unfinished calibration after a new stationary reference or device attempt', function () {
     $booking = calibrationReadyBooking();
     Sanctum::actingAs($booking->user);
     postCalibration($booking, 'stationary_calibration')->assertOk();
-    postCalibration($booking, 'forward_calibration')->assertOk();
+    postCalibration($booking, 'forward_calibration', ['forward_z' => -0.1])->assertOk()
+        ->assertJsonPath('data.steps.7.status', 'failed');
     postCalibration($booking, 'stationary_calibration')->assertOk()->assertJsonPath('data.steps.7.status', 'pending')->assertJsonPath('data.calibration.nextStep', 'forward_calibration');
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
     app(TelematicsSetupService::class)->recordStep($session, TelematicsSetupStepType::PhoneMount, TelematicsSetupStepStatus::Passed);
@@ -168,15 +222,13 @@ it('learns a horizontal forward direction for flat upright and tilted mounts', f
         ->assertJsonPath('data.steps.6.status', 'passed')
         ->assertJsonPath('data.calibration.reference.forward', null);
     postCalibration($booking, 'forward_calibration', array_merge($mount, [
-        'forward_x' => $forward[0] * 3.2, 'forward_y' => $forward[1] * 3.2, 'forward_z' => $forward[2] * 3.2,
+        'forward_x' => $forward[0] * 0.8, 'forward_y' => $forward[1] * 0.8, 'forward_z' => $forward[2] * 0.8,
     ]))->assertOk()->assertJsonPath('data.steps.7.status', 'passed');
     $reference = app(TelematicsCalibrationService::class)->projection($booking->fresh('telematicsSetupSession.steps')->telematicsSetupSession)['reference'];
     foreach ($forward as $axis => $value) {
         expect(abs($reference['forward'][$axis] - $value))->toBeLessThan(0.00001);
     }
-    foreach (array_slice(TelematicsCalibrationService::STEPS, 2) as $index => $type) {
-        postCalibration($booking, $type, $mount)->assertOk()->assertJsonPath('data.steps.'.($index + 8).'.status', 'passed');
-    }
+    expect($booking->fresh('telematicsSetupSession')->telematicsSetupSession->status->value)->toBe('ready_for_release');
 })->with([
     [[0, 0, -9.80665], [0, 1, 0]],
     [[0, 0, 9.80665], [-1, 0, 0]],
@@ -185,24 +237,19 @@ it('learns a horizontal forward direction for flat upright and tilted mounts', f
     [[-9.80665, 0, 0], [0, 1, 0]],
 ]);
 
-it('retains a single qualifying Forward sample despite lower acceleration over the recording', function (string $profile, float $peak) {
+it('requires a sustained launch above the parked noise floor even if an isolated spike is larger', function (string $profile, bool $sustained) {
     config(['telematics.calibration_profile' => $profile]);
     $booking = calibrationReadyBooking();
     Sanctum::actingAs($booking->user);
     postCalibration($booking, 'stationary_calibration')->assertOk()->assertJsonPath('data.steps.6.status', 'passed')
-        ->assertJsonPath('data.calibration.forwardLimits.acceleration', 3)
-        ->assertJsonPath('data.calibration.forwardLimits.durationMs', 0)
-        ->assertJsonPath('data.calibration.forwardLimits.samples', 1);
-    $rms = $peak / sqrt(20);
-    postCalibration($booking, 'forward_calibration', [
-        'started_at' => now()->utc()->subMilliseconds(1000)->format('Y-m-d\TH:i:s.v\Z'),
-        'sample_count' => 20, 'sensor_duration_ms' => 950,
-        'forward_z' => -$peak, 'forward_sample_count' => 1, 'forward_duration_ms' => 0,
-        'linear_mean_z' => -$peak / 20, 'linear_rms' => $rms, 'horizontal_rms' => $rms,
-        'linear_stddev' => sqrt($rms ** 2 - ($peak / 20) ** 2),
-        'rotation_peak' => 55.51, 'longitudinal_min' => 0, 'longitudinal_max' => 0,
-    ])->assertOk()->assertJsonPath('data.steps.7.status', $peak >= 3 ? 'passed' : 'failed');
-})->with(['standard', 'rc_demo'])->with([2.99, 3.0, 3.02]);
+        ->assertJsonPath('data.calibration.parkedAcceleration', [0, 9.80665, 0])
+        ->assertJsonPath('data.calibration.forwardLimits.acceleration', 0.5)
+        ->assertJsonPath('data.calibration.forwardLimits.durationMs', 120)
+        ->assertJsonPath('data.calibration.forwardLimits.samples', 7);
+    postCalibration($booking, 'forward_calibration', $sustained ? [] : [
+        'forward_z' => -3.0, 'forward_sample_count' => 1, 'forward_duration_ms' => 0,
+    ])->assertOk()->assertJsonPath('data.steps.7.status', $sustained ? 'passed' : 'failed');
+})->with(['standard', 'rc_demo'])->with([true, false]);
 
 it('honors configured sustained straight consistent horizontal movement limits', function (array $override) {
     config(['telematics.calibration.minimum_forward_duration_ms' => 500, 'telematics.calibration.minimum_forward_samples' => 5]);
@@ -227,7 +274,7 @@ it('detects a changed flat mount and permits a fresh forward retry', function ()
     Sanctum::actingAs($booking->user);
     postCalibration($booking, 'stationary_calibration', ['gravity_y' => 0, 'gravity_z' => -9.80665])->assertOk();
     postCalibration($booking, 'forward_calibration')->assertOk()->assertJsonPath('data.steps.7.status', 'failed');
-    postCalibration($booking, 'forward_calibration', ['gravity_y' => 0, 'gravity_z' => -9.80665, 'forward_y' => 3.2, 'forward_z' => 0])
+    postCalibration($booking, 'forward_calibration', ['gravity_y' => 0, 'gravity_z' => -9.80665, 'forward_y' => 0.8, 'forward_z' => 0])
         ->assertOk()->assertJsonPath('data.steps.7.status', 'passed');
 });
 
@@ -239,13 +286,13 @@ it('restarts an unfinished legacy calibration without deleting its attempts', fu
     ]);
     Sanctum::actingAs($booking->user);
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk()
-        ->assertJsonPath('data.calibration.protocolVersion', 3)
+        ->assertJsonPath('data.calibration.protocolVersion', 4)
         ->assertJsonPath('data.calibration.nextStep', 'stationary_calibration')
         ->assertJsonPath('data.calibration.reference', null);
     expect($session->steps()->where('step_type', 'stationary_calibration')->count())->toBe(1);
     postCalibration($booking, 'stationary_calibration')->assertOk()->assertJsonPath('data.steps.6.attemptCount', 2);
     postCalibration($booking, 'forward_calibration', ['protocol_version' => $legacyProtocol])->assertUnprocessable();
-})->with([1, 2]);
+})->with([1, 2, 3]);
 
 it('preserves completed legacy readiness and released history', function (int $legacyProtocol) {
     $booking = calibrationReadyBooking();
@@ -269,7 +316,7 @@ it('preserves completed legacy readiness and released history', function (int $l
         ->assertJsonPath('data.setup.status', 'released')
         ->assertJsonPath('data.steps.6.status', 'passed');
     expect($session->steps()->where('step_type', 'stationary_calibration')->count())->toBe(1);
-})->with([1, 2]);
+})->with([1, 2, 3]);
 
 it('projects configured stationary limits for live guidance without exposing capture evidence', function () {
     config(['telematics.calibration.stationary_linear_rms' => 0.28, 'telematics.calibration.stationary_rotation_peak' => 4]);
@@ -315,15 +362,14 @@ it('uses accepted parked noise to raise the forward minimum without lowering the
     $projected = $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk();
     expect($projected->json('data.calibration.forwardLimits.acceleration'))->toEqualWithDelta(0.9, 0.00001);
     postCalibration($booking, 'forward_calibration')->assertOk()->assertJsonPath('data.steps.7.status', 'failed');
-    postCalibration($booking, 'forward_calibration', [
-        'forward_z' => -1.1, 'linear_rms' => 0.3, 'linear_stddev' => 0.3, 'horizontal_rms' => 0.3,
-    ])->assertOk()->assertJsonPath('data.steps.7.status', 'passed')
-        ->assertJsonPath('data.calibration.noiseBaseline.horizontalRms', 0.3);
     postCalibration($booking, 'stationary_calibration')->assertOk()
         ->assertJsonPath('data.calibration.forwardLimits.acceleration', 0.5)
         ->assertJsonPath('data.calibration.noiseBaseline.horizontalRms', 0.1)
         ->assertJsonPath('data.calibration.nextStep', 'forward_calibration')
         ->assertJsonPath('data.steps.7.status', 'pending');
+    postCalibration($booking, 'forward_calibration')->assertOk()
+        ->assertJsonPath('data.steps.7.status', 'passed')
+        ->assertJsonPath('data.setup.status', 'ready_for_release');
 });
 
 it('never turns an unstable or mathematically inconsistent baseline into a relaxed setup', function (array $override) {
@@ -332,7 +378,7 @@ it('never turns an unstable or mathematically inconsistent baseline into a relax
     postCalibration($booking, 'stationary_calibration', $override)->assertOk()
         ->assertJsonPath('data.steps.6.status', 'failed')
         ->assertJsonPath('data.calibration.noiseBaseline', null)
-        ->assertJsonPath('data.calibration.forwardLimits.acceleration', 3)
+        ->assertJsonPath('data.calibration.forwardLimits.acceleration', 0.5)
         ->assertJsonPath('data.calibration.nextStep', 'stationary_calibration');
 })->with([
     [['linear_rms' => 0.36, 'linear_stddev' => 0.36, 'horizontal_rms' => 0.36]],
@@ -365,7 +411,7 @@ it('invalidates the noise profile when a device prerequisite is repeated without
     app(TelematicsSetupService::class)->recordStep($session, TelematicsSetupStepType::DeviceCheck, TelematicsSetupStepStatus::Passed);
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk()
         ->assertJsonPath('data.calibration.noiseBaseline', null)
-        ->assertJsonPath('data.calibration.forwardLimits.acceleration', 3)
+        ->assertJsonPath('data.calibration.forwardLimits.acceleration', 0.5)
         ->assertJsonPath('data.calibration.nextStep', 'stationary_calibration');
     expect($session->steps()->where('step_type', 'stationary_calibration')->count())->toBe(1);
 });
@@ -373,13 +419,13 @@ it('invalidates the noise profile when a device prerequisite is repeated without
 it('keeps Stationary unchanged and stamps the RC demonstration profile on every outcome', function () {
     config(['telematics.calibration_profile' => 'rc_demo']);
     $profile = app(TelematicsCalibrationProfileService::class)->active();
-    expect($profile['id'])->toBe('rc_demo')->and($profile['revision'])->toBe(5)
+    expect($profile['id'])->toBe('rc_demo')->and($profile['revision'])->toBe(7)
         ->and($profile['settings']['capture_seconds']['stationary_calibration'])->toBe(6)
         ->and($profile['settings']['stationary_rotation_peak'])->toBe(6)
         ->and($profile['settings']['maximum_tilt_degrees'])->toBe(10)
         ->and($profile['settings']['capture_seconds']['forward_calibration'])->toBe(3)
-        ->and($profile['settings']['minimum_forward_acceleration'])->toBe(3)
-        ->and($profile['settings']['forward_acceleration_only'])->toBeTrue();
+        ->and($profile['settings']['minimum_forward_acceleration'])->toBe(0.5)
+        ->and($profile['settings']['minimum_forward_samples'])->toBe(7);
     $booking = calibrationReadyBooking();
     Sanctum::actingAs($booking->user);
     postCalibration($booking, 'stationary_calibration', ['max_gap_ms' => 501])->assertOk()
@@ -434,9 +480,9 @@ it('invalidates old context baseline and progress when profile settings change',
     Sanctum::actingAs($booking->user);
     postCalibration($booking, 'stationary_calibration')->assertOk();
     postCalibration($booking, 'forward_calibration')->assertOk();
-    $evidence = calibrationEvidence($booking, 'braking_calibration');
+    $evidence = calibrationEvidence($booking, 'stationary_calibration');
     config(['telematics.calibration_rc_overrides.stationary_rotation_peak' => 5]);
-    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/braking_calibration/attempt", ['evidence' => $evidence])
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup/steps/stationary_calibration/attempt", ['evidence' => $evidence])
         ->assertUnprocessable()->assertJsonValidationErrors('step');
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk()
         ->assertJsonPath('data.calibration.nextStep', 'stationary_calibration')
@@ -496,16 +542,16 @@ it('accepts a three-second RC movement sequence with generous vibration limits b
     postCalibration($booking, 'stationary_calibration')->assertOk()->assertJsonPath('data.steps.6.status', 'passed');
     foreach (array_slice(TelematicsCalibrationService::STEPS, 1) as $index => $type) {
         postCalibration($booking, $type, [
-            'rotation_peak' => $type === 'forward_calibration' ? 170 : 70,
+            'rotation_peak' => 100,
             'rotation_rms' => $type === 'forward_calibration' ? 80 : 20,
             'rotation_stddev' => $type === 'forward_calibration' ? 80 : 20,
             'max_tilt_degrees' => 35,
         ])->assertOk()->assertJsonPath('data.steps.'.($index + 7).'.status', 'passed')
             ->assertJsonPath('data.calibration.captureSeconds.'.$type, 3)
-            ->assertJsonPath('data.calibration.profile.revision', 5)
-            ->assertJsonPath('data.calibration.forwardLimits.acceleration', 3)
-            ->assertJsonPath('data.calibration.movementLimits.forwardAccelerationOnly', true)
-            ->assertJsonPath('data.calibration.forwardLimits.acceleration', 3)
+            ->assertJsonPath('data.calibration.profile.revision', 7)
+            ->assertJsonPath('data.calibration.forwardLimits.acceleration', 0.5)
+            ->assertJsonPath('data.calibration.movementLimits.forwardAccelerationOnly', false)
+            ->assertJsonPath('data.calibration.forwardLimits.acceleration', 0.5)
             ->assertJsonPath('data.calibration.movementLimits.rotationPeak', 120)
             ->assertJsonPath('data.calibration.stationaryLimits.rotationPeak', 6);
     }
@@ -543,11 +589,6 @@ it('rejects missing RC movement evidence rather than passing because three secon
     }
 })->with([
     ['forward_calibration', ['forward_x' => 0, 'forward_y' => 0, 'forward_z' => 0, 'forward_duration_ms' => 0, 'forward_sample_count' => 0, 'forward_coherence' => 0]],
-    ['braking_calibration', ['longitudinal_min' => 0, 'longitudinal_max' => 0.8]],
-    ['left_turn_calibration', ['yaw_left_degrees' => 0, 'yaw_right_degrees' => 30]],
-    ['right_turn_calibration', ['yaw_right_degrees' => 0, 'yaw_left_degrees' => 30]],
-    ['left_turn_calibration', ['yaw_left_degrees' => 20, 'yaw_right_degrees' => 18, 'rotation_peak' => 20]],
-    ['right_turn_calibration', ['yaw_right_degrees' => 20, 'yaw_left_degrees' => 18, 'rotation_peak' => 20]],
 ]);
 
 it('retains RC sensor integrity and extreme-position checks', function (array $override) {
@@ -612,4 +653,52 @@ it('rejects a fresh movement shorter than the minimum observation interval', fun
         'linear_rms' => 0.8, 'linear_stddev' => 0.8, 'horizontal_rms' => 0.8,
     ])->assertOk()->assertJsonPath('data.steps.7.status', 'failed')
         ->assertJsonPath('data.steps.7.failureReason', 'The recording was interrupted. Repeat this step.');
+});
+
+it('restarts completed setup before release without discarding historical attempts', function () {
+    $booking = calibrationReadyBooking();
+    Sanctum::actingAs($booking->user);
+    postCalibration($booking, 'stationary_calibration')->assertOk();
+    $ready = postCalibration($booking, 'forward_calibration')->assertOk()
+        ->assertJsonPath('data.setup.canRestart', true);
+    $context = $ready->json('data.calibration.context');
+    $url = "/api/mobile/bookings/{$booking->booking_code}/telematics-setup/restart";
+
+    $this->postJson($url, ['context' => str_repeat('a', 64)])->assertUnprocessable()
+        ->assertJsonValidationErrors('context');
+    Sanctum::actingAs(customerUser());
+    $this->postJson($url, ['context' => $context])->assertNotFound();
+
+    Sanctum::actingAs($booking->user);
+    $reset = $this->postJson($url, ['context' => $context])->assertOk()
+        ->assertJsonPath('data.setup.status', 'in_progress')
+        ->assertJsonPath('data.setup.readyAt', null)
+        ->assertJsonPath('data.setup.canRestart', false)
+        ->assertJsonPath('data.calibration.reference', null)
+        ->assertJsonPath('data.calibration.nextStep', null);
+    foreach ($reset->json('data.steps') as $step) {
+        expect($step['status'])->toBe('pending')->and($step['attemptCount'])->toBe(0);
+    }
+    expect($reset->json('data.calibration.context'))->not->toBe($context);
+    $this->getJson('/api/mobile/telematics/rentals')->assertOk()
+        ->assertJsonPath('data.0.hasSetupAttempts', false);
+    $session = $booking->telematicsSetupSession()->firstOrFail();
+    expect($session->steps()->count())->toBe(8);
+    expect(fn () => app(BookingService::class)->transition($booking, BookingStatus::Ongoing, vehicleManagerUser()))
+        ->toThrow(ValidationException::class);
+    $this->postJson($url, ['context' => $context])->assertUnprocessable();
+
+    $service = app(TelematicsSetupService::class);
+    foreach (array_slice(TelematicsSetupService::requiredSteps(), 0, 6) as $type) {
+        $service->recordStep($session, $type, TelematicsSetupStepStatus::Passed);
+    }
+    postCalibration($booking, 'stationary_calibration', ['context' => $context])->assertUnprocessable();
+    postCalibration($booking, 'stationary_calibration')->assertOk();
+    $readyAgain = postCalibration($booking, 'forward_calibration')->assertOk()
+        ->assertJsonPath('data.setup.status', 'ready_for_release')
+        ->assertJsonPath('data.steps.7.attemptCount', 1);
+    expect($session->steps()->count())->toBe(16);
+
+    app(BookingService::class)->transition($booking, BookingStatus::Ongoing, vehicleManagerUser());
+    $this->postJson($url, ['context' => $readyAgain->json('data.calibration.context')])->assertUnprocessable();
 });

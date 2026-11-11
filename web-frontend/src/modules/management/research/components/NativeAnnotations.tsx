@@ -27,6 +27,7 @@ export function NativeAnnotations({ inspection, onState }: { inspection: NativeI
     {saved && <MetadataList className="sm:grid-cols-3" items={[{ label: 'Revision', value: saved.revision }, { label: 'State', value: humanize(saved.state) }, { label: 'Saved', value: formatReturnDateTime(saved.created_at) }]} />}
     <AnnotationForm key={`${revision}:${saved?.id ?? "new"}`} record={inspection.recording} origin={inspection.manifest.started_elapsed_ns} saved={saved}
       protocolCode={inspection.review.collection?.protocol_code}
+      legacyLaneChange={inspection.review.collection?.protocol_code === "LC" && inspection.review.collection.original_protocol_code === "SW"}
       onSaved={value => { setSaved(value); onState(value.state); }} onReload={reload} />
 
   </div>;

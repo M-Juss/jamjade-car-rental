@@ -164,7 +164,7 @@ test('denied notifications, invalid consent, and background starts never start s
   await assert.rejects(invalid.api.start(7, { ...values, consent: false }));
   assert.equal(invalid.calls.length, 0);
   invalid.appState.currentState = 'background';
-  await assert.rejects(invalid.api.start(7, values), /Open RC Research/);
+  await assert.rejects(invalid.api.start(7, values), /Open Data Collection/);
   assert.equal(invalid.calls.length, 0);
 });
 

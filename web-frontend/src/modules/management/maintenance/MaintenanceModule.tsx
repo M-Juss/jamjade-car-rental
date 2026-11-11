@@ -3,7 +3,7 @@
 import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, Loader2, Plus, Settings } from "lucide-react";
+import { AlertCircle, CalendarClock, Clock3, Loader2, Plus, Settings, Wrench } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SummaryList } from "@/components/common/data-display/SummaryList";
+import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { CancelMaintenanceDialog } from "@/forms/maintenance/records/CancelMaintenanceDialog";
 import { MaintenanceLifecycleDialog } from "@/forms/maintenance/records/MaintenanceLifecycleDialog";
 import { MaintenancePlanDialog } from "@/forms/maintenance/plans/MaintenancePlanDialog";
@@ -203,13 +203,18 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
 
       {error ? <Card className="rounded-2xl border border-destructive-border bg-destructive-surface shadow-none"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-sm text-destructive"><AlertCircle size={16} />{error}</div><Button type="button" size="sm" variant="outline" onClick={() => void load()}>Try Again</Button></CardContent></Card> : null}
 
-      <SummaryList label="Maintenance summary" items={summaryItems.map(({ label, value }) => ({ label, value: value ?? 0 }))} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {summaryItems.map(({ label, value }, index) => {
+          const icons = [Clock3, AlertCircle, CalendarClock, Wrench] as const;
+          return <KpiCard key={label} label={label} value={value ?? 0} icon={icons[index]} />;
+        })}
+      </div>
 
       <Tabs value={tab} onValueChange={(value) => { setTab(value as ModuleTab); setStatusFilter("all"); }}>
-        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-xl border border-border bg-surface p-1">
-          <TabsTrigger value="plans" className="px-3 py-2 text-sm">Maintenance Plans</TabsTrigger>
-          <TabsTrigger value="active" className="px-3 py-2 text-sm">Scheduled &amp; Active</TabsTrigger>
-          <TabsTrigger value="history" className="px-3 py-2 text-sm">History</TabsTrigger>
+        <TabsList aria-label="Maintenance sections">
+          <TabsTrigger value="plans">Maintenance Plans</TabsTrigger>
+          <TabsTrigger value="active">Scheduled &amp; Active</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
         <div className="py-3">

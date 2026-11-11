@@ -58,7 +58,7 @@ return [
         'staff_accessible' => true,
     ],
     'reports_analytics' => [
-        'label' => 'Reports & Analytics',
+        'label' => 'Reports and Analytics',
         'description' => 'View reports, exports, and business analytics.',
         'permission' => 'view reports',
         'admin_path' => '/admin/report',

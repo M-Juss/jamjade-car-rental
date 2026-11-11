@@ -126,7 +126,8 @@ it('protects pricing from staff and audits admin updates', function () {
     $this->actingAs($staff, 'web')->getJson('/admin/delivery-pricing')->assertForbidden();
     $this->putJson('/admin/delivery-pricing', ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 30])->assertForbidden();
     $actor = vehicleManagerUser();
-    $this->actingAs($actor, 'web')->putJson('/admin/delivery-pricing', ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 30, 'garage_address' => 'Configured garage', 'garage_latitude' => 14.3, 'garage_longitude' => 120.9])->assertOk()->assertJsonPath('data.minimum_fee', 200);
+    $this->actingAs($actor, 'web');
+    verifiedOwnerWrite($this, 'PUT', '/admin/delivery-pricing', ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 30, 'garage_address' => 'Configured garage', 'garage_latitude' => 14.3, 'garage_longitude' => 120.9])->assertOk()->assertJsonPath('data.minimum_fee', 200);
     $this->assertDatabaseHas('activity_log', ['causer_id' => $actor->id, 'log_name' => 'delivery-pricing']);
 });
 it('updates delivery prices without requiring or overwriting the configured garage', function (bool $unsetPoint) {
@@ -135,7 +136,8 @@ it('updates delivery prices without requiring or overwriting the configured gara
     }
     $before = DeliveryPricingSetting::current()->snapshot();
     $actor = vehicleManagerUser();
-    $this->actingAs($actor, 'web')->putJson('/admin/delivery-pricing', [
+    $this->actingAs($actor, 'web');
+    verifiedOwnerWrite($this, 'PUT', '/admin/delivery-pricing', [
         'minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 30,
     ])->assertOk()->assertJsonPath('data.minimum_fee', 200)
         ->assertJsonPath('data.included_km', 2)

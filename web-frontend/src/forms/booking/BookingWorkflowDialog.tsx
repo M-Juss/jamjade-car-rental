@@ -32,7 +32,7 @@ import {
   FormDialogHeader,
 } from "@/components/common/forms/FormDialogLayout";
 import { appToast } from "@/lib/toast";
-import { ApiError } from "@/services/http";
+import { ApiError, OwnerVerificationCancelled } from "@/services/http";
 import {
   assignDriver,
   completeBooking,
@@ -52,7 +52,10 @@ import {
 } from "@/validations/booking/schemas";
 import {
   bookingActionLabels,
+  bookingCalibrationProgress,
   nextBookingAction,
+  setupStepsPassed,
+  TELEMATICS_DEVICE_STEPS,
 } from "@/modules/management/bookings/booking-next-action";
 import {
   bookingActionBlockers,
@@ -125,11 +128,11 @@ function money(value: number) {
   }).format(value);
 }
 
-function BookingContext({ booking }: { booking: BookingRecord }) {
+function BookingContext({ booking, columns = 2 }: { booking: BookingRecord; columns?: 2 | 3 }) {
   return (
     <Card className="gap-0 rounded-xl border border-border bg-background py-3 ring-0">
       <CardContent>
-        <dl className="grid gap-x-4 gap-y-3 text-xs sm:grid-cols-2">
+        <dl className={`grid gap-x-4 gap-y-3 text-xs ${columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
           <div>
             <dt className="text-muted-foreground">Vehicle</dt>
             <dd className="mt-1 font-semibold text-foreground">
@@ -254,6 +257,9 @@ export function BookingWorkflowDialog({
           includeSettlement: false,
         })
       : blockers;
+  const calibration = bookingCalibrationProgress(booking);
+  const deviceChecksPassed = setupStepsPassed(booking, TELEMATICS_DEVICE_STEPS);
+  const operatorLabel = booking.driverOption === "owners_driver" ? "The assigned driver" : "The renter";
 
   useEffect(() => {
     const visibleContent = contentRef.current?.querySelector<HTMLElement>(
@@ -318,12 +324,14 @@ export function BookingWorkflowDialog({
       void getBooking(booking.backendId)
         .then((record) => {
           if (ignore) return;
+          const nextAction = phase === "prepare" && record.statusKey !== "confirmed"
+            ? null
+            : nextBookingAction(record);
+          if (currentAction === "start-rental" && nextAction !== "start-rental") {
+            setConfirmationOpen(false);
+          }
           onUpdated(record);
-          setCurrentAction(
-            phase === "prepare" && record.statusKey !== "confirmed"
-              ? null
-              : nextBookingAction(record),
-          );
+          setCurrentAction(nextAction);
           setRefreshError(false);
         })
         .catch(() => {
@@ -489,6 +497,7 @@ export function BookingWorkflowDialog({
       appToast.success("Return charge deleted.");
       await refreshSaved("review-charges");
     } catch (error) {
+      if (error instanceof OwnerVerificationCancelled) return;
       appToast.error(error instanceof ApiError && error.errors?.charges?.[0]
         ? error.errors.charges[0] : "The charge could not be deleted. Refresh the booking and try again.");
     } finally { setIsActing(false); }
@@ -767,11 +776,13 @@ export function BookingWorkflowDialog({
         >
           {bookingActionLabels[currentAction]}
         </h2>
-        <p role="status" className="text-xs leading-5 text-muted-foreground">
-          {currentAction === "calibration-pending"
-            ? "Device checks are complete. Calibration is the remaining release requirement."
-            : "The renter completes setup in the mobile app. Progress refreshes automatically every 5 seconds."}
-        </p>
+        {currentAction === "calibration-pending" || !deviceChecksPassed ? (
+          <p role="status" className="text-xs leading-5 text-muted-foreground">
+            {currentAction === "calibration-pending"
+              ? `${operatorLabel} completes Stationary and Forward Reference in the mobile app. ${calibration.passed} of ${calibration.total} passed.`
+              : `${operatorLabel} completes the device checks in the mobile app before calibration.`}
+          </p>
+        ) : null}
         {currentAction === "calibration-pending" ? (
           <>
             <BookingStageContent stage="calibration" booking={booking} />
@@ -871,11 +882,12 @@ export function BookingWorkflowDialog({
         </div>
         {currentAction === "start-rental" ? (
           <p className="text-xs leading-5 text-muted-foreground">
-            Preparation is saved. Review this rental before confirming vehicle
-            release.
+            {calibration.passed === calibration.total
+              ? "Stationary and Forward Reference passed. Review this rental before confirming release."
+              : "Review this rental before confirming release."}
           </p>
         ) : null}
-        <BookingContext booking={booking} />
+        <BookingContext booking={booking} columns={currentAction === "start-rental" ? 3 : 2} />
         <Requirements items={visibleBlockers} />
         {confirmation ? <CustomerBalance booking={booking} /> : null}
         {(blockers.length > 0 || refreshError) && confirmation && currentAction !== "complete" && currentAction !== "start-rental" ? (

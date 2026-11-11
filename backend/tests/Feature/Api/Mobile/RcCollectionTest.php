@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\RcAnnotationRevision;
 use App\Models\RcCollectionContext;
 use App\Models\RcCollectionSession;
 use App\Models\RcMountVersion;
@@ -177,7 +178,7 @@ it('preserves independently synced observation history and detects stale writes'
     expect(RcObservationRevision::count())->toBe(2)->and(DB::table('rc_observation_revisions')->value('payload'))->not->toContain('steering_corrections');
 });
 
-it('syncs initial deviation only on a bound swerve and keeps observation retries immutable', function () {
+it('syncs lateral observations and distinguishes legacy lane changes from the new courses', function (string $catalog, string $code, string $reviewCode, string $layout) {
     $report = [...$this->observation, 'initial_deviation' => 'left'];
     $this->postJson($this->contextUrl, $this->input)->assertOk();
     $this->postJson($this->observationUrl, $report)->assertUnprocessable()->assertJsonValidationErrors('initial_deviation');
@@ -185,11 +186,16 @@ it('syncs initial deviation only on a bound swerve and keeps observation retries
     $manifest = $this->manifest;
     $manifest['recording_id'] = (string) Str::uuid();
     $manifest['context']['recording_number'] = 39;
-    $protocol = collect(app(RcCollectionService::class)->catalog('rc-exercises-v1')['protocols'])->firstWhere('code', 'SW');
+    $protocol = collect(app(RcCollectionService::class)->catalog($catalog)['protocols'])->firstWhere('code', $code);
     $binding = &$manifest['collection_binding'];
     $binding['preflight_id'] = (string) Str::uuid();
-    $binding['protocol_code'] = 'SW';
+    $binding['protocol_code'] = $code;
     $binding['protocol_sha256'] = hash('sha256', RcNativeProtocol::canonical($protocol));
+    if ($code === 'LC') {
+        $this->postJson('/api/mobile/rc-research/native-recordings', ['manifest_json' => json_encode($manifest, JSON_THROW_ON_ERROR)])
+            ->assertUnprocessable();
+    }
+    $binding['catalog_version'] = $catalog;
     $json = json_encode($manifest, JSON_THROW_ON_ERROR);
     $id = $this->postJson('/api/mobile/rc-research/native-recordings', ['manifest_json' => $json])->assertOk()->json('data.id');
     $url = "/api/mobile/rc-research/native-recordings/$id";
@@ -198,7 +204,7 @@ it('syncs initial deviation only on a bound swerve and keeps observation retries
     }
     $this->postJson("$url/finalize")->assertOk();
     $context = [...$this->input, 'recording_id' => $manifest['recording_id'], 'manifest_sha256' => hash('sha256', $json),
-        'capture_number' => 39, 'protocol_code' => 'SW', 'protocol_sha256' => $binding['protocol_sha256']];
+        'capture_number' => 39, 'catalog_version' => $catalog, 'protocol_code' => $code, 'protocol_sha256' => $binding['protocol_sha256']];
     $context['preflight']['id'] = $binding['preflight_id'];
     $this->postJson("$url/context", $context)->assertOk();
     $this->postJson("$url/observations", [...$report, 'initial_deviation' => 'forward'])
@@ -208,7 +214,75 @@ it('syncs initial deviation only on a bound swerve and keeps observation retries
     $this->postJson("$url/observations", [...$report, 'initial_deviation' => 'right'])->assertConflict();
     $this->withHeader('Authorization', '')->actingAs($this->admin, 'web')
         ->getJson("/admin/rc-research/native-recordings/$id")->assertOk()
+        ->assertJsonPath('data.recording.display_code', "S02-$reviewCode-R039")
+        ->assertJsonPath('data.review.collection.protocol_code', $reviewCode)
+        ->assertJsonPath('data.review.collection.original_protocol_code', $code)
+        ->assertJsonPath('data.manifest.collection_binding.protocol_code', $code)
         ->assertJsonPath('data.review.observation.initial_deviation', 'left');
+    $this->getJson("/admin/rc-research/native-recordings?search=S02-$reviewCode-R039")->assertOk()
+        ->assertJsonCount(1, 'data')->assertJsonPath('data.0.display_code', "S02-$reviewCode-R039");
+    expect(RcCollectionContext::findOrFail($id)->payload['course_snapshot']['layout_key'])->toBe($layout);
+
+    $annotations = "/admin/rc-research/native-recordings/$id/annotations";
+    $interval = ['start_ms' => 0, 'end_ms' => 1, 'movement' => 'swerving', 'direction' => 'forward',
+        'severity' => 'unknown', 'certainty' => 'uncertain', 'source' => 'operator_report', 'notes' => '', 'initial_deviation' => 'left'];
+    $base = 0;
+    if ($code === 'SW' && $reviewCode === 'LC') {
+        $historic = RcAnnotationRevision::create(['recording_id' => $id, 'reviewer_id' => $this->admin->id,
+            'revision' => 1, 'state' => 'uncertain', 'manifest_sha256' => hash('sha256', $json),
+            'fingerprint' => str_repeat('a', 64), 'intervals' => [$interval]]);
+        $base = 1;
+        $this->getJson($annotations)->assertOk()->assertJsonPath('data.intervals.0.movement', 'swerving')
+            ->assertJsonPath('data.effective_intervals.0', [...$interval, 'movement' => 'lane_change']);
+        $this->getJson("$annotations/{$historic->id}")->assertOk()->assertJsonPath('data.intervals.0.movement', 'swerving')
+            ->assertJsonMissingPath('data.effective_intervals');
+        $this->postJson($annotations, ['base_revision' => $base, 'intervals' => [$interval]])
+            ->assertUnprocessable()->assertJsonValidationErrors('intervals.0.movement');
+    }
+    $interval['movement'] = $reviewCode === 'LC' ? 'lane_change' : 'swerving';
+    $this->postJson($annotations, ['base_revision' => $base, 'intervals' => [$interval]])
+        ->assertOk()->assertJsonPath('data.intervals.0.movement', $interval['movement'])
+        ->assertJsonPath('data.intervals.0.initial_deviation', 'left');
+})->with([
+    ['rc-exercises-v1', 'SW', 'LC', 'swerve_recovery'],
+    ['rc-exercises-v4', 'LC', 'LC', 'lane_change'],
+    ['rc-exercises-v4', 'SW', 'SW', 'swerve_obstacle_avoidance'],
+    ['rc-exercises-v5', 'LC', 'LC', 'lane_change'],
+    ['rc-exercises-v5', 'SWL', 'SWL', 'swerve_obstacle_avoidance'],
+    ['rc-exercises-v5', 'HSWR', 'HSWR', 'swerve_obstacle_avoidance'],
+    ['rc-exercises-v6', 'HSWR', 'HSWR', 'swerve_obstacle_avoidance'],
+]);
+
+it('uploads a v6 mixed drive and reviews different maneuvers in the same recording', function () {
+    $protocol = collect(app(RcCollectionService::class)->catalog()['protocols'])->firstWhere('code', 'MD');
+    $manifest = $this->manifest;
+    $binding = &$manifest['collection_binding'];
+    $binding['protocol_code'] = 'MD';
+    $binding['protocol_sha256'] = hash('sha256', RcNativeProtocol::canonical($protocol));
+    $upload = '/api/mobile/rc-research/native-recordings';
+    $this->postJson($upload, ['manifest_json' => json_encode($manifest, JSON_THROW_ON_ERROR)])->assertUnprocessable();
+    $manifest['recording_id'] = (string) Str::uuid();
+    $manifest['context']['recording_number'] = 39;
+    $binding['catalog_version'] = 'rc-exercises-v6';
+    $json = json_encode($manifest, JSON_THROW_ON_ERROR);
+    $id = $this->postJson($upload, ['manifest_json' => $json])->assertOk()->json('data.id');
+    foreach ($this->payloads as $channel => $payload) {
+        $this->postJson("$upload/$id/chunks", ['channel' => $channel, 'chunk_index' => 0, 'payload' => $payload])->assertOk();
+    }
+    $this->postJson("$upload/$id/finalize")->assertOk();
+    $this->postJson("$upload/$id/context", [...$this->input,
+        'recording_id' => $manifest['recording_id'], 'manifest_sha256' => hash('sha256', $json), 'capture_number' => 39,
+        'catalog_version' => 'rc-exercises-v6', 'protocol_code' => 'MD', 'protocol_sha256' => $binding['protocol_sha256'],
+    ])->assertOk()->assertJsonPath('data.display_code', 'S02-MD-R039');
+    $this->postJson("$upload/$id/observations", [...$this->observation, 'completed_as_planned' => true,
+        'actual_stop_method' => 'neutral_release', 'notes' => 'Turn then swerve.',
+    ])->assertOk();
+    $label = ['direction' => 'forward', 'severity' => 'harsh', 'certainty' => 'reviewed', 'source' => 'operator_report', 'notes' => null];
+    $this->withHeader('Authorization', '')->actingAs($this->admin, 'web')
+        ->postJson("/admin/rc-research/native-recordings/$id/annotations", ['base_revision' => 0, 'intervals' => [
+            [...$label, 'movement' => 'left_turn', 'start_ms' => 0, 'end_ms' => 30],
+            [...$label, 'movement' => 'swerving', 'start_ms' => 40, 'end_ms' => 70, 'initial_deviation' => 'right'],
+        ]])->assertOk()->assertJsonPath('data.intervals.0.movement', 'left_turn')->assertJsonPath('data.intervals.1.movement', 'swerving');
 });
 
 it('exposes owner-bound collection review and latest observations without internal setup measurements', function () {
@@ -334,13 +408,13 @@ it('keeps v1 snapshots immutable and rejects substituting v2 instructions on an 
     expect(RcCollectionContext::first()->payload['protocol_snapshot']['expected_stop_method'])->toBe('brake_applied');
 });
 
-it('syncs a v3 harsh turn in an existing session and rejects older catalog bindings', function (string $code, string $layout) {
+it('syncs harsh turns from v3 and v4 in an existing session and rejects older bindings', function (string $code, string $layout, string $version) {
     $this->postJson($this->contextUrl, $this->input)->assertOk();
     $manifest = $this->manifest;
     $manifest['recording_id'] = (string) Str::uuid();
     $manifest['context']['recording_number'] = 39;
-    $catalog = app(RcCollectionService::class)->catalog();
-    expect($catalog['catalog_version'])->toBe('rc-exercises-v3');
+    $catalog = app(RcCollectionService::class)->catalog($version);
+    expect($catalog['catalog_version'])->toBe($version);
     $protocol = collect($catalog['protocols'])->firstWhere('code', $code);
     $hash = hash('sha256', RcNativeProtocol::canonical($protocol));
     $manifest['collection_binding'] = [...$manifest['collection_binding'], 'preflight_id' => (string) Str::uuid(),
@@ -367,4 +441,4 @@ it('syncs a v3 harsh turn in an existing session and rejects older catalog bindi
         ->and($saved['session']['catalog_version'])->toBe('rc-exercises-v1')
         ->and($saved['protocol_snapshot']['planned_assessment'])->toBe('harsh_attempt')
         ->and($saved['course_snapshot']['layout_key'])->toBe($layout);
-})->with([['HLT', 'left_turn'], ['HRT', 'right_turn']]);
+})->with([['HLT', 'left_turn', 'rc-exercises-v3'], ['HRT', 'right_turn', 'rc-exercises-v4']]);

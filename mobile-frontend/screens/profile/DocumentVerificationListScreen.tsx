@@ -39,9 +39,8 @@ export function DocumentVerificationListScreen({
         ) : undefined
       }>
       <OnboardingHeader
-        navigationTitle="Document Verification"
+        navigationTitle="Documents"
         onBackPress={onBackPress}
-        title="Documents"
       />
 
       <View className="mt-section rounded-card border border-border bg-surface px-4">
@@ -76,7 +75,7 @@ export function InvalidDocumentScreen() {
         />
       }>
       <OnboardingHeader
-        navigationTitle="Document Verification"
+        navigationTitle="Documents"
         subtitle="The selected document type is not available."
         title="Document not found"
       />

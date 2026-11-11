@@ -4,8 +4,11 @@ use App\Enums\BookingStatus;
 use App\Enums\RentalType;
 use App\Events\FleetMonitoringChanged;
 use App\Models\Booking;
+use App\Models\DriveMonitoringEvent;
+use App\Models\DriveMonitoringSession;
 use App\Models\TelematicsTrip;
 use App\Models\User;
+use App\Services\NotificationService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,8 +90,9 @@ it('keeps one card per booking with the saved trip status and exposes only the f
         ->assertJsonPath('data.0.tracking.tripStatus', 'paused')
         ->assertJsonPath('data.0.customerName', $booking->user->name);
     expect(array_keys($response->json('data.0')))->toBe([
-        'id', 'bookingCode', 'customerName', 'rentalType', 'rentalStartAt', 'rentalEndAt', 'vehicle', 'tracking',
-    ])->and(array_keys($response->json('data.0.vehicle')))->toBe(['id', 'name', 'plateNumber'])
+        'id', 'bookingCode', 'customerName', 'operator', 'emergencyContacts', 'rentalType', 'rentalStartAt', 'rentalEndAt', 'vehicle', 'activityCounts', 'tracking',
+    ])->and(array_keys($response->json('data.0.vehicle')))->toBe(['id', 'name', 'brand', 'model', 'plateNumber'])
+        ->and(array_keys($response->json('data.0.operator')))->toBe(['id', 'name', 'email', 'phoneNumber'])
         ->and(array_keys($response->json('data.0.tracking')))->toBe(['status', 'tripStatus', 'lastLocationAt', 'location'])
         ->and($response->json('data.0.tracking.location'))->toBeNull()
         ->and($response->headers->get('Cache-Control'))->toContain('no-store');
@@ -187,6 +191,7 @@ it('rejects invalid filters and pagination', function (array $query, string $fie
 })->with([
     [['search' => str_repeat('a', 161)], 'search'],
     [['status' => 'confirmed'], 'status'],
+    [['tracking_state' => 'invalid'], 'tracking_state'],
     [['rental_type' => 'invalid'], 'rental_type'],
     [['page' => 0], 'page'],
     [['page' => 'text'], 'page'],
@@ -247,4 +252,99 @@ it('invalidates the fleet on rental and latest point changes without publishing 
     $trip->update(['status' => 'paused']);
     $booking->update(['status' => BookingStatus::Returned]);
     Event::assertDispatchedTimes(FleetMonitoringChanged::class, 5);
+});
+
+it('groups practical tracking filters without mixing lifecycle states', function () {
+    $waiting = fleetBooking();
+    $awaiting = fleetBooking();
+    fleetTrip($awaiting);
+    $updating = fleetBooking();
+    fleetTrip($updating, ['last_location_at' => now()]);
+    $stale = fleetBooking();
+    fleetTrip($stale, ['last_location_at' => now()->subSeconds(121)]);
+    $paused = fleetBooking();
+    fleetTrip($paused, ['status' => 'paused']);
+    $ended = fleetBooking();
+    fleetTrip($ended, ['status' => 'ended']);
+    $unavailable = fleetBooking(released: false);
+    fleetBooking(['status' => BookingStatus::Completed]);
+    $this->actingAs(vehicleManagerUser());
+    foreach (['updating' => [$updating->id], 'no_updates' => [$stale->id], 'paused' => [$paused->id],
+        'not_tracking' => [$waiting->id, $awaiting->id, $ended->id, $unavailable->id]] as $state => $ids) {
+        $response = $this->getJson('/admin/fleet-tracker?tracking_state='.$state)->assertOk()
+            ->assertJsonPath('meta.total', count($ids))->assertJsonPath('meta.total_ongoing', 7);
+        expect(array_column($response->json('data'), 'id'))->toBe($ids);
+    }
+});
+
+it('provides complete vehicle identity and the recorded operator contact without exposing account fields', function () {
+    $renter = customerUser(['name' => 'Renter account', 'phone_number' => '09170000001']);
+    $driver = createDriverUser(['name' => 'Recorded driver', 'phone_number' => '09170000002']);
+    $replacement = createDriverUser(['name' => 'Current assignment', 'phone_number' => '09170000003']);
+    $vehicle = availableVehicle(['name' => 'Hiace', 'brand' => 'Toyota', 'model' => '2024']);
+    $booking = fleetBooking(['user_id' => $renter->id, 'vehicle_id' => $vehicle->id,
+        'rental_type' => RentalType::OwnersDriver, 'assigned_driver_id' => $driver->id]);
+    fleetTrip($booking);
+    $booking->update(['assigned_driver_id' => $replacement->id]);
+    $driver->delete();
+    $response = $this->actingAs(vehicleManagerUser())->getJson('/admin/fleet-tracker')->assertOk()
+        ->assertJsonPath('data.0.vehicle.brand', 'Toyota')->assertJsonPath('data.0.vehicle.name', 'Hiace')
+        ->assertJsonPath('data.0.vehicle.model', '2024')->assertJsonPath('data.0.operator.id', $driver->id)
+        ->assertJsonPath('data.0.operator.phoneNumber', '09170000002')
+        ->assertJsonPath('data.0.operator.email', $driver->email)->assertJsonMissingPath('data.0.operator.password');
+    $this->getJson('/admin/fleet-tracker?search=Recorded%20driver')->assertOk()->assertJsonPath('meta.total', 1);
+    $response->assertHeader('Cache-Control', 'no-store, private');
+});
+
+it('uses the renter contact for self drive and the assigned driver before a trip exists', function () {
+    $renter = customerUser(['phone_number' => '09170000001']);
+    $self = fleetBooking(['user_id' => $renter->id]);
+    $driver = createDriverUser(['phone_number' => '09170000002']);
+    $assigned = fleetBooking(['rental_type' => RentalType::OwnersDriver, 'assigned_driver_id' => $driver->id]);
+    $this->actingAs(vehicleManagerUser())->getJson('/admin/fleet-tracker?rental_type=self_drive')->assertOk()
+        ->assertJsonPath('data.0.id', $self->id)->assertJsonPath('data.0.operator.phoneNumber', '09170000001');
+    $this->getJson('/admin/fleet-tracker?rental_type=owners_driver')->assertOk()
+        ->assertJsonPath('data.0.id', $assigned->id)->assertJsonPath('data.0.operator.id', $driver->id)
+        ->assertJsonPath('data.0.operator.phoneNumber', '09170000002');
+});
+
+it('returns three independent live rentals and keeps their maneuver logs trip scoped', function () {
+    $bookings = [];
+    foreach (['harsh_acceleration', 'harsh_braking', 'harsh_cornering'] as $index => $target) {
+        $booking = fleetBooking();
+        $trip = fleetTrip($booking, ['last_location_at' => now(), 'location_consent_at' => now()->subMinute(),
+            'location_consent_version' => config('telematics.foreground_location.consent_version'),
+            'latest_location' => ['latitude' => 14 + $index * .01, 'longitude' => 121, 'accuracy' => 5]]);
+        $session = DriveMonitoringSession::create(['user_id' => $booking->user_id,
+            'telematics_trip_id' => $trip->id, 'client_session_id' => (string) Str::uuid(),
+            'status' => 'active', 'model_sha256' => str_repeat('a', 64), 'consented_at' => now()]);
+        DriveMonitoringEvent::create(['session_id' => $session->id, 'target' => $target,
+            'status' => 'confirmed', 'start_ms' => 1000, 'end_ms' => 1400, 'last_ms' => 1400, 'emitted_ms' => 1400, 'vote' => .9]);
+        $bookings[] = [$booking, $target];
+    }
+    $viewer = vehicleManagerUser();
+    $booking = $bookings[0][0];
+    $notifications = app(NotificationService::class);
+    $notifications->createForBooking($booking, 'trip', 'Customer update', 'Customer update');
+    $notifications->createForUser($viewer, 'trip', 'Fleet update', 'Fleet update', ['booking_id' => $booking->id]);
+    $notifications->createForUser($viewer, 'trip', 'Read update', 'Read update', ['booking_id' => $booking->id])->update(['read_at' => now()]);
+
+    $response = $this->actingAs($viewer)->getJson('/admin/fleet-tracker?tracking_state=updating')->assertOk()
+        ->assertJsonCount(3, 'data')->assertJsonPath('meta.total_ongoing', 3);
+    $counts = collect($response->json('data'))->pluck('activityCounts', 'id');
+    expect($counts[$booking->id])->toBe(['driving' => 1, 'trip' => 0, 'unreadNotifications' => 1])
+        ->and($counts[$bookings[1][0]->id])->toBe(['driving' => 1, 'trip' => 0, 'unreadNotifications' => 0]);
+    expect(collect($response->json('data'))->pluck('tracking.location.latitude')->unique())->toHaveCount(3);
+    foreach ($bookings as [$booking, $target]) {
+        $this->getJson('/admin/fleet-tracker/'.$booking->booking_code.'/motion-monitoring')->assertOk()
+            ->assertJsonCount(1, 'data.events')->assertJsonPath('data.events.0.target', $target)
+            ->assertJsonPath('data.event_summary.detected', 1)->assertJsonPath('data.operator.id', $booking->user_id);
+    }
+});
+
+it('returns only the booking customer emergency contact details', function () {
+    $booking = fleetBooking();
+    $booking->user->emergencyContacts()->updateOrCreate([], ['name' => 'Emergency person', 'relationship' => 'Sibling', 'phone_number' => '09170000000']);
+    $this->actingAs(vehicleManagerUser())->getJson('/admin/fleet-tracker')->assertOk()
+        ->assertJsonPath('data.0.emergencyContacts', [['name' => 'Emergency person', 'relationship' => 'Sibling', 'phoneNumber' => '09170000000']]);
 });

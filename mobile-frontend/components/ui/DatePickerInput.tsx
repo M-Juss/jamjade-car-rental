@@ -301,17 +301,19 @@ export function DatePickerInput({
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
                   <Text
                     key={weekday}
-                    className="font-sans text-center text-[11px] font-normal text-secondary-foreground"
-                    style={{ width: `${100 / 7}%` }}>
+                    className="font-sans min-w-0 flex-1 text-center text-[11px] font-normal text-secondary-foreground"
+                    numberOfLines={1}>
                     {weekday}
                   </Text>
                 ))}
               </View>
 
-              <View className="mt-2 flex-row flex-wrap">
-                {calendarCells.map((date, index) => {
+              <View className="mt-2">
+                {Array.from({ length: calendarCells.length / 7 }, (_, weekIndex) => (
+                  <View key={weekIndex} className="flex-row">
+                {calendarCells.slice(weekIndex * 7, weekIndex * 7 + 7).map((date, index) => {
                   if (!date) {
-                    return <View key={`empty-${index}`} className="h-11" style={{ width: `${100 / 7}%` }} />;
+                    return <View key={`empty-${index}`} className="h-11 min-w-0 flex-1" />;
                   }
 
                   const dateKey = getDateKey(date);
@@ -323,8 +325,7 @@ export function DatePickerInput({
                   return (
                     <View
                       key={dateKey}
-                      className="h-11 items-center justify-center"
-                      style={{ width: `${100 / 7}%` }}>
+                      className="h-11 min-w-0 flex-1 items-center justify-center">
                       <Pressable
                         accessibilityRole="button"
                         accessibilityState={{ disabled: isDisabled, selected: isSelected }}
@@ -350,6 +351,8 @@ export function DatePickerInput({
                     </View>
                   );
                 })}
+                  </View>
+                ))}
               </View>
             </View>
           </View>

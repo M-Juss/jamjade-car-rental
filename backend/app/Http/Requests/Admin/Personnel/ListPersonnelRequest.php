@@ -9,7 +9,7 @@ class ListPersonnelRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasRole('admin');
+        return (bool) $this->user()?->hasAnyRole(['admin', 'staff']);
     }
 
     public function rules(): array
@@ -17,7 +17,7 @@ class ListPersonnelRequest extends BaseFormRequest
         return [
             'search' => ['sometimes', 'nullable', 'string', 'max:160'],
             'status' => ['sometimes', 'string', Rule::in(['all', 'active', 'inactive'])],
-            'role' => ['sometimes', 'string', Rule::in(['all', 'staff', 'driver'])],
+            'role' => ['sometimes', 'string', Rule::in($this->user()->hasRole('owner') ? ['all', 'staff', 'driver', 'admin'] : ['all', 'staff', 'driver'])],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];

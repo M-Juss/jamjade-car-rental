@@ -245,27 +245,34 @@ it('supplies the ordered booking vehicle gallery while keeping returned rentals 
     $this->getJson($path)->assertNotFound();
 });
 
-it('shares one bounded booking activity feed with the normal notification inbox without leaking GPS', function () {
+it('separates booking activity from the main inbox without leaking GPS', function () {
     $booking = locationMonitoringBooking();
     $token = startLocationSharing($this, $booking);
     $other = locationMonitoringBooking(['user_id' => $booking->user_id]);
     app(NotificationService::class)->createForBooking($other, 'trip', 'Other rental', 'Another booking update.');
     for ($index = 0; $index < 12; $index++) {
-        app(NotificationService::class)->createForBooking($booking, 'booking', "Booking update {$index}", 'Test update.');
+        app(NotificationService::class)->createForBooking($booking, 'trip', "Trip update {$index}", 'Test update.');
     }
+    $payment = app(NotificationService::class)->createForBooking($booking, 'payment', 'Payment received', 'Test payment.');
     Sanctum::actingAs($booking->user);
     $path = '/api/mobile/notifications?pagination=cursor&per_page=10&booking_code='.$booking->booking_code;
     $first = $this->getJson($path)->assertOk()->assertJsonCount(10, 'data')
-        ->assertJsonPath('meta.booking_unread_count', 13)->assertJsonPath('meta.unread_count', 14);
+        ->assertJsonPath('meta.booking_unread_count', 13)->assertJsonPath('meta.unread_count', 1);
     expect(collect($first->json('data'))->pluck('bookingId')->unique()->all())->toBe([$booking->booking_code]);
     $older = $this->getJson($path.'&cursor='.urlencode($first->json('meta.next_cursor')))
         ->assertOk()->assertJsonCount(3, 'data')->assertJsonPath('meta.has_more', false);
     $started = collect($older->json('data'))->firstWhere('title', 'GPS monitoring started');
     expect($started)->not->toBeNull()
         ->and($started['data']['action'])->toBe('view_telematics_activity');
-    $this->postJson('/api/mobile/notifications/'.$started['id'].'/read')->assertOk()->assertJsonPath('meta.unread_count', 13);
+    $this->postJson('/api/mobile/notifications/'.$started['id'].'/read')->assertOk()->assertJsonPath('meta.unread_count', 1);
     $this->getJson($path)->assertJsonPath('meta.booking_unread_count', 12);
-    $this->getJson('/api/mobile/notifications?category=trip')->assertOk()->assertJsonFragment(['id' => $started['id'], 'isRead' => true]);
+    $this->getJson('/api/mobile/notifications?pagination=cursor')->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', (string) $payment->id)->assertJsonPath('meta.unread_count', 1);
+    $this->getJson('/api/mobile/notifications')->assertOk()->assertJsonCount(1, 'data');
+    $this->getJson('/api/mobile/notifications/unread-count')->assertOk()->assertJsonPath('data.unreadCount', 1);
+    $this->postJson('/api/mobile/notifications/read-all')->assertOk()
+        ->assertJsonPath('data.updated', 1)->assertJsonPath('meta.unread_count', 0);
+    $this->getJson($path)->assertJsonPath('meta.booking_unread_count', 12);
     expect(json_encode($started))->not->toContain('latitude', 'longitude', 'session_token', $token);
     Sanctum::actingAs(customerUser());
     $this->getJson($path)->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('meta.booking_unread_count', 0);
@@ -282,7 +289,7 @@ it('marks only the selected booking activity as read when given a booking code',
     Sanctum::actingAs($booking->user);
 
     $this->postJson('/api/mobile/notifications/read-all', ['booking_code' => $booking->booking_code])
-        ->assertOk()->assertJsonPath('data.updated', 2)->assertJsonPath('meta.unread_count', 2);
+        ->assertOk()->assertJsonPath('data.updated', 2)->assertJsonPath('meta.unread_count', 1);
 
     expect($first->fresh()->read_at)->not->toBeNull()
         ->and($second->fresh()->read_at)->not->toBeNull()
@@ -369,7 +376,7 @@ it('evaluates frozen default and custom zones from latest GPS and shares named c
             ->and($item['data']['event_id'])->not->toBeNull()
             ->and(json_encode($item))->not->toContain('latitude', 'longitude', 'session_token', $token, 'polygon_coordinates');
     }
-    $this->getJson('/api/mobile/notifications?category=trip')->assertOk()->assertJsonCount(5, 'data');
+    $this->getJson('/api/mobile/notifications?category=trip')->assertOk()->assertJsonCount(0, 'data');
     $this->postJson('/api/mobile/notifications/'.$crossings->first()['id'].'/read')->assertOk();
     Sanctum::actingAs(customerUser());
     $this->getJson($path)->assertOk()->assertJsonCount(0, 'data');

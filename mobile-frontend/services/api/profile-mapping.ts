@@ -1,6 +1,6 @@
 import { getActiveApiBaseUrl } from '@/services/http';
 
-import type { MobileCustomerProfile, MobileUser } from './types';
+import type { MobileCustomerProfile, MobileDocument, MobileUser } from './types';
 
 export function normalizeProfilePhotoUrl(value?: string | null) {
   const imageUrl = value?.trim();
@@ -27,6 +27,15 @@ export function normalizeProfilePhotoUrl(value?: string | null) {
 
 export function mapCustomerProfile(profile: MobileCustomerProfile): MobileCustomerProfile {
   return { ...profile, profilePicture: normalizeProfilePhotoUrl(profile.profilePicture) };
+}
+
+export function mapCustomerDocument(document: MobileDocument): MobileDocument {
+  return {
+    ...document,
+    fileUrl: normalizeProfilePhotoUrl(document.fileUrl),
+    frontFileUrl: normalizeProfilePhotoUrl(document.frontFileUrl),
+    backFileUrl: normalizeProfilePhotoUrl(document.backFileUrl),
+  };
 }
 
 export function mapUserProfile(user: MobileUser): MobileUser {

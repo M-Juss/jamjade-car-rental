@@ -28,12 +28,14 @@ class RoleAndPermissionSeeder extends Seeder
         $permissionModels = collect($permissions)
             ->map(fn (string $permission) => Permission::findOrCreate($permission, 'web'));
 
+        $owner = Role::findOrCreate(UserRole::Owner->value, 'web');
         $admin = Role::findOrCreate(UserRole::Admin->value, 'web');
         $staff = Role::findOrCreate(UserRole::Staff->value, 'web');
         Role::findOrCreate(UserRole::Customer->value, 'web');
         $driver = Role::findOrCreate(UserRole::Driver->value, 'web');
 
         $admin->syncPermissions($permissionModels);
+        $owner->syncPermissions($permissionModels);
         $staff->syncPermissions(
             collect(config('staff_modules'))
                 ->where('staff_accessible', true)

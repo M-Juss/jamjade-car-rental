@@ -3,47 +3,229 @@
 namespace App\Services;
 
 use App\Enums\UserRole;
+use App\Mail\VerifyMobileRegistrationMail;
 use App\Models\CustomerProfile;
+use App\Models\PendingMobileRegistration;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AuthService
 {
     public function __construct(private readonly RcResearchAccessService $research) {}
 
-    public function register(array $data): array
+    public function beginRegistration(array $data, string $ipAddress): array
     {
-        return DB::transaction(function () use ($data) {
-            $user = User::create([
-                'name' => Str::before($data['email'], '@'),
-                'email' => $data['email'],
-                'phone_number' => $data['phone_number'] ?? null,
-                'password' => $data['password'],
-                'is_active' => true,
-            ]);
+        $emailHash = hash('sha256', $data['email']);
+        $this->consumeRegistrationLimit('email:'.$emailHash, 5);
+        $this->consumeRegistrationLimit('ip:'.hash('sha256', $ipAddress), 20);
 
-            $user->assignRole(UserRole::Customer->value);
+        try {
+            return DB::transaction(function () use ($data, $emailHash) {
+                $pending = PendingMobileRegistration::query()->where('email_hash', $emailHash)->lockForUpdate()->first();
+                if ($pending && $pending->absolute_expires_at->isFuture() && $pending->resend_available_at->isFuture()) {
+                    throw new HttpException(429, 'A verification code was recently sent. Try again shortly.');
+                }
 
-            CustomerProfile::create([
-                'user_id' => $user->id,
-                'verification_status' => 'pending',
-            ]);
+                $code = $this->newRegistrationCode();
+                while ($pending && Hash::check($code, $pending->code_hash)) {
+                    $code = $this->newRegistrationCode();
+                }
+                $pending ??= new PendingMobileRegistration;
+                $now = now();
+                $pending->fill([
+                    'id' => (string) Str::uuid(),
+                    'email' => $data['email'],
+                    'email_hash' => $emailHash,
+                    'phone_number' => $data['phone_number'] ?? null,
+                    'password' => Hash::make($data['password']),
+                    'code_hash' => Hash::make($code),
+                    'device_name' => $data['device_name'] ?? null,
+                    'failed_attempts' => 0,
+                    'expires_at' => $now->copy()->addMinutes(15),
+                    'absolute_expires_at' => $now->copy()->addHours(24),
+                    'resend_available_at' => $now->copy()->addSeconds(60),
+                    'created_at' => $now,
+                ])->save();
+                $pending->refresh();
+                $this->deliverRegistrationCode($pending, $code);
 
-            activity()
-                ->causedBy($user)
-                ->performedOn($user)
-                ->event('mobile_registered')
-                ->log('Customer registered through the mobile API.');
+                return $this->pendingRegistrationDto($pending);
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw new HttpException(429, 'A registration is already in progress. Try again shortly.');
+        }
+    }
 
-            return [
-                'user' => $user->fresh()->load('customerProfile', 'roles'),
-                'token' => $this->issueMobileToken($user, $data['device_name'] ?? 'jamjade-mobile'),
-            ];
+    public function resendRegistrationCode(string $registrationId, string $ipAddress): array
+    {
+        $current = PendingMobileRegistration::query()->whereKey($registrationId)->first();
+        if (! $current || $current->absolute_expires_at->lte(now())) {
+            throw ValidationException::withMessages(['registration_id' => ['This registration could not be found. Start again.']]);
+        }
+        $this->consumeRegistrationLimit('email:'.$current->email_hash, 5);
+        $this->consumeRegistrationLimit('ip:'.hash('sha256', $ipAddress), 20);
+
+        return DB::transaction(function () use ($registrationId) {
+            $pending = PendingMobileRegistration::query()->whereKey($registrationId)->lockForUpdate()->first();
+            if (! $pending || $pending->absolute_expires_at->lte(now())) {
+                throw ValidationException::withMessages(['registration_id' => ['This registration could not be found. Start again.']]);
+            }
+            if ($pending->failed_attempts >= 5) {
+                throw ValidationException::withMessages(['registration_id' => ['This registration has expired. Start again.']]);
+            }
+            if ($pending->absolute_expires_at->lte(now()->addMinutes(15))) {
+                throw ValidationException::withMessages(['registration_id' => ['This registration has expired. Start again.']]);
+            }
+            if ($pending->resend_available_at->isFuture()) {
+                throw new HttpException(429, 'A verification code was recently sent. Try again shortly.');
+            }
+
+            $code = $this->newRegistrationCode();
+            while (Hash::check($code, $pending->code_hash)) {
+                $code = $this->newRegistrationCode();
+            }
+            $this->replaceRegistrationCode($pending, $code);
+            $pending->refresh();
+            $this->deliverRegistrationCode($pending, $code);
+
+            return $this->pendingRegistrationDto($pending);
         });
+    }
+
+    public function verifyRegistration(string $registrationId, string $code): array
+    {
+        try {
+            $result = DB::transaction(function () use ($registrationId, $code) {
+                $pending = PendingMobileRegistration::query()->whereKey($registrationId)->lockForUpdate()->first();
+                if (! $pending || $pending->absolute_expires_at->lte(now()) || $pending->expires_at->lte(now()) || $pending->failed_attempts >= 5) {
+                    return ['failure' => 'registration_id'];
+                }
+
+                if (! Hash::check($code, $pending->code_hash)) {
+                    $pending->increment('failed_attempts');
+
+                    return ['failure' => 'code'];
+                }
+
+                if (User::withTrashed()->where('email', $pending->email)->exists()) {
+                    return ['failure' => 'email'];
+                }
+                if ($pending->phone_number && User::withTrashed()->where('phone_number', $pending->phone_number)->exists()) {
+                    return ['failure' => 'phone_number'];
+                }
+
+                $user = User::create([
+                    'name' => Str::before($pending->email, '@'),
+                    'email' => $pending->email,
+                    'phone_number' => $pending->phone_number,
+                    'password' => $pending->password,
+                    'email_verified_at' => now(),
+                    'is_active' => true,
+                ]);
+
+                $user->assignRole(UserRole::Customer->value);
+
+                CustomerProfile::create([
+                    'user_id' => $user->id,
+                    'verification_status' => 'pending',
+                ]);
+
+                activity()
+                    ->causedBy($user)
+                    ->performedOn($user)
+                    ->event('mobile_registered')
+                    ->log('Customer registered through the mobile API.');
+
+                $result = [
+                    'user' => $user->fresh()->load('customerProfile', 'roles'),
+                    'token' => $this->issueMobileToken($user, $pending->device_name ?: 'jamjade-mobile'),
+                ];
+                $pending->delete();
+
+                return ['result' => $result];
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            if (User::withTrashed()->where('email', function ($query) use ($registrationId) {
+                $query->select('email')->from('pending_mobile_registrations')->where('id', $registrationId);
+            })->exists()) {
+                throw ValidationException::withMessages(['email' => ['This email is already registered. Sign in instead.']]);
+            }
+            if (User::withTrashed()->whereIn('phone_number', function ($query) use ($registrationId) {
+                $query->select('phone_number')->from('pending_mobile_registrations')->where('id', $registrationId)->whereNotNull('phone_number');
+            })->exists()) {
+                throw ValidationException::withMessages(['phone_number' => ['This phone number is already registered.']]);
+            }
+
+            throw $exception;
+        }
+
+        if (isset($result['failure'])) {
+            $field = $result['failure'] === 'registration_id' ? 'registration_id' : $result['failure'];
+            $message = match ($result['failure']) {
+                'code' => 'The verification code is incorrect.',
+                'email' => 'This email is already registered. Sign in instead.',
+                'phone_number' => 'This phone number is already registered.',
+                default => 'This verification code has expired. Start again.',
+            };
+            throw ValidationException::withMessages([$field => [$message]]);
+        }
+
+        return $result['result'];
+    }
+
+    private function consumeRegistrationLimit(string $key, int $maximum): void
+    {
+        $key = 'mobile-registration:'.hash('sha256', $key);
+        if (RateLimiter::tooManyAttempts($key, $maximum)) {
+            throw new HttpException(429, 'Too many registration attempts. Try again later.');
+        }
+        RateLimiter::hit($key, 3600);
+    }
+
+    private function newRegistrationCode(): string
+    {
+        return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
+
+    private function replaceRegistrationCode(PendingMobileRegistration $pending, string $code): void
+    {
+        $now = now();
+        $pending->forceFill([
+            'code_hash' => Hash::make($code),
+            'expires_at' => $now->copy()->addMinutes(15),
+            'resend_available_at' => $now->copy()->addSeconds(60),
+        ])->save();
+    }
+
+    private function deliverRegistrationCode(PendingMobileRegistration $pending, string $code): void
+    {
+        try {
+            Mail::to($pending->email)->send(new VerifyMobileRegistrationMail($code));
+        } catch (\Throwable $exception) {
+            Log::warning('Mobile registration verification email could not be sent.', [
+                'exception_type' => $exception::class,
+            ]);
+            throw new HttpException(503, 'We could not send the verification email. Try again shortly.');
+        }
+    }
+
+    private function pendingRegistrationDto(PendingMobileRegistration $pending): array
+    {
+        return [
+            'registrationId' => $pending->id,
+            'email' => $pending->email,
+            'expiresAt' => $pending->expires_at->toISOString(),
+            'resendAvailableAt' => $pending->resend_available_at->toISOString(),
+        ];
     }
 
     public function login(array $data): array

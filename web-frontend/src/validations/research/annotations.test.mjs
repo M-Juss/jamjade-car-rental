@@ -38,10 +38,12 @@ test("stationary and movement semantics remain separate", () => {
     assert.equal(schema.safeParse({ base_revision: 0, intervals: [item] }).success, false);
   }
 });
-test("swerve deviation round-trips independently of travel direction", () => {
+test("lane change and swerve deviation round-trip independently of travel direction", () => {
   const swerve = { ...trial, movement: "swerving", initial_deviation: "right" };
   const parse = item => schema.safeParse({ base_revision: 0, intervals: [item] });
   assert.deepEqual(parse(swerve).data.intervals[0], swerve);
+  const laneChange = { ...swerve, movement: "lane_change" };
+  assert.deepEqual(parse(laneChange).data.intervals[0], laneChange);
   assert.equal(parse({ ...swerve, initial_deviation: undefined }).success, true);
   assert.equal(parse({ ...swerve, initial_deviation: "forward" }).success, false);
   assert.equal(parse({ ...swerve, movement: "driving" }).success, false);

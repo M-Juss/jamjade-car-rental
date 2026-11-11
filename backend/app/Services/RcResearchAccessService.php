@@ -22,7 +22,7 @@ class RcResearchAccessService
         return DB::transaction(function () use ($user, $deviceName) {
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
             abort_unless($this->enabled() && $user->is_active && $user->hasRole(UserRole::Admin->value),
-                403, 'RC Research is unavailable.');
+                403, 'Data Collection is unavailable.');
             $deviceName = self::TOKEN_ABILITY.':'.$deviceName;
             $user->tokens()->where('name', $deviceName)->delete();
             $token = $user->createToken($deviceName, [self::TOKEN_ABILITY], now()->addHours(8));

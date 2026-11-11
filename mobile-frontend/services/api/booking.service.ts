@@ -65,6 +65,9 @@ export function mapBooking(record: MobileBookingRecord): Booking {
     attention: record.attention,
     id: record.bookingCode || record.id,
     backendId: Number(record.backendId),
+    canReviseUnpaid: record.canReviseUnpaid,
+    vehicleId: record.vehicleId,
+    ownerDriverCoverage: record.ownerDriverCoverage,
     vehicleName: record.vehicleName,
     vehiclePlateNumber: record.vehiclePlateNumber,
     brand: record.brand,
@@ -143,9 +146,16 @@ export async function getBooking(bookingId: string) {
 }
 
 export async function getDriverServices() {
-  const response = await apiGet<MobileBookingRecord[]>('/mobile/driver/services?per_page=100');
-
-  return response.data.map(mapBooking);
+  const bookings: Booking[] = [];
+  let page = 1;
+  let lastPage = 1;
+  do {
+    const response = await apiGet<MobileBookingRecord[]>(`/mobile/driver/services?per_page=100&page=${page}`);
+    bookings.push(...response.data.map(mapBooking));
+    lastPage = Number(response.meta?.last_page ?? 1);
+    page += 1;
+  } while (page <= lastPage);
+  return bookings;
 }
 
 export async function getDriverService(bookingId: string) {

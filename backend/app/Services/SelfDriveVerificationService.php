@@ -15,6 +15,7 @@ class SelfDriveVerificationService
         return $query
             ->whereHas('customerProfile', fn (Builder $profile) => $profile
                 ->whereDate('birthdate', '<=', CustomerAgePolicy::latestEligibleBirthdate()))
+            ->whereHas('completeEmergencyContacts')
             ->whereHas('documents', fn (Builder $documents) => $documents
                 ->where('document_type', CustomerDocument::DRIVERS_LICENSE)
                 ->where('status', DocumentStatus::Approved->value))
@@ -37,7 +38,8 @@ class SelfDriveVerificationService
         }
 
         $ageEligible = CustomerAgePolicy::isEligible($customer->customerProfile?->birthdate);
-        $canSelfDrive = $ageEligible && $counts['approved'] === count($required);
+        $documentsApproved = $counts['approved'] === count($required);
+        $canSelfDrive = $ageEligible && $documentsApproved && $customer->hasCompleteEmergencyContact();
 
         return [
             'canSelfDrive' => $canSelfDrive,
@@ -47,6 +49,7 @@ class SelfDriveVerificationService
                 $counts['pending'] > 0 => 'pending_review',
                 $counts['missing'] > 0 => 'documents_required',
                 ! $ageEligible => 'age_ineligible',
+                $documentsApproved => 'emergency_contact_required',
                 default => 'documents_required',
             },
             'ageEligible' => $ageEligible,

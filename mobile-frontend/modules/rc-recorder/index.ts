@@ -1,6 +1,22 @@
 import { requireOptionalNativeModule } from 'expo';
 
 export type RcRecorderNative = {
+  rentalMonitoringDiscardStart?(): Promise<null>;
+  rentalMonitoringPrepare?(owner: string, booking: string): Promise<string>;
+  rentalMonitoringStart?(config: string): Promise<null>;
+  rentalMonitoringStop?(): Promise<null>;
+  rentalMonitoringLock?(): Promise<null>;
+  rentalMonitoringRecover?(config: string): Promise<null>;
+  rentalMonitoringStatus?(owner: string): Promise<string>;
+  startDriveMonitoring?(config: string, runtime: string): Promise<null>;
+  configureDriveUpload?(config: string): Promise<null>;
+  enqueueDriveBatch?(config: string): Promise<null>;
+  driveUploadStatus?(): Promise<string>;
+  driveStartIdentity?(config: string): Promise<string>;
+  clearDriveStartIdentity?(): Promise<null>;
+  beginRentalMotion?(seconds: number): Promise<string>;
+  readRentalMotion?(id: string): Promise<string>;
+  cancelRentalMotion?(id: string): Promise<null>;
   collectionAction(config: string): Promise<string>;
   beginCheck(): Promise<null>;
   cancelCheck(): Promise<null>;

@@ -12,11 +12,11 @@ type FleetDetailTabsProps = {
 export function FleetDetailTabs({ vehicle }: FleetDetailTabsProps) {
   return (
     <Tabs defaultValue="overview" className="flex h-full min-h-0 w-full flex-col gap-4 overflow-hidden">
-      <TabsList className="h-auto w-full shrink-0 justify-start overflow-x-auto rounded-xl border border-border bg-surface/60 p-1">
-        <TabsTrigger value="overview" className="text-sm">Overview</TabsTrigger>
-        <TabsTrigger value="logs" className="text-sm">Driving Logs</TabsTrigger>
-        <TabsTrigger value="geofence" className="text-sm">Geofencing</TabsTrigger>
-        <TabsTrigger value="behavior" className="text-sm">Driver Behavior</TabsTrigger>
+      <TabsList aria-label="Fleet detail sections">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="logs">Driving Logs</TabsTrigger>
+        <TabsTrigger value="geofence">Geofencing</TabsTrigger>
+        <TabsTrigger value="behavior">Driver Behavior</TabsTrigger>
       </TabsList>
 
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">

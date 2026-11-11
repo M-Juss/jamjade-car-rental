@@ -6,10 +6,13 @@ export type FleetRental = {
   id: number;
   bookingCode: string;
   customerName: string | null;
+  operator: { id: number; name: string | null; email: string | null; phoneNumber: string | null } | null;
+  emergencyContacts: { name: string; relationship: string; phoneNumber: string }[];
   rentalType: "self_drive" | "owners_driver";
   rentalStartAt: string | null;
   rentalEndAt: string | null;
-  vehicle: { id: number; name: string; plateNumber: string | null } | null;
+  vehicle: { id: number; name: string; brand: string | null; model: string | null; plateNumber: string | null } | null;
+  activityCounts: { driving: number; trip: number; unreadNotifications: number };
   tracking: {
     status: FleetTrackingStatus;
     tripStatus: "started" | "paused" | "ended" | null;

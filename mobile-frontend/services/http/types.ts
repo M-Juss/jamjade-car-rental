@@ -12,6 +12,7 @@ export type ApiRequestOptions = Omit<RequestInit, 'body'> & {
   allowNetworkFallback?: boolean;
   authToken?: string | null;
   body?: BodyInit | JsonRecord | null;
+  responseTimeoutMs?: number;
   skipAuth?: boolean;
 };
 

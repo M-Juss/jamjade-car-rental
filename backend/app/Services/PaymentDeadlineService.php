@@ -62,6 +62,7 @@ class PaymentDeadlineService
                     if (
                         $booking->payment_status !== PaymentStatus::Partial ||
                         ! in_array($booking->status, [BookingStatus::Pending, BookingStatus::Confirmed], true) ||
+                        $booking->paypalCheckouts()->whereIn('status', ['approved', 'capturing'])->exists() ||
                         ! $booking->balance_due_at ||
                         $booking->balance_due_at->isAfter($now)
                     ) {

@@ -8,6 +8,7 @@ type BookingFlow = {
   booking: BookingFormData;
   signature: string | null;
   stage: BookingFlowStage;
+  bookingReference?: string;
 };
 
 let activeFlow: BookingFlow | null = null;
@@ -16,10 +17,11 @@ function createFlowId() {
   return `booking-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function startBookingFlow(booking: BookingFormData) {
+export function startBookingFlow(booking: BookingFormData, bookingReference?: string) {
   activeFlow = {
     id: createFlowId(),
     booking,
+    bookingReference,
     signature: null,
     stage: 'review',
   };

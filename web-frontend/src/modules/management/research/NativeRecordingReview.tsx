@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Clock3, Gauge, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SummaryList } from "@/components/common/data-display/SummaryList";
+import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { ReuseReferenceForm } from "@/forms/research/ReuseReferenceForm";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -80,18 +80,20 @@ function NativeWorkspace({ inspection }: { inspection: NativeInspection }) {
   const openStep = (value: string) => { setStep(value); if (value === "labels") setLabelsOpened(true); };
   return <ReviewTimelineProvider duration={record.duration_ms}>
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <SummaryList label="Recording summary" items={[
-        { label: "seconds", value: (record.duration_ms / 1000).toFixed(2) },
-        { label: "readings", value: record.summary?.accelerometer?.event_count.toLocaleString() ?? "Pending" },
-        { label: "Hz", value: fixed(record.summary?.accelerometer?.rate_hz, 1) },
-      ]} />
+      <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          { label: "Duration", value: `${(record.duration_ms / 1000).toFixed(2)} s`, icon: Clock3 },
+          { label: "Readings", value: record.summary?.accelerometer?.event_count.toLocaleString() ?? "Pending", icon: ListChecks },
+          { label: "Sample rate", value: record.summary?.accelerometer?.rate_hz == null ? "Unavailable" : `${fixed(record.summary.accelerometer.rate_hz, 1)} Hz`, icon: Gauge },
+        ].map((item) => <KpiCard key={item.label} {...item} />)}
+      </div>
       <RecordingDetailsDialog inspection={inspection} annotationState={annotationState} />
     </div>
     <Card className="min-w-0 border-border bg-surface shadow-none ring-0"><Tabs value={step} onValueChange={openStep}>
-      <CardHeader className="border-b border-border p-3 sm:p-4"><TabsList aria-label="Recording review steps" className="grid h-auto! w-full grid-cols-3 gap-1">
-        <TabsTrigger value="check" className="h-auto min-h-10 whitespace-normal px-2 py-2 text-xs">1. Check recording</TabsTrigger>
-        <TabsTrigger value="prepare" className="h-auto min-h-10 whitespace-normal px-2 py-2 text-xs">2. Prepare signals</TabsTrigger>
-        <TabsTrigger value="labels" className="h-auto min-h-10 whitespace-normal px-2 py-2 text-xs">3. Label and review</TabsTrigger>
+      <CardHeader className="border-b border-border p-3 sm:p-4"><TabsList aria-label="Recording review steps">
+        <TabsTrigger value="check">1. Check recording</TabsTrigger>
+        <TabsTrigger value="prepare">2. Prepare signals</TabsTrigger>
+        <TabsTrigger value="labels">3. Label and review</TabsTrigger>
       </TabsList></CardHeader>
       <TabsContent value="check" className="mt-0"><CardContent className="space-y-5 pt-4">
         <RecordingChecks inspection={inspection} />

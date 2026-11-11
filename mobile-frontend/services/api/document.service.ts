@@ -6,6 +6,7 @@ import { apiPost } from '@/services/http';
 import { formatDriverLicenseNumber, isValidDriverLicenseNumber } from '@/lib/customer/driver-license';
 
 import type { MobileDocument } from './types';
+import { mapCustomerDocument } from './profile-mapping';
 
 const DOCUMENT_TYPES: Record<CustomerDocumentId, string> = {
   'driver-license': 'drivers_license',
@@ -87,5 +88,5 @@ export async function uploadCustomerDocument(
     buildDocumentBody(documentId, documents),
   );
 
-  return response.data;
+  return mapCustomerDocument(response.data);
 }

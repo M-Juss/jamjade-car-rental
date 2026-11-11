@@ -75,12 +75,18 @@ export class LocationMonitoringSession {
     await this.pump(this.generation);
   }
 
+  connectionRestored(bookingCode: string) {
+    if (this.state.bookingCode === bookingCode && this.state.phase === 'offline') {
+      this.emit({ phase: 'paused', message: null });
+    }
+  }
+
   private emit(patch: Partial<LocationSharingState>) {
     this.state = { ...this.state, ...patch };
     this.listeners.forEach((listener) => listener());
   }
 
-  stop(message = 'Location sharing is paused.', phase: LocationSharingPhase = 'paused', needsSettings = false) {
+  stop(message = 'Location sharing is paused.', phase: LocationSharingPhase = 'paused', needsSettings = false, reason: 'manual' | 'interrupted' = 'manual') {
     const code = this.state.bookingCode;
     const token = this.token;
     this.generation++;
@@ -102,7 +108,7 @@ export class LocationMonitoringSession {
     if (code && token) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10_000);
-      void this.dependencies.pause(code, token, controller.signal, phase === 'error' || phase === 'offline' ? 'interrupted' : 'manual').catch(() => {}).finally(() => clearTimeout(timeout));
+      void this.dependencies.pause(code, token, controller.signal, phase === 'error' || phase === 'offline' ? 'interrupted' : reason).catch(() => {}).finally(() => clearTimeout(timeout));
     }
     return cleanup ?? Promise.resolve();
   }

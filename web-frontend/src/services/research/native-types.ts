@@ -8,7 +8,7 @@ export type NativeRecording = { id: string; client_recording_id: string; name: s
   verified_at: string | null; manifest_sha256: string; expected_chunks: number; received_chunks: number;
   summary: Partial<Record<NativeChannel, NativeStatistics>> | null; annotation_state: "unlabeled" | "reviewed" | "uncertain"; protocol_version: 2 };
 export type NativeReview = {
-  collection: { display_code: string; session_number: number; mount_number: number; protocol_code: string;
+  collection: { display_code: string; session_number: number; mount_number: number; protocol_code: string; original_protocol_code: string;
     expected_stop_method: string; preflight_result: string } | null;
   observation: { revision: number; completed_as_planned: boolean | null; source: string; observer_code: string | null;
     flags: string[]; actual_stop_method: string; initial_deviation?: 'left' | 'right' | 'unknown'; notes: string | null; reported_at: string } | null;

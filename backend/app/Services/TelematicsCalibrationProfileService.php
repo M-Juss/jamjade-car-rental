@@ -13,7 +13,8 @@ class TelematicsCalibrationProfileService
             $settings = array_replace_recursive($settings, config('telematics.calibration_rc_overrides', []));
         }
 
-        $profile = ['id' => $id, 'revision' => $id === 'rc_demo' ? 5 : 4, 'settings' => $settings];
+        // Native coordinates and the forward quality window need fresh setup evidence.
+        $profile = ['id' => $id, 'revision' => $id === 'rc_demo' ? 7 : 6, 'settings' => $settings];
 
         return [...$profile, 'fingerprint' => hash('sha256', json_encode($profile, JSON_THROW_ON_ERROR))];
     }

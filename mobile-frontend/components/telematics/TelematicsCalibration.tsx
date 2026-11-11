@@ -1,8 +1,7 @@
-import { ShieldCheck } from 'lucide-react-native';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useState } from 'react';
 
-import { ActionButton, SectionCard } from '@/components/bookings';
+import { ActionButton } from '@/components/bookings';
 import { themeColors } from '@/constants/theme';
 import { StationaryCalibration } from '@/components/telematics/StationaryCalibration';
 import { ForwardCalibration } from '@/components/telematics/ForwardCalibration';
@@ -10,6 +9,7 @@ import { RcMovementCalibration } from '@/components/telematics/RcMovementCalibra
 import { CalibrationSuccess } from '@/components/telematics/CalibrationSuccess';
 import { CalibrationRecordingForm } from '@/forms/telematics/CalibrationRecordingForm';
 import { CALIBRATION_STEPS, isCalibrationStep, type CalibrationLiveState } from '@/lib/telematics/calibration';
+import { CALIBRATION_CHECK_ORDER } from '@/lib/telematics/setup';
 import type { MobileTelematicsHandover } from '@/services/api';
 import type { CalibrationConsentInput } from '@/validation/telematics/calibration';
 
@@ -59,8 +59,8 @@ export function TelematicsCalibration({ handover, consent, busy, recording, live
     </ForwardCalibration>
   );
   return (
-    <SectionCard title="Calibration" icon={ShieldCheck}>
-      <Text className="font-sans text-caption text-secondary-foreground">Step {type ? Object.keys(CALIBRATION_STEPS).indexOf(type) + 1 : 1} of 5</Text>
+    <View>
+      <Text className="font-sans text-caption text-secondary-foreground">Step {type ? CALIBRATION_CHECK_ORDER.indexOf(type) + 1 : 1} of {CALIBRATION_CHECK_ORDER.length}</Text>
       <Text accessibilityLiveRegion="polite" className="font-sans mt-3 text-section font-semibold text-foreground">{preparing ? 'Preparing sensors' : evaluating ? 'Checking recording' : recording ? 'Recording motion' : definition?.title ?? 'Refresh setup to continue'}</Text>
       <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">{preparing ? 'Keep parked. Wait for Recording motion before moving.' : evaluating ? 'Recording finished. Keep parked while the result is checked.' : recording ? 'Keep the phone mounted and untouched. Follow staff directions and stop safely. Recording ends when the movement is captured.' : definition?.guidance}</Text>
       {recording || pending ? (
@@ -75,6 +75,6 @@ export function TelematicsCalibration({ handover, consent, busy, recording, live
           <CalibrationRecordingForm consent={consent} key={`${handover.bookingCode}:${handover.calibration.context}:${restarting}`} disabled={busy || !type || !handover.eligibility.canWorkSetup} onStart={async (values) => { await onStart(values, restarting); setRestarting(false); }} />
           {type && type !== 'stationary_calibration' ? <ActionButton label="Restart calibration" disabled={busy} onPress={() => setRestarting(true)} /> : null}
       </View>
-    </SectionCard>
+    </View>
   );
 }

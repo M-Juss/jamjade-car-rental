@@ -22,16 +22,16 @@ type Props = {
 
 export function DashboardAttentionPanel({ bookings, total, bookingPath }: Props) {
   return (
-    <Card className="min-w-0 rounded-2xl border-border bg-surface xl:max-h-[calc(640px+var(--dashboard-calendar-extra-height,0px))]">
+    <Card className="min-w-0 rounded-2xl border-border bg-surface">
       <CardContent className="flex min-h-0 flex-col px-4">
         <div className="mb-3 flex items-start justify-between gap-2">
-          <h2 className="min-w-0 text-sm font-semibold text-foreground">Bookings Requiring Action</h2>
-          <span className="shrink-0 text-xs font-semibold text-muted-foreground">{total}</span>
+          <h2 className="min-w-0 text-sm font-semibold text-foreground">Needs attention</h2>
+          <span className="shrink-0 text-sm font-semibold text-foreground">{total}</span>
         </div>
         {bookings.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">No bookings require action.</p>
         ) : (
-          <ul aria-label="Bookings requiring action" className="min-h-0 max-h-96 space-y-1 overflow-y-auto p-1 xl:max-h-none">
+          <ul aria-label="Bookings requiring action" className="min-h-0 divide-y divide-border p-1">
             {bookings.map((booking) => {
               const overdue = booking.attention?.key === "overdue_return";
               const duration = overdue && booking.elapsedMinutes > 0
@@ -41,7 +41,7 @@ export function DashboardAttentionPanel({ bookings, total, bookingPath }: Props)
                 : null;
 
               return (
-                <li key={booking.id} className="border-b border-border last:border-b-0">
+                <li key={booking.id}>
                   <Link
                     href={`${bookingPath}?booking=${booking.id}`}
                     aria-label={`Open booking ${booking.bookingCode}`}
@@ -50,6 +50,7 @@ export function DashboardAttentionPanel({ bookings, total, bookingPath }: Props)
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="break-words font-mono text-xs font-semibold text-primary">{booking.bookingCode}</p>
                       <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{booking.vehicleName || "Vehicle unavailable"}</p>
+                      <p className="text-xs text-muted-foreground">{booking.customerName}</p>
                       {booking.attention && (
                         <p className={cn("text-xs font-medium", overdue ? "text-destructive" : "text-warning")}>
                           {attentionLabels[booking.attention.key]}{duration ? <span className="mt-0.5 block font-normal">{duration}</span> : null}

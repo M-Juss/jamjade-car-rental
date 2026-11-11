@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Telematics;
 
 use App\Http\Requests\BaseFormRequest;
+use App\Services\TelematicsCalibrationService;
 
 class StoreSetupAttemptRequest extends BaseFormRequest
 {
@@ -33,7 +34,7 @@ class StoreSetupAttemptRequest extends BaseFormRequest
     public static function calibrationEvidenceRules(): array
     {
         return [
-            'protocol_version' => ['required', 'integer', 'in:3'],
+            'protocol_version' => ['required', 'integer', 'in:'.TelematicsCalibrationService::PROTOCOL_VERSION],
             'context' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/'],
             'consent' => ['required', 'boolean', 'accepted'],
             'supervised' => ['required', 'boolean', 'accepted'],

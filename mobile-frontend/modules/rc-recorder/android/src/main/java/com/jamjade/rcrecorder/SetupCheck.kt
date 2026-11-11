@@ -38,7 +38,7 @@ internal class SetupCheck(
     running = true
     for (type in listOf(Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_GYROSCOPE)) {
       val sensor = manager.getDefaultSensor(type)
-      if (sensor == null || !manager.registerListener(this, sensor, 20_000, 0, handler)) {
+      if (sensor == null || !manager.registerListener(this, sensor, MOTION_INTERVAL_US, 0, handler)) {
         fail("Both motion sensors are needed for this check.")
         return
       }

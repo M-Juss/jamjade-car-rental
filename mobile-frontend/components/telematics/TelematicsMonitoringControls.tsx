@@ -8,9 +8,10 @@ import type { useTelematicsMonitoring } from '@/hooks/telematics/useTelematicsMo
 import type { LocationConsentInput } from '@/validation/telematics/location-monitoring';
 import { LocationSharingDisclosureDialog } from './LocationSharingDisclosureDialog';
 
-export function TelematicsMonitoringControls({ monitoring, released, ended = false, blocked, unread, onActivity, onResumeCheck }: {
+export function TelematicsMonitoringControls({ monitoring, released, ended = false, blocked, unread, offerMotion, onActivity, onResumeCheck }: {
   monitoring: ReturnType<typeof useTelematicsMonitoring>; released: boolean; ended?: boolean; blocked: boolean;
   unread: number; onActivity: () => void;
+  offerMotion: boolean;
   onResumeCheck: (onResume: () => void) => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -22,8 +23,15 @@ export function TelematicsMonitoringControls({ monitoring, released, ended = fal
   const begin = useCallback(() => {
     const consent = pending.current;
     pending.current = null;
-    if (consent && bookingCode && AppState.currentState === 'active') void startRef.current(bookingCode, consent);
-  }, [bookingCode]);
+    if (!consent || !bookingCode || AppState.currentState !== 'active') return;
+    if (!offerMotion) { startRef.current(bookingCode, consent); return; }
+    Alert.alert('Start rental monitoring?',
+      'Start GPS sharing and motion monitoring. Motion can continue with the screen locked. Start only if the phone is still in its calibrated position.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start', onPress: () => startRef.current(bookingCode, consent, true) },
+      ]);
+  }, [bookingCode, offerMotion]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active') { pending.current = null; setDisclosureOpen(false); } });
     return () => { subscription.remove(); pending.current = null; };
@@ -34,7 +42,7 @@ export function TelematicsMonitoringControls({ monitoring, released, ended = fal
     const consent = await monitoring.getRememberedConsent(current.policy.consentVersion);
     const start = () => {
       if (AppState.currentState !== 'active') return;
-      if (consent) void startRef.current(bookingCode, consent);
+      if (consent) { pending.current = consent; begin(); }
       else setDisclosureOpen(true);
     };
     const phase = monitoring.sharing?.phase;
@@ -47,20 +55,22 @@ export function TelematicsMonitoringControls({ monitoring, released, ended = fal
   };
   const confirmPause = () => Alert.alert(
     'Pause monitoring?',
-    'Vehicle activity monitoring will stop until you start it again.',
+    'GPS sharing and motion capture will stop until you resume monitoring.',
     [
       { text: 'Keep sharing', style: 'cancel' },
       { text: 'Pause', onPress: monitoring.stop },
     ],
   );
-  const label = ended ? 'Ended' : !released ? monitoring.prepared ? 'Ready' : 'Await release' : 'Start';
+  const active = monitoring.active || monitoring.motionActive || monitoring.motionStarting;
+  const resuming = monitoring.snapshot?.tripStatus === 'paused' || ['paused', 'offline', 'error'].includes(monitoring.sharing?.phase ?? '');
+  const label = ended ? 'Ended' : !released ? monitoring.prepared ? 'Ready' : 'Await release' : resuming ? 'Resume' : 'Start';
 
   return <>
     <View pointerEvents="box-none" className="absolute left-0 right-0 items-center" style={{ bottom: insets.bottom + mobileLayout.floatingGap, paddingLeft: Math.max(mobileLayout.screenPadding, insets.left), paddingRight: Math.max(mobileLayout.screenPadding, insets.right) }}>
       <FloatingTabBarSurface items={[
-        { key: 'pause', label: 'Pause', icon: 'pause', accessibilityLabel: 'Pause vehicle activity monitoring', onPress: confirmPause, disabled: blocked || !monitoring.active },
+        { key: 'pause', label: 'Pause', icon: 'pause', accessibilityLabel: 'Pause vehicle activity monitoring', onPress: confirmPause, disabled: !active },
         { key: 'monitoring', label, icon: monitoring.active ? 'steering' : 'play', featured: true, featuredActive: monitoring.active,
-          disabled: ended || monitoring.active || (!released && !monitoring.prepared) || blocked || monitoring.loading || !monitoring.snapshot?.canMonitor,
+          disabled: ended || monitoring.active || monitoring.motionStarting || !released || blocked || monitoring.loading || !monitoring.snapshot?.canMonitor,
           accessibilityLabel: !released ? 'Start is available after staff release' : label,
           onPress: () => void requestStart() },
         { key: 'activity', label: 'Activity', icon: 'bell-outline', badgeCount: unread, onPress: onActivity, disabled: blocked },

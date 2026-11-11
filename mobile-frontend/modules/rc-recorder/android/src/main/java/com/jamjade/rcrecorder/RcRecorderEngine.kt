@@ -38,6 +38,25 @@ internal class RcRecorderEngine private constructor(private val context: Applica
   private val thread = HandlerThread("jamjade-rc-recorder").apply { start() }
   private val handler = Handler(thread.looper)
   private val manager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+  private val rentalMotion = RentalMotionCapture(manager, handler)
+  private val driveUploader = DriveBatchUploader(handler, { sessionId ->
+    val batches = authorized().driveUploadQueue().getJSONArray("batches")
+    (0 until batches.length()).map { batches.getJSONObject(it) }
+      .firstOrNull { it.getString("session_id") == sessionId }?.getJSONObject("payload")
+  }, { sessionId, batchId ->
+    val local = authorized()
+    val queue = local.driveUploadQueue()
+    DriveTransferQueue.acknowledge(queue, sessionId, batchId)
+    local.saveDriveUploadQueue(queue)
+  }, { sessionId ->
+    val local = authorized()
+    val queue = local.driveUploadQueue()
+    DriveTransferQueue.complete(queue, sessionId)
+    queue.remove("start_intent")
+    local.saveDriveUploadQueue(queue)
+    if (driveSession == sessionId) driveSession = null
+    if (activeId == null && !pending) context.stopService(Intent(context, RcRecorderService::class.java))
+  })
   private val clockContextId = UUID.randomUUID().toString()
   private var owner: String? = null
   @Volatile private var permitted = false
@@ -58,6 +77,63 @@ internal class RcRecorderEngine private constructor(private val context: Applica
   private val registered = linkedMapOf<Int, String>()
   private var lastWallAnchor = 0L
   private var lastMonoAnchor = 0L
+  private var preparedDrive: JSONObject? = null
+  private var driveMotion: DriveMotionPipeline? = null
+  private var driveSession: String? = null
+  private var driveWindows = JSONArray()
+  fun driveStartIdentity(config: String) = call {
+    val local = authorized(); val requested = JSONObject(config)
+    require(requested.keys().asSequence().toSet() == setOf("research_session_id", "mount_version_id", "reference_run_id"))
+    for (field in requested.keys()) require(UUID.fromString(requested.getString(field)).toString() == requested.getString(field))
+    val queue = local.driveUploadQueue()
+    val previous = queue.optJSONObject("start_intent")
+    if (previous != null) {
+      require(RecorderStore.canonical(previous.getJSONObject("context")) == RecorderStore.canonical(requested)) { "Finish the pending monitoring session before changing setup." }
+      previous.getString("id")
+    } else {
+      val id = UUID.randomUUID().toString()
+      queue.put("start_intent", JSONObject().put("id", id).put("context", requested))
+      local.saveDriveUploadQueue(queue); id
+    }
+  }
+  fun clearDriveStartIdentity() = call {
+    val local = authorized(); val queue = local.driveUploadQueue()
+    queue.remove("start_intent"); local.saveDriveUploadQueue(queue); null
+  }
+  private val driveFlush = object : Runnable {
+    override fun run() {
+      if (activeId == null || driveMotion == null) return
+      try { flushDriveWindows(); handler.postDelayed(this, 1000) }
+      catch (_: Exception) {
+        lastError = "Monitoring transfer storage is full or unavailable. Original readings are kept; reconnect and review."
+        stopInternal("transfer_storage_failed")
+      }
+    }
+  }
+
+  fun reserveDriveStart(config: String, runtime: String): String = call {
+    val value = JSONObject(runtime)
+    require(value.keys().asSequence().toSet() == setOf("session_id", "research_session_id", "mount_version_id", "reference"))
+    for (field in listOf("session_id", "research_session_id", "mount_version_id")) require(UUID.fromString(value.getString(field)).toString() == value.getString(field))
+    DriveMotionPipeline(value.getJSONObject("reference"), 0L) { }
+    val reservation = reserveStart(config)
+    try {
+      val session = authorized().collectionState().optJSONObject("session")
+      val mount = authorized().collectionState().optJSONObject("mount")
+      require(session?.getString("id") == value.getString("research_session_id") && mount?.getString("id") == value.getString("mount_version_id")) { "Monitoring reference does not match this mount." }
+      preparedDrive = value
+      reservation
+    } catch (failure: Exception) { cancelStart(reservation); throw failure }
+  }
+
+  private fun flushDriveWindows() {
+    val session = driveSession ?: return
+    if (driveWindows.length() == 0) return
+    val payload = JSONObject().put("client_batch_id", UUID.randomUUID().toString())
+      .put("version", "rc-demo-inference-v1").put("windows", driveWindows)
+    enqueueDriveBatch(JSONObject().put("session_id", session).put("payload", payload).toString())
+    driveWindows = JSONArray()
+  }
 
   fun <T> call(action: () -> T): T {
     if (android.os.Looper.myLooper() == thread.looper) return action()
@@ -77,12 +153,113 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     if (owner != next) { collectionSessionId = UUID.randomUUID().toString(); contextSignature = null; manifest = null; lastError = null }
     owner = next; leaseEnd = SystemClock.elapsedRealtimeNanos() + seconds * 1000000000L; permitted = true
     store = RecorderStore(context, next)
+    if (activeId == null && !pending) {
+      val queue = store!!.driveUploadQueue()
+      queue.optJSONObject("sessions")?.let { sessions ->
+        sessions.keys().asSequence().toList().forEach { DriveTransferQueue.requestClose(queue, it) }
+        store!!.saveDriveUploadQueue(queue)
+      }
+    }
   }
 
   fun lock() {
     permitted = false
-    call { try { setupCheck.cancel(); stopInternal("signed_out") } finally { owner = null; leaseEnd = 0; store = null; manifest = null } }
+    call { try { rentalMotion.cancel(); setupCheck.cancel(); stopInternal("signed_out") } finally { owner = null; leaseEnd = 0; store = null; manifest = null } }
   }
+
+  fun configureDriveUpload(config: String) = call {
+    val local = authorized()
+    val input = JSONObject(config)
+    require(input.keys().asSequence().toSet() == setOf("session_id", "api_url", "token"))
+    val session = input.getString("session_id")
+    require(Regex("[0-9a-fA-F-]{36}").matches(session) && UUID.fromString(session).toString().equals(session, true))
+    val queue = local.driveUploadQueue()
+    val finishing = DriveTransferQueue.closing(queue, session)
+    check(!finishing || activeId == null) { "Stop the current recording before recovering transfer." }
+    check(finishing || driveSession == session) { "Monitoring session does not match the active capture." }
+    check(finishing || activeId != null && manifest?.optJSONObject("collection_binding")?.optString("protocol_code") == "MD") {
+      "Start Drive Monitoring before connecting transfer."
+    }
+    check(driveUploader.sessionId() == null || driveUploader.sessionId() == session) { "Finish the previous monitoring transfer first." }
+    val url = java.net.URI(input.getString("api_url"))
+    @Suppress("DEPRECATION")
+    val metadata = context.packageManager.getApplicationInfo(context.packageName, android.content.pm.PackageManager.GET_META_DATA).metaData
+    val allowed = metadata?.getString("com.jamjade.network.BACKEND_DNS_HOSTS")?.split(',')?.toSet().orEmpty()
+    require(url.scheme == "https" && url.host in allowed && url.userInfo == null && url.query == null && url.fragment == null &&
+      url.path == "/api/mobile/rc-research/drive-monitoring/sessions/$session/batches") { "Monitoring backend is unavailable." }
+    val token = input.getString("token")
+    require(token.isNotBlank() && token.length <= 4096 && !token.contains('\n') && !token.contains('\r'))
+    if (!finishing) {
+      DriveTransferQueue.bind(queue, session, activeId!!)
+      local.saveDriveUploadQueue(queue)
+    }
+    driveUploader.start(session, url.toString(), token, finishing)
+    null
+  }
+
+  fun enqueueDriveBatch(config: String) = call {
+    val local = authorized()
+    check(activeId != null) { "Monitoring is stopped." }
+    val input = JSONObject(config)
+    require(input.keys().asSequence().toSet() == setOf("session_id", "payload"))
+    val session = input.getString("session_id")
+    require(UUID.fromString(session).toString().equals(session, true))
+    check(driveSession == session) { "Connect this monitoring session before queuing readings." }
+    val payload = input.getJSONObject("payload")
+    require(payload.keys().asSequence().toSet() == setOf("client_batch_id", "version", "windows"))
+    val batchId = payload.getString("client_batch_id")
+    require(UUID.fromString(batchId).toString().equals(batchId, true))
+    require(payload.getString("version") == "rc-demo-inference-v1")
+    val windows = payload.getJSONArray("windows")
+    require(windows.length() in 1..100)
+    val ids = mutableSetOf<String>()
+    for (index in 0 until windows.length()) {
+      val window = windows.getJSONObject(index)
+      require(window.keys().asSequence().toSet() == setOf("id", "features", "start_ms", "end_ms", "braking_evidence"))
+      val id = window.getString("id")
+      require(id.isNotBlank() && id.length <= 100 && ids.add(id))
+      val features = window.getJSONArray("features")
+      require(features.length() == 35)
+      for (axis in 0 until features.length()) require(features.get(axis) is Number && features.getDouble(axis).isFinite())
+    }
+    val queue = local.driveUploadQueue()
+    val batches = queue.getJSONArray("batches")
+    for (index in 0 until batches.length()) {
+      val previous = batches.getJSONObject(index)
+      if (previous.getString("session_id") == session && previous.getJSONObject("payload").getString("client_batch_id") == batchId) {
+        require(RecorderStore.canonical(previous.getJSONObject("payload")) == RecorderStore.canonical(payload)) { "Queued batch contents changed." }
+        return@call null
+      }
+    }
+    require(batches.length() < 100) { "Monitoring transfer queue is full. Connect before continuing." }
+    batches.put(JSONObject().put("session_id", session).put("payload", payload))
+    local.saveDriveUploadQueue(queue)
+    null
+  }
+
+  fun driveUploadStatus() = call {
+    val queue = authorized().driveUploadQueue()
+    driveUploader.status().put("pending_batches", queue.getJSONArray("batches").length())
+      .put("unfinished_sessions", queue.optJSONObject("sessions")?.let { sessions ->
+        JSONArray(sessions.keys().asSequence().filter { DriveTransferQueue.closing(queue, it) }.toList())
+      } ?: JSONArray()).toString()
+  }
+
+  private var rentalMonitoringClaimed = false
+  fun claimRentalMonitoring() = call {
+    check(!rentalMonitoringClaimed && activeId == null && !pending && !setupCheck.running && !rentalMotion.running) { "Stop the other recording or calibration first." }
+    rentalMonitoringClaimed = true
+  }
+  fun releaseRentalMonitoring() = call { rentalMonitoringClaimed = false }
+
+  fun beginRentalMotion(seconds: Int) = call {
+    check(!rentalMonitoringClaimed && activeId == null && !pending && !setupCheck.running) { "Another motion check is active." }
+    rentalMotion.start(seconds)
+  }
+
+  fun readRentalMotion(id: String) = call { rentalMotion.read(id).toString() }
+
+  fun cancelRentalMotion(id: String? = null) = call { rentalMotion.cancel(id) }
 
   private fun authorized(): RecorderStore {
     check(permitted && owner != null && store != null && SystemClock.elapsedRealtimeNanos() < leaseEnd) { "Research access expired. Connect and verify access again." }
@@ -91,6 +268,8 @@ internal class RcRecorderEngine private constructor(private val context: Applica
 
   fun reserveStart(config: String) = call {
     authorized()
+    check(!rentalMonitoringClaimed) { "Stop rental monitoring first." }
+    check(!rentalMotion.running) { "Wait for calibration to finish." }
     check(activeId == null && !pending) { "A recording is already active" }
     check(!serviceClosing) { "The previous recording is finishing. Try again." }
     check(RcRecorderService.canNotify(context)) { "Enable recording notifications before starting" }
@@ -116,6 +295,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
 
   fun cancelStart(reservation: String) = call {
     if (pendingToken == reservation) {
+      preparedDrive = null
       pendingToken = null
       lastError = "Recording service could not start. Check notifications and available storage."
     }
@@ -209,12 +389,27 @@ internal class RcRecorderEngine private constructor(private val context: Applica
       manifest = record; activeId = id; pendingToken = null
       for ((channel, type) in RecorderStore.channels) {
         val sensor = manager.getDefaultSensor(type) ?: continue
-        val success = manager.registerListener(this, sensor, 20000, 0, handler)
+        val success = manager.registerListener(this, sensor, MOTION_INTERVAL_US, 0, handler)
         inventory.getJSONObject(channel).put("availability", if (success) "registered" else "registration_failed")
         if (success) { registered[type] = channel; writers[channel] = local.writer(id, channel, statistics.getValue(channel)) }
       }
       check(registered.containsKey(1) && registered.containsKey(4)) { "Required sensors could not be registered" }
       record.put("state", "recording")
+      val runtime = preparedDrive
+      preparedDrive = null
+      driveMotion = null; driveSession = null; driveWindows = JSONArray()
+      if (runtime != null) {
+        check(input.optString("protocol_code") == "MD")
+        driveSession = runtime.getString("session_id")
+        val queue = local.driveUploadQueue()
+        DriveTransferQueue.bind(queue, driveSession!!, id)
+        local.saveDriveUploadQueue(queue)
+        driveMotion = DriveMotionPipeline(runtime.getJSONObject("reference"), start) { window ->
+          check(driveWindows.length() < 100) { "Monitoring windows could not be saved." }
+          driveWindows.put(window)
+        }
+        handler.postDelayed(driveFlush, 1000)
+      }
       record.getJSONArray("lifecycle").put(JSONObject().put("state", "recording").put("elapsed_ns", SystemClock.elapsedRealtimeNanos().toString()))
       local.writeManifest(id, record)
       handler.postDelayed(tick, 1000)
@@ -244,7 +439,11 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     if ((0 until observedCounts.length()).none { observedCounts.getInt(it) == values.size }) observedCounts.put(values.size)
     val row = JSONObject().put("sequence", stats.received - 1).put("sensor_timestamp_ns", event.timestamp.toString())
       .put("received_elapsed_ns", receipt.toString()).put("accuracy", event.accuracy).put("values", JSONArray(values.map { it.toDouble() }))
-    try { writers.getValue(channel).append(row, receipt) } catch (_: Exception) { stopInternal("write_failed") }
+    try {
+      writers.getValue(channel).append(row, receipt)
+      if (channel == "accelerometer" || channel == "gyroscope")
+        driveMotion?.accept(if (channel == "accelerometer") 0 else 1, event.timestamp, values.map { it.toDouble() }.toDoubleArray())
+    } catch (_: Exception) { stopInternal("write_failed") }
   }
 
   override fun onAccuracyChanged(sensor: Sensor?, value: Int) {} // Each event retains its reported accuracy code.
@@ -302,10 +501,26 @@ internal class RcRecorderEngine private constructor(private val context: Applica
   fun stop(reason: String = "operator_stopped") = call { stopInternal(reason) }
   fun requestStop(reason: String = "operator_stopped") { handler.post { stopInternal(reason) } }
   private fun stopInternal(reason: String) {
+    handler.removeCallbacks(driveFlush)
+    try { if (activeId != null) flushDriveWindows() }
+    catch (_: Exception) { lastError = "Some monitoring windows could not be queued. Original readings are kept for review." }
+    driveMotion = null; preparedDrive = null
+    (driveSession ?: driveUploader.sessionId())?.let { session ->
+      try {
+        val local = store ?: return@let
+        val queue = local.driveUploadQueue()
+        if (queue.optJSONObject("sessions")?.has(session) == true) {
+          DriveTransferQueue.requestClose(queue, session)
+          local.saveDriveUploadQueue(queue)
+        }
+      } catch (_: Exception) { lastError = "Unable to save transfer completion. Reopen monitoring to review pending data." }
+    }
+    val draining = reason == "operator_stopped" && driveUploader.finish()
+    if (!draining) driveUploader.stop()
     pendingToken = null
     if (serviceId != null) serviceClosing = true
     val id = activeId
-    if (id == null) { context.stopService(Intent(context, RcRecorderService::class.java)); return }
+    if (id == null) { if (!draining) context.stopService(Intent(context, RcRecorderService::class.java)); return }
     handler.removeCallbacks(tick)
     manager.unregisterListener(this)
     val record = manifest!!
@@ -328,11 +543,12 @@ internal class RcRecorderEngine private constructor(private val context: Applica
       record.put("state", "interrupted").put("end_reason", "write_failed").put("integrity", "unverified_tail")
     }
     activeId = null; registered.clear(); writers.clear()
-    context.stopService(Intent(context, RcRecorderService::class.java))
+    if (!draining) context.stopService(Intent(context, RcRecorderService::class.java))
   }
 
   fun serviceEnded(instanceId: String) { handler.post {
     if (serviceId == instanceId) {
+      driveUploader.stop()
       serviceId = null; serviceClosing = false
       if (activeId != null || pending) stopInternal("service_interrupted")
     }
@@ -342,6 +558,8 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     val local = authorized()
     if (activeId != null) updateManifest(SystemClock.elapsedRealtimeNanos())
     JSONObject().put("active", activeId != null || pending).put("preparing", pending).put("error", lastError ?: JSONObject.NULL)
+      .put("monitoring", driveMotion != null).put("monitoring_session_id", driveSession ?: JSONObject.NULL)
+      .put("monitoring_paired", driveMotion?.paired ?: 0).put("monitoring_gaps", driveMotion?.gaps ?: 0)
       .put("setup_check", setupCheck.result() ?: JSONObject.NULL).put("checking", setupCheck.running)
       .put("setup_progress", setupCheck.progress() ?: JSONObject.NULL).put("setup_check_error", setupCheck.error ?: JSONObject.NULL)
       .apply { if (!setupCheck.running) put("phone_power", PhonePower.snapshot(context)) }
@@ -378,7 +596,7 @@ internal class RcRecorderEngine private constructor(private val context: Applica
 
   fun collectionAction(config: String) = call {
     val local = authorized()
-    check(activeId == null && !pending && !setupCheck.running) { "Stop capture before changing the setup" }
+    check(!rentalMonitoringClaimed && activeId == null && !pending && !setupCheck.running) { "Stop capture before changing the setup" }
     val value = JSONObject(config)
     when (value.getString("action")) {
       "reset_local_research" -> {
@@ -398,8 +616,10 @@ internal class RcRecorderEngine private constructor(private val context: Applica
     }
   }
   fun beginCheck() = call {
+    check(!rentalMonitoringClaimed) { "Stop rental monitoring first." }
+    check(!rentalMotion.running) { "Wait for calibration to finish." }
     val local = authorized()
-    check(activeId == null && !pending && !setupCheck.running) { "Another capture is active" }
+    check(!rentalMonitoringClaimed && activeId == null && !pending && !setupCheck.running) { "Another capture is active" }
     val mount = local.workflow().current().getJSONObject("mount")
     setupCheck.start(mount.getString("id"), clockContextId)
   }

@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\RentalType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Telematics\ListTelematicsRentalsRequest;
+use App\Http\Requests\Telematics\RestartSetupRequest;
 use App\Http\Requests\Telematics\StoreSetupAttemptRequest;
 use App\Http\Resources\TelematicsHandoverResource;
 use App\Http\Resources\TelematicsRentalResource;
@@ -76,6 +77,17 @@ class TelematicsSetupController extends Controller
             'Telematics setup attempt recorded.',
             new TelematicsHandoverResource($booking->fresh($this->handoverRelations()))
         );
+    }
+
+    public function restart(RestartSetupRequest $request, string $booking): JsonResponse
+    {
+        $booking = $this->eligibleBookings($request)
+            ->where(fn ($query) => $query->where('booking_code', $booking)->orWhere('id', $booking))
+            ->firstOrFail();
+
+        app(TelematicsSetupService::class)->restartMobileSetup($booking, $request->user(), $request->validated('context'));
+
+        return $this->success('Telematics setup restarted.', new TelematicsHandoverResource($booking->fresh($this->handoverRelations())));
     }
 
     private function eligibleBookings(Request $request, bool $includeHistory = false)

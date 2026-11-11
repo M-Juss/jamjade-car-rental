@@ -200,12 +200,16 @@ export function NotificationDetailModal({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
-            <Text className="font-sans mt-1 text-[24px] font-semibold leading-[29px] text-foreground">
+            <Text accessibilityRole="header" className="font-sans mt-1 text-[20px] font-semibold leading-7 text-foreground">
               {notification.title}
             </Text>
-            <Text className="font-sans mt-2 text-[14px] font-normal leading-6 text-secondary-foreground">
-              {notification.fullMessage}
-            </Text>
+            <View className="mt-3 gap-3">
+              {notification.fullMessage.split(/\n\s*\n|\r?\n/).filter(paragraph => paragraph.trim()).map((paragraph, index) => (
+                <Text key={index} className="font-sans text-[16px] font-normal leading-7 text-foreground">
+                  {paragraph.trim()}
+                </Text>
+              ))}
+            </View>
 
             <View className="mt-section rounded-card border border-border bg-surface px-4">
               <NotificationDetailRow label="Date" value={formatDateTime(notification.createdAt)} />

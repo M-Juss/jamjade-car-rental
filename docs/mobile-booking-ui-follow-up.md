@@ -1,5 +1,56 @@
 # Mobile booking form follow-up
 
+Authentication header follow-up — 2026-11-11: shared `AuthScreenFrame.tsx`
+places the back arrow, logo and JamJade name on one aligned row for login,
+registration and email verification. A follow-up restores a thin divider
+below that row. Existing
+screen headings, descriptions and forms remain below it.
+
+## Review corrections — 2026-11-11
+
+The booking tab now uses two equal-width compact buttons on one row, following
+the user's follow-up. Buttons retain a 44 px minimum touch height and shared
+control styles. The status action source removes
+unimplemented Contact Admin and Leave Feedback actions. Booking details,
+eligible telematics, a payable balance and Book Again remain contextual.
+`components/bookings/BookingCard.tsx` and `booking-actions.ts` own these changes.
+
+`VehicleSummaryContent` in `components/browse/BrowseComponents.tsx` is shared
+by booking creation and `BookingDetailsContent.tsx`, so image sizing, specs,
+title and daily price no longer use separate designs. Profile card header
+content uses a shared 32 px minimum row, 8 px below the heading and 4 px above
+the body, removing accumulated header spacing. Plain 16 px action icons use
+32 px controls with 6 px hit slop to retain 44 px effective touch targets.
+Document-row icons follow the other plain profile-row icons. The Full details
+telematics header allows complete rental dates to wrap beside the car image.
+
+`components/common/DateWithLabel.tsx` now uses explicit seven-cell week rows,
+matching the corrected birthdate picker. The booking-form active-booking guard
+now routes to Bookings rather than the age-restriction screen.
+No extra test suite was run, following the user's manual-review preference.
+The ARM64 standalone release build passed and `adb install -r` installed it
+successfully on the connected Redmi with app data retained.
+Actual photo-background removal for every gallery photo and an explicit
+document view/edit mode are not established by these presentation corrections.
+
+Document-page follow-up: Self-drive document rows no longer show chevrons.
+The document page has back navigation on the left and its status on the right,
+with no centered Document Verification title. Verified pages omit the large
+heading, upload description, approval notice and disabled submit footer.
+Pending documents retain their backend replacement lock. Verified documents now
+offer Edit & resubmit with fresh images and return to pending review on submission;
+see [customer document editing](user-roles-and-access.md#customer-account-information).
+Document URLs are normalized through the active backend origin in the service
+mapping, matching profile photos. Unedited forms rehydrate after profile reads;
+dirty forms retain user edits. Previews contain the whole image and show a retry
+action on failure. Local document references all existed (14/14), and a sampled
+image returned HTTP 200/image/jpeg through both local backend and web proxy.
+A live configured-tunnel probe was blocked by automatic approval review because
+it would send a stored document path to that endpoint; remote image loading is
+therefore not verified by those local results.
+The ARM64 release rebuild passed and the update installed successfully on the
+Redmi without clearing app data.
+
 Requested on 2026-10-16. Fix and verify the delivery-map crash first; retain the following UI and behavior instructions for the subsequent refactor.
 
 ## Requested changes

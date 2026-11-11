@@ -19,6 +19,7 @@ import { ResearchState } from "./components/ResearchState";
 import { humanize, seconds } from "./recording-analysis";
 import { MetadataList } from "@/components/common/data-display/MetadataList";
 import { recordingPresentation, recordingSearchTerm } from "./recording-presentation";
+import exerciseCatalog from "./rc-exercises-v6.json";
 
 export function NativeRecordings({ revision }: { revision: number }) {
   const router = useRouter();
@@ -115,14 +116,14 @@ export function NativeRecordings({ revision }: { revision: number }) {
             <colgroup>
               <col style={{ width: "36%" }} />
               <col style={{ width: "12%" }} />
-              <col />
+              <col style={{ width: "12%" }} />
               <col style={{ width: "12%" }} />
               <col style={{ width: "18%" }} />
               <col style={{ width: "3.5rem" }} />
             </colgroup>
             <TableHeader>
               <TableRow className="border-b border-border bg-background hover:bg-background">
-                {["Recording", "Duration", "Upload", "Capture", "Labels", "Actions"].map(title => (
+                {["Recording", "Maneuver", "Duration", "Timestamp", "Labels", "Actions"].map(title => (
                   <TableHead key={title}>{title === "Actions" ? <span className="sr-only">Actions</span> : title}</TableHead>
                 ))}
               </TableRow>
@@ -130,6 +131,8 @@ export function NativeRecordings({ revision }: { revision: number }) {
             <TableBody>
               {result.recordings.map(record => {
                 const presentation = recordingPresentation({ name: record.name, displayCode: record.display_code, surface: record.surface });
+                const protocolCode = record.display_code?.split("-")[1];
+                const maneuver = exerciseCatalog.protocols.find(protocol => protocol.code === protocolCode)?.label ?? "Unavailable";
                 return (
                 <TableRow key={record.id}>
                   <TableCell data-label="Recording">
@@ -137,15 +140,10 @@ export function NativeRecordings({ revision }: { revision: number }) {
                       {presentation.title}
                     </Link>
                     {presentation.metadata.length ? <MetadataList className={presentation.metadata.length > 3 ? "mt-2" : "mt-2 grid-cols-3 gap-x-3"} items={presentation.metadata} /> : null}
-                    <p className="mt-1 text-xs text-muted-foreground">{formatReturnDateTime(record.started_at)}</p>
                   </TableCell>
+                  <TableCell data-label="Maneuver" className="text-muted-foreground">{maneuver}</TableCell>
                   <TableCell data-label="Duration" className="tabular-nums text-muted-foreground">{seconds(record.duration_ms)}</TableCell>
-                  <TableCell data-label="Upload">
-                    <Badge variant="outline" className={record.state === "verified" ? "border-success-border bg-success-surface text-success" : "border-border bg-background text-muted-foreground"}>
-                      {record.state === "verified" ? "Integrity verified" : `${record.received_chunks}/${record.expected_chunks} chunks`}
-                    </Badge>
-                  </TableCell>
-                  <TableCell data-label="Capture" className="text-muted-foreground">{record.capture_state === "interrupted" ? "Interrupted" : "Stopped"}</TableCell>
+                  <TableCell data-label="Timestamp" className="text-muted-foreground">{formatReturnDateTime(record.started_at)}</TableCell>
                   <TableCell data-label="Labels"><Badge variant="outline" className="border-border bg-background text-muted-foreground">{humanize(record.annotation_state)}</Badge></TableCell>
                   <TableCell data-label="Actions">
                     <TableActionMenu label={`Open actions for ${record.display_code ?? record.name}`} items={[

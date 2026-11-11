@@ -8,9 +8,10 @@ import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { appToast } from "@/lib/toast";
-import { ApiError } from "@/services/http";
-import { getLateReturnPricing, saveLateReturnPricing } from "@/services/booking/late-return-pricing.service";
-import { getDeliveryPricing, saveDeliveryPricing } from "@/services/delivery/delivery.service";
+import { ApiError, OwnerVerificationCancelled } from "@/services/http";
+import { getLateReturnPricing } from "@/services/booking/late-return-pricing.service";
+import { getDeliveryPricing } from "@/services/delivery/delivery.service";
+import { saveFeePricing } from "@/services/pricing/fee-pricing.service";
 import { feePricingSchema, type FeePricingValues } from "@/validations/pricing/schemas";
 
 const lateFields = [["small_vehicle_hourly_rate", "5 seats or fewer (PHP/hour)"], ["large_vehicle_hourly_rate", "6 seats or more (PHP/hour)"]] as const;
@@ -71,46 +72,22 @@ export function FeePricingForm() {
     pending.current = true;
     setSaving(true);
     try {
-      const [late, delivery] = await Promise.allSettled([
-        lateChanged ? saveLateReturnPricing({ small_vehicle_hourly_rate: values.small_vehicle_hourly_rate, large_vehicle_hourly_rate: values.large_vehicle_hourly_rate }) : Promise.resolve(null),
-        deliveryChanged ? saveDeliveryPricing({ minimum_fee: values.minimum_fee, included_km: values.included_km, per_km_rate: values.per_km_rate }) : Promise.resolve(null),
-      ]);
-      const saved = { ...previous };
-      if (late.status === "fulfilled" && late.value) {
-        saved.small_vehicle_hourly_rate = String(late.value.small_vehicle_hourly_rate);
-        saved.large_vehicle_hourly_rate = String(late.value.large_vehicle_hourly_rate);
-      }
-      if (delivery.status === "fulfilled" && delivery.value) {
-        saved.minimum_fee = String(delivery.value.minimum_fee);
-        saved.included_km = String(delivery.value.included_km);
-        saved.per_km_rate = String(delivery.value.per_km_rate);
-      }
-      confirmed.current = saved;
-      form.reset(saved);
-      if (late.status === "fulfilled" && delivery.status === "fulfilled") {
-        refreshAfterFailure.current = false;
-        setEditing(false);
-        appToast.success("Fee pricing saved.");
-        return;
-      }
-
-      const restoreFailure = (result: PromiseRejectedResult, fields: readonly (readonly [PricingField, string])[]) => {
-        fields.forEach(([name]) => form.setValue(name, values[name], { shouldDirty: true }));
-        if (result.reason instanceof ApiError) {
-          for (const [name, messages] of Object.entries(result.reason.errors ?? {})) {
-            const field = fields.find(([key]) => key === name);
-            if (field && messages[0]) form.setError(field[0], { type: "server", message: messages[0] });
-          }
-        }
-      };
-      if (late.status === "rejected") restoreFailure(late, lateFields);
-      if (delivery.status === "rejected") restoreFailure(delivery, deliveryFields);
+      await saveFeePricing(values);
+      confirmed.current = values;
+      form.reset(values);
+      refreshAfterFailure.current = false;
+      setEditing(false);
+      appToast.success("Fee pricing saved.");
+    } catch (error) {
+      if (error instanceof OwnerVerificationCancelled) return;
       refreshAfterFailure.current = true;
-      const savedPart = late.status === "fulfilled" && late.value ? "Late return rates saved. " : delivery.status === "fulfilled" && delivery.value ? "Delivery pricing saved. " : "";
-      const failedPart = late.status === "rejected" && delivery.status === "rejected" ? "Could not confirm either pricing update." : late.status === "rejected" ? "Could not confirm the late return update." : "Could not confirm the delivery pricing update.";
-      const message = `${savedPart}${failedPart} Review the fields and retry.`;
-      form.setError("root", { message });
-      appToast.error(message);
+      if (error instanceof ApiError) {
+        for (const [name, messages] of Object.entries(error.errors ?? {})) {
+          if (name in values && messages[0]) form.setError(name as PricingField, { type: "server", message: messages[0] });
+        }
+      }
+      form.setError("root", { message: "Fee pricing could not be saved. Review the fields and retry." });
+      appToast.error("Fee pricing could not be saved. Review the fields and retry.");
     } finally {
       pending.current = false;
       setSaving(false);

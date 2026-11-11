@@ -30,7 +30,7 @@ export function createPersonnelAccountSchema(requirePassword: boolean) {
           (value) => value === "" || mobileNumberPattern.test(value),
           "Enter an 11-digit mobile number starting with 09.",
         ),
-      role: z.enum(["staff", "driver"]),
+      role: z.enum(["staff", "driver", "admin"]),
       status: z.enum(["active", "inactive"]),
       password: z.string().max(255, "Maximum 255 characters only."),
       passwordConfirmation: z.string().max(255, "Maximum 255 characters only."),

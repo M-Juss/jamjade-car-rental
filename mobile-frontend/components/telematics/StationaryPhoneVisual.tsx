@@ -13,7 +13,7 @@ export function StationaryPhoneVisual({ guideSize, marginVertical = 0, progress,
   pulse?: Animated.Value;
 }) {
   return (
-    <View style={[styles.guide, { maxWidth: guideSize, marginVertical }]} accessible={false} importantForAccessibility="no-hide-descendants">
+    <View style={[styles.guide, { width: guideSize, height: guideSize, marginVertical }]} accessible={false} importantForAccessibility="no-hide-descendants">
         <View style={[styles.artwork, { transform: [{ scale: guideSize / 248 }] }]}><Svg width="100%" height="100%" viewBox="0 0 248 248" style={StyleSheet.absoluteFill}>
           <Circle cx={124} cy={124} r={111} fill={colors.background} stroke={colors.border} strokeWidth={1} />
           <Circle cx={124} cy={124} r={103} fill="none" stroke={colors.border} strokeWidth={5} />
@@ -37,7 +37,7 @@ export function StationaryPhoneVisual({ guideSize, marginVertical = 0, progress,
 }
 
 const styles = StyleSheet.create({
-  guide: { width: '100%', maxWidth: 248, aspectRatio: 1, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
+  guide: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
   artwork: { width: 248, height: 248, alignItems: 'center', justifyContent: 'center' },
   phone: { width: 78, height: 142, borderRadius: 17, borderWidth: 3, borderColor: colors.foreground, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginTop: -10 },
   phoneScreen: { width: 62, height: 108, borderRadius: 10, borderWidth: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

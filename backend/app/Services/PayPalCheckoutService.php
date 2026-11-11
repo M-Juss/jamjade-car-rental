@@ -15,6 +15,7 @@ use App\Support\PayPalCallbackUrl;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
@@ -32,7 +33,7 @@ class PayPalCheckoutService
         private readonly BookingEmailService $bookingEmailService
     ) {}
 
-    public function createOrder(User $user, array $data): array
+    public function createOrder(User $user, array $data, ?string $bookingReference = null): array
     {
         $today = CarbonImmutable::now(self::BOOKING_TIMEZONE)->startOfDay();
         $rentalStartDate = CarbonImmutable::parse(
@@ -51,7 +52,9 @@ class PayPalCheckoutService
             ]);
         }
 
-        $booking = $this->bookingService->createAwaitingPayPalPayment($user, $data);
+        $booking = $bookingReference === null
+            ? $this->bookingService->createAwaitingPayPalPayment($user, $data)
+            : $this->bookingService->reviseAwaitingPayPalPayment($user, $data, $bookingReference);
         $amount = $data['payment_option'] === 'full_payment'
             ? (float) $booking->total_amount
             : ceil((float) $booking->total_amount * BookingService::DOWN_PAYMENT_RATE);
@@ -61,7 +64,6 @@ class PayPalCheckoutService
             $booking,
             $data['payment_option'],
             $amount,
-            true,
             $data['app_return_url'],
             $data['app_cancel_url']
         );
@@ -96,7 +98,7 @@ class PayPalCheckoutService
 
         $hasOpenCheckout = $booking->paypalCheckouts()
             ->where('purpose', 'remaining_balance')
-            ->whereNotIn('status', ['completed', 'failed'])
+            ->whereNotIn('status', ['completed', 'failed', 'abandoned'])
             ->exists();
 
         if ($hasOpenCheckout) {
@@ -115,7 +117,6 @@ class PayPalCheckoutService
             $booking,
             'remaining_balance',
             (float) $booking->remaining_balance,
-            false,
             $callbacks['app_return_url'],
             $callbacks['app_cancel_url'],
             $chargeIds
@@ -140,13 +141,13 @@ class PayPalCheckoutService
             throw ValidationException::withMessages(['booking' => ['This service has no unpaid Driver-responsible charges.']]);
         }
         if ($booking->paypalCheckouts()->where('user_id', $user->id)->where('purpose', 'driver_outstanding')
-            ->whereNotIn('status', ['completed', 'failed'])->exists()) {
+            ->whereNotIn('status', ['completed', 'failed', 'abandoned'])->exists()) {
             throw ValidationException::withMessages(['booking' => ['A PayPal checkout for this Driver balance is already open.']]);
         }
 
         $charges->load('payments');
 
-        return $this->createCheckout($user, $booking, 'driver_outstanding', (float) $charges->sum('outstanding_amount'), false,
+        return $this->createCheckout($user, $booking, 'driver_outstanding', (float) $charges->sum('outstanding_amount'),
             $callbacks['app_return_url'], $callbacks['app_cancel_url'], $charges->pluck('id')->all());
     }
 
@@ -155,7 +156,6 @@ class PayPalCheckoutService
         Booking $booking,
         string $paymentOption,
         float $amount,
-        bool $deleteBookingOnFailure,
         string $appReturnUrl,
         string $appCancelUrl,
         array $additionalChargeIds = []
@@ -165,6 +165,15 @@ class PayPalCheckoutService
         // The provider request happens after this short transaction commits.
         $checkout = DB::transaction(function () use ($booking, $user, $paymentOption, $amount, $currency, $additionalChargeIds) {
             $currentBooking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if (in_array($paymentOption, ['full_payment', 'down_payment'], true)) {
+                $currentBooking->load('payments');
+                if (! $this->bookingService->canReviseUnpaidBooking($currentBooking)
+                    || $currentBooking->rental_start_at->ne($booking->rental_start_at) || $currentBooking->rental_end_at->ne($booking->rental_end_at)
+                    || $currentBooking->total_amount !== $booking->total_amount
+                    || (int) $currentBooking->terms()->value('id') !== (int) $booking->terms?->id) {
+                    throw ValidationException::withMessages(['booking' => ['The booking or payment changed. Review it again.']]);
+                }
+            }
             if (in_array($paymentOption, ['remaining_balance', 'driver_outstanding'], true)) {
                 $charges = $currentBooking->additionalCharges()->where('responsible_user_id', $user->id)
                     ->where('responsibility', $paymentOption === 'remaining_balance' ? 'customer' : 'driver')
@@ -177,7 +186,7 @@ class PayPalCheckoutService
                     throw ValidationException::withMessages(['booking' => ['The charges changed. Refresh the booking before paying.']]);
                 }
                 if ($currentBooking->paypalCheckouts()->where('user_id', $user->id)->where('purpose', $paymentOption)
-                    ->whereNotIn('status', ['completed', 'failed'])->exists()) {
+                    ->whereNotIn('status', ['completed', 'failed', 'abandoned'])->exists()) {
                     throw ValidationException::withMessages(['booking' => ['A checkout for this balance is already open.']]);
                 }
             }
@@ -237,13 +246,8 @@ class PayPalCheckoutService
                 'paypal_response' => $order,
             ]);
         } catch (Throwable $exception) {
-            DB::transaction(function () use ($checkout, $booking, $deleteBookingOnFailure) {
-                $checkout->delete();
-
-                if ($deleteBookingOnFailure) {
-                    $booking->forceDelete();
-                }
-            });
+            // The provider may have accepted the request even when the response was lost.
+            // Keep the attempt and booking for reconciliation instead of deleting evidence.
 
             throw $exception;
         }
@@ -296,7 +300,40 @@ class PayPalCheckoutService
             );
         }
 
-        $checkout->update(['status' => 'capturing']);
+        [$captureToken, $hadUncertainAttempt] = DB::transaction(function () use ($checkout) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($checkout->booking_id);
+            $locked = PayPalCheckout::query()->lockForUpdate()->findOrFail($checkout->id);
+            $staleCapture = $locked->status === 'capturing'
+                && ($locked->capture_started_at ?? $locked->updated_at)->lte(now()->subMinutes(2));
+            if (! in_array($locked->status, ['created', 'approved'], true) && ! $staleCapture) {
+                throw ValidationException::withMessages(['paypal' => ['Payment confirmation is already in progress or unavailable. Try again shortly.']]);
+            }
+            if ($locked->payment_option !== 'driver_outstanding' && $booking->status->isTerminal()) {
+                throw ValidationException::withMessages(['booking' => ['This booking no longer accepts payment.']]);
+            }
+            if ($booking->status === BookingStatus::Pending && ($booking->rental_end_at->lte(now())
+                || ($locked->payment_option === 'down_payment' && BookingAgreement::balanceDeadline($booking->rental_start_at)->lte(now())))) {
+                throw ValidationException::withMessages(['booking' => ['This checkout expired. Review the booking and payment requirements again.']]);
+            }
+            if ($locked->payment_option !== 'driver_outstanding' && $booking->status === BookingStatus::Confirmed
+                && $booking->balance_due_at?->lte(now())) {
+                throw ValidationException::withMessages(['booking' => ['The payment deadline has passed.']]);
+            }
+            if ($booking->status === BookingStatus::Pending) {
+                $booking->vehicle()->lockForUpdate()->firstOrFail();
+                $this->bookingService->assertVehicleScheduleAvailable($booking->vehicle_id, $booking->rental_start_at, $booking->rental_end_at, $booking->id);
+            }
+            $hadUncertainAttempt = $locked->status !== 'created';
+            $firstAttempt = $locked->capture_first_started_at ?? ($hadUncertainAttempt ? $locked->created_at : now());
+            if ($hadUncertainAttempt && $firstAttempt->lte(now()->subHours(5))) {
+                throw ValidationException::withMessages(['paypal' => ['This payment needs review. Contact JamJade before trying again.']]);
+            }
+            $token = (string) Str::uuid();
+            $locked->update(['status' => 'capturing', 'capture_attempt_token' => $token, 'capture_started_at' => now(),
+                'capture_first_started_at' => $firstAttempt]);
+
+            return [$token, $hadUncertainAttempt];
+        });
 
         try {
             $captureResponse = $this->payPalClient->captureOrder(
@@ -304,22 +341,20 @@ class PayPalCheckoutService
                 "jamjade-capture-{$checkout->id}"
             );
         } catch (RequestException $exception) {
-            if ($this->isOrderNotApproved($exception)) {
-                $checkout->update([
-                    'status' => 'failed',
-                    'paypal_response' => $exception->response->json(),
-                    'failed_at' => now(),
+            if ($this->isOrderNotApproved($exception) && ! $hadUncertainAttempt) {
+                $this->updateCaptureAttempt($checkout->id, $captureToken, [
+                    'status' => 'failed', 'provider_response' => json_encode($exception->response->json()), 'failed_at' => now(),
                 ]);
 
                 throw ValidationException::withMessages([
-                    'paypal' => ['PayPal payment was not approved. Please start a new checkout.'],
+                    'paypal' => ['PayPal payment was not approved. Review your booking before trying again.'],
                 ]);
             }
 
-            $checkout->update(['status' => 'approved']);
+            $this->updateCaptureAttempt($checkout->id, $captureToken, ['status' => 'approved']);
             throw $exception;
         } catch (Throwable $exception) {
-            $checkout->update(['status' => 'approved']);
+            $this->updateCaptureAttempt($checkout->id, $captureToken, ['status' => 'approved']);
             throw $exception;
         }
 
@@ -336,9 +371,8 @@ class PayPalCheckoutService
             $capturedCurrency !== 'PHP' ||
             $this->formatAmount((float) $capturedAmount) !== $this->formatAmount((float) $checkout->amount)
         ) {
-            $checkout->update([
-                'status' => 'failed',
-                'paypal_response' => $captureResponse,
+            $this->updateCaptureAttempt($checkout->id, $captureToken, [
+                'status' => 'approved', 'provider_response' => json_encode($captureResponse),
             ]);
 
             throw ValidationException::withMessages([
@@ -346,7 +380,8 @@ class PayPalCheckoutService
             ]);
         }
 
-        return DB::transaction(function () use ($checkout, $captureResponse, $captureId, $user) {
+        return DB::transaction(function () use ($checkout, $captureResponse, $captureId, $user, $captureToken) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($checkout->booking_id);
             $lockedCheckout = PayPalCheckout::query()
                 ->lockForUpdate()
                 ->findOrFail($checkout->id);
@@ -355,7 +390,9 @@ class PayPalCheckoutService
                 return $this->loadBooking($lockedCheckout->booking_id);
             }
 
-            $booking = Booking::query()->lockForUpdate()->findOrFail($lockedCheckout->booking_id);
+            if ($lockedCheckout->capture_attempt_token !== $captureToken || $lockedCheckout->status !== 'capturing') {
+                throw ValidationException::withMessages(['paypal' => ['Payment confirmation changed. Retry confirmation.']]);
+            }
             $lockedCheckout->load('additionalCharges');
             if ($lockedCheckout->payment_option !== 'driver_outstanding' && $booking->status->isTerminal()) {
                 throw ValidationException::withMessages(['booking' => ['This booking no longer accepts payment. Contact Jamjade to reconcile any provider payment.']]);
@@ -477,15 +514,26 @@ class PayPalCheckoutService
         }
 
         DB::transaction(function () use ($checkout) {
-            $booking = $checkout->booking;
-            $isInitialCheckout = in_array($checkout->payment_option, ['down_payment', 'full_payment'], true);
-
-            $checkout->delete();
-
-            if ($isInitialCheckout && $booking && ! $booking->successfulPayments()->exists()) {
-                $booking->forceDelete();
+            Booking::query()->lockForUpdate()->findOrFail($checkout->booking_id);
+            $locked = PayPalCheckout::query()->lockForUpdate()->findOrFail($checkout->id);
+            if ($locked->status === 'abandoned') {
+                return;
+            }
+            if ($locked->status !== 'created') {
+                throw ValidationException::withMessages(['paypal' => ['This payment needs review before it can be abandoned.']]);
+            }
+            if (in_array($locked->payment_option, ['down_payment', 'full_payment'], true)) {
+                $locked->update(['status' => 'abandoned']);
+            } else {
+                $locked->delete();
             }
         });
+    }
+
+    private function updateCaptureAttempt(int $checkoutId, string $token, array $attributes): void
+    {
+        PayPalCheckout::query()->whereKey($checkoutId)->where('status', 'capturing')
+            ->where('capture_attempt_token', $token)->update($attributes);
     }
 
     private function loadBooking(int $bookingId): Booking

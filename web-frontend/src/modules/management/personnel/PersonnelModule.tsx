@@ -6,13 +6,13 @@ import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard }
 import { TablePagination } from "@/components/common/tables/TablePagination";
 
 import { useEffect, useState } from "react";
-import { Eye, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { BriefcaseBusiness, Car, Eye, Loader2, Pencil, Plus, Trash2, UserCheck, Users, X } from "lucide-react";
 import { PersonnelAccountForm } from "@/forms/personnel/PersonnelAccountForm";
 import { DeletePersonnelDialog } from "@/forms/personnel/DeletePersonnelDialog";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TableActionMenu } from "@/components/common/tables/TableActionMenu";
-import { SummaryList } from "@/components/common/data-display/SummaryList";
+import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -20,12 +20,14 @@ import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/tab
 import { ApiError, GENERIC_ERROR_MESSAGE } from "@/services/http";
 import { createPersonnel, getPersonnel, updatePersonnel, type PersonnelFilter, type PersonnelResponse, type PersonnelUser } from "@/services/personnel";
 import type { PersonnelAccountFormValues } from "@/validations/personnel/schemas";
+import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
+import { getUserRoleNames } from "@/services/auth";
 import styles from "./PersonnelModule.module.css";
 
 function messageFromError(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401 || error.status === 419) return "Your login session expired. Please log in again.";
-    if (error.status === 403) return "Personnel is available only to the admin account.";
+    if (error.status === 403) return "You do not have access to Personnel.";
   }
   return GENERIC_ERROR_MESSAGE;
 }
@@ -36,6 +38,10 @@ function formatDate(value?: string | null) {
 }
 
 export function PersonnelPage() {
+  const { user } = useManagementSession();
+  const roleNames = user ? getUserRoleNames(user) : [];
+  const isOwner = roleNames.includes("owner");
+  const isStaff = !roleNames.includes("admin");
   const [data, setData] = useState<PersonnelResponse | null>(null);
   const [category, setCategory] = useState<PersonnelFilter>("all");
   const [searchInput, setSearchInput] = useState("");
@@ -81,13 +87,13 @@ export function PersonnelPage() {
     } else {
       await createPersonnel(values);
     }
-    setCategory((current) => current === "all" ? current : values.role);
+    setCategory((current) => current === "all" || values.role === "admin" ? current : values.role);
     setPage(1);
     refresh();
   };
 
   const summary = data?.summary;
-  const categoryLabel = category === "all" ? "Personnel" : category === "driver" ? "Driver" : "Staff";
+  const categoryLabel = category === "all" ? "Personnel" : category === "driver" ? "Driver" : category === "admin" ? "Admin" : "Staff";
   const hasFilters = Boolean(searchInput || status !== "all" || category !== "all");
   const clearFilters = () => {
     setSearchInput("");
@@ -102,17 +108,19 @@ export function PersonnelPage() {
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <ManagementPageHeading title="Personnel" description="Manage staff and driver accounts and access." />
-        <Button onClick={() => setAccountDialog({ mode: "add" })} disabled={isLoading || Boolean(error) || !data} className="h-11 rounded-lg px-4 text-sm hover:bg-primary-hover">
+        <Button onClick={() => setAccountDialog({ mode: "add" })} disabled={isLoading || Boolean(error) || !data}>
           <Plus size={15} className="mr-2" />Add {categoryLabel}
         </Button>
       </div>
 
-      <SummaryList label="Personnel summary" items={[
-        { label: "personnel", value: error ? "—" : summary?.total ?? "—" },
-        { label: "active", value: error ? "—" : summary?.active ?? "—" },
-        { label: "staff", value: error ? "—" : summary?.staff ?? "—" },
-        { label: "drivers", value: error ? "—" : summary?.drivers ?? "—" },
-      ]} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { label: "Personnel", value: error ? "—" : summary?.total ?? "—", icon: Users },
+          { label: "Active", value: error ? "—" : summary?.active ?? "—", icon: UserCheck },
+          { label: "Staff", value: error ? "—" : summary?.staff ?? "—", icon: BriefcaseBusiness },
+          { label: "Drivers", value: error ? "—" : summary?.drivers ?? "—", icon: Car },
+        ].map((item) => <KpiCard key={item.label} {...item} />)}
+      </div>
 
       <TableCard className="gap-0 rounded-2xl border border-border py-0 shadow-none ring-0" aria-label="Personnel accounts">
         <CardContent className="border-b border-border p-4">
@@ -131,7 +139,7 @@ export function PersonnelPage() {
               placeholder="Role"
               height="large"
               className="min-w-0 flex-1 basis-36 rounded-lg bg-surface text-base text-foreground data-[size=default]:h-11 sm:w-36 sm:flex-none sm:basis-auto sm:text-sm"
-              options={[{ value: "all", label: "All roles" }, { value: "staff", label: "Staff" }, { value: "driver", label: "Drivers" }]}
+              options={[{ value: "all", label: "All roles" }, ...(isOwner ? [{ value: "admin", label: "Admins" }] : []), { value: "staff", label: "Staff" }, { value: "driver", label: "Drivers" }]}
             />
             <FilterSelect
               value={status}
@@ -199,8 +207,8 @@ export function PersonnelPage() {
                     <TableCell data-label="Actions" className={styles.actionsCell}>
                       <TableActionMenu label={`Open actions for ${personnel.name}`} items={[
                         { label: "View", icon: <Eye size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "view", personnel }) },
-                        { label: "Edit", icon: <Pencil size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "edit", personnel }) },
-                        { label: "Delete", icon: <Trash2 size={13} className="mr-2" />, variant: "danger", separatorBefore: true, onClick: () => setDeleteTarget(personnel) },
+                        ...(!isStaff || personnel.role.name === "driver" ? [{ label: "Edit", icon: <Pencil size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "edit", personnel }) },
+                        { label: "Delete", icon: <Trash2 size={13} className="mr-2" />, variant: "danger" as const, separatorBefore: true, onClick: () => setDeleteTarget(personnel) }] : []),
                       ]} />
                     </TableCell>
                   </TableRow>
@@ -220,7 +228,7 @@ export function PersonnelPage() {
         )}
       </TableCard>
 
-      {accountDialog && data && <PersonnelAccountForm key={`${accountDialog.mode}-${accountDialog.personnel?.id ?? category}`} open mode={accountDialog.mode} personnel={accountDialog.personnel} roles={data.roles} category={category === "all" ? undefined : category} onOpenChange={(open) => { if (!open) setAccountDialog(null); }} onSave={saveAccount} />}
+      {accountDialog && data && <PersonnelAccountForm key={`${accountDialog.mode}-${accountDialog.personnel?.id ?? category}`} open mode={accountDialog.mode} personnel={accountDialog.personnel} roles={accountDialog.personnel?.role.name === "admin" ? data.roles.filter((role) => role.name === "admin") : accountDialog.mode === "edit" ? data.roles.filter((role) => role.name !== "admin") : data.roles} category={accountDialog.mode === "add" && data.roles.some((role) => role.name === category) ? category as "admin" | "staff" | "driver" : undefined} onOpenChange={(open) => { if (!open) setAccountDialog(null); }} onSave={saveAccount} />}
       {deleteTarget && <DeletePersonnelDialog key={deleteTarget.id} personnel={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={() => {
         if (data?.users.length === 1 && page > 1) setPage((current) => current - 1);
         refresh();

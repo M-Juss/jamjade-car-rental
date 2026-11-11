@@ -15,6 +15,7 @@
         </table>
     </section>
     @include('pdf.bookings.partials.receipt-totals')
+    <table class="page-footer"><tr><td>Date issued: {{ $formatDate($confirmation['issuedAt'], 'F j, Y') }}</td><td>{{ $confirmation['receipt']['reference'] ?? '' }}</td></tr></table>
 </div>
 
 <div class="page page-break">
@@ -26,7 +27,7 @@
     @endif
     @include('pdf.bookings.partials.renter-acknowledgement')
     <table class="page-footer"><tr>
-        <td>Booking reference: {{ $confirmation['bookingReference'] }}</td>
+        <td>Date issued: {{ $formatDate($confirmation['issuedAt'], 'F j, Y') }}</td>
         <td>Receipt: {{ $confirmation['receipt']['reference'] ?? 'Not provided' }}</td>
     </tr></table>
 </div>

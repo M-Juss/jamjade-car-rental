@@ -7,7 +7,7 @@ import ts from 'typescript';
 import { isCalibrationStep } from '../../lib/telematics/calibration.ts';
 import { calibrationConsentSchema, calibrationEvidenceSchema } from '../../validation/telematics/calibration.ts';
 
-function workflowHarness({ profileId = 'standard', profileFingerprint = 'a'.repeat(64), protocolVersion = 3, noiseBaseline = { horizontalRms: 0.1 }, locked = false, nextStep = 'stationary_calibration', reference = { down: [0, -1, 0], forward: [0, 0, -1] }, capture, offlineAfterCapture = false, serverStatus = 'passed' } = {}) {
+function workflowHarness({ profileId = 'standard', profileFingerprint = 'a'.repeat(64), protocolVersion = 4, noiseBaseline = { horizontalRms: 0.1 }, locked = false, nextStep = 'stationary_calibration', reference = { down: [0, -1, 0], forward: null }, capture, offlineAfterCapture = false, serverStatus = 'passed' } = {}) {
   const source = readFileSync(new URL('./calibration-workflow.ts', import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   let captures = 0;
@@ -15,7 +15,7 @@ function workflowHarness({ profileId = 'standard', profileFingerprint = 'a'.repe
   let reads = 0;
   const current = {
     eligibility: { canWorkSetup: !locked },
-    calibration: { profile: { id: profileId, fingerprint: profileFingerprint, revision: profileId === 'rc_demo' ? 4 : 3 }, noiseBaseline, completionLimits: { minimumDurationMs: 1000, minimumCoverage: 0.85, minimumSamplesPerSecond: 8 }, movementLimits: { tiltDegrees: 60, rotationPeak: profileId === 'rc_demo' ? 120 : 60, yawDegrees: profileId === 'rc_demo' ? 45 : 180, forwardAccelerationOnly: profileId === 'rc_demo', brakingAcceleration: 0.5, turnDegrees: 10, oppositeTurnDegrees: 20, turnDominance: 1.5 }, forwardLimits: { acceleration: profileId === 'rc_demo' ? 3 : 0.6, durationMs: 600, coherence: 0.95, samples: 6 }, protocolVersion, nextStep, context: 'a'.repeat(64), captureSeconds: { stationary_calibration: 6, forward_calibration: profileId === 'rc_demo' ? 3 : 12, braking_calibration: 3, left_turn_calibration: 3, right_turn_calibration: 3 }, stationaryLimits: { linearRms: 0.35, rotationPeak: 6, tiltDegrees: 10, yawDegrees: 5, maxGapMs: 500 }, reference },
+    calibration: { profile: { id: profileId, fingerprint: profileFingerprint, revision: profileId === 'rc_demo' ? 7 : 6 }, noiseBaseline, parkedAcceleration: [0, 9.8, 0], completionLimits: { minimumDurationMs: 1000, minimumCoverage: 0.85, minimumSamplesPerSecond: 8 }, movementLimits: { tiltDegrees: 60, rotationPeak: profileId === 'rc_demo' ? 120 : 60, yawDegrees: profileId === 'rc_demo' ? 45 : 180, forwardAccelerationOnly: false, brakingAcceleration: 0.5, turnDegrees: 10, oppositeTurnDegrees: 20, turnDominance: 1.5 }, forwardLimits: { acceleration: 0.6, durationMs: 600, coherence: 0.95, samples: 6 }, protocolVersion, nextStep, context: 'a'.repeat(64), captureSeconds: { stationary_calibration: 6, forward_calibration: profileId === 'rc_demo' ? 3 : 12, braking_calibration: 3, left_turn_calibration: 3, right_turn_calibration: 3 }, stationaryLimits: { linearRms: 0.35, rotationPeak: 6, tiltDegrees: 10, yawDegrees: 5, maxGapMs: 500 }, reference },
   };
   const summary = {
     started_at: '2026-10-16T06:00:00.000Z', ended_at: '2026-10-16T06:00:06.000Z',
@@ -33,7 +33,7 @@ function workflowHarness({ profileId = 'standard', profileFingerprint = 'a'.repe
       if (name.endsWith('/calibration') && name.includes('lib/')) return { isCalibrationStep };
       if (name.includes('validation/')) return { calibrationConsentSchema, calibrationEvidenceSchema };
       if (name === './network-readiness') return { getNetworkReadiness: async () => !(offlineAfterCapture && captures > 0) };
-      if (name === './calibration-capture') return { captureCalibration: async (...args) => { captures++; if (capture) await capture(...args); else { args[3]?.onReady?.(); args[3]?.onReading?.({ elapsedMs: 1000, durationMs: 6000, acceleration: 0.1, rotation: 1, tilt: 0, yaw: 0, maxGapMs: 100 }); } return summary; } };
+      if (name === './rental-motion-capture') return { captureRentalMotion: async (...args) => { captures++; if (capture) await capture(...args); else { args[3](); args[4]({ elapsedMs: 1000, durationMs: 6000, acceleration: 0.1, rotation: 1, tilt: 0, yaw: 0, maxGapMs: 100 }); } return summary; } };
       if (name === '@/services/api') return {
         getBookingTelematicsSetup: async () => { reads++; return current; },
         submitTelematicsSetupAttempt: async () => { submissions++; return { ...current, steps: [{ type: nextStep, status: serverStatus }], setup: { status: 'in_progress' } }; },
@@ -91,15 +91,18 @@ test('one explicitly consented capture submits once and returns the server resul
 test('forward capture uses the stationary vertical with no assumed forward axis', async () => {
   let capturedReference;
   const reference = { down: [0, 0, -1], forward: null };
-  const harness = workflowHarness({ nextStep: 'forward_calibration', reference, capture: async (_, received) => { capturedReference = received; } });
+  const harness = workflowHarness({ nextStep: 'forward_calibration', reference, capture: async (_, received) => { capturedReference = received.reference; } });
   await harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, 'forward_calibration');
   assert.deepEqual(capturedReference, reference);
 });
 
-test('braking never starts without a learned forward direction', async () => {
-  const harness = workflowHarness({ nextStep: 'braking_calibration', reference: { down: [0, 0, -1], forward: null } });
-  await assert.rejects(harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, 'braking_calibration'), /forward calibration/);
-  assert.equal(harness.captures, 0);
+test('retired exercises cannot start sensors or submit new rental attempts', async () => {
+  for (const nextStep of ['braking_calibration', 'left_turn_calibration', 'right_turn_calibration']) {
+    const harness = workflowHarness({ nextStep });
+    await assert.rejects(harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, nextStep), /no longer available/);
+    assert.equal(harness.captures, 0);
+    assert.equal(harness.submissions, 0);
+  }
 });
 
 test('live feedback waits for fresh capture and only the server can confirm success', async () => {
@@ -113,35 +116,21 @@ test('live feedback waits for fresh capture and only the server can confirm succ
   }
 });
 
-test('Forward capture uses all server-provided window limits', async () => {
-  for (const nextStep of ['stationary_calibration', 'forward_calibration']) {
-    let options;
-    const harness = workflowHarness({ nextStep, capture: async (_, __, ___, received) => { options = received; } });
-    await harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, nextStep);
-    assert.deepEqual(options.forwardLimits, nextStep === 'forward_calibration' ? { acceleration: 0.6, durationMs: 600, coherence: 0.95, samples: 6 } : undefined);
-  }
+test('Forward capture uses the accepted parked baseline and server window limits', async () => {
+  let settings;
+  const harness = workflowHarness({
+    nextStep: 'forward_calibration',
+    capture: async (_, received) => { settings = received; },
+  });
+  await harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, 'forward_calibration');
+  assert.deepEqual(settings.parkedAcceleration, [0, 9.8, 0]);
+  assert.deepEqual(settings.forwardLimits, { acceleration: 0.6, durationMs: 600, coherence: 0.95, samples: 6 });
+  assert.equal(settings.completionLimits.minimumDurationMs, 1000);
+  assert.equal(settings.stationaryLimits.maxGapMs, 500);
 });
-
-test('only movement exercises receive the server completion policy', async () => {
-  for (const nextStep of ['stationary_calibration', 'forward_calibration', 'braking_calibration', 'left_turn_calibration', 'right_turn_calibration']) {
-    let options;
-    const harness = workflowHarness({ nextStep, capture: async (_, __, ___, received) => { options = received; } });
-    await harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, nextStep);
-    if (nextStep === 'stationary_calibration') assert.equal(options.completion, undefined);
-    else {
-      assert.equal(options.completion.step, nextStep);
-      assert.equal(options.completion.quality.minimumDurationMs, 1000);
-      assert.equal(options.completion.quality.minimumCoverage, 0.85);
-      assert.equal(options.completion.quality.minimumSamplesPerSecond, 8);
-      assert.equal(options.completion.maxGapMs, 500);
-      assert.equal(options.completion.movement.turnDominance, 1.5);
-    }
-  }
-});
-
 
 test('legacy capture protocol or missing accepted noise baseline cannot start Forward sensors', async () => {
-  for (const options of [{ protocolVersion: 2 }, { noiseBaseline: null }]) {
+  for (const options of [{ protocolVersion: 3 }, { noiseBaseline: null }]) {
     const harness = workflowHarness({ ...options, nextStep: 'forward_calibration', reference: { down: [0, -1, 0], forward: null } });
     await assert.rejects(harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, 'forward_calibration'));
     assert.equal(harness.captures, 0);
@@ -166,12 +155,12 @@ test('the RC profile uses real captures and only a server-confirmed pass succeed
   }
 });
 
-for (const nextStep of ['forward_calibration', 'braking_calibration', 'left_turn_calibration', 'right_turn_calibration']) {
+for (const nextStep of ['forward_calibration']) {
   test(`RC ${nextStep}: three-second capture waits for the authoritative server outcome`, async () => {
     for (const serverStatus of ['passed', 'failed']) {
       let seconds;
       const harness = workflowHarness({ profileId: 'rc_demo', nextStep, serverStatus,
-        capture: async (duration) => { seconds = duration; } });
+        capture: async (step, settings) => { seconds = settings.captureSeconds[step]; } });
       const phases = [];
       const result = await harness.run('DEMO', consent, new AbortController().signal, noOp, noOp, nextStep, false, (state) => phases.push(state.phase));
       assert.equal(seconds, 3);

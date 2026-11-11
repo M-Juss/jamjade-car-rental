@@ -70,6 +70,7 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={status === 'authenticated' && user?.roles?.includes('driver') === true}>
         <Stack.Screen name="driver-telematics" />
+        <Stack.Screen name="driver-services" />
       </Stack.Protected>
       <Stack.Protected guard={!researchAdmin && (status !== 'authenticated' || onboardingRoute === null)}>
         <Stack.Screen name="(tabs)" />

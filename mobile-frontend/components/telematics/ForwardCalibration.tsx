@@ -1,13 +1,14 @@
 import { MetadataList } from '@/components/common/MetadataList';
 import { Activity, ArrowUp, CircleCheck, CirclePause, RotateCcw } from 'lucide-react-native';
 import { useEffect, useRef, type ReactNode } from 'react';
-import { ActivityIndicator, Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { CalibrationSensorReading } from '@/components/telematics/CalibrationSensorReading';
 import { themeColors as colors } from '@/constants/theme';
 import { useCalibrationVisuals } from '@/hooks/telematics/useCalibrationVisuals';
 import { forwardMotionFeedback, type CalibrationLiveState } from '@/lib/telematics/calibration';
+import { CALIBRATION_CHECK_ORDER } from '@/lib/telematics/setup';
 import type { MobileTelematicsHandover } from '@/services/api';
 
 const guidance = {
@@ -31,7 +32,6 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
   children: ReactNode;
 }) {
   const { reducedMotion, readingsStale } = useCalibrationVisuals(live, mountLimits.maxGapMs);
-  const { height } = useWindowDimensions();
   const animation = useRef(new Animated.Value(0)).current;
   const phase = live?.phase;
   const reading = phase === 'preparing' ? undefined : live?.reading;
@@ -39,14 +39,21 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
   const passed = phase === 'passed';
   const failed = phase === 'failed' || Boolean(failureReason) && !busy;
   const warning = !['waiting', 'building', 'captured'].includes(feedback.state);
-  const captured = feedback.state === 'captured';
+  const captured = phase === 'evaluating';
+  const retrying = reading?.forwardStatus === 'retry';
+  const guidanceState = feedback.state === 'captured' || feedback.state === 'waiting' && reading?.forwardStatus === 'measuring'
+    ? 'building' : feedback.state;
   const pending = phase === 'preparing' || phase === 'evaluating';
   const color = passed ? colors.success : pending ? colors.primary : failed || warning ? colors.destructive : captured || feedback.state === 'building' ? colors.success : colors.primary;
   const progress = passed ? 1 : feedback.progress;
-  const label = passed ? 'Forward direction set' : phase === 'evaluating' ? 'Checking movement' : phase === 'preparing' ? 'Preparing sensors' : phase === 'recording' ? guidance[feedback.state][0] : failed ? 'Repeat this step' : 'Ready when you are';
-  const hint = passed ? 'Opening gentle braking…' : phase === 'evaluating' ? 'Keep parked while the result is checked.' : phase === 'preparing' ? 'Stay parked. Wait for the movement guide before moving.' : phase === 'recording' ? guidance[feedback.state][1] : 'Start while parked, with staff supervising and the phone mounted.';
+  const label = passed ? 'Forward direction set' : phase === 'evaluating' ? 'Checking movement' : phase === 'preparing' ? 'Preparing sensors'
+    : phase === 'recording' ? (retrying && !warning ? 'Stop safely before trying again' : guidance[guidanceState][0]) : failed ? 'Repeat this step' : 'Ready when you are';
+  const hint = passed ? 'Calibration complete. Wait for staff release.' : phase === 'evaluating' ? 'Stop safely while the result is checked.'
+    : phase === 'preparing' ? 'Stay parked until ready.' : phase === 'recording'
+      ? (retrying && !warning ? 'Wait for the forward cue before moving again.' : guidance[guidanceState][1])
+      : 'Start while parked, with staff supervising and the phone mounted.';
   const compact = busy || passed;
-  const guideSize = compact ? height < 700 ? 148 : 188 : 248;
+  const guideSize = 172;
   const StatusIcon = passed ? CircleCheck : failed || warning ? CirclePause : captured ? CircleCheck : ArrowUp;
 
   useEffect(() => {
@@ -61,16 +68,16 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
   }, [animation, reducedMotion, phase, warning, captured]);
 
   return (
-    <View className="rounded-card border border-border bg-surface p-card">
+    <View>
       <View className="flex-row items-center justify-between gap-4">
-        <Text className="font-sans text-caption font-semibold text-primary">STEP 02 / 05</Text>
+        <Text className="font-sans text-caption font-semibold text-primary">STEP 02 / {String(CALIBRATION_CHECK_ORDER.length).padStart(2, '0')}</Text>
         <Text className="font-sans text-caption text-secondary-foreground">Forward movement</Text>
       </View>
-      <View className="mt-3 flex-row gap-1.5" accessible={false}>{[0, 1, 2, 3, 4].map((step) => <View key={step} className="h-1 flex-1 rounded-full" style={{ backgroundColor: step === 0 ? colors.success : step === 1 ? color : colors.muted }} />)}</View>
-      <Text className={`font-sans mt-section font-semibold text-foreground ${compact ? 'text-section' : 'text-title'}`}>One gentle forward movement</Text>
+      <View className="mt-3 flex-row gap-1.5" accessible={false}>{CALIBRATION_CHECK_ORDER.map((step) => <View key={step} className="h-1 flex-1 rounded-full" style={{ backgroundColor: step === 'stationary_calibration' ? colors.success : color }} />)}</View>
+      <Text className={"font-sans mt-2 text-section font-semibold text-foreground"}>One gentle forward movement</Text>
       {!compact ? <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">Move straight at low speed when staff directs you, then stop safely. Recording ends when enough valid movement readings are captured.</Text> : null}
 
-      <View style={[styles.guide, { maxWidth: guideSize }]} accessible={false} importantForAccessibility="no-hide-descendants">
+      <View style={[styles.guide, { width: guideSize, height: guideSize }]} accessible={false} importantForAccessibility="no-hide-descendants">
         <View style={{ width: 248, height: 248, transform: [{ scale: guideSize / 248 }] }}>
           <Svg width={248} height={248} viewBox="0 0 248 248" style={StyleSheet.absoluteFill}>
             <Circle cx={124} cy={124} r={111} fill={colors.background} stroke={colors.border} />
@@ -102,8 +109,8 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
         </View>
         <Text className="font-sans text-center text-caption leading-5 text-secondary-foreground">{hint}</Text>
       </View>
-      <View className="mt-4" accessibilityRole="progressbar" accessibilityLabel="Forward movement detection" accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }} />
-      <View className="flex-row gap-3">
+      <View accessibilityRole="progressbar" accessibilityLabel="Forward movement detection" accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }} />
+      <View className="mt-2 gap-1">
         <CalibrationSensorReading icon={Activity} label="Acceleration" value={reading?.forward?.acceleration} limit={limits.acceleration} unit="m/s²" minimum state={warning ? 'invalid' : captured || feedback.state === 'building' ? 'valid' : 'neutral'} caption={captured ? 'Movement captured' : undefined} />
         <CalibrationSensorReading icon={RotateCcw} label="Gyroscope" value={reading?.rotation} limit={mountLimits.rotationPeak} unit="°/s peak" />
       </View>
@@ -112,12 +119,12 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
         { label: 'Parked rotation', value: `${noiseBaseline.rotationRms.toFixed(2)} °/s` },
       ]} /></View> : null}
       {failureReason && !busy ? <Text accessibilityLiveRegion="polite" className="font-sans mt-4 text-body leading-6 text-destructive">{failureReason}</Text> : null}
-      <View className="mt-section gap-3" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
+      <View className="mt-3 gap-2" style={{ display: busy || passed ? 'none' : 'flex' }}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  guide: { width: '100%', aspectRatio: 1, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginVertical: 12 },
+  guide: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginVertical: 4 },
   success: { position: 'absolute', top: 36, left: 104, backgroundColor: colors.background, borderRadius: 20 },
 });

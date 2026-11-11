@@ -1,27 +1,27 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Stack, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Controller, type FieldErrors, useForm } from 'react-hook-form';
 import { View } from 'react-native';
 import { z } from 'zod';
 
 import { AuthScreenFrame, AuthSubmitButton, InputWithLabel } from '@/components/common';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
+import { RegistrationVerificationForm } from '@/forms/auth/RegistrationVerificationForm';
 import { registerSchema } from '@/validation';
 import { updateRegisteredEmail } from '@/lib/customer/customer-store';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/services/http';
+import type { MobileRegistrationPending } from '@/services/api';
 
 function getRegistrationErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
-    if (error.status === 0) {
-      return 'Registration failed. Check your connection and try again.';
-    }
-
-    if (error.status === 422) {
-      return 'Registration failed. Please check your information and try again.';
-    }
+    if (error.status === 0) return 'Could not connect. Check your connection and try again.';
+    if (error.status === 408) return 'Email delivery is taking longer than expected. Check your inbox before trying again.';
+    if (error.status === 429) return 'Too many attempts. Wait a moment and try again.';
+    if (error.status === 503) return 'Email delivery is temporarily unavailable. Try again shortly.';
+    if (error.status === 422) return 'Registration failed. Please check your information and try again.';
   }
-
   return 'Registration failed. Please try again.';
 }
 
@@ -38,12 +38,14 @@ function getValidationErrorMessage(errors: FieldErrors<RegisterFormValues>) {
 
 export function RegisterForm() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { beginRegistration, verifyRegistration, resendRegistrationCode } = useAuth();
   const toast = useFormToast();
+  const [pending, setPending] = useState<MobileRegistrationPending | null>(null);
   const {
     control,
     formState: { isSubmitting },
     handleSubmit,
+    reset,
     setError,
   } = useForm<RegisterFormValues>({
     defaultValues: {
@@ -56,13 +58,14 @@ export function RegisterForm() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     try {
-      await signUp({
+      const result = await beginRegistration({
         email: values.email,
         password: values.password,
         password_confirmation: values.confirmPassword,
       });
-      updateRegisteredEmail(values.email);
-      router.replace('/onboarding/get-started');
+      reset({ email: values.email, password: '', confirmPassword: '' });
+      setPending(result);
+      toast.clearToast();
     } catch (error) {
       if (error instanceof ApiError && error.errors) {
         const fieldMap: Record<string, keyof RegisterFormValues> = {
@@ -70,103 +73,118 @@ export function RegisterForm() {
           password: 'password',
           password_confirmation: 'confirmPassword',
         };
-
         Object.entries(error.errors).forEach(([serverField, messages]) => {
           const field = fieldMap[serverField];
           const message = messages[0];
-
-          if (field && message) {
-            setError(field, { message, type: 'server' });
-          }
+          if (field && message) setError(field, { message, type: 'server' });
         });
       }
-
       toast.showToast(getRegistrationErrorMessage(error));
     }
+  };
+
+  const backToRegistration = () => {
+    setPending(null);
+    toast.clearToast();
   };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View className="flex-1">
-        <AuthScreenFrame mode="register">
-          <View className="gap-4">
-            <Controller
-              control={control}
-              name="email"
-              render={({ field, fieldState }) => (
-                <InputWithLabel
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  autoCorrect={false}
-                  error={fieldState.error?.message}
-                  icon="mail-outline"
-                  keyboardType="email-address"
-                  label="Email address"
-                  onBlur={field.onBlur}
-                  onChangeText={field.onChange}
-                  placeholder="you@example.com"
-                  required
-                  textContentType="emailAddress"
-                  value={field.value}
-                />
-              )}
-            />
+        {pending ? (
+          <RegistrationVerificationForm
+            pending={pending}
+            onBack={backToRegistration}
+            onVerified={(email) => {
+              updateRegisteredEmail(email);
+              router.replace('/onboarding/get-started');
+            }}
+            toast={toast}
+            verifyRegistration={verifyRegistration}
+            resendRegistrationCode={resendRegistrationCode}
+            setPending={setPending}
+          />
+        ) : (
+          <AuthScreenFrame mode="register">
+            <View className="gap-4">
+              <Controller
+                control={control}
+                name="email"
+                render={({ field, fieldState }) => (
+                  <InputWithLabel
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    autoCorrect={false}
+                    error={fieldState.error?.message}
+                    icon="mail-outline"
+                    keyboardType="email-address"
+                    label="Email address"
+                    onBlur={field.onBlur}
+                    onChangeText={field.onChange}
+                    placeholder="you@example.com"
+                    required
+                    textContentType="emailAddress"
+                    value={field.value}
+                  />
+                )}
+              />
 
-            <Controller
-              control={control}
-              name="password"
-              render={({ field, fieldState }) => (
-                <InputWithLabel
-                  autoCapitalize="none"
-                  autoComplete="new-password"
-                  error={fieldState.error?.message}
-                  helperText="Use at least 8 characters."
-                  icon="lock-outline"
-                  label="Password"
-                  onBlur={field.onBlur}
-                  onChangeText={field.onChange}
-                  placeholder="Create password"
-                  required
-                  secureTextEntry
-                  showPasswordToggle
-                  textContentType="newPassword"
-                  value={field.value}
-                />
-              )}
-            />
+              <Controller
+                control={control}
+                name="password"
+                render={({ field, fieldState }) => (
+                  <InputWithLabel
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    error={fieldState.error?.message}
+                    helperText="Use at least 8 characters."
+                    icon="lock-outline"
+                    label="Password"
+                    onBlur={field.onBlur}
+                    onChangeText={field.onChange}
+                    placeholder="Create password"
+                    required
+                    secureTextEntry
+                    showPasswordToggle
+                    textContentType="newPassword"
+                    value={field.value}
+                  />
+                )}
+              />
 
-            <Controller
-              control={control}
-              name="confirmPassword"
-              render={({ field, fieldState }) => (
-                <InputWithLabel
-                  autoCapitalize="none"
-                  autoComplete="new-password"
-                  error={fieldState.error?.message}
-                  icon="lock-outline"
-                  label="Confirm password"
-                  onBlur={field.onBlur}
-                  onChangeText={field.onChange}
-                  placeholder="Confirm password"
-                  required
-                  secureTextEntry
-                  showPasswordToggle
-                  textContentType="newPassword"
-                  value={field.value}
-                />
-              )}
-            />
+              <Controller
+                control={control}
+                name="confirmPassword"
+                render={({ field, fieldState }) => (
+                  <InputWithLabel
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    error={fieldState.error?.message}
+                    icon="lock-outline"
+                    label="Confirm password"
+                    onBlur={field.onBlur}
+                    onChangeText={field.onChange}
+                    placeholder="Confirm password"
+                    required
+                    secureTextEntry
+                    showPasswordToggle
+                    textContentType="newPassword"
+                    value={field.value}
+                  />
+                )}
+              />
 
-            <AuthSubmitButton
-              disabled={isSubmitting}
-              label={isSubmitting ? 'Creating account...' : 'Create Account'}
-              onPress={handleSubmit(onSubmit, (errors) => {
-                toast.showToast(getValidationErrorMessage(errors));
-              })}
-            />
-          </View>
-        </AuthScreenFrame>
+              <AuthSubmitButton
+                disabled={isSubmitting}
+                label={isSubmitting ? 'Sending code...' : 'Create Account'}
+                onPress={handleSubmit(onSubmit, (errors) => {
+                  toast.showToast(getValidationErrorMessage(errors));
+                })}
+              />
+            </View>
+          </AuthScreenFrame>
+        )}
         <FormToast
           message={toast.message}
           onDismiss={toast.clearToast}

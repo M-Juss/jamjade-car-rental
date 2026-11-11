@@ -79,7 +79,7 @@ function RecordingWorkspace({ inspection }: { inspection: ResearchInspection }) 
         <Tabs value={tab} onValueChange={setTab}>
           <CardHeader className="gap-3 border-b border-border">
             <div className="flex flex-wrap items-center justify-between gap-2"><CardTitle className="text-base font-semibold">Understand this recording</CardTitle><Badge variant="secondary">Phone axes</Badge></div>
-            <TabsList className="w-full justify-start"><TabsTrigger value="signals" className="flex-1">Signals</TabsTrigger><TabsTrigger value="quality" className="flex-1">Data quality</TabsTrigger><TabsTrigger value="setup" className="flex-1">Setup & source</TabsTrigger></TabsList>
+            <TabsList aria-label="Recording sections"><TabsTrigger value="signals">Signals</TabsTrigger><TabsTrigger value="quality">Data quality</TabsTrigger><TabsTrigger value="setup">Setup & source</TabsTrigger></TabsList>
           </CardHeader>
           <TabsContent value="signals" className="mt-0">
             <CardContent className="space-y-5 pt-4">

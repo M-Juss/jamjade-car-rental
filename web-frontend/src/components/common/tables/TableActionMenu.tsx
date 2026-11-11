@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { Eye, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +34,10 @@ const itemVariantClass: Record<TableActionVariant, string> = {
 };
 
 export function TableActionMenu({ label, items }: TableActionMenuProps) {
+  if (items.length === 1 && /^view\b/i.test(items[0].label)) {
+    const item = items[0];
+    return <button type="button" aria-label={item.label} title={item.label} disabled={item.disabled} onClick={item.onClick} className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 md:h-9 md:w-9"><Eye size={18} aria-hidden="true" /></button>;
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

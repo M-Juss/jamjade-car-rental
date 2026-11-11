@@ -20,7 +20,6 @@
                 <div class="document-subtitle">{{ $documentSubtitle }}</div>
             @endif
             <div class="document-meta">
-                Date issued: <strong>{{ $formatDate($confirmation['issuedAt'], 'F j, Y') }}</strong><br>
                 Booking reference: <strong>{{ $confirmation['bookingReference'] }}</strong>
             </div>
         </td>

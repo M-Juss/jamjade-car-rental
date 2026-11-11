@@ -56,6 +56,16 @@ configured API hostnames; do not edit generated allowlists manually. See the
 
 ## Standalone Redmi test APK — 2026-11-04
 
+Update — 2026-11-11: rebuilt the ARM64 standalone release with the current
+mobile sources and bundled assets, then installed it on the connected Redmi
+using `adb install -r`. The new APK certificate matched the installed app.
+Installation succeeded without uninstalling or clearing app data. The birthdate
+picker in `components/ui/DatePickerInput.tsx` now lays out explicit seven-cell
+week rows rather than relying on percentage-width wrapping. The APK remains at
+`mobile-frontend/android/app/build/outputs/apk/release/app-release.apk`.
+The release build passed; additional automated and visual checks were omitted
+at the user's request, so calendar appearance remains for manual review.
+
 A local `:app:assembleRelease -PreactNativeArchitectures=arm64-v8a` build completed
 using the existing generated Android project, Node 24.22.1 and Java 17. No native
 configuration, permissions, dependencies or sensor algorithms were changed.

@@ -4,11 +4,16 @@ import { ManagementPageHeading } from "@/modules/management/shell/components/Man
 
 import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard } from "@/components/common/tables/ManagementTable";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import { BookingStatusDisplay } from "./components/BookingStatusDisplay";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import {
+  Activity,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
   Eye,
   ArrowRight,
   UserRound,
@@ -25,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { TableActionMenu, type TableActionMenuItem } from "@/components/common/tables/TableActionMenu";
 import { TablePagination } from "@/components/common/tables/TablePagination";
-import { SummaryList } from "@/components/common/data-display/SummaryList";
+import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { appToast } from "@/lib/toast";
 import { CancelBookingDialog } from "@/forms/booking/CancelBookingDialog";
 import { BookingDetailsDialog } from "@/forms/booking/BookingDetailsDialog";
@@ -58,11 +63,16 @@ function peso(value: number) {
 }
 
 function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
+  const router = useRouter();
+  const { portal, user } = useManagementSession();
   const searchParams = useSearchParams();
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = searchParams.get("status");
+    return status && ["pending", "confirmed", "ongoing", "returned", "completed", "cancelled", "rejected"].includes(status) ? status : "all";
+  });
   const [attentionFilter, setAttentionFilter] = useState(searchParams.get("attention") === "all_attention" ? "all_attention" : "all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -141,16 +151,16 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
   const count = (status: BookingStatus) => statusCounts[status] ?? 0;
   const summaryCards = group === "history"
     ? [
-        { label: "Total", value: count("completed") + count("cancelled") + count("rejected") },
-        { label: "Completed", value: count("completed") },
-        { label: "Cancelled", value: count("cancelled") },
-        { label: "Rejected", value: count("rejected") },
+        { label: "Total", value: count("completed") + count("cancelled") + count("rejected"), icon: CalendarDays },
+        { label: "Completed", value: count("completed"), icon: CheckCircle2 },
+        { label: "Cancelled", value: count("cancelled"), icon: XCircle },
+        { label: "Rejected", value: count("rejected"), icon: XCircle },
       ]
     : [
-        { label: "Total", value: count("pending") + count("confirmed") + count("ongoing") + count("returned") },
-        { label: "Active", value: count("ongoing") + count("confirmed") },
-        { label: "Pending", value: count("pending") },
-        { label: "Returned", value: count("returned") },
+        { label: "Total", value: count("pending") + count("confirmed") + count("ongoing") + count("returned"), icon: CalendarDays },
+        { label: "Active", value: count("ongoing") + count("confirmed"), icon: Activity },
+        { label: "Pending", value: count("pending"), icon: Clock3 },
+        { label: "Returned", value: count("returned"), icon: CheckCircle2 },
       ];
 
   const handleBookingUpdated = useCallback((updatedBooking: BookingRecord) => {
@@ -181,7 +191,10 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
         label: "View",
         icon: <Eye size={13} className="mr-2 text-subtle-foreground" />,
         onClick: () => { setSelectedBooking(booking); setDetailsOpen(true); },
-      }];
+      }, ...(booking.statusKey === "completed" && user?.permissions?.includes("view fleet tracker") ? [{
+        label: "Driving Analysis",
+        onClick: () => router.push(`/${portal}/driving-analysis?booking=${booking.backendId}`),
+      }] : [])];
     }
 
     const next = nextBookingAction(booking);
@@ -228,7 +241,9 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
         </div>
       ) : null}
 
-      <SummaryList label="Booking summary" items={summaryCards.map(({ label, value }) => ({ label, value: isLoading ? "—" : value }))} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {summaryCards.map(({ label, value, icon }) => <KpiCard key={label} label={label} value={isLoading ? "—" : value} icon={icon} />)}
+      </div>
 
       <TableCard>
           <CardContent className="border-b border-border p-4">
@@ -407,7 +422,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
                         <BookingStatusDisplay booking={booking} />
                       </TableCell>
                       <TableCell className="px-2 py-3">
-                        <span className={`inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-xs font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
+                        <span className={`table-status-badge rounded-lg border px-2.5 py-1 text-xs font-semibold ${paymentStatusStyle[booking.paymentStatusKey]}`}>
                           {booking.paymentStatus}
                         </span>
                       </TableCell>
@@ -434,6 +449,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
           booking={selectedBooking}
+          showDocuments={group !== "history"}
           onContinue={(record) => { void openNext(record); }}
           isContinuing={loadingActionId === selectedBooking.backendId}
         />

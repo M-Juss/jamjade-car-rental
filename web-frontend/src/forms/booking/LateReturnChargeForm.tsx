@@ -9,7 +9,7 @@ import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { SelectWithLabel } from "@/components/common/forms/SelectWithLabel";
 import { BookingDialogFooter } from "@/modules/management/bookings/components/BookingDialogFooter";
 import { LateReturnSummary } from "@/modules/management/bookings/components/LateReturnSummary";
-import { ApiError } from "@/services/http";
+import { ApiError, OwnerVerificationCancelled } from "@/services/http";
 import { reviewLateCharge, type BookingRecord } from "@/services/booking";
 import { createLateChargeSchema, type LateChargeValues } from "@/validations/booking/late-return";
 import { appToast } from "@/lib/toast";
@@ -25,6 +25,7 @@ export function LateReturnChargeForm({ booking, onCancel, onSaved, onBusyChange,
   const submit = async (values: LateChargeValues) => {
     try { await reviewLateCharge(booking, { ...values, amount: Number(values.amount) }); appToast.success("Late return charge reviewed."); await onSaved(); }
     catch (error) {
+      if (error instanceof OwnerVerificationCancelled) return;
       form.setError("root", { message: "The charge could not be reviewed. Refresh the booking and try again." });
       if (error instanceof ApiError) for (const [key, messages] of Object.entries(error.errors ?? {})) {
         form.setError(key === "amount" || key === "adjustment_reason" || key === "responsibility" ? key : "root", { message: messages[0] });

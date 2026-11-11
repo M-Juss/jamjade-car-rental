@@ -14,6 +14,7 @@ export function useFleetRentals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState<FleetConnection>("connecting");
+  const [dataVersion, setDataVersion] = useState(0);
   const [reload, setReload] = useState(0);
   const requestRefresh = useRef<() => void>(() => {});
   const canSubscribe = Boolean(page) && !error;
@@ -50,6 +51,7 @@ export function useFleetRentals() {
           return;
         }
         setPage(result);
+        setDataVersion(value => value + 1);
         setError(null);
       } catch (failure) {
         if (disposed) return;
@@ -109,5 +111,5 @@ export function useFleetRentals() {
     setReload((value) => value + 1);
   };
 
-  return { searchInput, setSearchInput, query, page, loading, error, connection, changeQuery, refresh };
+  return { searchInput, setSearchInput, query, page, loading, error, connection, dataVersion, changeQuery, refresh };
 }
