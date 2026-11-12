@@ -178,6 +178,7 @@ export function NotificationDetailModal({
   if (!notification) {
     return null;
   }
+  const isDrivingReport = notification.data?.event_type === 'driving_report_ready';
 
   return (
     <Modal accessibilityViewIsModal animationType="slide" transparent visible={Boolean(notification)} onRequestClose={onClose}>
@@ -203,6 +204,9 @@ export function NotificationDetailModal({
             <Text accessibilityRole="header" className="font-sans mt-1 text-[20px] font-semibold leading-7 text-foreground">
               {notification.title}
             </Text>
+            {isDrivingReport ? <Text className="font-sans mt-3 text-body leading-6 text-foreground">
+              {notification.fullMessage}
+            </Text> : <>
             <View className="mt-3 gap-3">
               {notification.fullMessage.split(/\n\s*\n|\r?\n/).filter(paragraph => paragraph.trim()).map((paragraph, index) => (
                 <Text key={index} className="font-sans text-[16px] font-normal leading-7 text-foreground">
@@ -227,6 +231,7 @@ export function NotificationDetailModal({
                 {actionLabel}
               </Text>
             </Pressable>
+            </>}
           </ScrollView>
         </View>
       </View>

@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\BookingStatus;
-use App\Enums\RentalType;
 use App\Models\Booking;
 use App\Services\BookingService;
 use App\Services\SelfDriveBookingAvailabilityService;
@@ -45,28 +44,32 @@ it('returns the overlap error on the rental start field through the customer end
     Sanctum::actingAs($existing->user);
     $this->postJson('/api/mobile/bookings', selfDriveReservationPayload([
         'down_payment_amount' => 10000, 'payment_method' => 'GCash',
-    ]))->assertUnprocessable()->assertJsonValidationErrors('rental_start_at');
+    ]))->assertUnprocessable()->assertJsonValidationErrors('booking');
 });
 
-it('allows adjacent dates and overlapping with-driver bookings', function () {
+it('blocks another booking while the customer already has an active booking', function () {
     $existing = telematicsFoundationBooking();
     $service = app(BookingService::class);
-    $next = $service->createAwaitingPayPalPayment($existing->user, selfDriveReservationPayload([
+    expect(fn () => $service->createAwaitingPayPalPayment($existing->user, selfDriveReservationPayload([
         'rental_start_at' => $existing->rental_end_at->toISOString(),
         'rental_end_at' => $existing->rental_end_at->addDay()->toISOString(),
-    ]));
-    expect($next->status)->toBe(BookingStatus::Pending);
-    $withDriver = $service->createAwaitingPayPalPayment($existing->user, selfDriveReservationPayload([
+    ])))->toThrow(ValidationException::class);
+    expect(fn () => $service->createAwaitingPayPalPayment($existing->user, selfDriveReservationPayload([
         'driver_option' => 'owners_driver', 'owner_driver_coverage' => 'metro_manila',
-    ]));
-    expect($withDriver->rental_type)->toBe(RentalType::OwnersDriver);
+    ])))->toThrow(ValidationException::class);
 });
 
-it('does not reserve customer dates for cancelled, rejected, returned or completed bookings', function (BookingStatus $status) {
+it('allows a new booking after cancellation, rejection or completion', function (BookingStatus $status) {
     $existing = telematicsFoundationBooking();
     $existing->update(['status' => $status]);
     expect(app(BookingService::class)->createAwaitingPayPalPayment($existing->user, selfDriveReservationPayload())->status)->toBe(BookingStatus::Pending);
-})->with([BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::Returned, BookingStatus::Completed]);
+})->with([BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::Completed]);
+
+it('blocks a new booking while a returned rental is being finalized', function () {
+    $existing = telematicsFoundationBooking();
+    $existing->update(['status' => BookingStatus::Returned]);
+    expect(fn () => app(BookingService::class)->createAwaitingPayPalPayment($existing->user, selfDriveReservationPayload()))->toThrow(ValidationException::class);
+});
 
 it('preserves overlapping legacy bookings but allows only one active handover', function () {
     $first = telematicsFoundationBooking();

@@ -150,19 +150,18 @@ it('combines native recording search with owner scoped group and session filters
     $this->withHeader('Authorization', '')->actingAs($this->admin, 'web');
     $url = '/admin/rc-research/native-recordings';
 
-    $this->getJson($url.'?per_page=1')->assertOk()->assertJsonPath('meta.total', 4)->assertJsonCount(1, 'data')
-        ->assertJsonCount(3, 'meta.filter_sessions')->assertJsonPath('meta.filter_sessions.0.id', $session->id)
-        ->assertJsonPath('meta.filter_sessions.0.group_id', $groupId)
-        ->assertJsonPath('meta.filter_sessions.1.id', $sameGroupSession)
-        ->assertJsonPath('meta.filter_sessions.2.id', $otherGroupSession);
-    $this->getJson($url."?group_id=$groupId&per_page=1")->assertOk()->assertJsonPath('meta.total', 2)->assertJsonCount(1, 'data');
+    $list = $this->getJson($url.'?per_page=1')->assertOk()->assertJsonPath('meta.total', 5)->assertJsonCount(1, 'data')
+        ->assertJsonCount(4, 'meta.filter_sessions');
+    expect(collect($list->json('meta.filter_sessions'))->pluck('id')->all())
+        ->toContain($session->id, $foreignSession, $sameGroupSession, $otherGroupSession);
+    $this->getJson($url."?group_id=$groupId&per_page=1")->assertOk()->assertJsonPath('meta.total', 3)->assertJsonCount(1, 'data');
     $this->getJson($url."?session_id=$sameGroupSession")->assertOk()->assertJsonPath('meta.total', 1)
         ->assertJsonPath('data.0.name', 'Second tile run');
     $this->getJson($url."?group_id=$groupId&session_id=$sameGroupSession&search=S03-FSS-R038")->assertOk()
         ->assertJsonPath('data.0.name', 'Second tile run');
     $this->getJson($url."?group_id=$groupId&session_id=$otherGroupSession")->assertOk()->assertJsonCount(0, 'data')
-        ->assertJsonCount(3, 'meta.filter_sessions');
-    $this->getJson($url."?session_id=$foreignSession")->assertOk()->assertJsonCount(0, 'data');
+        ->assertJsonCount(4, 'meta.filter_sessions');
+    $this->getJson($url."?session_id=$foreignSession")->assertOk()->assertJsonCount(1, 'data');
     $this->getJson($url.'?group_id=G1&session_id=S02')->assertUnprocessable()->assertJsonValidationErrors(['group_id', 'session_id']);
 });
 
@@ -302,7 +301,7 @@ it('exposes owner-bound collection review and latest observations without intern
         ->assertJsonMissingPath('data.review.observation.user_id');
     $other = User::factory()->create(['is_active' => true]);
     $other->assignRole('admin');
-    $this->actingAs($other, 'web')->getJson('/admin/rc-research/native-recordings/'.$this->recordId)->assertNotFound();
+    $this->actingAs($other, 'web')->getJson('/admin/rc-research/native-recordings/'.$this->recordId)->assertOk();
 });
 
 it('keeps missing collection and observation evidence explicit in web review', function () {

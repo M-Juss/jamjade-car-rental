@@ -11,7 +11,7 @@ class MaintenanceRecordResource extends JsonResource
     {
         return [
             'id' => (string) $this->id, 'vehicleId' => (string) $this->vehicle_id,
-            'vehicle' => $this->whenLoaded('vehicle', fn () => ['id' => (string) $this->vehicle->id, 'name' => $this->vehicle->name, 'status' => $this->vehicle->status->value, 'currentOdometer' => $this->vehicle->currentCondition?->odometer]),
+            'vehicle' => $this->whenLoaded('vehicle', fn () => ['id' => (string) $this->vehicle->id, 'name' => $this->vehicle->name, 'plateNumber' => $this->vehicle->plate_number, 'status' => $this->vehicle->status->value, 'currentOdometer' => $this->vehicle->currentCondition?->odometer]),
             'plan' => $this->whenLoaded('plan', fn () => $this->plan ? new MaintenancePlanResource($this->plan) : null),
             'category' => $this->category->value, 'categoryLabel' => $this->category->label(), 'title' => $this->title,
             'description' => $this->description, 'status' => $this->status->value, 'statusLabel' => $this->status->label(),

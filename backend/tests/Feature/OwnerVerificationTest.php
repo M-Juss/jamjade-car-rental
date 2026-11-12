@@ -16,7 +16,9 @@ beforeEach(function () {
     Mail::fake();
     $this->owner = User::factory()->create(['is_active' => true]);
     $this->owner->assignRole('owner', 'admin');
-    $this->actingAs($this->owner, 'web');
+    $this->adminActor = User::factory()->create(['is_active' => true]);
+    $this->adminActor->assignRole('admin');
+    $this->actingAs($this->adminActor, 'web');
     $this->values = ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 40];
     $this->url = '/admin/delivery-pricing';
 });
@@ -95,4 +97,41 @@ it('rejects a code sent to an earlier owner email address', function () {
     $this->owner->update(['email' => 'changed-owner@example.test']);
     $this->withHeaders(['X-Owner-Verification-Id' => $id, 'X-Owner-Code' => $code])
         ->putJson($this->url, $this->values)->assertUnprocessable();
+});
+
+it('lets the owner save without a code and does not send mail', function () {
+    $this->actingAs($this->owner, 'web')->withHeaders(['X-Owner-Verification' => 'request'])
+        ->putJson($this->url, $this->values)->assertOk()->assertJsonPath('data.verificationRequired', false);
+    expect((float) DeliveryPricingSetting::current()->minimum_fee)->not->toBe(200.0);
+    $this->flushHeaders();
+    $this->putJson($this->url, $this->values)->assertOk();
+    expect((float) DeliveryPricingSetting::current()->minimum_fee)->toBe(200.0);
+    Mail::assertNothingSent();
+    $this->assertDatabaseCount('owner_verifications', 0);
+});
+
+it('reopens the same pending action without sending another code', function () {
+    [$id, $code] = issueOwnerCode($this);
+    $this->withHeaders(['X-Owner-Verification' => 'request'])->putJson($this->url, $this->values)
+        ->assertOk()->assertJsonPath('data.verificationId', $id);
+    Mail::assertSentCount(1);
+    $this->flushHeaders();
+    $this->withHeaders(['X-Owner-Verification-Id' => $id, 'X-Owner-Code' => $code])->putJson($this->url, $this->values)->assertOk();
+});
+
+it('returns a retry time when a different action is requested during cooldown', function () {
+    issueOwnerCode($this);
+    $response = $this->withHeaders(['X-Owner-Verification' => 'request'])->putJson($this->url, [...$this->values, 'minimum_fee' => 201])->assertStatus(429);
+    expect((int) $response->headers->get('Retry-After'))->toBeGreaterThan(0);
+    Mail::assertSentCount(1);
+});
+
+it('starts a new challenge after the owner email changes', function () {
+    [$oldId, $oldCode] = issueOwnerCode($this);
+    $this->owner->update(['email' => 'changed-owner@example.test']);
+    [$newId, $newCode] = issueOwnerCode($this);
+    expect($newId)->not->toBe($oldId);
+    Mail::assertSent(OwnerVerificationMail::class, fn ($mail) => $mail->hasTo('changed-owner@example.test'));
+    $this->withHeaders(['X-Owner-Verification-Id' => $oldId, 'X-Owner-Code' => $oldCode])->putJson($this->url, $this->values)->assertUnprocessable();
+    $this->withHeaders(['X-Owner-Verification-Id' => $newId, 'X-Owner-Code' => $newCode])->putJson($this->url, $this->values)->assertOk();
 });

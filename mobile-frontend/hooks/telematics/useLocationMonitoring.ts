@@ -4,16 +4,12 @@ import { AppState } from 'react-native';
 
 import { getLocationMonitoring, type LocationMonitoringSnapshot } from '@/services/api/location-monitoring.service';
 import { locationMonitoring } from '@/services/telematics/location-monitoring';
-import { isLocationSharingActive } from '@/services/telematics/location-monitoring-session';
 
 export function useLocationMonitoringLifecycle(userId: number | null) {
   useEffect(() => {
     locationMonitoring.reset();
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active' && isLocationSharingActive(locationMonitoring.getSnapshot().phase) && !locationMonitoring.canContinueInBackground()) {
-        locationMonitoring.stop('Sharing stopped when the app left the foreground. Tap Resume sharing to continue.', 'paused', false, 'interrupted');
-      }
-      if (state === 'active') void locationMonitoring.check();
+      void locationMonitoring.onAppStateChange(state === 'active');
     });
     return () => { subscription.remove(); locationMonitoring.reset(); };
   }, [userId]);
@@ -56,5 +52,7 @@ export function useRentalLocationMonitoring(bookingCode: string) {
     return () => { focused.current = false; request.current?.abort(); };
   }, [refresh]));
 
-  return { snapshot, loading, error, refresh, sharing: sharing.bookingCode === bookingCode ? sharing : null, start: locationMonitoring.start.bind(locationMonitoring), stop: () => locationMonitoring.stop() };
+  return { snapshot, loading, error, refresh, sharing: sharing.bookingCode === bookingCode ? sharing : null,
+    start: locationMonitoring.start.bind(locationMonitoring),
+    stop: () => locationMonitoring.getSnapshot().bookingCode === bookingCode ? locationMonitoring.stop() : Promise.resolve() };
 }

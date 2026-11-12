@@ -27,7 +27,7 @@ class RcProcessingRunController extends Controller
     {
         abort_unless($this->access->enabled(), 403, 'Data Collection is unavailable.');
 
-        return $this->research->recording($request->user(), $id);
+        return $this->research->adminRecording($request->user(), $id);
     }
 
     public function index(ListRcNativeRecordingsRequest $request, string $recording): JsonResponse

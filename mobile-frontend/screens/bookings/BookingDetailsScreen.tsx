@@ -138,6 +138,10 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
 
           <View className="mt-section gap-4">
             <BookingDetailsContent booking={booking} audience={isDriver ? 'driver' : 'customer'} />
+            {['Returned', 'Completed'].includes(booking.status) && (isDriver || booking.driverType === 'Self-Drive') ? (
+              <ActionButton density="compact" icon={Navigation} label="Telematics activity"
+                onPress={() => router.push(`/${isDriver ? 'driver-telematics' : 'telematics'}/${encodeURIComponent(booking.id)}?tab=activity` as Href)} />
+            ) : null}
             {isDriver ? <View className="flex-row flex-wrap gap-2">
               {['Confirmed', 'Active', 'Ongoing'].includes(booking.status) ? <ActionButton density="compact" className="min-w-[45%] flex-1"
                 label="Telematics" icon={Navigation} variant="primary" onPress={() => router.push(`/driver-telematics/${encodeURIComponent(booking.id)}` as Href)} /> : null}

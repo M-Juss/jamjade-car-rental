@@ -503,7 +503,8 @@ it('enforces personnel visibility and creation by management role', function () 
     $driver = createDriverUser();
     $this->actingAs($owner)->getJson('/admin/personnel?role=admin')->assertOk()->assertJsonCount(1, 'data.users')->assertJsonPath('data.users.0.id', $this->admin->id);
     $this->actingAs($this->admin)->getJson('/admin/personnel?role=admin')->assertUnprocessable();
-    $this->actingAs($staff)->getJson('/admin/personnel')->assertOk()->assertJsonCount(1, 'data.roles')->assertJsonPath('data.roles.0.name', 'driver');
+    $this->actingAs($staff)->getJson('/admin/personnel')->assertOk()->assertJsonCount(1, 'data.roles')->assertJsonPath('data.roles.0.name', 'driver')
+        ->assertJsonCount(1, 'data.users')->assertJsonPath('data.users.0.id', $driver->id)->assertJsonPath('data.summary.total', 1);
     $this->putJson("/admin/personnel/users/{$this->admin->id}", personnelPayload($this->admin))->assertUnprocessable();
     $this->deleteJson("/admin/personnel/users/{$staff->id}")->assertUnprocessable();
     $this->putJson("/admin/personnel/users/{$driver->id}", personnelPayload($driver))->assertOk();
@@ -519,4 +520,6 @@ it('enforces personnel visibility and creation by management role', function () 
     $this->deleteJson("/admin/personnel/users/{$createdAdmin->id}")->assertOk();
     $this->putJson("/admin/personnel/users/{$staff->id}", personnelPayload($staff, ['role' => 'admin']))->assertUnprocessable();
     $this->deleteJson("/admin/personnel/users/{$owner->id}")->assertUnprocessable();
+    $this->actingAs($this->admin)->putJson("/admin/personnel/users/{$this->admin->id}", personnelPayload($this->admin, ['role' => 'admin']))->assertUnprocessable();
+    $this->deleteJson("/admin/personnel/users/{$this->admin->id}")->assertUnprocessable();
 });

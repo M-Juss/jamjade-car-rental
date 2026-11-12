@@ -23,6 +23,22 @@ import type {
 const DEFAULT_DEVICE_NAME = `jamjade-${Platform.OS}`;
 const REGISTRATION_EMAIL_RESPONSE_TIMEOUT_MS = 60_000;
 
+export type PasswordResetPending = { resetId: string; expiresAt: string; resendAvailableAt: string };
+
+export async function requestPasswordReset(email: string) {
+  const response = await apiPost<PasswordResetPending>('/mobile/password-reset', { email }, { skipAuth: true, allowNetworkFallback: true, responseTimeoutMs: REGISTRATION_EMAIL_RESPONSE_TIMEOUT_MS });
+  return response.data;
+}
+
+export async function verifyPasswordReset(resetId: string, code: string) {
+  const response = await apiPost<{ resetToken: string }>('/mobile/password-reset/verify', { reset_id: resetId, code }, { skipAuth: true, allowNetworkFallback: true });
+  return response.data.resetToken;
+}
+
+export async function completePasswordReset(resetId: string, resetToken: string, password: string, confirmation: string) {
+  await apiPost<null>('/mobile/password-reset/complete', { reset_id: resetId, reset_token: resetToken, password, password_confirmation: confirmation }, { skipAuth: true, allowNetworkFallback: true });
+}
+
 export async function login(payload: MobileLoginPayload) {
   await nativeRecorder.lock();
   const response = await apiPost<MobileAuthResponse>('/mobile/login', {

@@ -17,7 +17,9 @@ beforeEach(function () {
     Storage::fake('local');
     $this->approvalOwner = User::factory()->create(['is_active' => true]);
     $this->approvalOwner->assignRole(['admin', 'owner']);
-    $this->actingAs($this->approvalOwner);
+    $this->requestingAdmin = User::factory()->create(['is_active' => true]);
+    $this->requestingAdmin->assignRole('admin');
+    $this->actingAs($this->requestingAdmin);
 });
 
 function protectedActionCode($test, string $method, string $url, array $payload): array
@@ -25,6 +27,7 @@ function protectedActionCode($test, string $method, string $url, array $payload)
     $issued = $test->json($method, $url, $payload, ['X-Owner-Verification' => 'request'])->assertOk();
     $mail = Mail::sent(OwnerVerificationMail::class)->last();
     expect($mail)->not->toBeNull();
+
     return ['X-Owner-Verification-Id' => $issued->json('data.verificationId'), 'X-Owner-Code' => $mail->code];
 }
 
@@ -62,7 +65,7 @@ it('requires separate approval for a refund decision and recording money returne
 
 it('requires approval for charge edits and deletions', function () {
     [$booking, , $charge, $data] = editableLifecycleCharge();
-    $this->actingAs($this->approvalOwner);
+    $this->actingAs($this->requestingAdmin);
     $url = "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}";
     $payload = ['charges' => [[...$data, 'amount' => 275]]];
     $this->putJson($url, $payload)->assertStatus(428);

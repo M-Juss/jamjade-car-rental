@@ -7,7 +7,7 @@ export type MaintenanceDueStatus = "upcoming" | "due_soon" | "due" | "overdue";
 export type MaintenancePlan = {
   id: string;
   vehicleId: string;
-  vehicle?: { id: string; name: string };
+  vehicle?: { id: string; name: string; plateNumber: string | null };
   name: string;
   category: MaintenanceCategory;
   categoryLabel: string;
@@ -36,7 +36,7 @@ type MaintenanceActor = { id: string; name: string };
 export type MaintenanceRecord = {
   id: string;
   vehicleId: string;
-  vehicle?: { id: string; name: string; status: string; currentOdometer?: number | null };
+  vehicle?: { id: string; name: string; plateNumber: string | null; status: string; currentOdometer?: number | null };
   plan?: MaintenancePlan | null;
   category: MaintenanceCategory;
   categoryLabel: string;

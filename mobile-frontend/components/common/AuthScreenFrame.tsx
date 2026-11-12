@@ -13,10 +13,12 @@ export function AuthScreenFrame({
   mode,
   children,
   description,
+  title,
+  backLabel,
   onBack,
   disableBack = false,
   hideFooter = false,
-}: PropsWithChildren<{ mode: AuthMode; description?: string; onBack?: () => void; disableBack?: boolean; hideFooter?: boolean }>) {
+}: PropsWithChildren<{ mode: AuthMode; title?: string; backLabel?: string; description?: string; onBack?: () => void; disableBack?: boolean; hideFooter?: boolean }>) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isLogin = mode === 'login';
@@ -34,7 +36,7 @@ export function AuthScreenFrame({
             <View className="mb-section min-h-12 flex-row items-center gap-3 border-b border-border pb-3 pt-1">
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={isVerification ? 'Back to registration' : 'Back to welcome'}
+                accessibilityLabel={backLabel ?? (isVerification ? 'Back to registration' : 'Back to welcome')}
                 accessibilityState={{ disabled: disableBack }}
                 disabled={disableBack}
                 onPress={onBack ?? (() => router.replace('/'))}
@@ -56,7 +58,7 @@ export function AuthScreenFrame({
               <View className="w-11 shrink-0" />
             </View>
             <Text accessibilityRole="header" className="font-sans text-center text-title font-semibold text-foreground">
-              {isLogin ? 'Welcome back' : isVerification ? 'Verify your email' : 'Create an account'}
+              {title ?? (isLogin ? 'Welcome back' : isVerification ? 'Verify your email' : 'Create an account')}
             </Text>
             <Text className="font-sans mt-2 text-center text-body text-secondary-foreground">
               {description ?? (isLogin ? 'Sign in to continue your journey.' : 'Your next journey starts here.')}

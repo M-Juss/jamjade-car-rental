@@ -139,7 +139,7 @@ export function PersonnelPage() {
               placeholder="Role"
               height="large"
               className="min-w-0 flex-1 basis-36 rounded-lg bg-surface text-base text-foreground data-[size=default]:h-11 sm:w-36 sm:flex-none sm:basis-auto sm:text-sm"
-              options={[{ value: "all", label: "All roles" }, ...(isOwner ? [{ value: "admin", label: "Admins" }] : []), { value: "staff", label: "Staff" }, { value: "driver", label: "Drivers" }]}
+              options={[{ value: "all", label: "All roles" }, ...(isOwner ? [{ value: "admin", label: "Admins" }] : []), ...(!isStaff ? [{ value: "staff", label: "Staff" }] : []), { value: "driver", label: "Drivers" }]}
             />
             <FilterSelect
               value={status}

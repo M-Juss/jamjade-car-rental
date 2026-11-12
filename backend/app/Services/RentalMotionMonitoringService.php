@@ -57,20 +57,23 @@ class RentalMotionMonitoringService
             }
             $limit = min(28800000, max(0, ($cutoff ?? now()->getTimestampMs()) - $session->capture_started_ms));
             abort_unless(max(array_column($input['windows'], 'end_ms')) <= $limit, 409, 'These readings extend beyond the monitoring period.');
-            $result = app(DriveMonitoringBatchService::class)->receive($session, $input);
+            $result = app(DriveMonitoringBatchService::class)->receive(
+                $session, $input, app(RentalDrivingReportService::class)->acceptsLateReadings($booking)
+            );
             app(FleetMonitoringPublisher::class)->changed();
 
             return $result;
         });
     }
 
-    public function stop(User $user, string $code, string $id): DriveMonitoringSession
+    public function stop(User $user, string $code, string $id, bool $interrupted = false): DriveMonitoringSession
     {
-        return DB::transaction(function () use ($user, $code, $id) {
+        return DB::transaction(function () use ($user, $code, $id, $interrupted) {
             $session = $this->session($this->booking($user, $code), $user, $id);
             if ($session->status !== 'stopped') {
                 app(DriveMonitoringEventService::class)->finish($session);
-                $session->update(['status' => 'stopped', 'ended_at' => now(), 'capture_closed_ms' => $session->capture_closed_ms ?? now()->getTimestampMs()]);
+                $session->update(['status' => 'stopped', 'ended_at' => now(),
+                    'sync_interrupted' => $interrupted, 'capture_closed_ms' => $session->capture_closed_ms ?? now()->getTimestampMs()]);
                 app(FleetMonitoringPublisher::class)->changed();
             }
 
@@ -84,7 +87,8 @@ class RentalMotionMonitoringService
         $active = $booking->telematicsTrip ? DriveMonitoringSession::where('telematics_trip_id', $booking->telematicsTrip->id)->where('user_id', $user->id)->where('status', 'active')->first() : null;
 
         return ['available' => $this->enabled() && $this->locations->canMonitor($booking),
-            'sensor_platform' => 'rc', 'active_session_id' => $active?->id];
+            'sensor_platform' => 'rc', 'active_session_id' => $active?->id,
+            'report_sync_closed' => ! app(RentalDrivingReportService::class)->acceptsLateReadings($booking)];
     }
 
     private function booking(User $user, string $code): Booking

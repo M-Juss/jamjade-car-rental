@@ -14,6 +14,12 @@ const maneuverLabels = {
   harsh_swerve: "Harsh swerving",
 } as const;
 
+export function formatDrivingGrade(grading?: RentalDrivingGrade) {
+  if (grading?.status === "pending") return "Finalizing";
+  const value = grading?.score != null ? `${grading.score} / ${grading.maximum}` : "Not graded";
+  return grading?.sync_incomplete ? `${value} · Incomplete sync` : value;
+}
+
 export function GradingDialog({ grading }: { grading: RentalDrivingGrade | null }) {
   const [open, setOpen] = useState(false);
   return <Dialog open={open} onOpenChange={setOpen}>
@@ -34,7 +40,8 @@ export function ScoreCalculation({ grading }: { grading: RentalDrivingGrade | nu
   return <section className="space-y-3">
     <h2 className="text-sm font-semibold">Score calculation</h2>
     {!grading ? <p role="status" className="text-sm text-muted-foreground">Loading calculation…</p>
-      : grading.score === null ? <p className="text-sm text-muted-foreground">Not graded — no motion readings received.</p>
+      : grading.status === "pending" ? <p role="status" className="text-sm text-muted-foreground">The grade will appear when the report is finalized.</p>
+      : grading.score === null ? <p className="text-sm text-muted-foreground">No motion readings received.</p>
         : <>
           <dl className="space-y-2 text-sm">{Object.entries(maneuverLabels).map(([key, label]) => {
             const item = grading.breakdown[key as keyof typeof maneuverLabels];
@@ -52,7 +59,7 @@ export function ScoreCalculation({ grading }: { grading: RentalDrivingGrade | nu
           </dl>
           <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
             <p className="text-sm font-medium">Total Grade</p>
-            <p className="shrink-0 text-xl font-semibold text-foreground tabular-nums">{grading.score}<span className="text-sm font-normal text-muted-foreground"> / {grading.maximum}</span></p>
+            <p className="shrink-0 text-right text-xl font-semibold text-foreground tabular-nums">{grading.score}<span className="text-sm font-normal text-muted-foreground"> / {grading.maximum}</span>{grading.sync_incomplete ? <span className="block text-xs font-normal text-muted-foreground">Incomplete sync</span> : null}</p>
           </div>
         </>}
   </section>;

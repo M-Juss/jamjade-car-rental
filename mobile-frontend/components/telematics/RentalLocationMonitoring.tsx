@@ -13,7 +13,8 @@ import type { LocationConsentInput, LocationMonitoringPolicy } from '@/validatio
 
 const labels: Record<LocationSharingPhase, string> = {
   idle: 'Not sharing', starting: 'Starting location sharing', waiting: 'Waiting for GPS',
-  sharing: 'Sharing location', paused: 'Sharing paused', offline: 'Sharing stopped while offline', error: 'Sharing interrupted',
+  sharing: 'Sharing location', reconnecting: 'Location sharing paused', paused: 'Sharing paused',
+  offline: 'Sharing stopped while offline', error: 'Sharing interrupted',
 };
 
 export function RentalLocationMonitoring({ bookingCode }: { bookingCode: string }) {
@@ -44,14 +45,14 @@ export function RentalLocationMonitoring({ bookingCode }: { bookingCode: string 
 
   return <SectionCard title="Monitoring" icon={MapPin}>
     <View accessibilityLiveRegion="polite" className="flex-row items-center gap-2">
-      {phase === 'starting' || phase === 'waiting' ? <ActivityIndicator size="small" color={themeColors.primary} /> : <View className={`h-2.5 w-2.5 rounded-full ${phase === 'sharing' ? 'bg-success' : phase === 'error' || phase === 'offline' ? 'bg-warning' : 'bg-subtle-foreground'}`} />}
+      {phase === 'starting' || phase === 'waiting' || phase === 'reconnecting' ? <ActivityIndicator size="small" color={themeColors.primary} /> : <View className={`h-2.5 w-2.5 rounded-full ${phase === 'sharing' ? 'bg-success' : phase === 'error' || phase === 'offline' ? 'bg-warning' : 'bg-subtle-foreground'}`} />}
       <Text className={`font-sans min-w-0 flex-1 text-section font-semibold ${phase === 'sharing' ? 'text-success' : 'text-foreground'}`}>{labels[phase]}</Text>
     </View>
     {sharing?.message ? <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">{sharing.message}</Text> : null}
     {lastUpdate ? <View className="mt-3 border-t border-border pt-1"><InfoRow label="Last shared" value={formatLastShared(lastUpdate)} /></View> : null}
     {active && sharing?.accuracy !== null && sharing?.accuracy !== undefined ? <InfoRow label="GPS accuracy" value={`±${Math.round(sharing.accuracy)} m`} /> : null}
     {phase === 'sharing' ? <InfoRow label="Sharing mode" value={sharing?.backgroundEnabled ? 'Including background' : 'App open only'} /> : null}
-    {error ? <Text accessibilityLiveRegion="polite" className="font-sans mt-3 text-body leading-6 text-destructive">{error}</Text> : null}
+    {error && phase !== 'reconnecting' ? <Text accessibilityLiveRegion="polite" className="font-sans mt-3 text-body leading-6 text-destructive">{error}</Text> : null}
     <View className="mt-4 gap-3">
       {active ? <ActionButton label="Stop sharing" onPress={stop} />
         : error ? <ActionButton label="Try again" icon={RefreshCcw} disabled={loading} onPress={() => void refresh()} />

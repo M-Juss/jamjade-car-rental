@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
             ->whereIn('email', ['admin@jamjade.test', 'test@example.com'])
             ->delete();
 
-        $ownerEmail = 'jamjade.carrentalofficial@gmail.com';
+        $ownerEmail = 'ofcl.jamjadecarrental@gmail.com';
         $legacyOwnerEmails = [
             'jamjadecarrental@gmail.com',
             'jamjadecarental@gmail.com',

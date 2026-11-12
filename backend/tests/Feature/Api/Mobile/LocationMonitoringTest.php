@@ -71,7 +71,8 @@ it('starts once after consent and only overwrites an encrypted latest position w
         ->and($trip->events()->where('event_type', 'like', 'geofence_%')->exists())->toBeFalse();
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/location-monitoring")
         ->assertOk()->assertJsonMissingPath('data.sessionToken')->assertJsonMissingPath('data.latest_location')
-        ->assertJsonPath('data.canMonitor', true)->assertJsonPath('data.policy.consentVersion', 3);
+        ->assertJsonPath('data.canMonitor', true)->assertJsonPath('data.policy.consentVersion', 3)
+        ->assertJsonPath('data.policy.uploadIntervalSeconds', 3);
     startLocationSharing($this, $booking);
     expect($booking->telematicsTrips()->count())->toBe(1);
 });
@@ -354,9 +355,9 @@ it('evaluates frozen default and custom zones from latest GPS and shares named c
         ->and($trip->events()->where('event_type', 'like', 'geofence_%')->count())->toBe(0);
 
     sendMonitoringFix($this, $booking, $token, 14.02)->assertOk();
-    sendMonitoringFix($this, $booking, $token, 14.02)->assertOk();
+    sendMonitoringFix($this, $booking, $token, 14.02, 2)->assertOk();
     expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(0);
-    sendMonitoringFix($this, $booking, $token, 14.02)->assertOk();
+    sendMonitoringFix($this, $booking, $token, 14.02, 1)->assertOk();
     expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(2);
     sendMonitoringFix($this, $booking, $token, 14.02)->assertOk();
     sendMonitoringFix($this, $booking, $token, 14)->assertOk();
@@ -367,8 +368,8 @@ it('evaluates frozen default and custom zones from latest GPS and shares named c
         ->and($trip->fresh()->status)->toBe('started');
 
     $path = '/api/mobile/notifications?pagination=cursor&per_page=10&booking_code='.$booking->booking_code;
-    $feed = $this->getJson($path)->assertOk()->assertJsonCount(5, 'data')->assertJsonPath('meta.booking_unread_count', 5);
-    $crossings = collect($feed->json('data'))->filter(fn ($item) => str_starts_with($item['data']['event_type'], 'geofence_'));
+    $feed = $this->getJson($path)->assertOk()->assertJsonCount(7, 'data')->assertJsonPath('meta.booking_unread_count', 7);
+    $crossings = collect($feed->json('data'))->filter(fn ($item) => in_array($item['data']['event_type'], ['geofence_enter', 'geofence_exit'], true));
     expect($crossings->pluck('message')->all())->toContain('Exited Garage.', 'Entered Garage.', 'Exited Town.', 'Entered Town.');
     foreach ($crossings as $item) {
         expect($item['category'])->toBe('trip')
@@ -394,7 +395,8 @@ it('records crossings regardless of direction preferences but only notifies enab
         sendMonitoringFix($this, $booking, $token, $latitude, 11)->assertOk();
     }
     $events = $trip->events()->where('event_type', 'like', 'geofence_%')->get();
-    $alerts = $booking->user->notifications()->where('data->zone_name', $name)->get();
+    $alerts = $booking->user->notifications()->where('data->zone_name', $name)
+        ->whereIn('data->event_type', ['geofence_enter', 'geofence_exit'])->get();
     expect($events)->toHaveCount(2)->and($alerts)->toHaveCount((int) $enter + (int) $exit)
         ->and($events->firstWhere('event_type', 'geofence_enter')->metadata['notification_requested'])->toBe($enter)
         ->and($events->firstWhere('event_type', 'geofence_exit')->metadata['notification_requested'])->toBe($exit);
@@ -418,7 +420,7 @@ it('ignores duplicate and older fixes and resets a candidate after an uncertain 
     sendMonitoringFix($this, $booking, $token, 14.01)->assertOk();
     sendMonitoringFix($this, $booking, $token, 14)->assertOk();
     sendMonitoringFix($this, $booking, $token, 14.02)->assertOk();
-    sendMonitoringFix($this, $booking, $token, 14.02)->assertOk();
+    sendMonitoringFix($this, $booking, $token, 14.02, 2)->assertOk();
     expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(0);
     sendMonitoringFix($this, $booking, $token, 14.02, 5, ['accuracy' => 51])->assertUnprocessable()->assertJsonValidationErrors('accuracy');
     sendMonitoringFix($this, $booking, $token, 14.02, 5, ['captured_at' => now()->subMinutes(2)->toISOString()])->assertUnprocessable();

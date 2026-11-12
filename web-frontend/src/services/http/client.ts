@@ -1,4 +1,4 @@
-import { requestOwnerVerification } from "./owner-verification";
+import { OwnerVerificationWait, requestOwnerVerification } from "./owner-verification";
 import { buildApiUrl } from "./config";
 import { ApiError, GENERIC_ERROR_MESSAGE } from "./errors";
 import type { ApiMethodOptions, ApiRequestOptions, ApiResponse } from "./types";
@@ -173,7 +173,11 @@ export async function apiFetch<TData = unknown>(
       const issued = await sendRequest();
       const result = await issued.json();
       if (!issued.ok || (!result.data?.verificationId && result.data?.verificationRequired !== false)) {
-        throw new Error(issued.status === 429 ? "Please wait before requesting another code." : "The code could not be sent. Please try again later.");
+        if (issued.status === 429) {
+          const retryAfter = Number(issued.headers.get("Retry-After"));
+          throw new OwnerVerificationWait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60);
+        }
+        throw new Error("The code could not be sent. Please try again later.");
       }
       return result.data;
     }, async (id, code) => {

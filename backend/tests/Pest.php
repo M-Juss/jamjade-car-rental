@@ -3,6 +3,7 @@
 use App\Enums\DocumentStatus;
 use App\Enums\UserRole;
 use App\Enums\VehicleStatus;
+use App\Mail\OwnerVerificationMail;
 use App\Models\CustomerDocument;
 use App\Models\DeliveryQuote;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Support\VehicleInspectionDefinition;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -218,14 +220,14 @@ function verifiedOwnerWrite($test, string $method, string $url, array $data = []
         $owner = User::factory()->create(['is_active' => true]);
         $owner->assignRole('owner');
     }
-    \Illuminate\Support\Facades\Mail::fake();
+    Mail::fake();
     $issued = $test->json($method, $url, $data, ['X-Owner-Verification' => 'request']);
     if ($issued->status() === 429) {
         $test->travel(61)->seconds();
         $issued = $test->json($method, $url, $data, ['X-Owner-Verification' => 'request']);
     }
     $issued->assertOk();
-    $code = \Illuminate\Support\Facades\Mail::sent(\App\Mail\OwnerVerificationMail::class)->last()->code;
+    $code = Mail::sent(OwnerVerificationMail::class)->last()->code;
 
     return $test->json($method, $url, $data, ['X-Owner-Verification-Id' => $issued->json('data.verificationId'), 'X-Owner-Code' => $code]);
 }

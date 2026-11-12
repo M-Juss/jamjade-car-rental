@@ -6,10 +6,10 @@ import { ActionButton } from '@/components/bookings/ActionButton';
 import { SectionCard } from '@/components/bookings/SectionCard';
 import { stopRentalMotion as closeInterrupted, getRentalMotion, type RentalMotionState } from '@/services/api/rental-motion.service';
 import { beginRentalDriveMonitoring, pauseRentalDriveMonitoring, recoverRentalDriveMonitoring, rentalMotionStatus, type RentalMotionStatus } from '@/services/telematics/rental-drive-monitoring';
-export function RentalMotionMonitoring({ bookingCode, userId, status, starting, motionError, refreshStatus, gpsActive, onResumeCheck }: {
+export function RentalMotionMonitoring({ bookingCode, userId, status, starting, motionError, refreshStatus, gpsActive, onResumeCheck, ended = false }: {
   bookingCode: string; userId: number; status: RentalMotionStatus | null; starting: boolean;
   motionError: string | null; refreshStatus: () => Promise<void>;
-  gpsActive: boolean; onResumeCheck: (onResume: () => void) => void;
+  gpsActive: boolean; onResumeCheck: (onResume: () => void) => void; ended?: boolean;
 }) {
   const focused = useRef(false);
   const gpsActiveRef = useRef(gpsActive);
@@ -39,8 +39,9 @@ export function RentalMotionMonitoring({ bookingCode, userId, status, starting, 
   const active = status?.active && status.booking_code === bookingCode;
   const pending = status?.unfinished.find(item => item.booking_code === bookingCode);
   const interruptedId = !active && !pending && status ? server?.active_session_id : null;
+  const syncClosed = server?.report_sync_closed === true;
   const queued = active || pending ? status?.pending_batches ?? 0 : 0;
-  const state = active ? 'Active' : starting ? 'Waiting for GPS' : pending ? 'Sync pending'
+  const state = syncClosed ? 'Sync closed' : active ? 'Active' : starting ? 'Waiting for GPS' : pending ? 'Sync pending'
     : server?.available === false ? 'Unavailable' : status ? 'Paused' : 'Status unavailable';
   const issue = message ?? motionError ?? status?.error;
   const requestStart = () => {
@@ -60,6 +61,8 @@ export function RentalMotionMonitoring({ bookingCode, userId, status, starting, 
         }) },
       ]);
   };
+  if (ended && !active && !pending && !interruptedId) return null;
+
   return <SectionCard title="Drive Monitoring" icon={Activity} density="compact"
     headerEnd={
       <View className="max-w-[45%] flex-row items-center gap-2">
@@ -67,8 +70,9 @@ export function RentalMotionMonitoring({ bookingCode, userId, status, starting, 
         <Text accessibilityLiveRegion="polite" className="font-sans shrink text-right text-caption font-medium text-foreground">{state}</Text>
       </View>
     }>
-    {queued > 0 ? <Text className="font-sans text-caption text-secondary-foreground">{queued} {queued === 1 ? 'batch' : 'batches'} to sync</Text> : null}
-    {issue ? <Text accessibilityLiveRegion="polite" className="font-sans mt-2 text-caption text-secondary-foreground">{issue}</Text> : null}
+    {syncClosed ? <Text className="font-sans text-caption text-secondary-foreground">The driving report upload window has closed.</Text> : null}
+    {!syncClosed && queued > 0 ? <Text className="font-sans text-caption text-secondary-foreground">{queued} {queued === 1 ? 'batch' : 'batches'} to sync</Text> : null}
+    {!syncClosed && issue ? <Text accessibilityLiveRegion="polite" className="font-sans mt-2 text-caption text-secondary-foreground">{issue}</Text> : null}
     {active ? <Pressable
       accessibilityRole="button"
       accessibilityLabel="Stop motion monitoring"
@@ -85,7 +89,7 @@ export function RentalMotionMonitoring({ bookingCode, userId, status, starting, 
       className="min-h-[44px] self-start justify-center disabled:opacity-50">
       <Text className="font-sans text-caption font-semibold text-primary underline">{busy ? 'Stopping motion…' : 'Stop motion'}</Text>
     </Pressable> : null}
-    {!active && status && !pending && !interruptedId && server?.available !== false ? <Pressable
+    {!ended && !active && status && !pending && !interruptedId && server?.available !== false ? <Pressable
       accessibilityRole="button"
       accessibilityLabel="Start motion monitoring"
       accessibilityHint="Checks the phone before starting motion readings. GPS sharing continues."
@@ -95,8 +99,8 @@ export function RentalMotionMonitoring({ bookingCode, userId, status, starting, 
       className="min-h-[44px] self-start justify-center disabled:opacity-50">
       <Text className="font-sans text-caption font-semibold text-primary underline">{busy ? 'Starting motion…' : 'Start motion'}</Text>
     </Pressable> : null}
-    {!active && !gpsActive && !pending && !interruptedId ? <Text className="font-sans text-caption text-secondary-foreground">Start GPS monitoring first.</Text> : null}
-    {!active && (pending || interruptedId) ? <View className="mt-3">
+    {!ended && !active && !gpsActive && !pending && !interruptedId ? <Text className="font-sans text-caption text-secondary-foreground">Start GPS monitoring first.</Text> : null}
+    {!syncClosed && !active && (pending || interruptedId) ? <View className="mt-3">
       {pending ? <ActionButton label="Finish sync" disabled={busy || starting} onPress={() => void perform(() => recoverRentalDriveMonitoring(userId, bookingCode, pending.id))} />
         : interruptedId ? <ActionButton label="Close interrupted capture" disabled={busy || starting} onPress={() => void perform(async () => { await closeInterrupted(bookingCode, interruptedId); })} /> : null}
     </View> : null}

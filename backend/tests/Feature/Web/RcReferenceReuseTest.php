@@ -174,7 +174,7 @@ it('requires explicit reference review and unchanged-mount confirmation without 
 })->with([['confirmed', false], ['same_mount_confirmed', false], ['same_mount_confirmed', null],
     ['reference_run_id', null], ['reference_run_id', 'invalid'], ['ranges', ['rest' => [0, 5000], 'starting' => [5200, 6000], 'stopping' => [6400, 7200]]]]);
 
-it('does not disclose another owner reference or allow chained references', function () {
+it('restricts cross-owner reference reuse while allowing shared admin access', function () {
     $other = User::factory()->create(['is_active' => true]);
     $other->assignRole('admin');
     $source = reusableRecording($other, 'forward_reference', $this->group);
@@ -185,8 +185,8 @@ it('does not disclose another owner reference or allow chained references', func
     $next = reusableRecording($this->admin, 'maneuver_trial', $this->group);
     $this->postJson('/admin/rc-research/native-recordings/'.$next->id.'/processing-runs', [...$this->input, 'reference_run_id' => $reused])->assertUnprocessable();
     $this->actingAs($other, 'web');
-    $this->getJson($this->url.'/reference-runs')->assertNotFound();
-    $this->postJson($this->url.'/processing-runs', $this->input)->assertNotFound();
+    $this->getJson($this->url.'/reference-runs')->assertOk();
+    $this->postJson($this->url.'/processing-runs', $this->input)->assertOk();
 });
 
 it('rejects short pilot references, wrong recording purposes and corrupted source originals', function () {

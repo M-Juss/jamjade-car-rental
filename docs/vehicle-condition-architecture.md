@@ -110,6 +110,7 @@ The existing `POST /admin/vehicles` contract now requires `initial_condition`. I
 - Only finalized snapshots may be accepted as current.
 - Every standalone condition update is a new immutable snapshot, never an edit to an existing record.
 - Every standalone update has a new personnel signature, a controlled reason, and lineage to the previous current snapshot.
+- Maintenance completion with a different odometer uses the signed maintenance condition-update flow before completing the job. The signed odometer must match the saved completion reading; the previous snapshot remains unchanged. See [Vehicle Maintenance Architecture](maintenance-architecture.md).
 - Standalone updates are forbidden while the vehicle has an ongoing rental.
 - Signature paths and bytes remain private and are never included in API resources or activity properties.
 

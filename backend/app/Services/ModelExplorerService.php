@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\RcNativeRecording;
 use App\Models\User;
 
-/** Dedicated, read-only, owner-scoped reader of the frozen development export. */
+/** Dedicated, read-only reader of the shared frozen development export. */
 class ModelExplorerService
 {
     private const SNAPSHOT_SHA256 = '7cc3b2efe0f3284af6bea681c879db0497890bdca92a69e112b6d5845dff7498';
@@ -17,28 +17,27 @@ class ModelExplorerService
         private readonly RcRuntimeForestService $forest,
     ) {}
 
-    private function examples(User $user): array
+    private function examples(): array
     {
         $rows = [];
         foreach ($this->export->streamFrozenDevelopment('pilot-split-v3', self::SNAPSHOT_SHA256) as $interval) {
             $rows[] = $interval;
         }
-        $owned = RcNativeRecording::where('user_id', $user->id)
-            ->whereIn('id', array_unique(array_column($rows, 'recording_id')))->pluck('id')->all();
+        $recordings = RcNativeRecording::whereIn('id', array_unique(array_column($rows, 'recording_id')))->pluck('id')->all();
 
-        return array_values(array_filter($rows, fn ($row) => in_array($row['recording_id'], $owned, true)));
+        return array_values(array_filter($rows, fn ($row) => in_array($row['recording_id'], $recordings, true)));
     }
 
     public function index(User $user): array
     {
         return array_map(fn ($row, $index) => ['id' => $index, 'target' => $row['target'],
             'start_ms' => $row['start_ms'], 'end_ms' => $row['end_ms']],
-            $rows = $this->examples($user), array_keys($rows));
+            $rows = $this->examples(), array_keys($rows));
     }
 
     public function show(User $user, int $index): array
     {
-        $examples = $this->examples($user);
+        $examples = $this->examples();
         abort_unless(isset($examples[$index]), 404, 'Example not found.');
         $selected = $examples[$index];
         $values = $this->features->extract($selected['samples']);

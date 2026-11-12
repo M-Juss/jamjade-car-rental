@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\RcAnnotationRevision;
 use App\Models\RcNativeRecording;
+use App\Models\User;
 use App\Support\RcNativeProtocol;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +18,7 @@ class RcAnnotationService
     {
         return DB::transaction(function () use ($record, $reviewer, $input) {
             $record = RcNativeRecording::whereKey($record->id)->lockForUpdate()->firstOrFail();
-            abort_unless($record->user_id === $reviewer, 404);
+            abort_unless(User::whereKey($reviewer)->where('is_active', true)->role('admin')->exists(), 403);
             abort_unless($record->state === 'verified', 409, 'Finish uploading before reviewing intervals.');
             $this->research->manifest($record);
             $items = [];

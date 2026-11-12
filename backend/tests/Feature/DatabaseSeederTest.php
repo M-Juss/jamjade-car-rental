@@ -35,7 +35,7 @@ it('uses the configured hosted password once and preserves it on a later seed', 
 it('seeds only the Jamjade owner account without demo vehicle data', function () {
     $this->seed(DatabaseSeeder::class);
 
-    $owner = User::where('email', 'jamjade.carrentalofficial@gmail.com')->first();
+    $owner = User::where('email', 'ofcl.jamjadecarrental@gmail.com')->first();
 
     expect(User::count())->toBe(1)
         ->and(User::where('email', 'admin@jamjade.test')->exists())->toBeFalse()
@@ -54,12 +54,12 @@ it('lets the seeded Jamjade owner log in to the web admin', function () {
     $this->seed(DatabaseSeeder::class);
 
     $this->postJson('/admin/login', [
-        'email' => 'jamjade.carrentalofficial@gmail.com',
+        'email' => 'ofcl.jamjadecarrental@gmail.com',
         'password' => 'Jamjade@123',
     ])
         ->assertOk()
         ->assertJsonPath('message', 'Admin login successful.')
-        ->assertJsonPath('data.user.email', 'jamjade.carrentalofficial@gmail.com')
+        ->assertJsonPath('data.user.email', 'ofcl.jamjadecarrental@gmail.com')
         ->assertJsonPath('data.user.roles.0', UserRole::Admin->value);
 });
 
@@ -67,7 +67,7 @@ it('lets an already authenticated web admin submit login again without redirecti
     $this->seed(DatabaseSeeder::class);
 
     $payload = [
-        'email' => 'jamjade.carrentalofficial@gmail.com',
+        'email' => 'ofcl.jamjadecarrental@gmail.com',
         'password' => 'Jamjade@123',
     ];
 
@@ -77,5 +77,27 @@ it('lets an already authenticated web admin submit login again without redirecti
         ->assertOk()
         ->assertJsonPath('success', true)
         ->assertJsonPath('message', 'Admin login successful.')
-        ->assertJsonPath('data.user.email', 'jamjade.carrentalofficial@gmail.com');
+        ->assertJsonPath('data.user.email', 'ofcl.jamjadecarrental@gmail.com');
+});
+
+it('updates only the previous owner email and preserves the account', function () {
+    $this->seed(DatabaseSeeder::class);
+    $owner = User::sole();
+    $owner->update(['email' => 'jamjade.carrentalofficial@gmail.com']);
+    $migration = require database_path('migrations/2026_11_12_130000_update_seeded_owner_email.php');
+    $migration->up();
+
+    expect($owner->fresh()->email)->toBe('ofcl.jamjadecarrental@gmail.com')
+        ->and($owner->fresh()->hasRole('owner'))->toBeTrue();
+});
+
+it('does not replace another account using the intended owner email', function () {
+    $this->seed(DatabaseSeeder::class);
+    $owner = User::sole();
+    $owner->update(['email' => 'jamjade.carrentalofficial@gmail.com']);
+    User::factory()->create(['email' => 'ofcl.jamjadecarrental@gmail.com']);
+    $migration = require database_path('migrations/2026_11_12_130000_update_seeded_owner_email.php');
+
+    expect(fn () => $migration->up())->toThrow(RuntimeException::class);
+    expect($owner->fresh()->email)->toBe('jamjade.carrentalofficial@gmail.com');
 });

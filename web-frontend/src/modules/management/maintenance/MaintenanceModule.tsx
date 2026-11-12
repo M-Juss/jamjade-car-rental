@@ -150,6 +150,7 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
         getAuthenticatedUser(),
       ]);
       setConditionFlow({ record, currentCondition, personnelName: auth.user.name });
+      await load();
     } catch {
       appToast.error("Vehicle Condition verification could not be loaded. Please try again.");
     }
@@ -247,7 +248,7 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
           open
           onOpenChange={(open) => { if (!open) setConditionFlow(null); }}
           vehicleId={conditionFlow.record.vehicleId}
-          currentCondition={conditionFlow.currentCondition}
+          currentCondition={{ ...conditionFlow.currentCondition, odometer: conditionFlow.record.odometerAtCompletion ?? conditionFlow.currentCondition.odometer }}
           personnelName={conditionFlow.personnelName}
           defaultReason={conditionFlow.record.category === "body_repair" ? "repair_completed" : "maintenance_completed"}
           reasonLocked

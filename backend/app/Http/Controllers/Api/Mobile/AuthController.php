@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\CompleteMobilePasswordReset;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\RequestMobilePasswordReset;
 use App\Http\Requests\Auth\ResendMobileRegistrationRequest;
+use App\Http\Requests\Auth\VerifyMobilePasswordReset;
 use App\Http\Requests\Auth\VerifyMobileRegistrationRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
+use App\Services\MobilePasswordResetService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +30,23 @@ class AuthController extends Controller
         return $this->success('Verification code sent.', [
             ...$result,
         ], 202)->header('Cache-Control', 'no-store');
+    }
+
+    public function requestPasswordReset(RequestMobilePasswordReset $request, MobilePasswordResetService $service): JsonResponse
+    {
+        return $this->success('If the account is eligible, a code will be sent.', $service->begin($request->validated('email'), (string) $request->ip()), 202)->header('Cache-Control', 'no-store');
+    }
+
+    public function verifyPasswordReset(VerifyMobilePasswordReset $request, MobilePasswordResetService $service): JsonResponse
+    {
+        return $this->success('Code verified.', ['resetToken' => $service->verify($request->validated('reset_id'), $request->validated('code'))])->header('Cache-Control', 'no-store');
+    }
+
+    public function completePasswordReset(CompleteMobilePasswordReset $request, MobilePasswordResetService $service): JsonResponse
+    {
+        $service->complete($request->validated('reset_id'), $request->validated('reset_token'), $request->validated('password'));
+
+        return $this->noData('Password updated. Please sign in.')->header('Cache-Control', 'no-store');
     }
 
     public function verifyRegistration(VerifyMobileRegistrationRequest $request): JsonResponse

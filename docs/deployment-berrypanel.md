@@ -93,6 +93,9 @@ Enable the scheduler. Configure queue workers to consume **both** `default` and
 `fleet-monitoring` queues; for one worker the command can use
 `--queue=fleet-monitoring,default`. `FleetMonitoringChanged` specifically uses
 `fleet-monitoring`, so a default-only worker will miss those broadcasts.
+After applying the driving report migration, the scheduler runs
+`telematics:finalize-driving-reports` every minute. It also processes existing
+completed rentals with motion sessions and creates eligible inbox notices.
 Enable Reverb with reachable WSS routing and matching browser/backend settings.
 If the panel's service controls do not expose these settings, use the server
 owner's configuration access rather than assuming they were provisioned.

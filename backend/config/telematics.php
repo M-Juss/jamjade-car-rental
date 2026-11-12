@@ -5,11 +5,12 @@ return [
     'early_start_test_mode' => env('RENTAL_EARLY_START_TEST_MODE', false),
     'calibration_profile' => env('TELEMATICS_CALIBRATION_PROFILE', 'standard'),
     'hosted_rc_demo' => env('TELEMATICS_HOSTED_RC_DEMO', false),
+    'driving_report_sync_hours' => 24,
     // Fleet freshness display only; stale updates do not diagnose GPS/network loss.
     'fleet_location_recent_seconds' => 120,
     'foreground_location' => [
         'consent_version' => 3,
-        'upload_interval_seconds' => 5,
+        'upload_interval_seconds' => 3,
         'maximum_accuracy_meters' => 50,
         'maximum_age_seconds' => 60,
         'future_skew_seconds' => 10,
@@ -75,5 +76,5 @@ return [
     'geofence_max_age_seconds' => 60,
     'geofence_boundary_buffer_meters' => 0,
     'geofence_confirmation_points' => 2,
-    'geofence_confirmation_seconds' => 5,
+    'geofence_confirmation_seconds' => 3,
 ];

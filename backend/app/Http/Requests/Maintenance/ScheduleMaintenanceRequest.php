@@ -23,7 +23,7 @@ class ScheduleMaintenanceRequest extends BaseFormRequest
             'description' => ['nullable', 'string', 'max:2000'],
             'scheduled_start' => ['required', 'date', 'after_or_equal:'.today('Asia/Manila')->toIso8601String()],
             'scheduled_end' => ['required', 'date', 'after:scheduled_start'],
-            'service_provider' => ['nullable', 'string', 'max:150'],
+            'service_provider' => ['required', 'string', 'max:150'],
             'notes' => ['nullable', 'string', 'max:3000'],
         ];
     }

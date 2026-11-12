@@ -4,8 +4,8 @@ namespace App\Http\Requests\Vehicle;
 
 use App\Http\Requests\BaseFormRequest;
 use App\Services\VehicleConfigurationService;
-use App\Support\VehicleConditionRules;
 use App\Support\ValidationPatterns;
+use App\Support\VehicleConditionRules;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;

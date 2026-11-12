@@ -112,7 +112,6 @@ export async function startMaintenance(recordId: string) {
 export async function completeMaintenance(recordId: string, values: CompleteMaintenanceFormValues) {
   return (await apiPost<MaintenanceRecord>(`/admin/maintenance/${recordId}/complete`, {
     odometer_at_completion: nullableNumber(values.odometerAtCompletion),
-    work_performed: values.workPerformed,
     service_provider: nullableText(values.serviceProvider),
     labor_cost: nullableNumber(values.laborCost),
     parts_cost: nullableNumber(values.partsCost),

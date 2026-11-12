@@ -60,6 +60,7 @@ class FleetTrackerService
         $rentals = $query->select(['id', 'booking_code', 'user_id', 'vehicle_id', 'rental_type', 'rental_start_at', 'rental_end_at'])
             ->with([
                 'user:id,name,email,phone_number', 'user.customerProfile:id,user_id,first_name,last_name',
+                'user.emergencyContacts:id,user_id,name,relationship,phone_number',
                 'assignedDriver:users.id,users.name,users.email,users.phone_number',
                 'vehicle:id,brand,name,model,plate_number',
                 'telematicsTrip:id,booking_id,operator_user_id,status,last_location_at,latest_location,location_consent_at,location_consent_version',

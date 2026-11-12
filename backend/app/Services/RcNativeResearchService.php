@@ -27,6 +27,13 @@ class RcNativeResearchService
         return RcNativeRecording::where('user_id', $user->id)->findOrFail($id);
     }
 
+    public function adminRecording(User $user, string $id): RcNativeRecording
+    {
+        abort_unless($user->is_active && $user->hasRole('admin'), 403);
+
+        return RcNativeRecording::findOrFail($id);
+    }
+
     public function begin(User $user, string $json): RcNativeRecording
     {
         $manifest = Protocol::manifest($json);

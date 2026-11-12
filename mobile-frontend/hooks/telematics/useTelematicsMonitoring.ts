@@ -22,7 +22,8 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
   const [motionStarting, setMotionStarting] = useState(false);
   const motionIntent = useRef<{ started: boolean; gpsStarting: boolean } | null>(null);
   const released = handover?.eligibility.state === 'released';
-  const checkMotionStatus = released || !handover;
+  const ended = handover?.eligibility.state === 'rental_ended';
+  const checkMotionStatus = released || ended || !handover;
   const motionActive = motionStatus?.active === true && motionStatus.booking_code === bookingCode;
   const startRef = useRef(monitoring.start);
   const stopRef = useRef(monitoring.stop);
@@ -34,6 +35,7 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
     return monitoring.stop();
   };
   const { refresh, snapshot } = monitoring;
+  const gpsActive = isLocationSharingActive(monitoring.sharing?.phase ?? 'idle');
   const context = useMemo<ReleaseMonitoringContext>(() => ({
     userId: userId ?? 0, bookingCode, startedAt: handover?.setup?.startedAt ?? null,
     profile: handover?.calibration.profile.fingerprint ?? null,
@@ -45,12 +47,12 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
     return () => { focused.current = false; pending.clear(); motionIntent.current = null; setPrepared(false); setMotionStarting(false); };
   }, [bookingCode, userId]));
   useEffect(() => {
-    if (accessLost || handover?.eligibility.state === 'rental_ended') {
+    if (accessLost || ended) {
       preparation.current.clear();
       setPrepared(false);
-      void stopRef.current();
+      if (motionActive || gpsActive) void stopRef.current();
     }
-  }, [accessLost, handover?.eligibility.state]);
+  }, [accessLost, ended, gpsActive, motionActive]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => setForeground(state === 'active'));
@@ -159,5 +161,5 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
   return { ...monitoring, start, stop, prepare, prepared, rememberedConsent, consentLoading, getRememberedConsent, rememberConsent,
     motionStatus, motionError, motionStarting, refreshMotionStatus,
     motionActive,
-    active: isLocationSharingActive(monitoring.sharing?.phase ?? 'idle') };
+    active: gpsActive };
 }

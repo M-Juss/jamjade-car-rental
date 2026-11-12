@@ -83,7 +83,9 @@ class RcManeuverComparisonService
 
     private function recordings(User $owner): Builder
     {
-        return RcNativeRecording::where('user_id', $owner->id)->where('state', 'verified')
+        abort_unless($owner->is_active && $owner->hasRole('admin'), 403);
+
+        return RcNativeRecording::where('state', 'verified')
             ->whereHas('latestAnnotation')->with([
                 'latestAnnotation' => fn ($query) => $query->addSelect(['rc_annotation_revisions.intervals', 'rc_annotation_revisions.manifest_sha256']),
                 'latestObservation' => fn ($query) => $query->addSelect('rc_observation_revisions.payload'),

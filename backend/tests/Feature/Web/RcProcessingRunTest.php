@@ -112,9 +112,9 @@ it('enforces ownership, active Admin, enabled research and nested run ownership'
     $other = User::factory()->create(['is_active' => true]);
     $other->assignRole('admin');
     $this->actingAs($other, 'web');
-    $this->getJson($this->url)->assertNotFound();
-    $this->getJson($this->url.'/'.$id)->assertNotFound();
-    $this->postJson($this->url, $this->input)->assertNotFound();
+    $this->getJson($this->url)->assertOk();
+    $this->getJson($this->url.'/'.$id)->assertOk();
+    $this->postJson($this->url, $this->input)->assertOk();
     $this->actingAs($this->admin, 'web');
     $another = $this->record->replicate();
     $another->client_recording_id = (string) Str::uuid();

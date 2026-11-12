@@ -21,8 +21,8 @@ it('requires authentication and the customer role for account changes', function
 
     Sanctum::actingAs(createDriverUser());
     $this->putJson('/api/mobile/account/password', [
-        'current_password' => 'password', 'password' => 'NewPassword123',
-        'password_confirmation' => 'NewPassword123',
+        'current_password' => 'password', 'password' => 'NewPassword123!',
+        'password_confirmation' => 'NewPassword123!',
     ])->assertForbidden();
     $this->putJson('/api/mobile/account/email', [
         'email' => 'driver.changed@example.com', 'current_password' => 'password',
@@ -75,12 +75,12 @@ it('changes the hashed password and revokes every mobile token', function () {
     $oldRememberToken = $user->remember_token;
 
     $this->withToken($first)->putJson('/api/mobile/account/password', [
-        'current_password' => 'password123', 'password' => 'NewPassword123',
-        'password_confirmation' => 'NewPassword123',
+        'current_password' => 'password123', 'password' => 'NewPassword123!',
+        'password_confirmation' => 'NewPassword123!',
     ])->assertOk()->assertJsonPath('data', null);
 
-    expect(Hash::check('NewPassword123', $user->fresh()->password))->toBeTrue()
-        ->and($user->fresh()->password)->not->toBe('NewPassword123')
+    expect(Hash::check('NewPassword123!', $user->fresh()->password))->toBeTrue()
+        ->and($user->fresh()->password)->not->toBe('NewPassword123!')
         ->and($user->tokens()->count())->toBe(0)
         ->and($user->fresh()->remember_token)->not->toBe($oldRememberToken);
     // Forget the guard's request-local user before testing revoked credentials.
@@ -91,7 +91,7 @@ it('changes the hashed password and revokes every mobile token', function () {
     app('auth')->forgetGuards();
     $this->postJson('/api/mobile/login', ['email' => $user->email, 'password' => 'password123'])
         ->assertUnprocessable();
-    $this->postJson('/api/mobile/login', ['email' => $user->email, 'password' => 'NewPassword123'])
+    $this->postJson('/api/mobile/login', ['email' => $user->email, 'password' => 'NewPassword123!'])
         ->assertOk();
 });
 
@@ -103,10 +103,12 @@ it('preserves the password and sessions after invalid password changes', functio
         ->assertUnprocessable()->assertJsonValidationErrors($field);
     expect($user->fresh()->password)->toBe($hash)->and($user->tokens()->count())->toBe(1);
 })->with([
-    'wrong current password' => [['current_password' => 'incorrect', 'password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123'], 'current_password'],
-    'missing current password' => [['password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123'], 'current_password'],
+    'wrong current password' => [['current_password' => 'incorrect', 'password' => 'NewPassword123!', 'password_confirmation' => 'NewPassword123!'], 'current_password'],
+    'missing current password' => [['password' => 'NewPassword123!', 'password_confirmation' => 'NewPassword123!'], 'current_password'],
     'short password' => [['current_password' => 'password123', 'password' => 'short', 'password_confirmation' => 'short'], 'password'],
-    'mismatch' => [['current_password' => 'password123', 'password' => 'NewPassword123', 'password_confirmation' => 'Mismatch123'], 'password'],
+    'missing uppercase' => [['current_password' => 'password123', 'password' => 'newpassword123!', 'password_confirmation' => 'newpassword123!'], 'password'],
+    'missing special character' => [['current_password' => 'password123', 'password' => 'NewPassword123', 'password_confirmation' => 'NewPassword123'], 'password'],
+    'mismatch' => [['current_password' => 'password123', 'password' => 'NewPassword123!', 'password_confirmation' => 'Mismatch123'], 'password'],
     'same password' => [['current_password' => 'password123', 'password' => 'password123', 'password_confirmation' => 'password123'], 'password'],
     'bcrypt UTF-8 boundary' => [['current_password' => 'password123', 'password' => str_repeat('é', 37), 'password_confirmation' => str_repeat('é', 37)], 'password'],
 ]);
@@ -119,7 +121,7 @@ it('rate limits repeated current-password guesses per account', function () {
         ])->assertUnprocessable();
     }
     $this->putJson('/api/mobile/account/password', [
-        'current_password' => 'password123', 'password' => 'NewPassword123',
-        'password_confirmation' => 'NewPassword123',
+        'current_password' => 'password123', 'password' => 'NewPassword123!',
+        'password_confirmation' => 'NewPassword123!',
     ])->assertTooManyRequests();
 });

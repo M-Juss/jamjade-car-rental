@@ -31,7 +31,10 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->name('register');
         Route::post('/register/resend', [AuthController::class, 'resendRegistration'])->name('register.resend');
         Route::post('/login', [AuthController::class, 'login'])->name('login');
+        Route::post('/password-reset', [AuthController::class, 'requestPasswordReset'])->name('password-reset.request');
     });
+    Route::post('/password-reset/verify', [AuthController::class, 'verifyPasswordReset'])->middleware('throttle:10,1')->name('password-reset.verify');
+    Route::post('/password-reset/complete', [AuthController::class, 'completePasswordReset'])->middleware('throttle:10,1')->name('password-reset.complete');
     Route::post('/register/verify', [AuthController::class, 'verifyRegistration'])
         ->middleware('throttle:10,1')->name('register.verify');
 

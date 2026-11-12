@@ -20,7 +20,6 @@ import { applyMaintenanceServerErrors, completeMaintenanceDefaults } from "../fo
 
 const serverFieldMap = {
   odometer_at_completion: "odometerAtCompletion",
-  work_performed: "workPerformed",
   service_provider: "serviceProvider",
   labor_cost: "laborCost",
   parts_cost: "partsCost",
@@ -105,6 +104,11 @@ export function MaintenanceLifecycleDialog({
   };
 
   const complete = async (values: CompleteMaintenanceFormValues) => {
+    if (!record.serviceProvider && !values.serviceProvider?.trim()) {
+      form.setError("serviceProvider", { message: "Enter the service provider." });
+      appToast.error("Enter the service provider.");
+      return;
+    }
     try {
       const updated = await completeMaintenance(record.id, values);
       closeDialog();
@@ -150,9 +154,6 @@ export function MaintenanceLifecycleDialog({
                   <p className="mt-1 text-xs font-semibold text-foreground">{value}</p>
                 </div>
               ))}
-              <p className="text-xs leading-5 text-muted-foreground sm:col-span-2">
-                The server records the actual start time, acting personnel, and the Current Condition odometer automatically.
-              </p>
             </div>
             <FormDialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
@@ -178,20 +179,13 @@ export function MaintenanceLifecycleDialog({
                   <div key={label}><p className="text-xs font-semibold normal-case tracking-normal text-subtle-foreground">{label}</p><p className="mt-1 text-xs font-semibold text-foreground">{value}</p></div>
                 ))}
               </div>
-              <TextAreaWithLabel
-                id="maintenance-completion-work"
-                label="Work Performed"
-                required
-                wrapperClassName="sm:col-span-2"
-                error={form.formState.errors.workPerformed?.message}
-                {...form.register("workPerformed")}
-              />
-              <InputWithLabel
+              {record.serviceProvider ? <InputWithLabel id="maintenance-completion-saved-provider" label="Service Provider" value={record.serviceProvider} disabled inputClassName="disabled:opacity-100" /> : <InputWithLabel
                 id="maintenance-completion-provider"
-                label="Service Provider (Optional)"
+                label="Service Provider"
+                required
                 error={form.formState.errors.serviceProvider?.message}
                 {...form.register("serviceProvider")}
-              />
+              />}
               <InputWithLabel
                 id="maintenance-completion-odometer"
                 label={requireOdometer ? "Completion Odometer" : "Completion Odometer (Optional)"}
@@ -218,10 +212,10 @@ export function MaintenanceLifecycleDialog({
                   )}
                 />
               ) : null}
-              <InputWithLabel id="maintenance-completion-labor-cost" label="Labor Cost (Optional)" inputFormat="decimal" error={form.formState.errors.laborCost?.message} {...form.register("laborCost")} />
-              <InputWithLabel id="maintenance-completion-parts-cost" label="Parts Cost (Optional)" inputFormat="decimal" error={form.formState.errors.partsCost?.message} {...form.register("partsCost")} />
-              <InputWithLabel id="maintenance-completion-other-cost" label="Other Cost (Optional)" inputFormat="decimal" error={form.formState.errors.otherCost?.message} {...form.register("otherCost")} />
-              <InputWithLabel id="maintenance-completion-total" label="Total Cost" readOnly value={new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(totalCost)} />
+              <InputWithLabel id="maintenance-completion-labor-cost" label="Labor Cost" required wrapperClassName="sm:col-span-2" inputFormat="decimal" error={form.formState.errors.laborCost?.message} {...form.register("laborCost")} />
+              <InputWithLabel id="maintenance-completion-parts-cost" label="Parts Cost" required wrapperClassName="sm:col-span-2" inputFormat="decimal" error={form.formState.errors.partsCost?.message} {...form.register("partsCost")} />
+              <InputWithLabel id="maintenance-completion-other-cost" label="Other Cost" required wrapperClassName="sm:col-span-2" inputFormat="decimal" error={form.formState.errors.otherCost?.message} {...form.register("otherCost")} />
+              <InputWithLabel id="maintenance-completion-total" label="Total Cost" wrapperClassName="sm:col-span-2" readOnly value={new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(totalCost)} />
               <TextAreaWithLabel id="maintenance-completion-notes" label="Completion Notes (Optional)" wrapperClassName="sm:col-span-2" error={form.formState.errors.notes?.message} {...form.register("notes")} />
               {forceConditionVerification ? (
                 <p className="rounded-xl border border-warning-border bg-warning-surface p-3 text-xs text-warning sm:col-span-2">

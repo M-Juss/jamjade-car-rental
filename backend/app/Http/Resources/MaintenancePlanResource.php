@@ -15,7 +15,7 @@ class MaintenancePlanResource extends JsonResource
 
         return [
             'id' => (string) $this->id, 'vehicleId' => (string) $this->vehicle_id,
-            'vehicle' => $this->whenLoaded('vehicle', fn () => ['id' => (string) $this->vehicle->id, 'name' => $this->vehicle->name]),
+            'vehicle' => $this->whenLoaded('vehicle', fn () => ['id' => (string) $this->vehicle->id, 'name' => $this->vehicle->name, 'plateNumber' => $this->vehicle->plate_number]),
             'name' => $this->name, 'category' => $this->category->value, 'categoryLabel' => $this->category->label(),
             'description' => $this->description, 'triggerType' => $this->trigger_type->value,
             'intervalKm' => $this->interval_km, 'intervalDays' => $this->interval_days,

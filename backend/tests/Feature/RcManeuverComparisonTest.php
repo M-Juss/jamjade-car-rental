@@ -39,8 +39,8 @@ it('opens hosted Model Explorer only after explicit RC demo opt-in', function ()
     $other = User::factory()->create(['is_active' => true]);
     $recording = comparisonRecording($other);
     $annotation = comparisonAnnotation($recording);
-    $this->getJson(MANEUVER_COMPARISON_PATH)->assertOk()->assertJsonCount(0, 'data.recordings');
-    $this->getJson(MANEUVER_COMPARISON_PATH.'/'.$recording->id.'/'.$annotation->id.'/0')->assertNotFound();
+    $this->getJson(MANEUVER_COMPARISON_PATH)->assertOk()->assertJsonCount(1, 'data.recordings');
+    $this->getJson(MANEUVER_COMPARISON_PATH.'/'.$recording->id.'/'.$annotation->id.'/0')->assertConflict();
 });
 
 function comparisonRecording(User $owner): RcNativeRecording
@@ -138,10 +138,9 @@ it('validates contact times and restricts private recording reads and updates to
     $otherAnnotation = comparisonAnnotation($other);
     $this->getJson(MANEUVER_COMPARISON_PATH)->assertUnauthorized();
     $this->actingAs($this->admin, 'web')->getJson(MANEUVER_COMPARISON_PATH)->assertOk()
-        ->assertJsonCount(1, 'data.recordings')->assertJsonPath('data.recordings.0.id', $own->id)
-        ->assertJsonPath('data.events.0.measurements', null);
-    $this->getJson(MANEUVER_COMPARISON_PATH.'/'.$other->id.'/'.$otherAnnotation->id.'/0')->assertNotFound();
-    $this->putJson(MANEUVER_COMPARISON_PATH.'/'.$other->id.'/contact', ['observation_revision_id' => null, 'first_contact_ms' => 700])->assertNotFound();
+        ->assertJsonCount(2, 'data.recordings')->assertJsonPath('data.events.0.measurements', null);
+    $this->getJson(MANEUVER_COMPARISON_PATH.'/'.$other->id.'/'.$otherAnnotation->id.'/0')->assertConflict();
+    $this->putJson(MANEUVER_COMPARISON_PATH.'/'.$other->id.'/contact', ['observation_revision_id' => null, 'first_contact_ms' => 700])->assertOk();
     $path = MANEUVER_COMPARISON_PATH.'/'.$own->id.'/contact';
     $this->putJson($path, ['observation_revision_id' => null, 'first_contact_ms' => 1001])->assertUnprocessable()->assertJsonValidationErrors('first_contact_ms');
     $this->putJson($path, ['observation_revision_id' => null, 'first_contact_ms' => 700])->assertOk();

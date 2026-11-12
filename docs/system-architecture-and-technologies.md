@@ -27,7 +27,7 @@ flowchart TD
     V -->|Change notification followed by authorized API reread| W
 ```
 
-RC research uses a separate owner-authorized collection/review flow. Its native
+RC research uses owner-bound mobile collection and shared Admin web review. Its native
 module and development/standalone Android builds extend the mobile codebase;
 recording a research trial does not require a rental booking.
 
@@ -75,6 +75,11 @@ session through the existing secure-storage boundary. No new runtime dependency
 or native configuration is introduced. Existing login and account-email changes
 remain separate. See [registration contracts](user-roles-and-access.md#mobile-registration-email-verification).
 
+Customer mobile password recovery uses a distinct Laravel-managed email-code
+challenge and one-use reset token; it does not modify the registration challenge
+or web sign-in. The mobile auth service owns these requests, and successful reset
+revokes mobile sessions. See the [account guide](user-roles-and-access.md#mobile-registration-email-verification).
+
 ## Technologies currently used
 
 Hosted-demo preparation — 2026-11-12: BerryPanel is the selected deployment
@@ -101,7 +106,7 @@ Public deployment and Android acceptance remain pending.
 | Offline development training | A local Laravel command passes verified development features through memory to isolated Python **3.14.3** / scikit-learn **1.9.1**, NumPy **2.5.4** and SciPy **1.18.1**. Fixed majority/logistic/forest comparisons use whole-session validation; reports/candidates remain encrypted in Laravel private storage. | [Pinned dependencies](../backend/ml/requirements.txt), [trainer](../backend/ml/train_pilot.py), [Laravel orchestration](../backend/app/Services/RcPilotTrainingService.php), [model comparison contract/results](telematics-master-plan.md#first-development-model-comparison--2026-11-08) |
 | Admin RC monitoring | Native synchronized/filter/vehicle-frame windows feed the unchanged forest through Laravel. The private PHP tree export preserves scikit-learn float32 splits and leaf voting, removing Python startup from each request. Encrypted queues retain delivery intent; the Admin view polls grouped events every two seconds. | [Native pipeline](../mobile-frontend/modules/rc-recorder/android/src/main/java/com/jamjade/rcrecorder/DriveMotionPipeline.kt), [runtime](../backend/app/Services/RcRuntimeForestService.php), [connected runtime contract/checks](telematics-master-plan.md#connected-admin-rc-monitoring--2026-11-10) |
 | Admin Model Explorer | Local-only, owner-bound Admin view for comparing reviewed maneuvers using saved prepared signals. Saved contact review timing is stored separately from annotations and training data. | [Comparison service](../backend/app/Services/RcManeuverComparisonService.php), [implementation boundary](telematics-master-plan.md#reviewed-maneuver-comparison--2026-11-11) |
-| Rental RC monitoring | Separate consented Customer/current-Driver native foreground collector reuses the tested feature pipeline and private forest. Feature segments belong to the existing released rental trip; Fleet details show trip-scoped events. The booked vehicle and RC sensor source remain distinct. | [Rental motion contract](telematics-master-plan.md#connected-rental-rc-motion-monitoring--2026-11-10); completed-rental/operator web overviews, provisional RC grading and received motion coverage are implemented; physical rental acceptance, remount realignment and final report reconciliation remain pending. |
+| Rental RC monitoring | Separate consented Customer/current-Driver native foreground collector reuses the tested feature pipeline and private forest. Feature segments belong to the existing released rental trip; Fleet details show trip-scoped events. The booked vehicle and RC sensor source remain distinct. | [Rental motion contract](telematics-master-plan.md#connected-rental-rc-motion-monitoring--2026-11-10) and [final driving reports](telematics-master-plan.md#final-driving-reports--2026-11-12). Physical rental acceptance and remount realignment remain pending. |
 | Verification tools | Pest **4.7.0** and Pint for backend checks; ESLint and TypeScript for frontends; focused `.test.mjs` checks exist for selected frontend contracts/domain behavior. General frontend component-test foundations remain pending. | [Backend tooling](../backend/composer.json), [web scripts](../web-frontend/package.json), [mobile scripts](../mobile-frontend/package.json), root [verification rules](../AGENTS.md#testing-and-verification) |
 
 ## How the research implementation currently works
@@ -138,8 +143,8 @@ is recorded as selected only when the implementation decision has actually been 
 | --- | --- | --- |
 | Reproducible training dataset | Reviewed annotations, explicit inclusion decisions and versioned processing/feature provenance. Local frozen-pilot export and development statistics are implemented. | General web dataset approval/export, validated preprocessing and live window parity remain pending; [dataset boundaries](telematics-master-plan.md#processing-dataset-inclusion-and-model-use-boundaries) |
 | Offline model training and evaluation | Pinned local Python/scikit-learn whole-session comparison selects a 35-feature random forest. Reserved isolated-interval evaluation and experimental continuous replay are implemented. | Admin RC and first rental RC inference are connected; broader continuous validation remains pending; [comparison/results](telematics-master-plan.md#first-development-model-comparison--2026-11-08) |
-| Private backend inference | Native 35-feature windows pass through Laravel to a private PHP export of the frozen forest. Owner-bound sessions retain encrypted, idempotent receipts and grouped events. | Admin RC runtime, mobile controls and web event review are implemented; provisional RC grading is implemented; physical rental acceptance, dynamic realignment and final report reconciliation remain pending; the first rental connection is implemented; [inference plan](telematics-master-plan.md#live-inference-reporting-and-scoring) |
-| Driving-event alerts and reports | Reuse authorized Reverb infrastructure for website updates; add an explainable post-drive score/report and mobile report-ready notification. | RC classifier events and provisional web grading are connected; final reconciliation and report-ready delivery remain planned; [reporting plan](telematics-master-plan.md#live-inference-reporting-and-scoring) |
+| Private backend inference | Native 35-feature windows pass through Laravel to a private PHP export of the frozen forest. Owner-bound sessions retain encrypted, idempotent receipts and grouped events. | Rental motion is connected. Physical rental acceptance and dynamic realignment remain pending. See the [inference plan](telematics-master-plan.md#live-inference-reporting-and-scoring). |
+| Driving-event alerts and reports | Authorized Reverb channels update Fleet Monitoring. A Laravel scheduled command stores the final grade, coverage and deduction breakdown after completed-rental sync and creates the main-inbox report notice. | [Report implementation](telematics-master-plan.md#final-driving-reports--2026-11-12). |
 
 ## Keeping the implementation record useful
 

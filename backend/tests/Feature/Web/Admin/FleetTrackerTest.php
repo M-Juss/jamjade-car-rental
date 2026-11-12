@@ -90,7 +90,7 @@ it('keeps one card per booking with the saved trip status and exposes only the f
         ->assertJsonPath('data.0.tracking.tripStatus', 'paused')
         ->assertJsonPath('data.0.customerName', $booking->user->name);
     expect(array_keys($response->json('data.0')))->toBe([
-        'id', 'bookingCode', 'customerName', 'operator', 'emergencyContacts', 'rentalType', 'rentalStartAt', 'rentalEndAt', 'vehicle', 'activityCounts', 'tracking',
+        'id', 'bookingCode', 'customerName', 'operator', 'emergencyContacts', 'geofenceActivity', 'rentalType', 'rentalStartAt', 'rentalEndAt', 'vehicle', 'activityCounts', 'tracking',
     ])->and(array_keys($response->json('data.0.vehicle')))->toBe(['id', 'name', 'brand', 'model', 'plateNumber'])
         ->and(array_keys($response->json('data.0.operator')))->toBe(['id', 'name', 'email', 'phoneNumber'])
         ->and(array_keys($response->json('data.0.tracking')))->toBe(['status', 'tripStatus', 'lastLocationAt', 'location'])

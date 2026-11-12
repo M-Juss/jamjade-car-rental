@@ -329,7 +329,7 @@ it('notifies the first reliable inside state without inventing an entry event', 
         ->and($notice->data['zone_name'])->toBe('Office');
 });
 
-it('confirms a crossing after at least two reliable readings over five seconds', function () {
+it('confirms a crossing after at least two reliable readings over three seconds', function () {
     Geofence::factory()->create(monitoringZonePayload());
     $booking = releasedMonitoringBooking();
     $service = app(TelematicsService::class);
@@ -341,10 +341,17 @@ it('confirms a crossing after at least two reliable readings over five seconds',
     $send(14.299);
     $this->travel(1)->seconds();
     $send(14.32);
-    $this->travel(4)->seconds();
+    $this->travel(2)->seconds();
     $send(14.32);
     expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(0);
     $this->travel(1)->seconds();
     $send(14.32);
     expect($trip->events()->where('event_type', 'geofence_exit')->count())->toBe(1);
+
+    $this->travel(1)->seconds();
+    $send(14.299);
+    expect($trip->events()->where('event_type', 'geofence_enter')->count())->toBe(0);
+    $this->travel(3)->seconds();
+    $send(14.299);
+    expect($trip->events()->where('event_type', 'geofence_enter')->count())->toBe(1);
 });

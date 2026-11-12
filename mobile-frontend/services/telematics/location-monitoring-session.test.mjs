@@ -125,20 +125,12 @@ test('uploads are bounded and intermediate points are replaced by the latest poi
   h.session.reset();
 });
 
-test('offline startup and connection loss stop collection with no stored offline queue', async () => {
+test('offline startup needs a new explicit start', async () => {
   let online = false;
   const h = harness({ connected: async () => online });
   await h.session.start('DEMO', consent);
   assert.equal(h.watches.length, 0);
   assert.equal(h.session.getSnapshot().phase, 'offline');
-  online = true;
-  await h.session.start('DEMO', consent);
-  await h.send();
-  online = false;
-  h.advance(5000);
-  await h.send();
-  assert.equal(h.session.getSnapshot().phase, 'offline');
-  assert.equal(h.removes, 1);
   online = true;
   await h.tick();
   assert.equal(h.updates.length, 0);
@@ -148,8 +140,125 @@ test('offline startup and connection loss stop collection with no stored offline
   h.session.connectionRestored('DEMO');
   assert.equal(h.session.getSnapshot().phase, 'paused');
   assert.equal(h.session.getSnapshot().message, null);
-  assert.equal(h.watches.length, 1);
+  assert.equal(h.watches.length, 0);
   h.session.reset();
+});
+
+test('a foreground outage keeps the watcher and sends only the newest fix on reconnect', async () => {
+  let online = true;
+  const h = harness({ connected: async () => online });
+  await h.session.start('DEMO', consent);
+  await h.send();
+  online = false;
+  h.advance(5000);
+  await h.send({ latitude: 14.001 });
+  assert.equal(h.session.getSnapshot().phase, 'reconnecting');
+  h.advance(2000);
+  await h.send({ latitude: 14.002 });
+  assert.equal(h.removes, 0);
+  assert.equal(h.pauses.length, 0);
+  assert.equal(h.updates.length, 0);
+  const fix = h.session.getSnapshot().latestFix;
+  online = true;
+  h.advance(3000);
+  await h.tick();
+  assert.equal(h.updates.length, 1);
+  assert.equal(h.updates[0].fix.latitude, 14.002);
+  assert.equal(h.updates[0].fix.captured_at, fix.captured_at);
+  assert.equal(h.session.getSnapshot().phase, 'sharing');
+  assert.equal(h.starts.length, 1);
+  h.session.reset();
+});
+
+test('a failed upload retains its fix and rechecks authorization before retrying', async () => {
+  const attempts = [];
+  let allowed = true;
+  const h = harness({
+    read: async () => ({ canMonitor: allowed, tripStatus: 'started', policy }),
+    update: async (_code, fix) => {
+      attempts.push(fix);
+      if (attempts.length === 1 || attempts.length === 3) throw { status: 0 };
+      return { lastLocationAt: fix.captured_at };
+    },
+  });
+  await h.session.start('DEMO', consent);
+  await h.send();
+  h.advance(5000);
+  await h.send();
+  assert.equal(h.session.getSnapshot().phase, 'reconnecting');
+  h.advance(5000);
+  await h.tick();
+  assert.equal(attempts.length, 2);
+  assert.equal(attempts[0].captured_at, attempts[1].captured_at);
+  assert.equal(h.session.getSnapshot().phase, 'sharing');
+  h.advance(5000);
+  await h.send();
+  assert.equal(h.session.getSnapshot().phase, 'reconnecting');
+  allowed = false;
+  h.advance(5000);
+  await h.tick();
+  assert.equal(attempts.length, 3);
+  assert.equal(h.session.getSnapshot().phase, 'paused');
+});
+
+test('manual pause during an outage prevents automatic upload', async () => {
+  let online = true;
+  const h = harness({ connected: async () => online });
+  await h.session.start('DEMO', { ...consent, sharing_mode: 'foreground_background' });
+  await h.send(); online = false;
+  h.advance(5000); await h.send();
+  assert.equal(h.session.getSnapshot().phase, 'reconnecting');
+  await h.session.stop(); online = true;
+  h.advance(5000); await h.session.onAppStateChange(true);
+  assert.equal(h.session.getSnapshot().phase, 'paused');
+  assert.equal(h.session.getSnapshot().latestFix, null);
+  assert.equal(h.removes, 1);
+  assert.equal(h.updates.length, 0);
+  assert.equal(h.pauses.at(-1).reason, 'manual');
+});
+
+test('a consented background session reconnects with only the newest fix', async () => {
+  let online = true, foreground = true;
+  const h = harness({ connected: async () => online, foreground: () => foreground });
+  await h.session.start('DEMO', { ...consent, sharing_mode: 'foreground_background' });
+  await h.send(); online = false;
+  h.advance(5000); await h.send({ latitude: 14.001 });
+  foreground = false; await h.session.onAppStateChange(false);
+  assert.equal(h.session.canContinueInBackground(), true);
+  h.advance(2000); await h.send({ latitude: 14.002 });
+  online = true; h.advance(3000); await h.tick();
+  assert.equal(h.updates.length, 1);
+  assert.equal(h.updates[0].fix.latitude, 14.002);
+  assert.equal(h.session.getSnapshot().phase, 'sharing');
+  assert.equal(h.removes, 0);
+  await h.session.reset();
+});
+
+test('foreground-only sharing still stops when backgrounded during an outage', async () => {
+  let online = true, foreground = true;
+  const h = harness({ connected: async () => online, foreground: () => foreground });
+  await h.session.start('DEMO', consent);
+  await h.send(); online = false;
+  h.advance(5000); await h.send();
+  foreground = false; await h.session.onAppStateChange(false);
+  online = true; foreground = true;
+  h.advance(5000); await h.session.onAppStateChange(true);
+  assert.equal(h.session.getSnapshot().phase, 'paused');
+  assert.equal(h.removes, 1);
+  assert.equal(h.updates.length, 0);
+});
+
+test('background reconnect never sends a fix after consent version changes', async () => {
+  let online = true, foreground = true;
+  const h = harness({ connected: async () => online, foreground: () => foreground });
+  await h.session.start('DEMO', { ...consent, sharing_mode: 'foreground_background' });
+  await h.send(); online = false; foreground = false;
+  h.advance(5000); await h.send();
+  h.setSnapshot({ policy: { ...policy, consentVersion: 3 } });
+  online = true; h.advance(5000); await h.tick();
+  assert.equal(h.session.getSnapshot().phase, 'paused');
+  assert.equal(h.updates.length, 0);
+  assert.equal(h.removes, 1);
 });
 
 test('stop removes the watcher immediately and ignores delayed watcher registration and callbacks', async () => {
@@ -258,22 +367,19 @@ test('foreground consent never grants background collection and stopped startup 
   assert.equal(pending.watches.length, 0);
 });
 
-test('background collection stops on network loss and rental receipt with no automatic resume', async () => {
-  let connected = true;
-  const h = harness({ connected: async () => connected, foreground: () => true });
+test('background reconnection rechecks rental eligibility before sharing', async () => {
+  let connected = true, foreground = true;
+  const h = harness({ connected: async () => connected, foreground: () => foreground });
   await h.session.start('DEMO', { ...consent, sharing_mode: 'foreground_background' });
-  await h.send();
-  connected = false;
+  await h.send(); foreground = false; connected = false;
   h.advance(5000); await h.send();
-  assert.equal(h.session.getSnapshot().phase, 'offline');
+  assert.equal(h.session.getSnapshot().phase, 'reconnecting');
+  h.setSnapshot({ canMonitor: false, tripStatus: 'ended' });
+  connected = true; h.advance(5000); await h.tick();
+  assert.equal(h.session.getSnapshot().phase, 'paused');
   assert.equal(h.session.canContinueInBackground(), false);
-  const receipt = harness();
-  await receipt.session.start('DEMO', { ...consent, sharing_mode: 'foreground_background' });
-  await receipt.send();
-  receipt.setSnapshot({ canMonitor: false });
-  receipt.advance(16000); await receipt.send();
-  assert.equal(receipt.session.getSnapshot().phase, 'paused');
-  assert.equal(receipt.session.canContinueInBackground(), false);
+  assert.equal(h.updates.length, 0);
+  assert.equal(h.removes, 1);
 });
 
 test('foreground GPS exit reports an interruption rather than manually pausing motion', async () => {

@@ -11,7 +11,7 @@ import { getBooking, type BookingRecord } from "@/services/booking";
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import { Button } from "@/components/ui/button";
 import type { RentalDrivingEvents as DrivingEvents } from "@/services/fleet/fleet.service";
-import { GradingDialog } from "./components/DrivingGradeDetails";
+import { formatDrivingGrade, GradingDialog } from "./components/DrivingGradeDetails";
 import { DrivingAnalysisOverview } from "./components/DrivingAnalysisOverview";
 
 function operator(booking: BookingRecord) {
@@ -82,7 +82,7 @@ function AnalysisContent() {
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Operator</p><p className="font-medium">{analysis?.operator?.name ?? operator(detail) ?? "Not recorded"}</p></div>
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Rental start</p><p>{formatReturnDateTime(detail.rentalStartAt)}</p></div>
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Rental end</p><p>{formatReturnDateTime(detail.rentalEndAt)}</p></div>
-            <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Grade</p><p className="font-medium">{analysis ? analysis.grading.score === null ? "Not graded" : `${analysis.grading.score} / ${analysis.grading.maximum}` : "—"}</p></div>
+            <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Grade</p><p className="font-medium">{analysis ? formatDrivingGrade(analysis.grading) : "—"}</p></div>
           </section>
           <RentalDrivingEvents key={detail.backendId} analysisBookingId={detail.backendId} geofenceActivity={detail.geofenceActivity} onAnalysisChange={setAnalysis} />
         </> : null}

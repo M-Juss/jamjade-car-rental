@@ -25,6 +25,9 @@ class FleetRentalResource extends JsonResource
                 'email' => $operator->email,
                 'phoneNumber' => $operator->phone_number,
             ] : null,
+            'emergencyContacts' => $booking->user?->emergencyContacts->map(fn ($contact) => [
+                'name' => $contact->name, 'relationship' => $contact->relationship, 'phoneNumber' => $contact->phone_number,
+            ])->values() ?? [],
             'geofenceActivity' => $booking->telematicsEvents()
                 ->whereIn('event_type', ['geofence_enter', 'geofence_exit'])
                 ->orderByDesc('occurred_at')->limit(30)->get()

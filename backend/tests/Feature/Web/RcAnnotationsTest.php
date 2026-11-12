@@ -114,16 +114,17 @@ it('refuses overlaps and invalid nonstationary assessments', function () {
     $this->postJson($this->url, ['base_revision' => 0, 'intervals' => [[...$this->interval, 'movement' => 'driving', 'direction' => 'unknown', 'severity' => 'normal']]])->assertUnprocessable();
 });
 
-it('enforces owner, role, enabled profile and recording integrity boundaries', function () {
+it('shares reviews with admins and enforces role, profile and integrity boundaries', function () {
     $this->record->update(['state' => 'incomplete']);
     $this->postJson($this->url, $this->input)->assertConflict();
     $this->record->update(['state' => 'verified']);
     $other = User::factory()->create(['is_active' => true]);
     $other->assignRole('admin');
     $this->actingAs($other, 'web');
-    $this->getJson($this->url)->assertNotFound();
-    $this->getJson($this->url.'/history')->assertNotFound();
-    $this->postJson($this->url, $this->input)->assertNotFound();
+    $this->getJson($this->url)->assertOk();
+    $this->getJson($this->url.'/history')->assertOk();
+    $this->postJson($this->url, $this->input)->assertOk();
+    $this->assertDatabaseHas('rc_annotation_revisions', ['recording_id' => $this->record->id, 'reviewer_id' => $other->id]);
     $this->actingAs($this->admin, 'web');
     config(['telematics.calibration_profile' => 'standard']);
     $this->getJson($this->url)->assertForbidden();
@@ -133,7 +134,7 @@ it('enforces owner, role, enabled profile and recording integrity boundaries', f
     $staff->assignRole('staff');
     $this->actingAs($staff, 'web');
     $this->postJson($this->url, $this->input)->assertForbidden();
-    $this->assertDatabaseCount('rc_annotation_revisions', 0);
+    $this->assertDatabaseCount('rc_annotation_revisions', 1);
 });
 
 it('limits history pages and binds historical revisions to their recording', function () {

@@ -14,16 +14,16 @@ use Illuminate\Validation\ValidationException;
 
 class RcCollectionService
 {
-    public function recordingFilterSessions(int $userId): array
+    public function recordingFilterSessions(): array
     {
         $recordingName = RcNativeRecording::query()->select('rc_native_recordings.name')
             ->join('rc_collection_contexts', 'rc_collection_contexts.recording_id', '=', 'rc_native_recordings.id')
             ->join('rc_mount_versions', 'rc_mount_versions.id', '=', 'rc_collection_contexts.mount_id')
             ->whereColumn('rc_mount_versions.session_id', 'rc_collection_sessions.id')
-            ->where('rc_native_recordings.user_id', $userId)
+            ->whereColumn('rc_native_recordings.user_id', 'rc_collection_sessions.user_id')
             ->oldest('rc_native_recordings.started_at')->orderBy('rc_native_recordings.id')->limit(1);
 
-        return RcCollectionSession::query()->where('user_id', $userId)
+        return RcCollectionSession::query()
             ->select(['id', 'session_number', 'payload'])->addSelect(['recording_name' => $recordingName])
             ->orderBy('session_number')->orderBy('id')->get()
             ->whereNotNull('recording_name')

@@ -13,20 +13,6 @@ class RentalDrivingOverviewService
     /** One row per completed booking. No raw telemetry or receipt payloads. */
     public function rentals(array $filters = [], bool $operatorSearch = false): Builder
     {
-        $case = 'CASE event.target ';
-        $bindings = [];
-        foreach (RentalDrivingScoreService::WEIGHTS as $target => $weight) {
-            $case .= 'WHEN ? THEN ? ';
-            array_push($bindings, $target, $weight);
-        }
-        $penalties = DB::table('drive_monitoring_events as event')
-            ->join('drive_monitoring_sessions as capture', 'capture.id', '=', 'event.session_id')
-            ->where('event.status', 'confirmed')->whereIn('event.target', array_keys(RentalDrivingScoreService::WEIGHTS))
-            ->select('capture.telematics_trip_id')->selectRaw("sum($case ELSE 0 END) as deductions", $bindings)
-            ->selectRaw('count(*) as event_count')->groupBy('capture.telematics_trip_id');
-        $receipts = DB::table('drive_monitoring_batches as batch')
-            ->join('drive_monitoring_sessions as capture', 'capture.id', '=', 'batch.session_id')
-            ->select('capture.telematics_trip_id')->distinct();
         $completion = DB::table('booking_events')->where('event_type', 'status_changed')
             ->where('new_status', BookingStatus::Completed->value)
             ->select('booking_id')->selectRaw('max(created_at) as completed_at')->groupBy('booking_id');
@@ -36,8 +22,7 @@ class RentalDrivingOverviewService
             ->leftJoin('users as customer', 'customer.id', '=', 'booking.user_id')
             ->leftJoin('vehicles as vehicle', 'vehicle.id', '=', 'booking.vehicle_id')
             ->leftJoinSub($completion, 'completion', 'completion.booking_id', '=', 'booking.id')
-            ->leftJoinSub($penalties, 'penalty', 'penalty.telematics_trip_id', '=', 'trip.id')
-            ->leftJoinSub($receipts, 'receipt', 'receipt.telematics_trip_id', '=', 'trip.id')
+            ->leftJoin('rental_driving_reports as report', 'report.booking_id', '=', 'booking.id')
             ->whereNull('booking.deleted_at')->where('booking.status', BookingStatus::Completed->value)
             ->when($filters['operator_id'] ?? null, fn ($q, $id) => $q->where('trip.operator_user_id', $id))
             ->when($filters['vehicle_id'] ?? null, fn ($q, $id) => $q->where('booking.vehicle_id', $id))
@@ -54,21 +39,22 @@ class RentalDrivingOverviewService
             });
 
         return $query->select('booking.id as booking_id', 'completion.completed_at', 'trip.operator_user_id as operator_id', 'operator.name as operator_name')
-            ->selectRaw('CASE WHEN receipt.telematics_trip_id IS NULL THEN 0 ELSE 1 END as monitored')
-            ->selectRaw('COALESCE(penalty.event_count, 0) as harsh_events')
-            ->selectRaw('CASE WHEN receipt.telematics_trip_id IS NULL THEN NULL WHEN COALESCE(penalty.deductions, 0) > 100 THEN 0 ELSE 100 - COALESCE(penalty.deductions, 0) END as score');
+            ->selectRaw('CASE WHEN report.score IS NULL THEN 0 ELSE 1 END as monitored')
+            ->selectRaw('COALESCE(report.confirmed_events, 0) as harsh_events')
+            ->addSelect('report.score', 'report.snapshot->grading->sync_incomplete as sync_incomplete');
     }
 
     public function summary(Builder $rentals): array
     {
         $row = DB::query()->fromSub($rentals, 'rental')->selectRaw('count(*) as completed_rentals,
             count(distinct CASE WHEN monitored = 1 THEN operator_id END) as operators_monitored,
-            avg(score) as average_score, COALESCE(sum(harsh_events), 0) as harsh_events')->first();
+            avg(score) as average_score, COALESCE(sum(harsh_events), 0) as harsh_events,
+            COALESCE(sum(CASE WHEN score IS NOT NULL AND sync_incomplete IN (1, \'true\') THEN 1 ELSE 0 END), 0) as incomplete_grades')->first();
 
         return ['completed_rentals' => (int) $row->completed_rentals,
             'operators_monitored' => (int) $row->operators_monitored,
             'average_score' => $row->average_score === null ? null : round((float) $row->average_score, 1),
-            'harsh_events' => (int) $row->harsh_events];
+            'harsh_events' => (int) $row->harsh_events, 'incomplete_grades' => (int) $row->incomplete_grades];
     }
 
     public function operators(Builder $rentals, int $perPage): LengthAwarePaginator
@@ -76,7 +62,8 @@ class RentalDrivingOverviewService
         $rows = DB::query()->fromSub($rentals, 'rental')->whereNotNull('operator_id')
             ->select('operator_id', 'operator_name')
             ->selectRaw('count(*) as completed_rentals, sum(monitored) as monitored_rentals,
-                avg(score) as average_score, sum(harsh_events) as harsh_events')
+                avg(score) as average_score, sum(harsh_events) as harsh_events,
+                sum(CASE WHEN score IS NOT NULL AND sync_incomplete IN (1, \'true\') THEN 1 ELSE 0 END) as incomplete_grades')
             ->groupBy('operator_id', 'operator_name')->orderBy('operator_name')->orderBy('operator_id')->paginate($perPage);
         $ids = $rows->getCollection()->pluck('operator_id');
         // The latest received drive per operator, ordered by completion time then booking ID.
@@ -95,6 +82,7 @@ class RentalDrivingOverviewService
             })->get()->keyBy('operator_id');
         $rows->getCollection()->each(function ($row) use ($latest) {
             $row->latest_score = $latest->get($row->operator_id)?->score;
+            $row->latest_sync_incomplete = in_array($latest->get($row->operator_id)?->sync_incomplete, [true, 1, '1', 'true'], true);
         });
 
         return $rows;

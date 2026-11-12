@@ -71,8 +71,8 @@ it('starts mobile registration with an email verification code and no account or
 
     $response = $this->postJson('/api/mobile/register', [
         'email' => 'new.customer@example.com',
-        'password' => 'abcdefgh',
-        'password_confirmation' => 'abcdefgh',
+        'password' => 'Abcdefgh1!',
+        'password_confirmation' => 'Abcdefgh1!',
         'device_name' => 'pest-registration-device',
     ]);
 
@@ -149,8 +149,8 @@ it('persists each mobile onboarding step to the customer profile', function () {
     Mail::fake();
     $registration = $this->postJson('/api/mobile/register', [
         'email' => 'onboarding.customer@example.com',
-        'password' => 'password123',
-        'password_confirmation' => 'password123',
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
         'device_name' => 'onboarding-device',
     ])->assertStatus(202);
 

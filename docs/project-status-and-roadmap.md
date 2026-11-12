@@ -77,10 +77,10 @@ prototype: reliable collection, inspectable raw/processed recordings, supervised
 ML maneuver classification, website alerts, and an explainable post-drive score
 and mobile report notification. Real-car rental operations remain separate from
 RC experimental claims. Offline fitted classifier candidates now exist; live
-inference is connected and the web report provides a provisional RC behavior
-score with received coverage, plus completed-rental and recorded-operator
-overviews with aggregate KPI cards. Final upload reconciliation and mobile report-ready
-notifications remain pending.
+inference is connected. Completed rentals with motion sessions get a saved RC
+grade once sync closes or the upload deadline passes. The web detail and
+operator overviews use final grades, and the main mobile inbox receives the
+grade, calculation and summary. See [Final driving reports](telematics-master-plan.md#final-driving-reports--2026-11-12).
 
 Admin Model Explorer now explains owner-bound saved development examples from
 the pinned frozen split, including prepared signals, feature calculations,

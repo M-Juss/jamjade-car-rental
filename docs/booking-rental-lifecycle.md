@@ -140,8 +140,10 @@ An unresolved Driver-responsible charge blocks only a new assignment. The Driver
 
 Completed booking details include Driving Analysis for viewers with booking
 management and fleet permissions. It shows received driving events and sync
-status. See the [central telematics guide](telematics-master-plan.md#completed-rental-driving-analysis)
-for implementation, verification and pending coverage/scoring work.
+status, then the saved grade when the report finalizes. If the live Telematics
+screen is open at rental end, the customer returns to Browse and the driver
+goes to Services → History. See [Final driving reports](telematics-master-plan.md#final-driving-reports--2026-11-12)
+for sync and notification behavior.
 
 The Release step in `web-frontend/src/forms/booking/BookingWorkflowDialog.tsx`
 uses the existing booking summary card with three columns on wider screens so

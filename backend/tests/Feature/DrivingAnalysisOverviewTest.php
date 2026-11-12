@@ -6,7 +6,9 @@ use App\Models\Booking;
 use App\Models\DriveMonitoringBatch;
 use App\Models\DriveMonitoringEvent;
 use App\Models\DriveMonitoringSession;
+use App\Models\RentalDrivingReport;
 use App\Models\User;
+use App\Services\RentalDrivingReportService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -36,6 +38,7 @@ function overviewRental(User $owner, ?User $operator, bool $received = false, ar
             DriveMonitoringEvent::create(['session_id' => $capture->id, 'target' => $target, 'status' => $eventStatus,
                 'start_ms' => 1000, 'end_ms' => 1400, 'last_ms' => 1400, 'emitted_ms' => 1400, 'vote' => .9]);
         }
+        app(RentalDrivingReportService::class)->finalize($booking->id);
     }
 
     return $booking;
@@ -88,13 +91,30 @@ it('uses recorded trip identities and completion order for each operator', funct
 
 it('returns empty and ungraded summaries without inventing scores', function () {
     $this->getJson('/admin/driving-analysis')->assertOk()->assertJsonPath('meta.summary', [
-        'completed_rentals' => 0, 'operators_monitored' => 0, 'average_score' => null, 'harsh_events' => 0,
+        'completed_rentals' => 0, 'operators_monitored' => 0, 'average_score' => null, 'harsh_events' => 0, 'incomplete_grades' => 0,
     ]);
     overviewRental($this->owner, $this->operator);
     $this->getJson('/admin/driving-analysis/operators')->assertOk()->assertJsonPath('data.0.average_score', null)
         ->assertJsonPath('data.0.latest_score', null)->assertJsonPath('data.0.monitored_rentals', 0);
     $this->getJson('/admin/driving-analysis/operators?search=Nobody')->assertOk()->assertJsonCount(0, 'data')
         ->assertJsonPath('meta.summary.completed_rentals', 0);
+});
+
+it('identifies incomplete saved grades in booking details and aggregate views', function () {
+    $booking = overviewRental($this->owner, $this->operator, true, completedAt: '2026-11-02 10:00:00');
+    $report = RentalDrivingReport::where('booking_id', $booking->id)->firstOrFail();
+    $snapshot = $report->snapshot;
+    $snapshot['grading']['sync_incomplete'] = true;
+    $report->update(['snapshot' => $snapshot]);
+    overviewRental($this->owner, $this->operator, true, completedAt: '2026-11-01 10:00:00');
+
+    $this->getJson('/admin/bookings/'.$booking->id.'/driving-analysis')->assertOk()
+        ->assertJsonPath('data.grading.sync_incomplete', true);
+    $this->getJson('/admin/driving-analysis')->assertOk()
+        ->assertJsonPath('meta.driving_grades.'.$booking->id.'.sync_incomplete', true)
+        ->assertJsonPath('meta.summary.incomplete_grades', 1);
+    $this->getJson('/admin/driving-analysis/operators')->assertOk()
+        ->assertJsonPath('data.0.incomplete_grades', 1)->assertJsonPath('data.0.latest_sync_incomplete', true);
 });
 
 it('validates filters and requires both management permissions', function () {

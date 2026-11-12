@@ -63,6 +63,6 @@ it('keeps mobile booking times, management displays and inspection eligibility a
     expect($booking->fresh()->rental_start_at->toISOString())->toBe($startUtc)
         ->and($booking->fresh()->rental_end_at->toISOString())->toBe($endUtc);
 })->with([
-    'evening pickup' => ['2026-10-18T21:25:00+08:00', '2026-10-19T21:25:00+08:00', '2026-10-18T13:25:00.000000Z', '2026-10-19T13:25:00.000000Z', 'October 18, 2026 - 9:25 PM', 'October 19, 2026 - 9:25 PM'],
-    'Manila date differs from UTC' => ['2026-10-19T00:25:00+08:00', '2026-10-20T00:25:00+08:00', '2026-10-18T16:25:00.000000Z', '2026-10-19T16:25:00.000000Z', 'October 19, 2026 - 12:25 AM', 'October 20, 2026 - 12:25 AM'],
+    'evening pickup' => ['2026-10-18T21:25:00+08:00', '2026-10-19T21:25:00+08:00', '2026-10-18T13:25:00.000000Z', '2026-10-19T13:25:00.000000Z', 'Sun, Oct 18, 2026 - 9:25 PM', 'Mon, Oct 19, 2026 - 9:25 PM'],
+    'Manila date differs from UTC' => ['2026-10-19T00:25:00+08:00', '2026-10-20T00:25:00+08:00', '2026-10-18T16:25:00.000000Z', '2026-10-19T16:25:00.000000Z', 'Mon, Oct 19, 2026 - 12:25 AM', 'Tue, Oct 20, 2026 - 12:25 AM'],
 ]);

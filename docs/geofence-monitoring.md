@@ -4,6 +4,8 @@
 
 Geofences provide entry/exit information for Self Drive and With Assigned Driver rentals. They do not define an allowed driving area and never stop GPS, device setup, handover, rental release, or an active trip. No configured zones means no geofence events, not an invalid rental.
 
+During a network outage the app retains only the newest GPS fix and shows sharing as paused. An already-running session retries while open or, with explicit background consent and a live runtime, while backgrounded. It rechecks rental eligibility and consent on reconnection before sharing a fresh fix. Crossings wholly during an outage can be missed; there is no offline crossing log. Process termination still requires a fresh start. See the [telematics guide](telematics-master-plan.md#existing-released-gps-and-mobile-activity).
+
 Admin manages default circle/polygon zones in the website Geofence Library. Every active default applies automatically. Admin may create, edit, or remove additional custom zones from a pending/confirmed booking's details before release. Defaults cannot be removed or replaced per booking. Staff can view library and booking zones/activity, while all zone mutations require the Admin role on Laravel. Mobile has no geofence-management or assignment API. Admin represents existing owner authority; no Owner role is introduced.
 
 ## Release and history
@@ -20,7 +22,7 @@ Both the authorized started-trip history endpoint and the consented latest-locat
 
 Client-selected `current_zone` and client-claimed geofence events are rejected. Repeated captured timestamps are idempotent; older points may remain route history but cannot overwrite the latest-location cache or change zone state. Implausibly future timestamps are rejected. `telematics_geofence_states` stores independent confirmed/candidate membership and the last processed timestamp per trip/zone.
 
-Development defaults in `config/telematics.php` require accuracy no worse than 50 m and a fix no older than 60 seconds, with the existing 10-second future skew allowance. A point within its reported accuracy of a circle/polygon boundary is uncertain. The additional boundary buffer is set to 0 m. Uncertain observations retain the last confirmed membership and reset transition candidates. A change needs at least two reliable observations over at least 5 seconds. These are configurable operational defaults requiring physical verification, not a guarantee of exact crossing time.
+The defaults in `backend/config/telematics.php` require accuracy no worse than 50 m and a fix no older than 60 seconds, with a 10-second future skew allowance. A fix is uncertain if its reported accuracy reaches the circle or polygon boundary. The additional boundary buffer is 0 m. An uncertain fix retains the last confirmed membership and resets the transition candidate. An entry or exit needs at least two reliable observations on the new side over at least three seconds. The mobile client also requests location updates and uploads on a three-second interval for new sharing sessions. GPS availability and delivery determine when a crossing can be confirmed.
 
 ## Website information and current limits
 
@@ -54,3 +56,10 @@ five seconds while retaining the two-reliable-reading requirement. The focused
 foundation and geofence tests passed 25 tests with 128 assertions, including the
 four-second rejection and five-second confirmation cases. Physical verification
 remains pending.
+
+On 2026-11-12, the Laravel configuration changed both crossing confirmation and
+the requested mobile GPS interval to three seconds. The existing policy response
+supplies the interval to each new sharing session. Focused geofence, telematics
+and mobile location API checks passed (60 tests, 534 assertions), including
+two-second rejection, three-second entry and exit, and the advertised interval.
+Scoped PHP formatting passed. Physical timing on the Redmi remains unverified.

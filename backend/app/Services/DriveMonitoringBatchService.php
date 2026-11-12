@@ -9,7 +9,7 @@ use App\Support\RcNativeProtocol;
 /** Caller must authorize and lock the session inside a transaction. */
 class DriveMonitoringBatchService
 {
-    public function receive(DriveMonitoringSession $session, array $input): array
+    public function receive(DriveMonitoringSession $session, array $input, bool $acceptNew = true): array
     {
         $hash = hash('sha256', RcNativeProtocol::canonical($input));
         $previous = DriveMonitoringBatch::where('session_id', $session->id)->where('client_batch_id', $input['client_batch_id'])->first();
@@ -18,6 +18,7 @@ class DriveMonitoringBatchService
 
             return $previous->predictions;
         }
+        abort_unless($acceptNew, 409, 'The driving report upload window has closed.');
         abort_unless($session->status === 'active', 409, 'Monitoring has stopped.');
         abort_unless(min(array_column($input['windows'], 'end_ms')) > $session->last_window_end_ms, 409, 'Monitoring windows arrived out of order.');
         $result = app(RcDemoInferenceService::class)->predict(['version' => $input['version'],

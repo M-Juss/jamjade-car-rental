@@ -9,6 +9,8 @@ Maintenance is an internal fleet-operations domain with two separate records:
 
 The management UI preserves that distinction through Maintenance Plans, Scheduled & Active, and History views. History is readonly.
 
+Maintenance plan and record resources include the vehicle plate number alongside its name so the web tables identify the specific vehicle. The plan-based scheduling dialog displays the plan's vehicle, category, and maintenance name as fixed information; custom scheduling retains its editable controls. The schedule request and validation contract are unchanged. Sources: `MaintenancePlanResource`, `MaintenanceRecordResource`, `MaintenanceTables`, and `ScheduleMaintenanceDialog`.
+
 ## Authoritative plan inputs and targets
 
 The current finalized Vehicle Condition snapshot is the only source for current odometer mileage. Maintenance does not maintain a duplicate mutable current-mileage field.
@@ -77,7 +79,7 @@ Starting uses server time and actor identity. The Current Condition odometer is 
 
 ## Completion, costs, and provider
 
-Completion records required work performed, one optional service provider, optional notes, and optional labor/parts/other costs. Laravel derives total cost. Technician is not part of the active maintenance request or response contract.
+Completion requires explicit labor, parts, and other costs; each can be zero. Laravel derives total cost. The completion form no longer requests work performed, and existing work descriptions remain in history. A service provider is required when scheduling; an existing job without one requires it at completion. A provider saved during scheduling stays fixed. Notes remain optional. Technician is not part of the active maintenance request or response contract. The plan table shows the associated job's Scheduled or In Progress state while it exists, otherwise the plan's due condition. The completion odometer remains editable and subject to server validation.
 
 Completion odometer is required for mileage and combined plans. It is optional for date-only plans and custom work. Any supplied reading cannot regress below the Current Condition or captured starting reading.
 
@@ -89,7 +91,8 @@ Maintenance and condition evidence remain separate, but some work requires a res
 
 - Body Repair always requires Vehicle Condition verification.
 - Corrective and Other completion asks whether tracked condition changed; Yes requires verification, No completes normally.
-- Preventive work completes normally unless another business rule is introduced deliberately.
+- Preventive work completes normally when its completion odometer matches Current Condition.
+- A completion odometer that differs from Current Condition requires a signed condition update before maintenance can complete. The update starts with the completion reading, and the server requires the signed reading to match it. The previous snapshot remains unchanged. An initial condition is required before recording this update.
 
 When verification is required, completion details are saved while the record remains In Progress and the vehicle remains unavailable. The existing Vehicle Condition dialog copies the current finalized snapshot, records the verified odometer/fuel/checklist/body markers/comments, captures a new personnel signature, and finalizes a new immutable `condition_update` snapshot. The previous current snapshot is never edited.
 

@@ -7,6 +7,7 @@ export type FleetRental = {
   bookingCode: string;
   customerName: string | null;
   operator: { id: number; name: string | null; email: string | null; phoneNumber: string | null } | null;
+  emergencyContacts: { name: string; relationship: string; phoneNumber: string }[];
   geofenceActivity: { id: string; type: "geofence_enter" | "geofence_exit"; zoneName: string; notificationRequested: boolean; occurredAt: string | null }[];
   rentalType: "self_drive" | "owners_driver";
   rentalStartAt: string | null;

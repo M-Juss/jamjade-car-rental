@@ -21,8 +21,8 @@ function startMobileRegistration(string $email = 'otp.customer@example.com', arr
 {
     $response = test()->postJson('/api/mobile/register', array_merge([
         'email' => $email,
-        'password' => 'password123',
-        'password_confirmation' => 'password123',
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
     ], $extra))->assertStatus(202);
     $message = Mail::sent(VerifyMobileRegistrationMail::class)->last();
 
@@ -119,8 +119,8 @@ it('restarts an unfinished registration with a new capability after cooldown', f
 
     $new = $this->postJson('/api/mobile/register', [
         'email' => 'otp.customer@example.com',
-        'password' => 'newpassword123',
-        'password_confirmation' => 'newpassword123',
+        'password' => 'NewPassword123!',
+        'password_confirmation' => 'NewPassword123!',
     ])->assertStatus(202);
     $newRegistrationId = $new->json('data.registrationId');
     $newCode = Mail::sent(VerifyMobileRegistrationMail::class)->last()->code;
@@ -181,8 +181,8 @@ it('rolls back a failed initial email delivery without creating an account or pe
 
     $response = $this->postJson('/api/mobile/register', [
         'email' => 'mail.failure@example.com',
-        'password' => 'password123',
-        'password_confirmation' => 'password123',
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
     ])->assertStatus(503);
     Mail::swap($mailFake);
 
@@ -230,16 +230,16 @@ it('limits registration issuance to twenty attempts per hour per IP address', fu
     foreach (range(1, 20) as $index) {
         $this->postJson('/api/mobile/register', [
             'email' => "ip.limit.{$index}@example.com",
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ])->assertStatus(202);
         $this->travel(60)->seconds();
     }
 
     $this->postJson('/api/mobile/register', [
         'email' => 'ip.limit.21@example.com',
-        'password' => 'password123',
-        'password_confirmation' => 'password123',
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
     ])->assertStatus(429);
     expect(Mail::sent(VerifyMobileRegistrationMail::class))->toHaveCount(20);
 });
@@ -279,8 +279,8 @@ it('rejects malformed registration field types safely', function (mixed $email, 
     $this->postJson('/api/mobile/register', [
         'email' => $email,
         'phone_number' => $phone,
-        'password' => 'password123',
-        'password_confirmation' => 'password123',
+        'password' => 'Password123!',
+        'password_confirmation' => 'Password123!',
     ])->assertUnprocessable();
 })->with([
     'array email and phone' => [['array@example.com'], ['09181234567']],

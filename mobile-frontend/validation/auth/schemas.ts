@@ -37,3 +37,10 @@ export const registrationVerificationSchema = z.object({
 export const registrationResendSchema = z.object({
   registrationId: z.string().uuid('Registration session is invalid.'),
 });
+
+export const passwordResetEmailSchema = z.object({ email: loginSchema.shape.email });
+export const passwordResetCodeSchema = z.object({ code: registrationVerificationSchema.shape.code });
+export const passwordResetPasswordSchema = z.object({
+  password: accountPasswordSchema,
+  confirmPassword: z.string().min(1, 'Confirm your password.'),
+}).refine((value) => value.password === value.confirmPassword, { path: ['confirmPassword'], message: 'Password and confirm password must match.' });

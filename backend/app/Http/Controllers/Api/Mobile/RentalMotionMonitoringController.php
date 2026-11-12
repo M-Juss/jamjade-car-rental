@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Telematics\StartRentalMotionRequest;
+use App\Http\Requests\Telematics\StopRentalMotionRequest;
 use App\Http\Requests\Telematics\StoreRentalMotionBatchRequest;
 use App\Http\Resources\DriveMonitoringSessionResource;
 use App\Services\RentalMotionMonitoringService;
@@ -29,8 +30,10 @@ class RentalMotionMonitoringController extends Controller
         return $this->success('Motion readings received.', $service->batch($request->user(), $booking, $session, $request->validated()))->header('Cache-Control', 'private, no-store');
     }
 
-    public function stop(Request $request, string $booking, string $session, RentalMotionMonitoringService $service)
+    public function stop(StopRentalMotionRequest $request, string $booking, string $session, RentalMotionMonitoringService $service)
     {
-        return $this->success('Motion monitoring stopped.', new DriveMonitoringSessionResource($service->stop($request->user(), $booking, $session)))->header('Cache-Control', 'private, no-store');
+        $stopped = $service->stop($request->user(), $booking, $session, $request->validated('reason') === 'interrupted');
+
+        return $this->success('Motion monitoring stopped.', new DriveMonitoringSessionResource($stopped))->header('Cache-Control', 'private, no-store');
     }
 }

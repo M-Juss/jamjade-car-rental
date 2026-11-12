@@ -114,7 +114,7 @@ export function ChangePasswordForm({ visible, onClose }: { visible: boolean; onC
                 autoCorrect={false}
                 autoComplete="new-password"
                 textContentType="newPassword"
-                helperText="Use at least 8 characters."
+                helperText="Use at least 8 characters, including 1 uppercase letter and 1 special character."
                 value={field.value}
                 onBlur={field.onBlur}
                 onChangeText={field.onChange}

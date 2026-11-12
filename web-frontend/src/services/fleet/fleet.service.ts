@@ -22,7 +22,9 @@ export async function getFleetRentals(filters: FleetQuery, signal?: AbortSignal)
 
 export type RentalDrivingGrade = {
   policy_version: string; maximum: number; deductions: number; confirmed_events: number; score: number | null;
-  status: "provisional" | "not_graded";
+  status: "provisional" | "pending" | "final" | "not_graded";
+  finalized_at?: string;
+  sync_incomplete?: boolean;
   breakdown: Record<"harsh_acceleration" | "harsh_braking" | "harsh_cornering" | "harsh_swerve", { count: number; points_each: number; deduction: number }>;
 };
 

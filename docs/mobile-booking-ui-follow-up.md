@@ -34,7 +34,8 @@ Actual photo-background removal for every gallery photo and an explicit
 document view/edit mode are not established by these presentation corrections.
 
 Document-page follow-up: Self-drive document rows no longer show chevrons.
-The document page has back navigation on the left and its status on the right,
+Document image cards offer a larger view even when review locks editing.
+The document page has back navigation, document title and status on one row,
 with no centered Document Verification title. Verified pages omit the large
 heading, upload description, approval notice and disabled submit footer.
 Pending documents retain their backend replacement lock. Verified documents now

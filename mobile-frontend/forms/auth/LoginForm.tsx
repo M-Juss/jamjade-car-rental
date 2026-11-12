@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { type FieldErrors, useForm } from 'react-hook-form';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { z } from 'zod';
 
 import { AuthScreenFrame, AuthSubmitButton } from '@/components/common';
@@ -101,6 +101,10 @@ export function LoginForm() {
               </View>
             ) : null}
             <CredentialsFields control={control} />
+
+            <Pressable accessibilityRole="button" onPress={() => router.push('/forgot-password')} className="min-h-11 items-end justify-center">
+              <Text className="font-sans text-[14px] font-semibold text-primary">Forgot password?</Text>
+            </Pressable>
 
             <AuthSubmitButton
               disabled={isSubmitting}

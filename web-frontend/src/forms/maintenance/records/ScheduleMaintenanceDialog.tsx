@@ -119,25 +119,9 @@ export function ScheduleMaintenanceDialog({
               </h2>
               {isPlanSchedule ? (
                 <div className="grid gap-4 md:grid-cols-2">
-                  <InputWithLabel
-                    id="maintenance-schedule-plan-vehicle"
-                    label="Vehicle"
-                    readOnly
-                    value={initialPlan?.vehicle?.name ?? ""}
-                  />
-                  <InputWithLabel
-                    id="maintenance-schedule-plan-category"
-                    label="Category"
-                    readOnly
-                    value={initialPlan?.categoryLabel ?? ""}
-                  />
-                  <InputWithLabel
-                    id="maintenance-schedule-plan-name"
-                    label="Maintenance Name"
-                    readOnly
-                    wrapperClassName="md:col-span-2"
-                    value={initialPlan?.name ?? ""}
-                  />
+                  <div><p className="text-sm text-muted-foreground">Vehicle</p><p className="text-sm font-semibold text-foreground">{initialPlan?.vehicle ? [initialPlan.vehicle.name, initialPlan.vehicle.plateNumber].filter(Boolean).join(" ") : "Vehicle unavailable"}</p></div>
+                  <div><p className="text-sm text-muted-foreground">Category</p><p className="text-sm font-semibold text-foreground">{initialPlan?.categoryLabel}</p></div>
+                  <div className="md:col-span-2"><p className="text-sm text-muted-foreground">Maintenance Name</p><p className="text-sm font-semibold text-foreground">{initialPlan?.name}</p></div>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
@@ -226,7 +210,8 @@ export function ScheduleMaintenanceDialog({
               </h2>
               <InputWithLabel
                 id="maintenance-schedule-provider"
-                label="Service Provider (Optional)"
+                label="Service Provider"
+                required
                 wrapperClassName="md:col-span-2"
                 error={form.formState.errors.serviceProvider?.message}
                 {...form.register("serviceProvider")}

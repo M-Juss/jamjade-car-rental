@@ -194,6 +194,7 @@ export function ProfileDocumentVerificationForm({
 
   const renderUploadCard = (key: keyof CustomerDocumentUploads, label: string, required = true) => (
     <UploadDocumentCard
+      allowPreview
       disabled={isLocked || isSubmitting}
       error={errors[key]?.message}
       helperText={isLocked ? undefined : IMAGE_HELPER}
@@ -243,10 +244,9 @@ export function ProfileDocumentVerificationForm({
             className="h-11 w-11 items-center justify-center">
             <ArrowLeft size={21} color={themeColors.foreground} strokeWidth={2} />
           </Pressable>
-          <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-center text-[19px] font-semibold text-foreground">{definition.name}</Text>
-          <View className="h-11 w-11" />
+          <Text accessibilityRole="header" numberOfLines={1} className="font-sans min-w-0 flex-1 text-[19px] font-semibold text-foreground">{definition.name}</Text>
+          <DocumentReviewBadge status={status} />
         </View>
-        <View className="mt-3 items-end"><DocumentReviewBadge status={status} /></View>
         {isEditingVerified ? <Text className="font-sans mt-3 text-caption leading-5 text-secondary-foreground">
           Upload new images. Resubmitting pauses self-drive eligibility until approval.
         </Text> : null}
@@ -309,8 +309,8 @@ export function ProfileDocumentVerificationForm({
 
           {documentId === 'proof-of-address' ? (
             <>
-              {renderUploadCard('proofOfAddress', 'Front')}
-              {renderUploadCard('proofOfAddressBack', 'Back', false)}
+              {renderUploadCard('proofOfAddress', 'Proof of Address Front')}
+              {renderUploadCard('proofOfAddressBack', 'Proof of Address Back', false)}
             </>
           ) : null}
         </View>

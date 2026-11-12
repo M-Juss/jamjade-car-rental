@@ -8,7 +8,7 @@ import { FormDialogContent, FormDialogFooter, FormDialogHeader } from "@/compone
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import type { OwnerVerificationRequest } from "@/services/http/owner-verification";
+import { OwnerVerificationWait, type OwnerVerificationRequest } from "@/services/http/owner-verification";
 import { ownerVerificationSchema, type OwnerVerificationValues } from "@/validations/owner-verification/schema";
 
 export function OwnerVerificationDialog() {
@@ -30,6 +30,7 @@ export function OwnerVerificationDialog() {
       pendingRequest.current = (event as CustomEvent<OwnerVerificationRequest>).detail;
       setRequest(pendingRequest.current);
       setId(null);
+      setResendAt(0);
       setError("");
       form.reset();
     };
@@ -73,6 +74,11 @@ export function OwnerVerificationDialog() {
       setClock(Date.now());
       form.reset();
     } catch (sendError) {
+      if (sendError instanceof OwnerVerificationWait) {
+        const now = Date.now();
+        setClock(now);
+        setResendAt(now + sendError.retryAfter * 1000);
+      }
       setError(sendError instanceof Error ? sendError.message : "The code could not be sent. Please try again later.");
     } finally {
       setBusy(false);
@@ -126,7 +132,7 @@ export function OwnerVerificationDialog() {
             <Button type="button" variant="outline" disabled={busy} onClick={cancel}>Cancel</Button>
             {id
               ? <Button type="submit" disabled={busy}>{busy ? "Verifying..." : "Confirm action"}</Button>
-              : <Button type="button" disabled={busy} onClick={() => void send()}>{busy ? "Sending..." : "Send code"}</Button>}
+              : <Button type="button" disabled={busy || seconds > 0} onClick={() => void send()}>{busy ? "Sending..." : seconds ? `Try again in ${seconds}s` : "Send code"}</Button>}
           </FormDialogFooter>
         </form>
       </FormDialogContent>

@@ -153,7 +153,7 @@ it('keeps owner and authentication boundaries on upload and inspection', functio
     $this->app['auth']->forgetGuards();
     $this->withToken($other->createToken('research', ['rc-research'], now()->addHour())->plainTextToken)
         ->postJson("/api/mobile/rc-research/native-recordings/$id/finalize")->assertNotFound();
-    $this->withHeader('Authorization', '')->actingAs($other, 'web')->getJson("/admin/rc-research/native-recordings/$id")->assertNotFound();
+    $this->withHeader('Authorization', '')->actingAs($other, 'web')->getJson("/admin/rc-research/native-recordings/$id")->assertOk();
     $this->withHeader('Authorization', '')->actingAs($this->admin, 'web')
         ->postJson('/api/mobile/rc-research/native-recordings', ['manifest_json' => $this->manifestJson])->assertForbidden();
 });

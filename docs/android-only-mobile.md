@@ -9,6 +9,45 @@ Telematics and RC pipeline decisions are maintained only in the
 [central implementation guide](telematics-master-plan.md). This document records
 platform configuration and dated build verification, not an alternate AI roadmap.
 
+## Google Play internal test preparation — 2026-11-12
+
+Update — 2026-11-12: version 1.0.1 (code 2) was built with the existing EAS
+upload key and published to the active internal track. It includes the current
+mobile checkout and the new Customer email-code password recovery flow; see the
+[account guide](user-roles-and-access.md#mobile-registration-email-verification).
+The corresponding Laravel migration was applied to the local test database, and
+the request-validation endpoint returned 422 locally and through the tunnel when
+using public DNS. Real email delivery and the installed Android reset flow have
+not yet been verified. The computer's normal DNS failed for the tunnel hostname
+while public DNS resolved it; device connectivity still requires testing.
+
+The `play-internal` EAS profile in `mobile-frontend/eas.json` produces an Android
+App Bundle for Google Play and uses the EAS `production` environment. That
+environment is temporarily configured with the existing HTTPS tunnel to the
+local Laravel API and the Android Maps key. Replace its backend configuration
+before any later production build; this is an internal-test setup, not a hosted
+production backend. Keep the local database, Laravel, Next.js proxy and tunnel
+running during testing. Changing the API hostname requires a new native build.
+
+The Play app retains `com.anonymous.jamjadecarrental`. EAS has an existing
+release upload keystore; its certificate differs from the debug certificate on
+the locally installed test APK. Do not uninstall that APK or clear its data to
+install a Play build while its encrypted research recordings must be preserved.
+Use another Android device for independent testing;
+the Play-signed certificate and Android Maps key restriction must also be checked.
+
+The original Play Console app and version 1.0.0 (code 1) internal release were created
+and published. At that checkpoint the track had no selected tester list; it has since
+been activated with a tester list. Google displayed a warning that no
+deobfuscation file was attached. Lint,
+TypeScript, Expo Doctor (18/18), and Android JavaScript export passed. The EAS
+bundle build completed, and ZIP integrity and upload-signature verification passed.
+The mobile Node suite had 302 passes and one failure: the existing vehicle-image
+test expects 7 catalog entries while the current uncommitted catalog has 42.
+Tester access, Maps, physical customer/driver flows, background location and RC
+motion remain to be verified. Existing uncommitted application work was included
+in the build input.
+
 ## App-only backend DNS fallback — 2026-11-06
 
 The user authorized Google encrypted DNS fallback inside JamJade after declining

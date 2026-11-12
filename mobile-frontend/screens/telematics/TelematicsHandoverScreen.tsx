@@ -47,6 +47,7 @@ export function TelematicsHandoverScreen() {
   const [recheckingDevices, setRecheckingDevices] = useState(false);
   const [calibrationDisclosure, setCalibrationDisclosure] = useState<string | null>(null);
   const pendingCalibration = useRef(false);
+  const liveBooking = useRef<string | null>(null);
   const [calibrationConsent, setCalibrationConsent] = useState<{ bookingCode: string; profileFingerprint: string | null; values: CalibrationConsentInput } | null>(null);
   const { handover, bookings, loading, loadError, accessLost, bookingsError, actingStep, feedback, refresh, checkSetup, restartSetup, restartingSetup, calibrationBusy, calibrationRecording, calibrationLive, dismissCalibrationSuccess, calibrate, cancelCalibration } = useTelematicsHandover(bookingId);
   const disclosure = useCalibrationConsent(user?.id, handover?.bookingCode, handover?.calibration.profile.id);
@@ -57,6 +58,15 @@ export function TelematicsHandoverScreen() {
   const monitoring = useTelematicsMonitoring(bookingId ?? '', user?.id, handover, busy || loading || Boolean(loadError), accessLost);
   const activity = useTelematicsActivity(bookingId ?? '');
   const released = handover?.eligibility.state === 'released';
+  const ended = handover?.eligibility.state === 'rental_ended';
+  const handoverCode = handover?.bookingCode;
+  useFocusEffect(useCallback(() => {
+    if (!handoverCode) return;
+    if (released) liveBooking.current = handoverCode;
+    if (!ended || liveBooking.current !== handoverCode) return;
+    liveBooking.current = null;
+    router.replace(isDriver ? { pathname: '/(driver)/services', params: { tab: 'history' } } : '/(tabs)');
+  }, [ended, handoverCode, isDriver, released, router]));
   const closeStationaryCheck = stationaryCheck.close;
   useEffect(() => { if (handover && !released) closeStationaryCheck(); }, [handover, released, closeStationaryCheck]);
   useEffect(() => { if (released) setExpanded(false); }, [released]);
@@ -184,8 +194,10 @@ export function TelematicsHandoverScreen() {
   const selectTab = (next: TelematicsTab) => { if (!busy) setTab(next); };
   const feedbackView = feedback && showFeedback && !showingSuccess ? <Text accessibilityLiveRegion="polite" className={`font-sans text-body leading-6 ${feedback.failed ? 'text-secondary-foreground' : 'text-success'}`}>{feedback.message}</Text> : null;
   const sharing = monitoring.sharing;
-  const monitoringNotice = loadError ?? monitoring.error
+  const gpsReconnecting = sharing?.phase === 'reconnecting';
+  const monitoringNotice = gpsReconnecting ? sharing.message : loadError ?? monitoring.error
     ?? (sharing?.phase === 'offline' || sharing?.phase === 'error' ? sharing.message : null);
+  const gpsStatus = gpsReconnecting ? 'GPS reconnecting' : sharing?.phase === 'sharing' ? 'GPS sharing active' : 'Waiting for GPS…';
 
   return <View className="flex-1 bg-background">
     <Stack.Screen options={{ gestureEnabled: !busy }} />
@@ -201,7 +213,7 @@ export function TelematicsHandoverScreen() {
           <Text numberOfLines={2} className="font-sans text-center text-[11px] font-semibold text-foreground">Monitoring ready for release</Text>
           <Text className="font-sans text-center text-caption font-medium text-primary">Cancel</Text>
         </Pressable> : monitoring.active ? <View className="max-w-full rounded-full border border-border bg-surface px-3 py-1.5">
-          <Text accessibilityLiveRegion="polite" numberOfLines={1} className="font-sans text-center text-[11px] font-semibold text-primary">{monitoring.sharing?.phase === 'sharing' ? 'GPS sharing active' : 'Waiting for GPS…'}</Text>
+          <Text accessibilityLiveRegion="polite" numberOfLines={1} className="font-sans text-center text-[11px] font-semibold text-primary">{gpsStatus}</Text>
         </View> : null}
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Refresh telematics" accessibilityState={{ disabled: busy || loading }} disabled={busy || loading}
@@ -231,9 +243,9 @@ export function TelematicsHandoverScreen() {
           {view === 'overview' ? feedbackView : null}
         </> : null}
         {tab === 'activity' ? <>
-          {released && user?.id && handover.calibration.profile.id === 'rc_demo' ? <RentalMotionMonitoring key={handover.bookingCode} bookingCode={handover.bookingCode} userId={user.id}
+          {(released || ended) && user?.id && handover.calibration.profile.id === 'rc_demo' ? <RentalMotionMonitoring key={handover.bookingCode} bookingCode={handover.bookingCode} userId={user.id}
             status={monitoring.motionStatus} starting={monitoring.motionStarting} motionError={monitoring.motionError} refreshStatus={monitoring.refreshMotionStatus}
-            gpsActive={monitoring.active} onResumeCheck={stationaryCheck.open} /> : null}
+            ended={ended} gpsActive={monitoring.active && !gpsReconnecting} onResumeCheck={stationaryCheck.open} /> : null}
           {monitoringNotice || sharing?.needsSettings ? <SectionCard title="GPS monitoring" icon={CircleAlert}>
             {monitoringNotice ? <Text accessibilityLiveRegion="polite" className="font-sans text-body text-secondary-foreground">{monitoringNotice}</Text> : null}
             {sharing?.needsSettings ? <ActionButton label="Open device settings" onPress={() => void Linking.openSettings().catch(() => Alert.alert('Settings unavailable', 'Open device Settings to allow location access.'))} /> : null}

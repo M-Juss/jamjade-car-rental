@@ -96,7 +96,6 @@ export function getMaintenanceScheduleDateLimits(scheduledStart = "", now = new 
 
 export const completeMaintenanceDefaults: CompleteMaintenanceFormValues = {
   odometerAtCompletion: "",
-  workPerformed: "",
   serviceProvider: "",
   laborCost: "",
   partsCost: "",

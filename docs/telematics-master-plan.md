@@ -1,5 +1,9 @@
 # Telematics and RC Research: central implementation guide
 
+### Shared Admin research review — 2026-11-12
+
+All active Admin accounts can review verified and uploaded native research recordings in Data Collection and the shared reviewed maneuver comparison in Model Explorer, including annotation revisions, processing and contact review. Annotation revisions retain the actual reviewer; original recording ownership, encrypted originals, session identity and same-owner reference compatibility remain unchanged. Mobile research uploads, context and observations remain restricted to their original account. The older Expo v1 routes remain owner-bound; the pinned classifier examples are shared among authorized Admins. Sources: `RcNativeRecordingController`, `RcProcessingRunController`, `RcAnnotationController`, `RcNativeResearchService`, `RcCollectionService`, `RcAnnotationService`, and `RcManeuverComparisonService`. Hosted access still requires RC demo configuration and the original encrypted data and application key. Focused web and mobile research tests cover shared Admin access and continued mobile ownership enforcement.
+
 ### Forward-reference sensor feedback — 2026-11-11
 
 `mobile-frontend/services/telematics/rental-motion-capture.ts` reports live
@@ -2289,7 +2293,7 @@ UI. Existing Form Requests/Zod schemas are deliberately not changed in Phase 1.
 | Calibration | Six readiness checks, then supervised native stationary and forward captures with summary-only evidence | Provisional quality settings; physical Android verification pending |
 | Released rental GPS | Explicit foreground/background latest-location sharing, consent, pause/resume, server eligibility | No continuous rental motion collector, offline recording queue, or route-history collection in this flow |
 | Fleet website | Ongoing rentals, latest-location map, private Reverb invalidations and authorized rereads | No connected AI driving-event dashboard |
-| Notifications | Customer/Driver in-app records, unread counts, booking activity | No implemented report-ready flow or remote phone push delivery |
+| Notifications | Customer/Driver in-app records, unread counts, booking activity and main-inbox driving reports | Remote phone push delivery remains separate |
 | ML and score | Local versioned development comparison of majority, logistic regression and Random Forest candidates | Reserved final evaluation, continuous inference, behavior score and reports remain pending; development cornering errors require review |
 
 Existing enum values and old mock presentation components do not establish AI
@@ -2570,13 +2574,11 @@ and closed segments alone do not prove that all expected phone data arrived.
 The approved RC deduction rule starts at 100, subtracts two points per confirmed
 harsh acceleration/braking event and three per confirmed harsh cornering/swerve
 event, and floors the result at zero. `RentalDrivingScoreService` implements
-this versioned calculation (`rc-deductions-v1`). The approved presentation
-shows a provisional score with received coverage; no accepted motion batch
-means Not graded, never an automatic 100. All current scores remain provisional
-because upload reconciliation is not implemented. Review-required, suppressed
-and pending events do not contribute. Deductions count grouped events, not
-individual prediction windows. Late batches recompute the read model; no
-financial charges are created. A zero floor caps the displayed score even when
+this versioned calculation (`rc-deductions-v1`). Completed rentals show
+Finalizing until the [final report](#final-driving-reports--2026-11-12) is saved.
+No accepted motion batch means Not graded. Review-required, suppressed
+and pending events do not contribute. Deductions count grouped events.
+Late batches can contribute before finalization. A zero floor caps the displayed score even when
 raw deductions exceed 100. The weights are a project-defined behavior index, not
 validated risk ratios. Motion sensors cannot determine driver intent, road
 clearance or whether a maneuver was a necessary emergency response.
@@ -2622,9 +2624,8 @@ segment alone does not establish full-trip coverage.
 
 `BookingDetailsDialog.tsx` composes the existing `RentalDrivingEvents`
 component in the Driving Analysis tab, with estimated occurrence times, review
-states and scrollable event logs. Provisional grades and coverage measurement
-are implemented; final report reconciliation and report-ready notifications
-remain pending. Browser access
+states and scrollable event logs. For the current report workflow, see
+[Final driving reports](#final-driving-reports--2026-11-12). Browser access
 was disabled during verification. The backend suite passed 1,140 tests,
 including completed-status and permission checks. Scoped PHP formatting,
 web lint, TypeScript and the production build passed.
@@ -2690,8 +2691,8 @@ supports the current assigned Driver for With Assigned Driver rentals.
   refresh failure. `useTelematicsMonitoring.ts` leaves the active native motion
   segment running through that failure, while a confirmed access denial or ended
   rental still stops collection. Telematics keeps Pause available offline.
-  GPS uses its existing latest-fix policy, with no offline route history. After
-  reconnecting, the operator can resume GPS while motion continues. Mobile
+  GPS retains its latest-fix policy without offline route history. The
+  foreground reconnect behavior is documented in the released GPS section. Mobile
   lint, TypeScript, the standalone Android build and 30 focused tests passed.
   A physical Wi-Fi loss and reconnect test remains pending.
 - The mobile Telematics controls use a single Start/Resume and Pause for the
@@ -2700,8 +2701,8 @@ supports the current assigned Driver for With Assigned Driver rentals.
   Monitoring card in Activity shows motion status, pending batches and Finish sync, and can
   close an interrupted server start without a local queue. GPS sharing choices,
   zone snapshots and release gates continue to apply.
-  A successful rental monitoring refresh clears the previous connection warning
-  in `location-monitoring-session.ts` and leaves GPS paused until Resume.
+  A successful rental monitoring refresh clears a stopped offline session's
+  previous connection warning and leaves GPS paused until Resume.
   Telematics groups GPS recovery in Activity and keeps motion action errors
   beside the corresponding controls. Temporary motion status refresh failures
   retain the last status. Mobile lint, TypeScript, the standalone Android build
@@ -2918,7 +2919,7 @@ Current API base: `/api/mobile/bookings/{bookingCode}/location-monitoring` with
 GET state and POST `/start`, `/location`, `/pause`. Requests use the existing
 mobile service and Form Requests. Start requires current accepted consent and
 `sharing_mode = foreground | foreground_background`. Current consent version is
-3; configuration defines a five-second upload interval, maximum 50 m accuracy,
+3. Configuration defines a three-second upload interval, maximum 50 m accuracy,
 60-second age, 10-second future skew, and 24-hour latest-point retention.
 
 Laravel rechecks operator, ongoing/released rental, no physical receipt, valid
@@ -2935,6 +2936,23 @@ with appropriate native permission. Current runtime consent/session state and
 collection tokens are in memory. Stop, interruption, sign-out, runtime loss, and
 cold tasks do not silently restart sharing. There is no persistent GPS route queue.
 Receipt/expiry clears retained location and invalidates collection as implemented.
+
+After location collection starts, a connection loss or request timeout keeps
+the existing GPS watcher running while JamJade is open, and while backgrounded
+only if background sharing was explicitly authorized. The app shows that sharing
+is paused without a connection, holds only the latest valid fix in memory, and
+retries every five seconds while the runtime remains alive. On reconnect it
+rechecks rental access and consent before sending the newest fresh fix with its
+capture time. Manual pause and sign-out stop capture and discard the pending fix;
+foreground-only sharing also stops when backgrounded. A start still requires
+online eligibility and consent. The Admin map shows the last received fix during
+an outage, and a geofence crossing that occurs entirely offline can be missed.
+Android runtime termination or a cold task cannot restore this in-memory session.
+The reconnect state lives in
+`mobile-frontend/services/telematics/location-monitoring-session.ts`.
+Verification: 29 focused mobile GPS tests, mobile lint, TypeScript and Android
+bundle export passed. Physical reconnect and foreground exit on the Redmi remain
+to be checked with an updated APK.
 
 The shared mobile drawer has Full details, Device setup, and Activity. Explicit
 setup agreement can prepare one GPS start after fresh server-confirmed release
@@ -4904,7 +4922,7 @@ API limits, whole-rental totals and the separate Fleet Monitoring ten-row
 presentation are unchanged. TypeScript and scoped ESLint passed; visual review
 remains manual.
 
-#### Provisional grading integration — 2026-11-11
+#### Historical provisional grading integration — 2026-11-11
 
 `GET /admin/driving-analysis` reuses `ListBookingsRequest` pagination/search,
 forces completed rentals and requires both manage-bookings and fleet access.
@@ -5008,7 +5026,7 @@ by `shell/components/ManagementSidebarNav.tsx`.
 
 **Historical:** Admin Model Explorer previously included a frozen classifier view.
 Its read-only local endpoint uses
-saved, owner-bound examples from the pinned `pilot-split-v3` development partition
+saved examples shared among authorized Admins from the pinned `pilot-split-v3` development partition
 and rejects a changed snapshot hash. It shows the prepared six-channel 20 ms
 signals, selectable one-feature calculations, observed per-class development
 ranges, the selected example's human label and the frozen forest's averaged
@@ -5259,6 +5277,10 @@ emergency contacts, including for assigned-driver rentals; it does not substitut
 another person's contacts. Missing contacts/location have explicit empty states.
 No write DTO or mobile contract changes were needed.
 
+The Fleet resource and detail sheet were restored to this contact contract after
+the fields disappeared. The resource eagerly loads only the booking customer's
+contact details; the existing Fleet API tests cover the response.
+
 Checks: 41 Fleet tests (286 assertions), web lint, TypeScript, production build
 and diff whitespace checks passed. Browser checks confirmed two desktop cards and a single stacked
 column at 390px, with no detail-sheet horizontal overflow. Source paths:
@@ -5406,3 +5428,67 @@ The focused hosted access, model, seeder, calibration and rental suite passed
 with 31 failures and 2 errors (the same counts as the pre-change baseline).
 Scoped PHP formatting passed. Final verification is recorded in the deployment
 guide. Android and public server acceptance remain pending.
+
+### Final driving reports — 2026-11-12
+
+The Laravel scheduler runs `telematics:finalize-driving-reports` each minute.
+Completed bookings with rental motion sessions qualify. Bookings whose motion
+segments have all closed can finalize on the next pass. Otherwise, uploads of
+valid windows captured before the rental ended can continue for up to 24 hours
+after completion. When the deadline is reached, the next scheduler pass closes
+unfinished segments and records that sync was incomplete. Confirmed event totals,
+coverage and the scoring policy are saved in one immutable report per booking.
+No received batch means no numeric grade. Bookings without motion sessions do
+not generate a report or an inbox notice. Existing completed rentals with
+recorded motion sessions are eligible for the same scheduler pass.
+
+The finalizer and rental upload/stop endpoints use the same booking lock. A
+duplicate batch with the same accepted contents can still be acknowledged.
+New batches are rejected after finalization or expiry. Pending model events
+in expired sessions become uncertain and cannot deduct points. Web Driving
+Analysis shows Finalizing before a report exists. Its rental list, operator
+averages and report use saved grades. An incomplete report covers received
+readings and identifies when sync was not confirmed. Coverage of the released
+rental remains a separate measure.
+
+Driving Analysis labels saved grades with incomplete sync in the rental list,
+operator booking dialog and report. Operator and overall averages indicate when
+they include an incomplete grade; the score itself is unchanged. The overview
+uses the saved report snapshot, so the warning does not depend on the latest
+page of bookings. Sources: `RentalDrivingOverviewService.php`,
+`DrivingGradeDetails.tsx`, and `DrivingAnalysisOverview.tsx`.
+
+Laravel stores the report and main-inbox notification in one transaction.
+The renter and the recorded, still-assigned Driver on a Driver booking each
+receive one in-app notice. The preview shows the grade out of 100 and the
+notification detail shows the scoring arithmetic and summary. The existing
+notification detail viewer renders the report as plain text. No push provider is used.
+Ended rentals expose Finish sync from Telematics Activity while the upload
+window is open. When live Telematics observes that the rental ended, the
+customer returns to Browse and the driver opens Services on History. Opening
+an ended rental from booking details still opens its Activity. The native stop
+request uses an empty payload after draining.
+The mobile recovery action sends optional `reason=interrupted` through
+`StopRentalMotionRequest` and `stopRentalMotionSchema`; older native stop
+payloads continue to work.
+
+Sources include `RentalDrivingReportService`, `RentalDrivingAnalysisService`,
+`RentalDrivingOverviewService`, `RentalMotionMonitoringService`,
+`routes/console.php` and the `2026_11_12_000001_create_rental_driving_reports`
+migration. Hosted deployment requires the migration and a running scheduler.
+Verification covered 88 focused backend tests with 823 assertions, including
+late batch acceptance, expiration, immutable grades, booking authorization and
+one main-inbox notice per recipient. Scoped PHP formatting, web and mobile lint
+and TypeScript, the web production build, 30 mobile domain tests, and Android
+bundle export passed. The full backend run had 29 failures and 2 errors in other
+flows. The physical inbox, sync recovery and role redirects remain unverified.
+
+### Telematics panel drag — 2026-11-12
+
+The mobile rental panel in `components/telematics/TelematicsDrawer.tsx` now
+tracks vertical drags started on its tabs or handle and snaps open or closed on
+release. Taps retain their existing tab and panel actions. Scrolling content back
+to the top no longer closes the panel without a downward gesture. This changes
+presentation only; monitoring and consent behavior are unchanged. Mobile lint,
+TypeScript and `git diff --check` passed. Android touch and map interaction have
+not been tested on a device or emulator for this change.

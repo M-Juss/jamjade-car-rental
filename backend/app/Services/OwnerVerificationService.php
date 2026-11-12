@@ -39,6 +39,11 @@ class OwnerVerificationService
                 return ['value' => $mode === 'request' ? response()->json(['success' => true, 'data' => ['verificationRequired' => false]]) : $write($model)];
             }
             $owner = $this->owner();
+            if ($owner->is($actor)) {
+                return ['value' => $mode === 'request'
+                    ? response()->json(['success' => true, 'data' => ['verificationRequired' => false]])
+                    : $write($model)];
+            }
             $payloadHash = $this->fingerprint($payload);
             $stateHash = $this->fingerprint($this->state($model));
             $verificationId = (string) $request->header('X-Owner-Verification-Id', '');
@@ -49,6 +54,10 @@ class OwnerVerificationService
                 if ($verificationId !== '' && ! $existing) {
                     return ['error' => 'This verification has expired. Start again.'];
                 }
+                if ($verificationId === '' && $existing && ($existing->owner_id !== $owner->id || $existing->owner_email_hash !== $this->ownerEmailHash($owner))) {
+                    $existing->update(['consumed_at' => now()]);
+                    $existing = null;
+                }
                 if ($existing) {
                     if ($existing->actor_id !== $actor->id || $existing->owner_id !== $owner->id || $existing->owner_email_hash !== $this->ownerEmailHash($owner) || $existing->action !== $action || $existing->target !== $target || $existing->consumed_at || $existing->expires_at->isPast() || $existing->failed_attempts >= 5) {
                         return ['error' => 'This verification has expired. Try again later.'];
@@ -57,7 +66,11 @@ class OwnerVerificationService
                         return ['error' => 'The action changed. Start again.'];
                     }
                     if ($existing->resend_available_at->isFuture()) {
-                        throw new HttpException(429, 'A verification code was recently sent. Try again shortly.');
+                        if ($verificationId === '' && $existing->payload_hash === $payloadHash && $existing->state_hash === $stateHash) {
+                            return ['value' => response()->json(['success' => true, 'data' => ['verificationId' => $existing->id, 'expiresAt' => $existing->expires_at->toISOString(), 'resendAvailableAt' => $existing->resend_available_at->toISOString()]])->header('Cache-Control', 'no-store')];
+                        }
+                        $retryAfter = max(1, (int) ceil(now()->diffInSeconds($existing->resend_available_at, false)));
+                        throw new HttpException(429, 'A verification code was recently sent. Try again shortly.', null, ['Retry-After' => (string) $retryAfter]);
                     }
                     $existing->payload_hash = $payloadHash;
                     $existing->state_hash = $stateHash;
@@ -128,7 +141,7 @@ class OwnerVerificationService
     {
         $key = 'owner-verification:'.$key;
         if (RateLimiter::tooManyAttempts($key, $maximum)) {
-            throw new HttpException(429, 'Too many verification attempts. Try again later.');
+            throw new HttpException(429, 'Too many verification attempts. Try again later.', null, ['Retry-After' => (string) max(1, RateLimiter::availableIn($key))]);
         }
         RateLimiter::hit($key, $seconds);
     }

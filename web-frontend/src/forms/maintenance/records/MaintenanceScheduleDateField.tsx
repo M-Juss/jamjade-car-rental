@@ -9,7 +9,7 @@ type MaintenanceScheduleDateFieldProps = Omit<
 > & { value: string };
 
 export const MaintenanceScheduleDateField = forwardRef<HTMLInputElement, MaintenanceScheduleDateFieldProps>(
-  ({ value, onFocus, onBlur, onChange, placeholder = "Select date", ...props }, ref) => {
+  ({ value = "", onFocus, onBlur, onChange, placeholder = "Select date", ...props }, ref) => {
     const [editing, setEditing] = useState(false);
     const date = new Date(`${value}T00:00:00+08:00`);
     const formattedValue = value && Number.isFinite(date.getTime())

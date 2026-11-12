@@ -1,7 +1,8 @@
 import { themeColors } from '@/constants/theme';
-import { FileCheck2, ImagePlus, Trash2, Upload } from 'lucide-react-native';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { Eye, FileCheck2, ImagePlus, Trash2, Upload, X } from 'lucide-react-native';
+import { ActivityIndicator, Image, Modal, Pressable, Text, View } from 'react-native';
 import { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { pickImageFromDevice, type DocumentImagePickError } from '@/lib/customer/image-picker';
 
@@ -10,6 +11,7 @@ function cx(...classes: (string | false | null | undefined)[]) {
 }
 
 export function UploadDocumentCard({
+  allowPreview = false,
   disabled = false,
   error,
   helperText,
@@ -20,6 +22,7 @@ export function UploadDocumentCard({
   required = false,
   value,
 }: {
+  allowPreview?: boolean;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -31,6 +34,9 @@ export function UploadDocumentCard({
   onPickError?: (error: DocumentImagePickError) => void;
 }) {
   const hasPreview = Boolean(value);
+  const insets = useSafeAreaInsets();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [largeImageError, setLargeImageError] = useState(false);
   const [failedValue, setFailedValue] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const imageFailed = hasPreview && failedValue === value;
@@ -76,6 +82,14 @@ export function UploadDocumentCard({
             {required ? <Text className="text-destructive"> *</Text> : null}
           </Text>
         </View>
+        {allowPreview && hasPreview && !imageFailed && !isUploading ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`View ${label} image`}
+            onPress={() => { setLargeImageError(false); setPreviewOpen(true); }}
+            className="min-h-11 flex-row items-center gap-1.5 px-2">
+            <Eye size={17} color={themeColors.primary} />
+            <Text className="font-sans text-caption font-semibold text-primary">View</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <Pressable
@@ -145,6 +159,25 @@ export function UploadDocumentCard({
           </Pressable>
         ) : null}
       </View> : null}
+      {allowPreview ? <Modal visible={previewOpen} transparent animationType="fade"
+        accessibilityViewIsModal onRequestClose={() => setPreviewOpen(false)}>
+        <View className="flex-1 justify-center bg-foreground/45" style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16, paddingHorizontal: 16 }}>
+          <View className="max-h-full flex-1 overflow-hidden rounded-card border border-border bg-surface">
+            <View className="flex-row items-center gap-2 border-b border-border px-4 py-2">
+              <Text accessibilityRole="header" className="font-sans min-w-0 flex-1 text-body font-semibold text-foreground">{label}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close image" onPress={() => setPreviewOpen(false)}
+                className="h-11 w-11 items-center justify-center">
+                <X size={20} color={themeColors.foreground} />
+              </Pressable>
+            </View>
+            {largeImageError ? <View className="flex-1 items-center justify-center px-4">
+              <Text accessibilityRole="alert" className="font-sans text-center text-body text-secondary-foreground">Image could not be loaded.</Text>
+            </View> : <Image accessibilityLabel={label}
+              source={{ uri: value, ...(/^https?:\/\//i.test(value) ? { headers: { 'ngrok-skip-browser-warning': 'true' } } : {}) }}
+              onError={() => setLargeImageError(true)} resizeMode="contain" className="w-full flex-1 bg-background" />}
+          </View>
+        </View>
+      </Modal> : null}
     </View>
   );
 }

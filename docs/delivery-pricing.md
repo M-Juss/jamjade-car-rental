@@ -95,4 +95,4 @@ Follow-up verification: mobile lint, TypeScript and the three remaining quote-re
 
 ## Owner verification
 
-The Fee Pricing form saves delivery and late-return settings together after owner verification. The individual delivery and late-return write endpoints also require verification. Garage coordinates remain outside the combined form. See [roles and access](user-roles-and-access.md#owner-verification).
+The Fee Pricing form saves delivery and late-return settings together; Admin-initiated saves require owner verification, while the Owner saves directly. The individual delivery and late-return write endpoints also require verification. Garage coordinates remain outside the combined form. See [roles and access](user-roles-and-access.md#owner-verification).

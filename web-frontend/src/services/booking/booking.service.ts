@@ -52,11 +52,12 @@ export async function getBooking(booking: BookingRecord | number) {
 
 export type DrivingAnalysisSummary = {
   completed_rentals: number; operators_monitored: number;
-  average_score: number | null; harsh_events: number;
+  average_score: number | null; harsh_events: number; incomplete_grades: number;
 };
 export type DrivingOperator = {
   id: number; name: string | null; completed_rentals: number; monitored_rentals: number;
   average_score: number | null; latest_score: number | null; harsh_events: number;
+  incomplete_grades: number; latest_sync_incomplete: boolean;
 };
 export type DrivingVehicleOption = { value: string; label: string };
 export type RecordedOperator = { id: number | null; name: string | null };

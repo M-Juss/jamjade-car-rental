@@ -11,6 +11,7 @@ import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/tab
 import { TablePagination } from "@/components/common/tables/TablePagination";
 import { getDrivingAnalysisBookings, type BookingRecord, type DrivingOperator } from "@/services/booking";
 import type { RentalDrivingGrade } from "@/services/fleet/fleet.service";
+import { formatDrivingGrade } from "./DrivingGradeDetails";
 
 export function OperatorBookingsDialog({ operator, portal, onClose, onReturnFocus }: { operator: DrivingOperator; portal: string; onClose: () => void; onReturnFocus: () => void }) {
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
@@ -53,7 +54,7 @@ export function OperatorBookingsDialog({ operator, portal, onClose, onReturnFocu
                     <ManagementTableCell data-label="Booking"><Link href={`/${portal}/history?booking=${booking.backendId}`} className="font-semibold text-primary hover:underline">{booking.bookingCode}</Link></ManagementTableCell>
                     <ManagementTableCell data-label="Harsh events" className="tabular-nums">{grade?.confirmed_events ?? "—"}</ManagementTableCell>
                     <ManagementTableCell data-label="Deductions" className="tabular-nums">{grade?.score != null ? `−${grade.deductions}` : "—"}</ManagementTableCell>
-                    <ManagementTableCell data-label="Grade">{grade?.score != null ? <p className="font-medium tabular-nums">{grade.score} / {grade.maximum}</p> : <span className="text-muted-foreground">Not graded</span>}</ManagementTableCell>
+                    <ManagementTableCell data-label="Grade" className={grade?.score != null ? "font-medium tabular-nums" : "text-muted-foreground"}>{formatDrivingGrade(grade)}</ManagementTableCell>
                     <ManagementTableCell data-label="Actions" className="px-4 py-3 md:w-16"><Button asChild variant="ghost" size="icon" className="size-8"><Link href={`/${portal}/driving-analysis?view=operators&booking=${booking.backendId}`} aria-label={`View driving analysis for ${booking.bookingCode}`}><Eye aria-hidden="true" /></Link></Button></ManagementTableCell>
                   </TableRow>;
                 })}

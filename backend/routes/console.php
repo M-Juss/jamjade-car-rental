@@ -1,10 +1,12 @@
 <?php
 
+use App\Models\MobilePasswordReset;
 use App\Models\PendingMobileRegistration;
 use App\Services\BookingEmailService;
 use App\Services\DeliveryQuoteService;
 use App\Services\LocationMonitoringService;
 use App\Services\PaymentDeadlineService;
+use App\Services\RentalDrivingReportService;
 use App\Services\ReturnDeadlineService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -33,6 +35,12 @@ Artisan::command('telematics:purge-latest-locations', function (LocationMonitori
 
 Schedule::command('telematics:purge-latest-locations')->hourly()->withoutOverlapping();
 
+Artisan::command('telematics:finalize-driving-reports', function (RentalDrivingReportService $reports) {
+    $this->info('Driving reports finalized: '.$reports->process().'.');
+})->purpose('Finalize completed rental grades after the motion upload window');
+
+Schedule::command('telematics:finalize-driving-reports')->everyMinute()->withoutOverlapping();
+
 Schedule::call(fn () => app(ReturnDeadlineService::class)->process())
     ->name('process-rental-return-deadlines')->everyMinute()->withoutOverlapping();
 
@@ -42,6 +50,9 @@ Artisan::command('mobile-registration:purge', function () {
 })->purpose('Remove expired unverified mobile registrations');
 
 Schedule::command('mobile-registration:purge')->hourly()->withoutOverlapping();
+
+Schedule::call(fn () => MobilePasswordReset::query()->where('expires_at', '<=', now())->delete())
+    ->name('mobile-password-reset-purge')->hourly()->withoutOverlapping();
 
 Artisan::command('booking-documents:retry {--include-failed : Retry failed deliveries as well as pending ones}', function (BookingEmailService $service) {
     $count = $service->retryPendingDocuments((bool) $this->option('include-failed'));

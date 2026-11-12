@@ -15,6 +15,12 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "play-internal": {
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   }
 }

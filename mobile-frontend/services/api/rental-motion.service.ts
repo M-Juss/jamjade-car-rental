@@ -1,7 +1,7 @@
 import { ApiError, apiGet, apiPost } from '@/services/http';
 import type { DriveReference } from './drive-monitoring.service';
-import { rentalMotionConsentSchema, type RentalMotionConsent } from '@/validation/telematics/rental-motion';
-export type RentalMotionState = { available: boolean; sensor_platform: 'rc'; active_session_id: string | null };
+import { rentalMotionConsentSchema, stopRentalMotionSchema, type RentalMotionConsent } from '@/validation/telematics/rental-motion';
+export type RentalMotionState = { available: boolean; sensor_platform: 'rc'; active_session_id: string | null; report_sync_closed?: boolean };
 export type RentalMotionSession = { id: string; telematics_trip_id: number; sensor_platform: 'rc'; status: 'active' | 'stopped'; runtime_reference: DriveReference };
 const path = (booking: string) => `/mobile/bookings/${encodeURIComponent(booking)}/motion-monitoring`;
 export async function getRentalMotion(booking: string): Promise<RentalMotionState> {
@@ -19,5 +19,6 @@ export async function startRentalMotion(booking: string, input: RentalMotionCons
   }
 }
 export async function stopRentalMotion(booking: string, id: string): Promise<Omit<RentalMotionSession, 'runtime_reference'>> {
-  return (await apiPost<Omit<RentalMotionSession, 'runtime_reference'>>(`${path(booking)}/sessions/${encodeURIComponent(id)}/stop`, {})).data;
+  const payload = stopRentalMotionSchema.parse({ reason: 'interrupted' });
+  return (await apiPost<Omit<RentalMotionSession, 'runtime_reference'>>(`${path(booking)}/sessions/${encodeURIComponent(id)}/stop`, payload)).data;
 }

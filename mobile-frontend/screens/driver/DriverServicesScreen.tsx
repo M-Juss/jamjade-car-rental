@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { RefreshCcw, Search } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import { AppState, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
@@ -18,12 +18,19 @@ const filters: ServiceFilter[] = ['Upcoming', 'Active', 'History'];
 export function DriverServicesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
   const [services, setServices] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<ServiceFilter>('Upcoming');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useFocusEffect(useCallback(() => {
+    if (tab !== 'history') return;
+    setFilter('History');
+    setSearch('');
+    router.setParams({ tab: '' });
+  }, [router, tab]));
   useFocusEffect(useCallback(() => {
     let current = true;
     let reading = false;

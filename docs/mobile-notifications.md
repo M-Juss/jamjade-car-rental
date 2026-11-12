@@ -30,3 +30,8 @@ Mobile rental Activity now uses a dedicated, paginated timeline that combines
 trip notices with recorded maneuvers. Notification read actions and badges
 continue to use the notification endpoints. See the [timeline and occurrence
 time contract](telematics-master-plan.md#recorded-maneuver-times-in-mobile-activity).
+
+Driving report notifications appear in the main inbox as booking notices. Each
+eligible recipient receives the overall grade out of 100 in the preview, with
+the deductions and summary in the notification detail. See the
+[finalization and recipient rules](telematics-master-plan.md#final-driving-reports--2026-11-12).

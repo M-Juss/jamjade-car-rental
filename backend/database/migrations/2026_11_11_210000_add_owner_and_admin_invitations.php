@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         $owner = Role::findOrCreate('owner', 'web');
-        $user = DB::table('users')->where('email', 'jamjade.carrentalofficial@gmail.com')->whereNull('deleted_at')->first();
+        $user = DB::table('users')->where('email', 'm.justinsayson@gmail.com')->whereNull('deleted_at')->first();
         if ($user && DB::table('model_has_roles')->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
             ->where('model_id', $user->id)->where('model_type', User::class)->where('roles.name', 'admin')->exists()) {
             DB::table('model_has_roles')->insertOrIgnore([

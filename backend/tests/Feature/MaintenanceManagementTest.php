@@ -59,6 +59,7 @@ function maintenanceScheduleData(Vehicle $vehicle, array $overrides = []): array
 {
     return array_merge([
         'vehicle_id' => $vehicle->id,
+        'service_provider' => 'Test provider',
         'title' => 'Brake inspection',
         'category' => 'preventive',
         'scheduled_start' => now()->addDays(3)->startOfHour(),
@@ -80,6 +81,7 @@ function blockingBooking(Vehicle $vehicle, User $user, mixed $start, mixed $end)
 it('authorizes and validates maintenance plan creation', function () {
     $this->actingAs($this->actor)->postJson('/admin/maintenance-plans', maintenancePlanData($this->vehicle))
         ->assertCreated()
+        ->assertJsonPath('data.vehicle.plateNumber', $this->vehicle->plate_number)
         ->assertJsonPath('data.currentOdometer', 10_000)
         ->assertJsonPath('data.nextDueOdometer', 15_000)
         ->assertJsonPath('data.dueStatus', MaintenanceDueStatus::Upcoming->value);
@@ -112,7 +114,7 @@ it('accepts today for scheduling and rescheduling using the Manila calendar date
     $created = $this->actingAs($this->actor)->postJson('/admin/maintenance', maintenanceScheduleData($this->vehicle, [
         'scheduled_start' => $start->toISOString(),
         'scheduled_end' => $end->toISOString(),
-    ]))->assertCreated();
+    ]))->assertCreated()->assertJsonPath('data.vehicle.plateNumber', $this->vehicle->plate_number);
     $record = VehicleMaintenanceRecord::findOrFail($created->json('data.id'));
     expect($record->scheduled_start->equalTo($start))->toBeTrue();
 
@@ -201,14 +203,14 @@ it('starts and completes maintenance with server timestamps costs next targets a
         ->and($this->vehicle->fresh()->status)->toBe(VehicleStatus::Maintenance);
 
     $record = app(MaintenanceService::class)->complete($record, [
-        'odometer_at_completion' => 10_020, 'work_performed' => 'Changed oil and filter.',
+        'odometer_at_completion' => 10_000, 'work_performed' => 'Changed oil and filter.',
         'labor_cost' => 500, 'parts_cost' => 1200.50, 'other_cost' => 50,
     ], $this->actor);
 
     expect($record->status)->toBe(MaintenanceRecordStatus::Completed)
         ->and((float) $record->total_cost)->toBe(1750.50)
         ->and($this->vehicle->fresh()->status)->toBe(VehicleStatus::Available)
-        ->and($plan->fresh()->next_due_odometer)->toBe(15_020);
+        ->and($plan->fresh()->next_due_odometer)->toBe(15_000);
 
     app(VehicleAvailabilityService::class)->assertBookingIntervalAvailable(
         $this->vehicle->id, $record->completed_at->copy()->addMinute(), $record->scheduled_end
@@ -231,7 +233,7 @@ it('keeps overrun maintenance unavailable until explicit completion', function (
     ))->toThrow(ValidationException::class);
 
     app(MaintenanceService::class)->complete($record, [
-        'odometer_at_completion' => 10_100, 'work_performed' => 'Completed delayed work.',
+        'odometer_at_completion' => 10_000, 'work_performed' => 'Completed delayed work.',
     ], $this->actor);
     app(VehicleAvailabilityService::class)->assertBookingIntervalAvailable($this->vehicle->id, now()->addHour(), now()->addHours(2));
 });
@@ -433,7 +435,7 @@ it('requires mileage completion odometer but allows it to be omitted for custom 
     ])->assertUnprocessable()->assertJsonValidationErrors('odometer_at_completion');
 
     app(MaintenanceService::class)->complete($planned, [
-        'odometer_at_completion' => 10_050, 'work_performed' => 'Changed fluids.',
+        'odometer_at_completion' => 10_000, 'work_performed' => 'Changed fluids.',
     ], $this->actor);
 
     $custom = app(MaintenanceService::class)->schedule(maintenanceScheduleData($this->vehicle, [
@@ -446,6 +448,35 @@ it('requires mileage completion odometer but allows it to be omitted for custom 
     expect($custom->status)->toBe(MaintenanceRecordStatus::Completed)
         ->and($custom->odometer_at_completion)->toBeNull()
         ->and((float) $custom->total_cost)->toBe(175.0);
+});
+
+it('requires each completion cost and accepts zero without work performed', function () {
+    $record = app(MaintenanceService::class)->schedule(maintenanceScheduleData($this->vehicle, [
+        'service_provider' => 'Original provider',
+    ]), $this->actor);
+    $record = app(MaintenanceService::class)->start($record, $this->actor);
+    $this->actingAs($this->actor)->postJson("/admin/maintenance/{$record->id}/complete", [])
+        ->assertUnprocessable()->assertJsonValidationErrors(['labor_cost', 'parts_cost', 'other_cost']);
+    $this->actingAs($this->actor)->postJson("/admin/maintenance/{$record->id}/complete", [
+        'labor_cost' => 0, 'parts_cost' => 0, 'other_cost' => 0, 'service_provider' => 'Changed provider',
+    ])->assertOk()->assertJsonPath('data.serviceProvider', 'Original provider')
+        ->assertJsonPath('data.status', 'completed');
+    expect($record->fresh()->work_performed)->toBeNull();
+});
+
+it('requires a service provider for scheduling and for older jobs without one', function () {
+    $this->actingAs($this->actor)->postJson('/admin/maintenance', maintenanceScheduleData($this->vehicle, [
+        'service_provider' => null,
+    ]))->assertUnprocessable()->assertJsonValidationErrors('service_provider');
+    $record = app(MaintenanceService::class)->schedule(maintenanceScheduleData($this->vehicle, [
+        'service_provider' => null,
+    ]), $this->actor);
+    $record = app(MaintenanceService::class)->start($record, $this->actor);
+    $costs = ['labor_cost' => 0, 'parts_cost' => 0, 'other_cost' => 0];
+    $this->postJson("/admin/maintenance/{$record->id}/complete", $costs)
+        ->assertUnprocessable()->assertJsonValidationErrors('service_provider');
+    $this->postJson("/admin/maintenance/{$record->id}/complete", [...$costs, 'service_provider' => 'Service shop'])
+        ->assertOk()->assertJsonPath('data.serviceProvider', 'Service shop');
 });
 
 it('gates body repair completion on a new finalized immutable condition update', function () {
@@ -484,6 +515,25 @@ it('gates body repair completion on a new finalized immutable condition update',
         ->and($previousCondition->fresh()->status)->toBe(VehicleInspectionStatus::Finalized)
         ->and($previousCondition->fresh()->updated_at?->toISOString())->toBe($previousUpdatedAt)
         ->and($inspection->based_on_inspection_id)->toBe($previousCondition->id);
+});
+
+it('updates current odometer only after a matching signed maintenance condition update', function () {
+    $record = app(MaintenanceService::class)->schedule(maintenanceScheduleData($this->vehicle), $this->actor);
+    $record = app(MaintenanceService::class)->start($record, $this->actor);
+    $old = $this->vehicle->currentCondition;
+    $pending = app(MaintenanceService::class)->complete($record, [
+        'odometer_at_completion' => 10100, 'labor_cost' => 0, 'parts_cost' => 0, 'other_cost' => 0,
+    ], $this->actor);
+    expect($pending->status)->toBe(MaintenanceRecordStatus::InProgress)
+        ->and($this->vehicle->fresh()->current_condition_inspection_id)->toBe($old->id);
+    $this->actingAs($this->actor)->postJson("/admin/maintenance/{$record->id}/completion-condition", [
+        'reason' => 'maintenance_completed', 'condition' => vehicleConditionPayload(['odometer' => 10050]),
+    ])->assertUnprocessable();
+    $this->postJson("/admin/maintenance/{$record->id}/completion-condition", [
+        'reason' => 'maintenance_completed', 'condition' => vehicleConditionPayload(['odometer' => 10100]),
+    ])->assertOk()->assertJsonPath('data.status', 'completed');
+    expect($this->vehicle->fresh()->currentCondition->odometer)->toBe(10100)
+        ->and($old->fresh()->odometer)->toBe(10000);
 });
 
 it('rolls back a finalized condition update when maintenance linking fails', function () {

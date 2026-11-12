@@ -270,3 +270,13 @@ synthetic database and covered the sidebar entry, desktop and 390 px layouts,
 filters, ten-row pages, the complete CSV download and retry after a failed
 request. The full backend suite reproduced five existing failures in booking
 time formatting and overlap handling.
+
+## Fleet rental details layout — 2026-11-12
+
+Fleet Monitoring's rental detail sheet places Booking information across the top,
+with Driving events on the left and Geofencing Log on the right at large widths.
+On smaller screens the cards stack in that order. The existing card components,
+refresh actions, pagination and data flows are unchanged; the layout is in
+`web-frontend/src/modules/management/fleet-tracker/FleetTrackerModule.tsx`.
+Browser verification was unavailable because local browser use was disabled in
+Work settings; visual checks at phone and desktop widths remain pending.

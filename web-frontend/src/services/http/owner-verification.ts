@@ -1,5 +1,11 @@
 import { OwnerVerificationCancelled } from "./errors";
 
+export class OwnerVerificationWait extends Error {
+  constructor(public readonly retryAfter: number) {
+    super("Please wait before requesting another code.");
+  }
+}
+
 export type OwnerVerificationRequest = {
   send: (id?: string) => Promise<{ verificationId?: string; resendAvailableAt?: string; verificationRequired?: boolean }>;
   verify: (id: string, code: string) => Promise<Response>;

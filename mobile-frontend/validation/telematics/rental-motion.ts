@@ -6,3 +6,4 @@ export const rentalMotionConsentSchema = z.object({
   same_mount_confirmed: z.literal(true),
 });
 export type RentalMotionConsent = z.infer<typeof rentalMotionConsentSchema>;
+export const stopRentalMotionSchema = z.object({ reason: z.literal('interrupted').optional() });

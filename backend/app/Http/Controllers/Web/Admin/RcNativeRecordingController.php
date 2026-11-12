@@ -32,8 +32,8 @@ class RcNativeRecordingController extends Controller
     public function index(ListRcNativeRecordingsRequest $request): JsonResponse
     {
         $this->enabled();
-        $query = RcNativeRecording::where('user_id', $request->user()->id)->with(['latestAnnotation', 'collectionContext:recording_id,display_code,payload'])->withCount('chunks');
-        $sessions = $this->collection->recordingFilterSessions($request->user()->id);
+        $query = RcNativeRecording::query()->with(['latestAnnotation', 'collectionContext:recording_id,display_code,payload'])->withCount('chunks');
+        $sessions = $this->collection->recordingFilterSessions();
         $groupId = $request->validated('group_id');
         $sessionId = $request->validated('session_id');
         if ($groupId !== null || $sessionId !== null) {
@@ -69,7 +69,7 @@ class RcNativeRecordingController extends Controller
     public function show(Request $request, string $recording): JsonResponse
     {
         $this->enabled();
-        $record = $this->research->recording($request->user(), $recording)->load(['latestAnnotation', 'collectionContext'])->loadCount('chunks');
+        $record = $this->research->adminRecording($request->user(), $recording)->load(['latestAnnotation', 'collectionContext'])->loadCount('chunks');
 
         $manifest = $this->research->manifest($record);
 
@@ -84,7 +84,7 @@ class RcNativeRecordingController extends Controller
         $this->enabled();
 
         return $this->success('Original sensor interval fetched.', $this->research->window(
-            $this->research->recording($request->user(), $recording), $request->validated('channel'),
+            $this->research->adminRecording($request->user(), $recording), $request->validated('channel'),
             (float) $request->validated('start_ms'), (float) $request->validated('end_ms')))
             ->header('Cache-Control', 'private, no-store');
     }

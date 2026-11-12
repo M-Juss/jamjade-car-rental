@@ -87,7 +87,7 @@ const scheduleFields = z.object({
   category: z.enum(["preventive", "corrective", "body_repair", "other"]),
   scheduledStart: requiredText,
   scheduledEnd: requiredText,
-  serviceProvider: z.string().trim().max(150).optional(),
+  serviceProvider: requiredText.max(150),
   description: z.string().trim().max(2000).optional(),
   notes: z.string().trim().max(3000).optional(),
 });
@@ -138,11 +138,10 @@ export function createRescheduleMaintenanceSchema(
 
 const completeMaintenanceFields = z.object({
   odometerAtCompletion: optionalNonNegativeIntegerText,
-  workPerformed: requiredText.max(5000),
   serviceProvider: z.string().trim().max(150).optional(),
-  laborCost: optionalNonNegativeAmount,
-  partsCost: optionalNonNegativeAmount,
-  otherCost: optionalNonNegativeAmount,
+  laborCost: optionalNonNegativeAmount.refine((value) => !!value, "Enter an amount, or 0."),
+  partsCost: optionalNonNegativeAmount.refine((value) => !!value, "Enter an amount, or 0."),
+  otherCost: optionalNonNegativeAmount.refine((value) => !!value, "Enter an amount, or 0."),
   notes: z.string().trim().max(3000).optional(),
   conditionChanged: z.enum(["yes", "no"]).optional(),
 });

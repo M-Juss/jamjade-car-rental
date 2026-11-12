@@ -29,7 +29,7 @@ cookies on mobile research routes or mobile tokens on web routes. See
 | Inspections | Record/finalize authorized outgoing and incoming inspections | Participate/sign when required on the personnel device |
 | Rental release and completion | Authorized Staff-controlled workflow | Cannot start, cancel, return, or complete rentals |
 | Additional charges | Authorized creation and responsibility decisions | View/pay their own obligations |
-| Personnel | View Staff and Driver accounts; create, edit, and delete Drivers | No access |
+| Personnel | View and manage Driver accounts | No access |
 | Custom roles/module access editing | Unavailable | Unavailable |
 
 Staff's seeded web modules remain Dashboard, Booking Management, Vehicle Management, Self-Drive Verification, Fleet Monitoring, Geofence Library, Maintenance Management, and Reports and Analytics. Pricing Settings (Delivery Pricing and Late Returns) is an Admin-only management area; Staff may review delivery toll requests through Booking Management but cannot edit pricing. The migration preserves the existing Staff permission assignments; the seeder uses the centrally defined `staff_accessible` modules in `backend/config/staff_modules.php`. Existing reporting and module permissions remain unchanged.
@@ -113,9 +113,26 @@ the prior code. Live browser and Android checks are pending.
 
 The mobile Customer Profile separates personal details from sign-in credentials. Customer-only, authenticated `PUT /api/mobile/account/email` and `PUT /api/mobile/account/password` endpoints require the current password and share a five-attempt-per-minute limit per account. Personal profile update endpoints prohibit email changes; onboarding and personal editors submit no email field.
 
-Email changes are immediate after format, uniqueness, and current-password validation. They clear any prior `email_verified_at`; the registration OTP below does not extend to account email changes. Password changes require a different replacement with confirmation, follow the current eight-character minimum and a 72 UTF-8 byte bcrypt limit, revoke mobile tokens, and rotate the remember token. The current phone returns to sign-in. These actions do not require profile completion and do not modify roles or account activation.
+Email changes are immediate after format, uniqueness, and current-password validation. They clear any prior `email_verified_at`; the registration OTP below does not extend to account email changes. Password changes require a different replacement with confirmation, at least eight characters including an uppercase letter and a special character, and no more than 72 UTF-8 bytes. Laravel and the mobile account form both validate these rules. Successful changes revoke mobile tokens and rotate the remember token; the current phone returns to sign-in. These actions do not require profile completion and do not modify roles or account activation.
 
 ## Mobile registration email verification
+
+Mobile Customer password recovery — 2026-11-12: the sign-in screen offers an
+email-code recovery flow. `POST /api/mobile/password-reset` accepts an email and
+always returns a generic eligibility response. Eligible active Customer accounts
+receive a six-digit code using the registration email's visual style; codes expire
+after 15 minutes. Issuance is limited by email and IP, resend has a 60-second
+cooldown, and each challenge permits five incorrect guesses. The verify endpoint
+exchanges the code once for a short-lived, in-memory reset token; the complete
+endpoint validates a confirmed password with `AccountPasswordRules`, consumes
+the challenge and revokes mobile tokens. Email or password changes invalidate an
+earlier challenge. Codes and reset tokens are stored only as hashes; expired
+challenges are removed by the hourly scheduler. Delivery failures are logged
+without recipient or code and do not disclose account existence to the client.
+These routes do not alter registration or web sign-in. Sources:
+`MobilePasswordResetService`, the Auth Form Requests and controller,
+`MobilePasswordResetMail`, and mobile `ForgotPasswordForm` and auth service.
+Real SMTP delivery and a full Android recovery flow still require device checks.
 
 New Customer registration requires a six-digit email code before creating an
 account. This prevents an unverified registration from obtaining a mobile token
@@ -312,15 +329,19 @@ Backend regression coverage includes fixed-role validation, Admin-only account a
 
 ## Owner and Admin accounts
 
-The identified account has Owner and Admin membership. The Owner sees Admins in the shared Personnel table and may create, edit, deactivate, or soft-delete single-role Admin accounts. The Owner account and other mixed-role accounts are excluded and protected. Admins see and manage Staff and Drivers; Staff see Staff and Drivers but can create, edit, or delete Drivers only. Laravel enforces these limits and prevents role transitions to or from Admin. The shared form uses the existing account and password rules. Deactivation, password changes, and deletion invalidate tokens as in the existing Personnel lifecycle.
+The identified account has Owner and Admin membership. The Owner sees Admins in the shared Personnel table and may create, edit, deactivate, or soft-delete single-role Admin accounts. The Owner account and other mixed-role accounts are excluded and protected. Admins see and manage Staff and Drivers; Staff see and manage Drivers only. Every account is excluded from its own personnel list, and Laravel also rejects self-edit and self-delete through Personnel. Laravel enforces these limits and prevents role transitions to or from Admin. The shared form uses the existing account and password rules. Deactivation, password changes, and deletion invalidate tokens as in the existing Personnel lifecycle.
 
 Admin invitation issuance and acceptance are disabled. Existing invitation records remain in storage. No invitation email is sent when an Admin is created.
 
 ## Owner verification
 
-Protected management writes require a code sent to the single active account with the Owner role, including when the Owner initiates the action. Existing Admin and Staff permissions still apply. The requester confirms the action, asks the Owner for the emailed code, and enters it to complete the same write. Refund decisions and recording refunds, adjusted or manual late charges, ordinary charge edits and deletions, existing vehicle daily-price changes, and fee-pricing saves are protected. Creating a vehicle and reviewing an unadjusted late charge do not require this code.
+The initial Owner account uses `ofcl.jamjadecarrental@gmail.com` for sign-in and approval codes. Migration `2026_11_12_130000_update_seeded_owner_email.php` updates the previous seeded Owner address only, preserving the account and stopping if the new address is already assigned. Existing Owners using another address are unchanged. The seeded-account and Owner verification feature tests pass; delivery to the inbox still requires a working mail transport and an end-to-end check.
+
+Protected management writes initiated by an Admin require a code sent to the single active account with the Owner role. When that Owner initiates the action, the write proceeds without an emailed code. Existing Admin and Staff permissions still apply. The requester confirms the action, asks the Owner for the emailed code, and enters it to complete the same write. Refund decisions and recording refunds, adjusted or manual late charges, ordinary charge edits and deletions, existing vehicle daily-price changes, and fee-pricing saves are protected. Creating a vehicle and reviewing an unadjusted late charge do not require this code.
 
 Laravel binds a hashed, single-use code to the requester, action, validated payload and locked state. Codes expire after 15 minutes; resends wait 60 seconds and preserve the five-attempt limit. The write and consumption share a transaction. The system fails closed if there is no single active Owner or email delivery is unavailable. The migration `2026_11_11_220000_create_owner_verifications_table.php` adds challenge storage. Mail delivery must use a configured delivery transport; the log transport is rejected for these codes. The web uses the existing HTTP service, a shared verification dialog and the combined `PUT /admin/fee-pricing` endpoint.
+
+Reopening an unchanged action during the resend delay restores its existing code entry without emailing another code. If the action changed, or an issuance limit applies, the server returns a retry interval for the dialog to display. A new challenge replaces an outstanding one when the Owner or their email changes; the old code remains invalid. The implementation is in `OwnerVerificationService` and the web owner-verification dialog. Targeted feature tests cover reopening, changed actions, retry timing and Owner email changes; live email and browser validation remain separate.
 
 The feature tests use faked email and cover code issuance, protected actions, wrong/expired/replayed codes, changed state and transactional rollback. Live email delivery and browser checks are separate.
 

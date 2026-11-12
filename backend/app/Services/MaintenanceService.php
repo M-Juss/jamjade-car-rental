@@ -301,13 +301,19 @@ class MaintenanceService
             }
 
             $conditionRequired = $record->condition_verification_required
+                || ($completionOdometer !== null && (int) $completionOdometer !== $vehicle->currentCondition?->odometer)
                 || $record->category === MaintenanceCategory::BodyRepair
                 || (in_array($record->category, [MaintenanceCategory::Corrective, MaintenanceCategory::Other], true)
                     && ($data['condition_changed'] ?? false));
+            if ($conditionRequired && ! $vehicle->currentCondition) {
+                throw ValidationException::withMessages([
+                    'odometer_at_completion' => ['Set the initial vehicle condition before completing maintenance with this odometer reading.'],
+                ]);
+            }
             $record->update([
                 'odometer_at_completion' => $completionOdometer,
-                'work_performed' => $data['work_performed'],
-                'service_provider' => $data['service_provider'] ?? $record->service_provider,
+                'work_performed' => $data['work_performed'] ?? $record->work_performed,
+                'service_provider' => $record->service_provider ?? ($data['service_provider'] ?? null),
                 'labor_cost' => $data['labor_cost'] ?? null,
                 'parts_cost' => $data['parts_cost'] ?? null,
                 'other_cost' => $data['other_cost'] ?? null,
@@ -382,10 +388,11 @@ class MaintenanceService
                 || $inspection->id !== $vehicle->current_condition_inspection_id
                 || $inspection->status !== VehicleInspectionStatus::Finalized
                 || $inspection->type !== VehicleInspectionType::ConditionUpdate
+                || ($record->odometer_at_completion !== null && $inspection->odometer !== $record->odometer_at_completion)
                 || $inspection->finalized_at?->lt($record->completion_details_recorded_at)
                 || ! $validReason) {
                 throw ValidationException::withMessages([
-                    'inspection_id' => ['Use the newly finalized maintenance condition update for this vehicle.'],
+                    'inspection_id' => ['Use the newly finalized maintenance condition update with the recorded completion odometer.'],
                 ]);
             }
 

@@ -251,12 +251,11 @@ export default function FleetTracker() {
                   {fleetVehicleName(selected.vehicle)}
                 </SheetTitle>
               </SheetHeader>
-              <div className="grid items-start gap-6 p-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-              <div className="min-w-0 space-y-5">
-              <Card>
+              <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-2">
+              <Card className="min-w-0 lg:col-span-2">
               <CardHeader className="min-h-14 border-b border-border pb-3"><CardTitle className="text-sm font-semibold">Booking information</CardTitle><CardDescription className="text-xs">{selected.bookingCode}</CardDescription></CardHeader>
               <CardContent>
-              <dl className="grid gap-4 text-sm sm:grid-cols-2">
+              <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   ["Plate", selected.vehicle?.plateNumber || "Unavailable"],
                   ["Customer", selected.customerName || "Unavailable"],
@@ -297,10 +296,13 @@ export default function FleetTracker() {
                   </div>
                 ))}
               </dl>
-              </CardContent></Card>
-              <FleetGeofenceLog activity={selected.geofenceActivity} onRefresh={() => refresh(true)} />
+              <div className="mt-4 border-t border-border pt-4 text-sm">
+                <p className="font-semibold">Customer emergency contacts</p>
+                {selected.emergencyContacts.length ? selected.emergencyContacts.map((contact, index) => <p key={index} className="mt-1 text-muted-foreground">{contact.name} · {contact.relationship} · {contact.phoneNumber}</p>) : <p className="mt-1 text-muted-foreground">No emergency contact provided</p>}
               </div>
+              </CardContent></Card>
               <RentalDrivingEvents key={selected.bookingCode} bookingCode={selected.bookingCode} dataVersion={dataVersion} />
+              <FleetGeofenceLog activity={selected.geofenceActivity} onRefresh={() => refresh(true)} />
               </div>
             </>
           ) : null}

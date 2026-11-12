@@ -45,6 +45,10 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(value);
 }
 
+function vehicleName(vehicle?: { name: string; plateNumber: string | null }) {
+  return vehicle ? [vehicle.name, vehicle.plateNumber].filter(Boolean).join(" ") : "Vehicle unavailable";
+}
+
 function EmptyRow({ colSpan, message }: { colSpan: number; message: string }) {
   return <TableRow><TableCell colSpan={colSpan} className="py-12 text-center text-sm text-muted-foreground">{message}</TableCell></TableRow>;
 }
@@ -130,14 +134,14 @@ export function MaintenancePlansTable({
               ];
               return (
                 <TableRow key={plan.id} className="border-b border-background hover:bg-background">
-                  <TableCell data-label="Vehicle" className="px-4 py-3 text-sm font-semibold text-foreground">{plan.vehicle?.name ?? "Vehicle unavailable"}</TableCell>
+                  <TableCell data-label="Vehicle" className="px-4 py-3 text-sm font-semibold text-foreground">{vehicleName(plan.vehicle)}</TableCell>
                   <TableCell data-label="Maintenance" className="px-4 py-3"><p className="text-sm font-semibold text-foreground">{plan.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{plan.categoryLabel}</p></TableCell>
                   <TableCell data-label="Trigger" className={cellClassName}>{plan.triggerType === "both" ? "Mileage and date" : plan.triggerType[0].toUpperCase() + plan.triggerType.slice(1)}</TableCell>
                   <TableCell data-label="Current" className={cellClassName}>{current(plan)}</TableCell>
                   <TableCell data-label="Interval" className={cellClassName}>{interval(plan)}</TableCell>
                   <TableCell data-label="Next Due" className={cellClassName}>{nextDue(plan)}</TableCell>
                   <TableCell data-label="Remaining" className={cellClassName}>{remaining(plan)}</TableCell>
-                  <TableCell data-label="Condition" className="px-4 py-3"><MaintenanceStatusBadge value={plan.dueStatus} label={plan.dueStatusLabel} />{plan.activeRecord ? <p className="mt-1 text-xs font-semibold text-primary">Handled: {plan.activeRecord.statusLabel}</p> : null}</TableCell>
+                  <TableCell data-label="Condition" className="px-4 py-3"><MaintenanceStatusBadge value={plan.activeRecord?.status ?? plan.dueStatus} label={plan.activeRecord?.statusLabel ?? plan.dueStatusLabel} /></TableCell>
                   <TableCell data-label="Actions" className="px-4 py-3"><TableActionMenu label={`Open actions for ${plan.name}`} items={items} /></TableCell>
                 </TableRow>
               );
@@ -202,7 +206,7 @@ export function ScheduledMaintenanceTable({
               ];
               return (
                 <TableRow key={record.id} className="border-b border-background hover:bg-background">
-                  <TableCell data-label="Vehicle" className="px-4 py-3 text-sm font-semibold text-foreground">{record.vehicle?.name ?? "Vehicle unavailable"}</TableCell>
+                  <TableCell data-label="Vehicle" className="px-4 py-3 text-sm font-semibold text-foreground">{vehicleName(record.vehicle)}</TableCell>
                   <TableCell data-label="Maintenance" className="px-4 py-3"><p className="text-sm font-semibold text-foreground">{record.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{record.categoryLabel}</p></TableCell>
                   <TableCell data-label="Start Date" className={cellClassName}>{formatDateOnly(record.scheduledStart)}</TableCell>
                   <TableCell data-label="Expected End Date" className={cellClassName}>{formatDateOnly(record.scheduledEnd)}</TableCell>
@@ -241,7 +245,7 @@ export function MaintenanceHistoryTable({ records, onView, paginationKey, emptyM
           <TableBody>
             {records.length === 0 ? <EmptyRow colSpan={7} message={emptyMessage} /> : pagination.rows.map((record) => (
               <TableRow key={record.id} className="border-b border-background hover:bg-background">
-                <TableCell data-label="Vehicle" className="px-4 py-3 text-sm font-semibold text-foreground">{record.vehicle?.name ?? "Vehicle unavailable"}</TableCell>
+                <TableCell data-label="Vehicle" className="px-4 py-3 text-sm font-semibold text-foreground">{vehicleName(record.vehicle)}</TableCell>
                 <TableCell data-label="Maintenance" className="px-4 py-3"><p className="text-sm font-semibold text-foreground">{record.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{record.categoryLabel}</p></TableCell>
                 <TableCell data-label="Date" className={cellClassName}>{formatDate(record.completedAt ?? record.cancelledAt)}</TableCell>
                 <TableCell data-label="Provider" className={cellClassName}>{record.serviceProvider ?? "—"}</TableCell>

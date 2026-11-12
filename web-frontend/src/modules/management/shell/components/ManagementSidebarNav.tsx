@@ -5,7 +5,7 @@ import { PendingCountBadge } from "@/components/common/PendingCountBadge";
 import type { ManagementNavigationCounts } from "@/services/management/navigation.service";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { FlaskConical, ChevronDown, LogOut, Settings, UserRound } from "lucide-react";
+import { FlaskConical, ChevronDown, LogOut, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -81,7 +81,6 @@ function ManagementSidebarNavContent({
   pathname,
 }: ManagementSidebarNavProps & { pathname: string }) {
   const router = useRouter();
-  const [profileOpen, setProfileOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user } = useManagementSession();
@@ -131,7 +130,6 @@ function ManagementSidebarNavContent({
   };
 
   const roleNames = user ? getUserRoleNames(user) : [];
-  const isFullAccessManager = roleNames.includes("admin");
   const roleLabel = roleNames.includes("owner") ? "Owner" : roleNames.includes("admin") ? "Administrator" : roleNames.includes("staff") ? "Staff" : user?.email;
 
   const renderLink = (module: (typeof visibleModules)[number], nested = false) => {
@@ -251,43 +249,9 @@ function ManagementSidebarNavContent({
             <DropdownMenuLabel className="px-2 py-1.5">
               <span className="block truncate text-xs font-semibold text-foreground">{user?.name ?? "Account"}</span>
               <span className="block truncate pt-0.5 text-xs font-normal text-muted-foreground">{user?.email ?? ""}</span>
+              <span className="block truncate pt-0.5 text-xs font-normal text-muted-foreground">{roleLabel ?? ""}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {isFullAccessManager ? (
-              <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-                <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={(event) => event.preventDefault()} className="min-h-9 gap-2 px-2 text-sm">
-                    <UserRound size={16} aria-hidden="true" />
-                    Profile
-                  </DropdownMenuItem>
-                </DialogTrigger>
-                <FormDialogContent width="compact">
-                  <FormDialogHeader
-                    title="Your Profile"
-                    icon={UserRound}
-                    onClose={() => setProfileOpen(false)}
-                    closeLabel="Close profile"
-                  />
-                  <dl className="space-y-3 px-4 py-5 text-sm sm:px-6">
-                    <div>
-                      <dt className="text-xs font-medium text-muted-foreground">Name</dt>
-                      <dd className="mt-0.5 font-medium text-foreground">{user?.name ?? "Not available"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-muted-foreground">Email</dt>
-                      <dd className="mt-0.5 break-all font-medium text-foreground">{user?.email ?? "Not available"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-muted-foreground">Role</dt>
-                      <dd className="mt-0.5 font-medium text-foreground">{roleLabel ?? "Manager"}</dd>
-                    </div>
-                  </dl>
-                  <FormDialogFooter>
-                    <Button onClick={() => setProfileOpen(false)}>Close</Button>
-                  </FormDialogFooter>
-                </FormDialogContent>
-              </Dialog>
-            ) : null}
             <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
               <DialogTrigger asChild>
                 <DropdownMenuItem onSelect={(event) => event.preventDefault()} variant="destructive" className="min-h-9 gap-2 px-2 text-sm">

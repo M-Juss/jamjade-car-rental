@@ -70,7 +70,7 @@ class PersonnelService
         return DB::transaction(function () use ($account, $data, $actor) {
             $user = User::query()->lockForUpdate()->findOrFail($account->id);
 
-            if ($user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name) || ! $this->canManageRole($actor, $data['role']) || ($user->hasRole('admin') && $data['role'] !== 'admin') || (! $user->hasRole('admin') && $data['role'] === 'admin')) {
+            if ($user->is($actor) || $user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name) || ! $this->canManageRole($actor, $data['role']) || ($user->hasRole('admin') && $data['role'] !== 'admin') || (! $user->hasRole('admin') && $data['role'] === 'admin')) {
                 throw ValidationException::withMessages([
                     'role' => ['Only Staff and Driver accounts can be updated here.'],
                 ]);
@@ -137,7 +137,7 @@ class PersonnelService
         DB::transaction(function () use ($account, $actor) {
             $user = User::query()->lockForUpdate()->findOrFail($account->id);
 
-            if ($user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name)) {
+            if ($user->is($actor) || $user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name)) {
                 throw ValidationException::withMessages([
                     'personnel' => ['Only Staff and Driver accounts can be deleted.'],
                 ]);
@@ -173,7 +173,9 @@ class PersonnelService
 
     private function query(User $actor): Builder
     {
-        return User::query()->role($actor->hasRole('owner') ? ['staff', 'driver', 'admin'] : ['staff', 'driver'])->has('roles', '=', 1);
+        $roles = $actor->hasRole('owner') ? ['staff', 'driver', 'admin'] : ($actor->hasRole('admin') ? ['staff', 'driver'] : ['driver']);
+
+        return User::query()->whereKeyNot($actor->getKey())->role($roles)->has('roles', '=', 1);
     }
 
     private function canManageRole(User $actor, string $role): bool
