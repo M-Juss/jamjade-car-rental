@@ -17,7 +17,7 @@ const maneuverLabels = {
 export function formatDrivingGrade(grading?: RentalDrivingGrade) {
   if (grading?.status === "pending") return "Finalizing";
   const value = grading?.score != null ? `${grading.score} / ${grading.maximum}` : "Not graded";
-  return grading?.sync_incomplete ? `${value} · Incomplete sync` : value;
+  return grading?.sync_incomplete ? `${value}` : value;
 }
 
 export function GradingDialog({ grading }: { grading: RentalDrivingGrade | null }) {
