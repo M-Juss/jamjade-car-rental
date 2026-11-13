@@ -32,6 +32,6 @@ class RcRuntimeImportController extends Controller
         abort_unless(Storage::disk('local')->put($path, Crypt::encryptString($json)), 500, 'Model could not be stored.');
         activity()->causedBy($request->user())->event('rc_runtime_model_imported')->log('RC runtime model installed.');
 
-        return response('Model installed. Run the rental motion diagnostic to verify it.')->header('Cache-Control', 'no-store');
+        return response()->json(['success' => true, 'message' => 'Model installed.', 'data' => null])->header('Cache-Control', 'no-store');
     }
 }
