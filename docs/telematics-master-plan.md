@@ -5503,3 +5503,7 @@ to the top no longer closes the panel without a downward gesture. This changes
 presentation only; monitoring and consent behavior are unchanged. Mobile lint,
 TypeScript and `git diff --check` passed. Android touch and map interaction have
 not been tested on a device or emulator for this change.
+
+### Hosted rental-motion diagnostic
+
+`php artisan telematics:check-rental-motion` checks whether rental RC motion is enabled and whether the private runtime model can be loaded and verified using the configured application key. It performs a synthetic inference without printing model contents, keys, or rental data. A successful check does not prove that a particular phone batch can upload. The hosted result must be verified separately. Focused HostedRcDemoTest and changed-file Pint checks passed locally.

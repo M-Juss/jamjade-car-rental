@@ -49,3 +49,13 @@ it('returns unavailable when the hosted private model has not been transferred',
         expect($exception->getStatusCode())->toBe(503);
     }
 });
+
+it('reports a missing private model without exposing its contents', function () {
+    $this->app->detectEnvironment(fn () => 'production');
+    config(['telematics.hosted_rc_demo' => true, 'telematics.calibration_profile' => 'rc_demo']);
+    Storage::fake('local');
+
+    $this->artisan('telematics:check-rental-motion')
+        ->expectsOutput('The private runtime model is missing.')
+        ->assertFailed();
+});
