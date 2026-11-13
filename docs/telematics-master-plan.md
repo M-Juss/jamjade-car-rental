@@ -5431,6 +5431,17 @@ guide. Android and public server acceptance remain pending.
 
 ### Final driving reports — 2026-11-12
 
+Foreground rental motion recovery: while a Customer or Driver is signed in and
+the app is open, the app checks the account's encrypted pending queue at startup,
+on foreground return and periodically. If the network is available and no capture
+or uploader is running, it resumes the existing upload without starting sensors.
+The uploader retains its existing backoff and session-close acknowledgement;
+authentication, access, storage and expired-report failures still require user
+attention. Manual Finish sync remains available. This does not promise recovery
+while the app is closed or automatic acceptance beyond the report deadline.
+Sources: `usePendingRentalMotionSync.ts`, `rental-drive-monitoring.ts` and
+`app/_layout.tsx`.
+
 The Laravel scheduler runs `telematics:finalize-driving-reports` each minute.
 Completed bookings with rental motion sessions qualify. Bookings whose motion
 segments have all closed can finalize on the next pass. Otherwise, uploads of

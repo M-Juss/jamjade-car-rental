@@ -53,7 +53,9 @@ export async function beginRentalDriveMonitoring(owner: number, booking: string,
 }
 export async function pauseRentalDriveMonitoring(): Promise<void> { await nativeRecorder?.rentalMonitoringStop?.(); }
 export async function lockRentalDriveMonitoring(): Promise<void> { await nativeRecorder?.rentalMonitoringLock?.(); }
-export async function recoverRentalDriveMonitoring(owner: number, booking: string, id: string): Promise<void> {
+export async function recoverRentalDriveMonitoring(owner: number, booking: string, id: string, isCurrent: () => boolean = () => true): Promise<void> {
   if (!nativeRecorder?.rentalMonitoringRecover) throw new Error('Install the updated Android build first.');
-  await nativeRecorder.rentalMonitoringRecover(JSON.stringify(await transfer(owner, booking, id)));
+  const destination = await transfer(owner, booking, id);
+  if (!isCurrent()) return;
+  await nativeRecorder.rentalMonitoringRecover(JSON.stringify(destination));
 }

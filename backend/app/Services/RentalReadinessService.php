@@ -43,7 +43,7 @@ class RentalReadinessService
         return [
             'bookingConfirmed' => $booking->status === BookingStatus::Confirmed,
             'rentalPeriodEligible' => app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking),
-            'outgoingInspectionTimeEligible' => app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking),
+            'outgoingInspectionTimeEligible' => app(TelematicsHandoverEligibilityService::class)->isSetupTimeEligible($booking),
             'customerSelfDriveAvailable' => app(SelfDriveBookingAvailabilityService::class)->canHandover($booking),
             'paymentAcceptedForInspection' => $testMode || in_array($booking->payment_status, [PaymentStatus::Partial, PaymentStatus::Paid], true),
             'fullyPaid' => $testMode || ($booking->payment_status === PaymentStatus::Paid && (float) $booking->remaining_balance <= 0),
@@ -79,9 +79,9 @@ class RentalReadinessService
 
     public function assertOutgoingTimeAllowed(Booking $booking): void
     {
-        if (! app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking)) {
+        if (! app(TelematicsHandoverEligibilityService::class)->isSetupTimeEligible($booking)) {
             throw ValidationException::withMessages(['booking' => [
-                'Outgoing Inspection is available only during the scheduled rental period.',
+                'Outgoing Inspection is available from the pickup date until the rental ends.',
             ]]);
         }
     }

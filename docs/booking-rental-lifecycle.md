@@ -55,6 +55,8 @@ Success moves the booking to `ongoing`, records a `status_changed` event in `boo
 
 For timing-only development testing, `RENTAL_EARLY_START_TEST_MODE=true` permits early Outgoing Inspection, handover, mobile setup and rental release on the same rental start date in Asia/Manila for both rental types. It preserves every other readiness requirement and all eight setup/calibration results. Future dates and expired bookings stay blocked; production/staging ignore the flag. Keep the broader handover test mode off for this use case. See [the timing-only setup](telematics-master-plan.md#existing-rental-and-handover-boundaries).
 
+Outgoing Inspection and telematics setup may begin from midnight on the pickup date in Asia/Manila until the rental ends, for both rental types. This applies independently of the local-only test mode and still requires the existing inspection, operator and verification checks. Production rental release continues to require the scheduled pickup time. The handover response exposes `setupTimeEligible` separately from `rentalPeriodEligible`, and the existing mobile client continues to use the server-provided setup state. Sources: `TelematicsHandoverEligibilityService`, `RentalReadinessService`, `TelematicsHandoverResource`, and web `booking-workflow.ts`.
+
 Local/testing handover test mode relaxes payment, age, document, emergency
 contact, and outgoing-inspection gates for flow testing. It requires a
 confirmed self-drive booking, an operational vehicle, booking-conflict checks,

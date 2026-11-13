@@ -35,6 +35,42 @@ function earlyStartRental(RentalType $type = RentalType::SelfDrive): Booking
     ]);
 }
 
+it('allows setup from the pickup date in production while keeping release time unchanged', function (RentalType $type) {
+    app()->instance('env', 'production');
+    config(['telematics.early_start_test_mode' => false, 'telematics.handover_test_mode' => false]);
+    $booking = earlyStartRental($type);
+    $eligibility = app(TelematicsHandoverEligibilityService::class);
+    $readiness = app(RentalReadinessService::class);
+
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-16T23:59:59+08:00')->utc());
+    expect($eligibility->isSetupTimeEligible($booking))->toBeFalse();
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17T00:00:00+08:00')->utc());
+    expect($eligibility->evaluate($booking)['setupTimeEligible'])->toBeTrue()
+        ->and($readiness->evaluate($booking)['outgoingInspectionTimeEligible'])->toBeTrue()
+        ->and($readiness->evaluate($booking)['rentalPeriodEligible'])->toBeFalse();
+    expect(fn () => $readiness->assertStartAllowed($booking))->toThrow(ValidationException::class);
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17T20:20:00+08:00')->utc());
+    expect($eligibility->isRentalTimeEligible($booking))->toBeTrue();
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-18T20:20:00+08:00')->utc());
+    expect($eligibility->isSetupTimeEligible($booking))->toBeFalse();
+})->with([RentalType::SelfDrive, RentalType::OwnersDriver]);
+
+it('starts inspection and handover before pickup without releasing the rental', function () {
+    app()->instance('env', 'production');
+    config(['telematics.early_start_test_mode' => false, 'telematics.handover_test_mode' => false]);
+    $booking = earlyStartRental();
+    $manager = vehicleManagerUser();
+    finalizeLifecycleInspection($booking, 'outgoing', $manager, 1300);
+    $this->actingAs($manager)->withSession(['_token' => 'EARLY-SETUP-CSRF'])
+        ->withHeader('X-CSRF-TOKEN', 'EARLY-SETUP-CSRF')->postJson("/admin/bookings/{$booking->id}/telematics-setup/start")
+        ->assertOk()->assertJsonPath('data.telematicsHandover.eligibility.setupTimeEligible', true)
+        ->assertJsonPath('data.telematicsHandover.eligibility.rentalPeriodEligible', false);
+    Sanctum::actingAs($booking->user);
+    $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")
+        ->assertOk()->assertJsonPath('data.eligibility.canWorkSetup', true);
+    expect(fn () => app(RentalReadinessService::class)->assertStartAllowed($booking->fresh()))->toThrow(ValidationException::class);
+});
+
 it('allows only the bounded local early-start timing exception for both rental types', function (RentalType $type, string $environment, bool $enabled, string $clock, bool $eligible) {
     $booking = earlyStartRental($type);
     CarbonImmutable::setTestNow(CarbonImmutable::parse($clock)->utc());

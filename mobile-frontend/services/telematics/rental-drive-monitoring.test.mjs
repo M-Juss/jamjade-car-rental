@@ -70,6 +70,11 @@ test('finishing an existing transfer never restarts sensors', async () => {
   const h = harness(); await h.api.recoverRentalDriveMonitoring(7, 'BK-TEST', 'server-id');
   assert.deepEqual(h.calls, ['recover']);
 });
+test('cancelled recovery does not start an upload after credentials load', async () => {
+  const h = harness({ cancelDuringTransfer: true });
+  await h.api.recoverRentalDriveMonitoring(7, 'BK-TEST', 'server-id', () => false);
+  assert.deepEqual(h.calls, []);
+});
 
 test('leaving Telematics during server startup never starts a delayed hidden capture', async () => {
   const h = harness({ cancelAfterOpen: true }); await assert.rejects(h.start(), /cancelled/);

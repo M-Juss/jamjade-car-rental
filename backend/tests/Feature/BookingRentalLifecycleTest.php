@@ -191,8 +191,8 @@ it('finalizes outgoing only inside the booked interval for either rental type', 
         ->and($booking->vehicle->fresh()->current_condition_inspection_id)->toBe($booking->vehicle->current_condition_inspection_id);
 })->with([RentalType::SelfDrive, RentalType::OwnersDriver])->with([
     'previous date' => ['2026-10-16T23:59:59+08:00', false],
-    'same date across UTC midnight' => ['2026-10-17T00:30:00+08:00', false],
-    'just before start' => ['2026-10-17T20:19:59+08:00', false],
+    'same date across UTC midnight' => ['2026-10-17T00:30:00+08:00', true],
+    'just before start' => ['2026-10-17T20:19:59+08:00', true],
     'exact start' => ['2026-10-17T20:20:00+08:00', true],
     'later pickup on another day' => ['2026-10-18T10:00:00+08:00', true],
     'just before end' => ['2026-10-19T20:19:59+08:00', true],
@@ -200,7 +200,7 @@ it('finalizes outgoing only inside the booked interval for either rental type', 
     'expired' => ['2026-10-19T20:20:01+08:00', false],
 ]);
 
-it('applies the same bounded same-day rule to outgoing inspection and release', function (RentalType $type, string $environment, bool $earlyMode, bool $handoverMode, string $clock, bool $eligible) {
+it('allows inspection on pickup day while release follows the rental timing rule', function (RentalType $type, string $environment, bool $earlyMode, bool $handoverMode, string $clock, bool $eligible) {
     CarbonImmutable::setTestNow(CarbonImmutable::parse($clock)->utc());
     config(['telematics.handover_test_mode' => $handoverMode, 'telematics.early_start_test_mode' => $earlyMode]);
     app()->instance('env', $environment);
@@ -209,16 +209,18 @@ it('applies the same bounded same-day rule to outgoing inspection and release', 
         'rental_end_at' => CarbonImmutable::parse('2026-10-19T10:20:00+08:00')->utc(),
     ]);
     $state = app(RentalReadinessService::class)->evaluate($booking);
+    $inspectionEligible = CarbonImmutable::parse($clock)->gte(CarbonImmutable::parse('2026-10-18T00:00:00+08:00'))
+        && CarbonImmutable::parse($clock)->lt(CarbonImmutable::parse('2026-10-19T10:20:00+08:00'));
     expect($state['rentalPeriodEligible'])->toBe($eligible)
-        ->and($state['outgoingInspectionTimeEligible'])->toBe($eligible);
+        ->and($state['outgoingInspectionTimeEligible'])->toBe($inspectionEligible);
     $this->actingAs(vehicleManagerUser())->getJson("/admin/bookings/{$booking->id}")
-        ->assertOk()->assertJsonPath('data.readiness.outgoingInspectionTimeEligible', $eligible);
+        ->assertOk()->assertJsonPath('data.readiness.outgoingInspectionTimeEligible', $inspectionEligible);
     $response = $this->withSession(['_token' => 'SAME-DAY-TEST-CSRF'])
         ->withHeader('X-CSRF-TOKEN', 'SAME-DAY-TEST-CSRF')
         ->postJson("/admin/bookings/{$booking->id}/outgoing-inspection", [
             'condition' => vehicleConditionPayload(), 'operator_signature_data' => vehicleSignatureDataUrl(),
         ]);
-    if ($eligible) {
+    if ($inspectionEligible) {
         $response->assertSuccessful();
         expect($booking->vehicleInspections()->where('type', 'outgoing')->sole()->status->value)->toBe('finalized');
     } else {

@@ -49,7 +49,8 @@ it('keeps mobile booking times, management displays and inspection eligibility a
     $manager = vehicleManagerUser();
     $this->actingAs($manager)->getJson('/admin/bookings/'.$booking->id)
         ->assertOk()->assertJsonPath('data.rentalDate', $startLabel)
-        ->assertJsonPath('data.readiness.outgoingInspectionTimeEligible', false);
+        ->assertJsonPath('data.readiness.outgoingInspectionTimeEligible', CarbonImmutable::parse($start)->subMinute()->isSameDay(CarbonImmutable::parse($start)))
+        ->assertJsonPath('data.readiness.rentalPeriodEligible', false);
 
     CarbonImmutable::setTestNow(CarbonImmutable::parse($startUtc));
     $this->getJson('/admin/bookings/'.$booking->id)

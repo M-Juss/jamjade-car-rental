@@ -57,7 +57,7 @@ class TelematicsHandoverResource extends JsonResource
                 'readyAt' => $eligibility['setupStatus'] === $session->status->value ? $session->ready_at?->toISOString() : null,
                 'releasedAt' => $session->released_at?->toISOString(),
                 'canRestart' => $eligibility['setupStatus'] === TelematicsSetupStatus::ReadyForRelease->value
-                    && $eligibility['bookingConfirmed'] && $eligibility['rentalPeriodEligible']
+                    && $eligibility['bookingConfirmed'] && $eligibility['setupTimeEligible']
                     && $eligibility['customerSelfDriveAvailable'] && $eligibility['operatorEligible']
                     && ($eligibility['testMode'] || $eligibility['documentsVerified'])
                     && collect(TelematicsSetupService::requiredSteps())->every(

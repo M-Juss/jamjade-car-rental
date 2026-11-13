@@ -14,6 +14,7 @@ import { themeColors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { isResearchAdmin } from '@/lib/auth/mobile-access';
 import { useLocationMonitoringLifecycle } from '@/hooks/telematics/useLocationMonitoring';
+import { usePendingRentalMotionSync } from '@/hooks/telematics/usePendingRentalMotionSync';
 
 if (Platform.OS !== 'android') {
   throw new Error('JamJade mobile supports Android only.');
@@ -46,6 +47,7 @@ const JamJadeNavigationTheme = {
 function RootNavigator() {
   const { status, user, onboardingRoute } = useAuth();
   useLocationMonitoringLifecycle(status === 'authenticated' ? user?.id ?? null : null);
+  usePendingRentalMotionSync(status === 'authenticated' ? user?.id ?? null : null);
   const researchAdmin = status === 'authenticated' && isResearchAdmin(user);
 
   if (status === 'loading') {

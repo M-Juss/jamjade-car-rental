@@ -127,6 +127,10 @@ function rentalTimingMessage(booking: BookingRecord, action: "Start Rental" | "O
     timeStyle: "short",
     timeZone: "Asia/Manila",
   });
+  if (action === "Outgoing Inspection") {
+    const date = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
+    return `${action} is available from ${date.format(new Date(booking.rentalStartAt))} until ${dateTime.format(new Date(booking.rentalEndAt))}.`;
+  }
   return `${action} is available from ${dateTime.format(new Date(booking.rentalStartAt))} until ${dateTime.format(new Date(booking.rentalEndAt))}.`;
 }
 
@@ -147,10 +151,10 @@ export function bookingActionBlockers(
       !eligibility?.testMode &&
         !eligibility?.documentsVerified &&
         "Self-drive documents must be approved.",
-      !eligibility?.rentalPeriodEligible &&
+      !eligibility?.setupTimeEligible &&
         (eligibility?.testMode
           ? "Test handover is available on the rental start date or during the reserved period, before it ends."
-          : "Handover is available only within the reserved rental period."),
+          : "Handover is available from the pickup date until the rental ends."),
       !eligibility?.testMode &&
         !eligibility?.outgoingInspectionComplete &&
         "Finalize Outgoing Inspection with both signatures.",

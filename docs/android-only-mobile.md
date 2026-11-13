@@ -11,6 +11,18 @@ platform configuration and dated build verification, not an alternate AI roadmap
 
 ## Google Play internal test preparation — 2026-11-12
 
+Update — 2026-11-13: the mobile local environment and the `play-internal`
+EAS production environment now target the hosted website's Laravel API proxy at
+`https://jamjade.capstoneprototype.online/api`, with no configured old-tunnel
+fallback. Version 1.0.2 (code 3) was built with the existing EAS signing key and
+published to the Google Play internal track; installed testers must update to
+switch. The
+hosted website and vehicles endpoint returned HTTP 200, the protected `me`
+endpoint returned 401, and password-reset validation returned 422. Mobile lint
+and TypeScript passed. These checks do not establish authenticated Android flows,
+Maps, payment callbacks, or equivalence of local and hosted account data. Existing
+tokens from the former backend may be rejected and require users to sign in again.
+
 Update — 2026-11-12: version 1.0.1 (code 2) was built with the existing EAS
 upload key and published to the active internal track. It includes the current
 mobile checkout and the new Customer email-code password recovery flow; see the
@@ -23,11 +35,9 @@ while public DNS resolved it; device connectivity still requires testing.
 
 The `play-internal` EAS profile in `mobile-frontend/eas.json` produces an Android
 App Bundle for Google Play and uses the EAS `production` environment. That
-environment is temporarily configured with the existing HTTPS tunnel to the
-local Laravel API and the Android Maps key. Replace its backend configuration
-before any later production build; this is an internal-test setup, not a hosted
-production backend. Keep the local database, Laravel, Next.js proxy and tunnel
-running during testing. Changing the API hostname requires a new native build.
+environment was originally configured with the HTTPS tunnel to the local Laravel
+API and the Android Maps key; the November 13 update above replaces that endpoint
+for future builds. Changing the API hostname requires a new native build.
 
 The Play app retains `com.anonymous.jamjadecarrental`. EAS has an existing
 release upload keystore; its certificate differs from the debug certificate on

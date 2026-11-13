@@ -122,6 +122,7 @@ class TelematicsHandoverEligibilityService
             && $booking->assignedDriver->hasRole(DriverAssignmentService::DRIVER_ROLE));
         $bookingConfirmed = $booking->status === BookingStatus::Confirmed;
         $rentalPeriodEligible = $bookingConfirmed && $this->isRentalTimeEligible($booking);
+        $setupTimeEligible = $bookingConfirmed && $this->isSetupTimeEligible($booking);
         $outgoingInspectionComplete = $this->hasFinalizedOutgoingSignatures($booking, $operatorService->inspectionSigner($booking));
         $setupStatus = app(TelematicsCalibrationService::class)->effectiveStatus($booking->telematicsSetupSession)?->value;
         $handoverStarted = $setupStatus === TelematicsSetupStatus::InProgress->value;
@@ -137,25 +138,26 @@ class TelematicsHandoverEligibilityService
             'documentsVerified' => $documentsVerified,
             'bookingConfirmed' => $bookingConfirmed,
             'rentalPeriodEligible' => $rentalPeriodEligible,
+            'setupTimeEligible' => $setupTimeEligible,
             'outgoingInspectionComplete' => $outgoingInspectionComplete,
             'handoverStarted' => $handoverStarted,
             'customerSelfDriveAvailable' => $customerAvailable,
             'setupStatus' => $setupStatus,
             'canViewTelematics' => $supported,
-            'canStartHandover' => $supported && $bookingConfirmed && $rentalPeriodEligible && $customerAvailable && $operatorEligible && ($testMode && $selfDrive
+            'canStartHandover' => $supported && $bookingConfirmed && $setupTimeEligible && $customerAvailable && $operatorEligible && ($testMode && $selfDrive
                 ? in_array($setupStatus, [null, TelematicsSetupStatus::Locked->value, TelematicsSetupStatus::SetupRequired->value], true)
                 : $documentsVerified && $outgoingInspectionComplete
                     && $setupStatus === TelematicsSetupStatus::SetupRequired->value),
-            'canWorkSetup' => $supported && $bookingConfirmed && $rentalPeriodEligible && $customerAvailable && $operatorEligible
+            'canWorkSetup' => $supported && $bookingConfirmed && $setupTimeEligible && $customerAvailable && $operatorEligible
                 && ($testMode && $selfDrive || $documentsVerified)
                 && ($handoverStarted || ($testMode && $selfDrive && $setupStatus === TelematicsSetupStatus::ReadyForRelease->value)),
             'state' => in_array($booking->status, [BookingStatus::Returned, BookingStatus::Completed], true) ? 'rental_ended' : (! $released && ! $customerAvailable ? 'other_rental_active' : ($testMode && $selfDrive && $bookingConfirmed
                 ? match (true) {
-                    ! $rentalPeriodEligible => 'rental_scheduled',
+                    ! $setupTimeEligible => 'rental_scheduled',
                     $handoverStarted || $setupStatus === TelematicsSetupStatus::ReadyForRelease->value => 'handover_in_progress',
                     default => 'handover_preparation',
                 }
-                : $this->state($booking, $documentsVerified, $rentalPeriodEligible, $outgoingInspectionComplete, $handoverStarted, $released))),
+                : $this->state($booking, $documentsVerified, $setupTimeEligible, $outgoingInspectionComplete, $handoverStarted, $released))),
         ];
     }
 
@@ -165,15 +167,15 @@ class TelematicsHandoverEligibilityService
         $eligibility = $this->evaluate($booking);
         $testSelfDrive = $this->testModeEnabled() && $booking->rental_type === RentalType::SelfDrive;
         $required = $testSelfDrive
-            ? ['rentalPeriodEligible']
-            : ['operatorAssigned', 'operatorEligible', 'documentsVerified', 'rentalPeriodEligible', 'outgoingInspectionComplete'];
+            ? ['setupTimeEligible']
+            : ['operatorAssigned', 'operatorEligible', 'documentsVerified', 'setupTimeEligible', 'outgoingInspectionComplete'];
         $missing = collect($required)->filter(fn (string $key) => ! $eligibility[$key])->values()->all();
 
         if ($missing !== []) {
             throw ValidationException::withMessages([
                 'telematics_setup' => [$testSelfDrive
                     ? 'Test handover requires today to be the rental start date in Asia/Manila or time within the reserved interval, before the rental ends.'
-                    : 'Telematics handover cannot start until verification, the reserved rental interval and inspection signatures are ready.'],
+                    : 'Telematics handover requires the pickup date, verification and inspection signatures.'],
                 'requirements' => $missing,
             ]);
         }
@@ -185,11 +187,11 @@ class TelematicsHandoverEligibilityService
         $eligibility = $this->evaluate($booking);
 
         $testSelfDrive = $this->testModeEnabled() && $booking->rental_type === RentalType::SelfDrive;
-        if (! $eligibility['rentalPeriodEligible'] || ! $eligibility['operatorEligible'] || (! $testSelfDrive && ! $eligibility['documentsVerified'])) {
+        if (! $eligibility['setupTimeEligible'] || ! $eligibility['operatorEligible'] || (! $testSelfDrive && ! $eligibility['documentsVerified'])) {
             throw ValidationException::withMessages([
                 'telematics_setup' => [$testSelfDrive
                     ? 'Test setup requires today to be the rental start date in Asia/Manila or time within the reserved interval, before the rental ends.'
-                    : 'Telematics setup requires approved self-drive documents and an eligible scheduled rental time.'],
+                    : 'Telematics setup requires approved self-drive documents and the pickup date.'],
             ]);
         }
     }
@@ -218,6 +220,18 @@ class TelematicsHandoverEligibilityService
 
         return $now->gte($rentalStart)
             || (($this->earlyStartTestModeEnabled() || $this->testModeEnabled()) && $now->isSameDay($rentalStart));
+    }
+
+    public function isSetupTimeEligible(Booking $booking): bool
+    {
+        if (! $booking->rental_start_at || ! $booking->rental_end_at) {
+            return false;
+        }
+
+        $now = CarbonImmutable::now(self::BUSINESS_TIMEZONE);
+        $start = CarbonImmutable::instance($booking->rental_start_at)->setTimezone(self::BUSINESS_TIMEZONE);
+
+        return $now->lt($booking->rental_end_at) && $now->gte($start->startOfDay());
     }
 
     private function hasFinalizedOutgoingSignatures(Booking $booking, VehicleInspectionSignerType $operatorSigner): bool

@@ -138,6 +138,7 @@ export type TelematicsHandover = {
     canWorkSetup: boolean;
     documentsVerified: boolean;
     rentalPeriodEligible: boolean;
+    setupTimeEligible: boolean;
     outgoingInspectionComplete: boolean;
     customerSelfDriveAvailable: boolean;
   };
