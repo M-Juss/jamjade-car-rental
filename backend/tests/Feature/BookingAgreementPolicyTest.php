@@ -85,7 +85,7 @@ it('accepts handover eligibility on a later booked day but never before the star
     $booking = policyBooking();
     $service = app(TelematicsHandoverEligibilityService::class);
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-19T13:59:59+08:00')->utc());
-    expect($service->evaluate($booking)['rentalPeriodEligible'])->toBeFalse();
+    expect($service->evaluate($booking)['rentalPeriodEligible'])->toBeTrue();
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-19T14:00:00+08:00')->utc());
     expect($service->evaluate($booking)['rentalPeriodEligible'])->toBeTrue();
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T09:00:00+08:00')->utc());

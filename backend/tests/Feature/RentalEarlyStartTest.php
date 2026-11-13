@@ -47,7 +47,7 @@ it('allows setup from the pickup date in production while keeping release time u
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17T00:00:00+08:00')->utc());
     expect($eligibility->evaluate($booking)['setupTimeEligible'])->toBeTrue()
         ->and($readiness->evaluate($booking)['outgoingInspectionTimeEligible'])->toBeTrue()
-        ->and($readiness->evaluate($booking)['rentalPeriodEligible'])->toBeFalse();
+        ->and($readiness->evaluate($booking)['rentalPeriodEligible'])->toBeTrue();
     expect(fn () => $readiness->assertStartAllowed($booking))->toThrow(ValidationException::class);
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-17T20:20:00+08:00')->utc());
     expect($eligibility->isRentalTimeEligible($booking))->toBeTrue();
@@ -64,12 +64,23 @@ it('starts inspection and handover before pickup without releasing the rental', 
     $this->actingAs($manager)->withSession(['_token' => 'EARLY-SETUP-CSRF'])
         ->withHeader('X-CSRF-TOKEN', 'EARLY-SETUP-CSRF')->postJson("/admin/bookings/{$booking->id}/telematics-setup/start")
         ->assertOk()->assertJsonPath('data.telematicsHandover.eligibility.setupTimeEligible', true)
-        ->assertJsonPath('data.telematicsHandover.eligibility.rentalPeriodEligible', false);
+        ->assertJsonPath('data.telematicsHandover.eligibility.rentalPeriodEligible', true);
     Sanctum::actingAs($booking->user);
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")
         ->assertOk()->assertJsonPath('data.eligibility.canWorkSetup', true);
     expect(fn () => app(RentalReadinessService::class)->assertStartAllowed($booking->fresh()))->toThrow(ValidationException::class);
 });
+
+it('releases a fully prepared rental on pickup day before its scheduled time in production', function (RentalType $type) {
+    app()->instance('env', 'production');
+    config(['telematics.early_start_test_mode' => false, 'telematics.handover_test_mode' => false]);
+    $booking = earlyStartRental($type);
+    legacyLifecycleOutgoing($booking);
+    completeTelematicsSetup($booking);
+    $started = app(BookingService::class)->transition($booking->fresh(), BookingStatus::Ongoing, vehicleManagerUser());
+    expect($started->status)->toBe(BookingStatus::Ongoing)
+        ->and($started->rental_start_at->toISOString())->toBe('2026-10-17T12:20:00.000000Z');
+})->with([RentalType::SelfDrive, RentalType::OwnersDriver]);
 
 it('allows only the bounded local early-start timing exception for both rental types', function (RentalType $type, string $environment, bool $enabled, string $clock, bool $eligible) {
     $booking = earlyStartRental($type);
@@ -89,9 +100,9 @@ it('allows only the bounded local early-start timing exception for both rental t
     'later within interval' => ['testing', false, '2026-10-18T10:00:00+08:00', true],
     'at return deadline' => ['testing', true, '2026-10-18T20:20:00+08:00', false],
     'expired rental' => ['testing', true, '2026-10-18T20:20:01+08:00', false],
-    'timing flag disabled' => ['testing', false, '2026-10-17T00:30:00+08:00', false],
-    'production ignores timing flag' => ['production', true, '2026-10-17T00:30:00+08:00', false],
-    'staging ignores timing flag' => ['staging', true, '2026-10-17T00:30:00+08:00', false],
+    'timing flag disabled' => ['testing', false, '2026-10-17T00:30:00+08:00', true],
+    'production ignores timing flag' => ['production', true, '2026-10-17T00:30:00+08:00', true],
+    'staging ignores timing flag' => ['staging', true, '2026-10-17T00:30:00+08:00', true],
 ]);
 
 it('retains payment age document and inspection requirements when only timing is relaxed', function (RentalType $type) {

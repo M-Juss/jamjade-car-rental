@@ -127,11 +127,8 @@ function rentalTimingMessage(booking: BookingRecord, action: "Start Rental" | "O
     timeStyle: "short",
     timeZone: "Asia/Manila",
   });
-  if (action === "Outgoing Inspection") {
-    const date = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
-    return `${action} is available from ${date.format(new Date(booking.rentalStartAt))} until ${dateTime.format(new Date(booking.rentalEndAt))}.`;
-  }
-  return `${action} is available from ${dateTime.format(new Date(booking.rentalStartAt))} until ${dateTime.format(new Date(booking.rentalEndAt))}.`;
+  const date = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" });
+  return `${action} is available from ${date.format(new Date(booking.rentalStartAt))} until ${dateTime.format(new Date(booking.rentalEndAt))}.`;
 }
 
 export function bookingActionBlockers(

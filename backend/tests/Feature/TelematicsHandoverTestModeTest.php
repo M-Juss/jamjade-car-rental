@@ -105,11 +105,11 @@ it('keeps later booked days available and disables early starts outside test mod
     $booking->update(['rental_start_at' => CarbonImmutable::parse('2026-10-16T14:00:00+08:00')->utc()]);
     expect(app(RentalReadinessService::class)->evaluate($booking)['rentalPeriodEligible'])->toBeTrue();
     config(['telematics.handover_test_mode' => false]);
-    expect($eligibility->evaluate($booking)['rentalPeriodEligible'])->toBeFalse();
+    expect($eligibility->evaluate($booking)['rentalPeriodEligible'])->toBeTrue();
     expect(fn () => app(RentalReadinessService::class)->assertStartAllowed($booking))->toThrow(ValidationException::class);
     app()->instance('env', 'production');
     config(['telematics.handover_test_mode' => true]);
-    expect($eligibility->evaluate($booking)['rentalPeriodEligible'])->toBeFalse();
+    expect($eligibility->evaluate($booking)['rentalPeriodEligible'])->toBeTrue();
     expect(fn () => app(RentalReadinessService::class)->assertStartAllowed($booking))->toThrow(ValidationException::class);
 });
 

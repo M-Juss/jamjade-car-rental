@@ -207,19 +207,7 @@ class TelematicsHandoverEligibilityService
 
     public function isRentalTimeEligible(Booking $booking): bool
     {
-        if (! $booking->rental_start_at || ! $booking->rental_end_at) {
-            return false;
-        }
-
-        $now = CarbonImmutable::now(self::BUSINESS_TIMEZONE);
-        $rentalStart = CarbonImmutable::instance($booking->rental_start_at)->setTimezone(self::BUSINESS_TIMEZONE);
-
-        if ($now->gte($booking->rental_end_at)) {
-            return false;
-        }
-
-        return $now->gte($rentalStart)
-            || (($this->earlyStartTestModeEnabled() || $this->testModeEnabled()) && $now->isSameDay($rentalStart));
+        return $this->isSetupTimeEligible($booking);
     }
 
     public function isSetupTimeEligible(Booking $booking): bool

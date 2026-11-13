@@ -92,7 +92,7 @@ class RentalReadinessService
             throw ValidationException::withMessages(['booking' => ['The scheduled rental period has ended. Resolve this booking before releasing a vehicle.']]);
         }
         if (! app(TelematicsHandoverEligibilityService::class)->isRentalTimeEligible($booking)) {
-            throw ValidationException::withMessages(['booking' => ['The reserved rental period has not started yet.']]);
+            throw ValidationException::withMessages(['booking' => ['Rental release is available from the pickup date.']]);
         }
         $state = $this->evaluate($booking);
         app(SelfDriveBookingAvailabilityService::class)->assertHandoverAvailable($booking);

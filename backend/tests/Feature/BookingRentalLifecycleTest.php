@@ -237,9 +237,9 @@ it('allows inspection on pickup day while release follows the rental timing rule
     'later pickup during rental' => ['testing', true, false, '2026-10-19T09:00:00+08:00', true],
     'exact return deadline' => ['testing', true, false, '2026-10-19T10:20:00+08:00', false],
     'expired rental' => ['testing', true, false, '2026-10-19T10:20:01+08:00', false],
-    'temporary mode disabled' => ['testing', false, false, '2026-10-18T02:20:00+08:00', false],
-    'production ignores temporary modes' => ['production', true, true, '2026-10-18T02:20:00+08:00', false],
-    'staging ignores temporary modes' => ['staging', true, true, '2026-10-18T02:20:00+08:00', false],
+    'temporary mode disabled' => ['testing', false, false, '2026-10-18T02:20:00+08:00', true],
+    'production ignores temporary modes' => ['production', true, true, '2026-10-18T02:20:00+08:00', true],
+    'staging ignores temporary modes' => ['staging', true, true, '2026-10-18T02:20:00+08:00', true],
 ]);
 
 it('keeps previously finalized outgoing inspections readable outside the booked interval', function (RentalType $type) {
@@ -632,7 +632,7 @@ it('exposes authoritative release timing for both rental types', function (Renta
     'assigned driver' => [RentalType::OwnersDriver],
 ])->with([
     'before pickup date' => ['2026-10-18T12:00:00+08:00', false],
-    'before pickup time' => ['2026-10-19T08:59:59+08:00', false],
+    'before pickup time' => ['2026-10-19T08:59:59+08:00', true],
     'at pickup time' => ['2026-10-19T09:00:00+08:00', true],
     'later in reserved period' => ['2026-10-20T08:59:59+08:00', true],
     'at return time' => ['2026-10-20T09:00:00+08:00', false],
@@ -691,9 +691,9 @@ it('keeps assigned-driver release timing bounded in test mode', function (string
     'future start date' => ['testing', true, '2026-10-16T23:59:59+08:00', false],
     'later booked day' => ['testing', true, '2026-10-18T10:00:00+08:00', true],
     'return deadline' => ['testing', true, '2026-10-18T20:20:00+08:00', false],
-    'test mode disabled' => ['testing', false, '2026-10-17T00:30:00+08:00', false],
-    'production ignores test mode' => ['production', true, '2026-10-17T00:30:00+08:00', false],
-    'staging ignores test mode' => ['staging', true, '2026-10-17T00:30:00+08:00', false],
+    'test mode disabled' => ['testing', false, '2026-10-17T00:30:00+08:00', true],
+    'production ignores test mode' => ['production', true, '2026-10-17T00:30:00+08:00', true],
+    'staging ignores test mode' => ['staging', true, '2026-10-17T00:30:00+08:00', true],
 ]);
 
 it('retains assigned-driver readiness requirements during early same-day testing', function () {
