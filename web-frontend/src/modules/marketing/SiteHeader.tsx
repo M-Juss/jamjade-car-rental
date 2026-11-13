@@ -10,7 +10,6 @@ const navLinks = [
   { href: "#showcase", label: "Showcase" },
   { href: "#driving-insights", label: "Driving Insights" },
   { href: "#tutorial", label: "Guide" },
-  { href: "#testimonials", label: "Reviews" },
   { href: "#visit", label: "Visit Us" },
 ];
 

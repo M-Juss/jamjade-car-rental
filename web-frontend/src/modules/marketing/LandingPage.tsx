@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import CarShowcase from "@/modules/marketing/CarShowcase";
 import BookingSteps from "@/modules/marketing/BookingSteps";
 import DrivingInsights from "@/modules/marketing/DrivingInsights";
-import TestimonialsCarousel from "@/modules/marketing/TestimonialsCarousel";
 import SiteHeader from "@/modules/marketing/SiteHeader";
 import RentNowButton from "@/modules/marketing/RentNowButton";
 import { DownloadAppProvider } from "@/modules/marketing/DownloadAppProvider";
@@ -102,17 +101,6 @@ export default function Home() {
             <BookingSteps />
           </section>
 
-          {/* ── Testimonials ── */}
-          <section id="testimonials" className={`scroll-mt-20 bg-muted/30 ${sectionPadding}`}>
-            <div className={sectionHeader}>
-              <h2 className={sectionHeading}>What Our Customers Say</h2>
-              <p className={sectionSubtext}>
-                Real experiences from real renters across Cavite and beyond.
-              </p>
-            </div>
-            <TestimonialsCarousel />
-          </section>
-
           {/* ── Visit Us ── */}
           <section id="visit" className={`relative scroll-mt-20 bg-white/80 ${sectionPadding}`}>
             <div className={sectionHeader}>
@@ -196,7 +184,6 @@ export default function Home() {
                   { href: "#showcase", label: "Car Showcase" },
                   { href: "#driving-insights", label: "Driving Insights" },
                   { href: "#tutorial", label: "How to Book" },
-                  { href: "#testimonials", label: "Reviews" },
                   { href: "#visit", label: "Visit Us" },
                 ].map((item) => (
                   <a

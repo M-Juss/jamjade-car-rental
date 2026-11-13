@@ -50,7 +50,10 @@ controls. These pages are not forced into a generic table layout.
 ## Landing-page boundary
 
 The original public landing page, fleet carousel, booking steps, driving-insight
-copy, testimonials and download dialog are retained for the mock-defense demo.
+copy and download dialog are retained for the mock-defense demo. The customer
+testimonials section and its navigation links were removed at the user's request.
+The landing page and shared header own the change; web lint, TypeScript and a
+production build passed using Node 24. Browser layout verification remains pending.
 Do not add demo, unverified, coming-soon or in-development labels to those sections
 as part of this refactor. Public content will be revisited after the remaining
 work is complete. Login remains in scope for the shared control refinement.
