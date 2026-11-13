@@ -50,6 +50,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/navigation-counts', ManagementNavigationController::class)->name('navigation-counts');
         Route::middleware(['role:admin', 'throttle:60,1'])->prefix('rc-research')->name('rc-research.')->group(function () {
+            Route::get('/runtime-import', [\App\Http\Controllers\Web\Admin\RcRuntimeImportController::class, 'show']);
+            Route::post('/runtime-import', [\App\Http\Controllers\Web\Admin\RcRuntimeImportController::class, 'store'])->middleware('throttle:3,1');
             Route::get('/model-explorer/{example?}', ModelExplorerController::class)->where('example', '[0-9]{1,3}')->name('model-explorer');
             Route::get('/model-explorer/maneuvers', [RcManeuverComparisonController::class, 'index'])->name('maneuvers.index');
             Route::get('/model-explorer/maneuvers/{recording}/{annotation}/{index}', [RcManeuverComparisonController::class, 'signal'])

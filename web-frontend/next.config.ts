@@ -43,6 +43,10 @@ const nextConfig: NextConfig = {
       ],
       afterFiles: [
         {
+          source: "/admin/rc-research/runtime-import",
+          destination: `${backendUrl}/admin/rc-research/runtime-import`,
+        },
+        {
           source: "/admin/(vehicles|bookings|maintenance|maintenance-plans|customers|reports|payments|document-verification|fleet-tracker)/:path*",
           destination: `${backendUrl}/admin/$1/:path*`,
         },

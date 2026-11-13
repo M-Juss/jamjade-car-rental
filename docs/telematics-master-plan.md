@@ -5507,3 +5507,7 @@ not been tested on a device or emulator for this change.
 ### Hosted rental-motion diagnostic
 
 `php artisan telematics:check-rental-motion` checks whether rental RC motion is enabled and whether the private runtime model can be loaded and verified using the configured application key. It performs a synthetic inference without printing model contents, keys, or rental data. A successful check does not prove that a particular phone batch can upload. The hosted result must be verified separately. Focused HostedRcDemoTest and changed-file Pint checks passed locally.
+
+### Temporary hosted runtime import
+
+The authenticated Admin-only, CSRF-protected `/admin/rc-research/runtime-import` route accepts a bounded model JSON only when its SHA-256 matches the pinned runtime, encrypts it with the host application key, and refuses to overwrite an existing model. The web rewrite exposes this route to the existing browser session. The model is never committed to Git. Remove this temporary route and its rewrite after installation. Local checks: focused authorization, invalid-checksum and overwrite tests; web lint, type-check and production build. Hosted installation and physical monitoring verification remain pending.
