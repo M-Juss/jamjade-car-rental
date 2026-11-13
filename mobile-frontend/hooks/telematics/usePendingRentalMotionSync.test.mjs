@@ -14,6 +14,7 @@ function harness({ online = true, status = { active: false, state: 'stopped', un
     '@/services/telematics/network-readiness': { getNetworkReadiness: async () => connected },
     '@/services/telematics/rental-drive-monitoring': {
       rentalMotionStatus: async () => currentStatus,
+      discardCompletedRentalMotion: async () => false,
       recoverRentalDriveMonitoring: async (owner, booking, id, allowed) => { if (allowed()) recovered.push([owner, booking, id]); },
     },
   };

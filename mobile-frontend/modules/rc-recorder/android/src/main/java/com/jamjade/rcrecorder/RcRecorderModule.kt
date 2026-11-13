@@ -21,6 +21,9 @@ class RcRecorderModule : Module() {
     AsyncFunction("rentalMonitoringStatus") { owner: String -> RentalDriveMonitoring.get(context()).status(owner) }
     AsyncFunction("rentalMonitoringStop") { RentalDriveMonitoring.get(context()).stop(); null }
     AsyncFunction("rentalMonitoringLock") { RentalDriveMonitoring.get(context()).lock(); null }
+    AsyncFunction("rentalMonitoringDiscardCompleted") { owner: String, booking: String, session: String ->
+      RentalDriveMonitoring.get(context()).discardCompleted(owner, booking, session); null
+    }
     AsyncFunction("rentalMonitoringRecover") { config: String ->
       require(config.length <= 8192)
       check(appContext.currentActivity?.hasWindowFocus() == true)

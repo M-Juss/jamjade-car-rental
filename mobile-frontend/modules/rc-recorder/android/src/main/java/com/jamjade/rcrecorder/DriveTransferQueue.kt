@@ -26,6 +26,17 @@ internal object DriveTransferQueue {
     queue.optJSONObject("sessions")?.remove(session)
   }
 
+  fun discard(queue: JSONObject, session: String) {
+    val batches = queue.getJSONArray("batches")
+    val remaining = JSONArray()
+    for (index in 0 until batches.length()) {
+      val batch = batches.getJSONObject(index)
+      if (batch.getString("session_id") != session) remaining.put(batch)
+    }
+    queue.put("batches", remaining)
+    queue.optJSONObject("sessions")?.remove(session)
+  }
+
   fun pending(queue: JSONObject, session: String): Int {
     val batches = queue.getJSONArray("batches")
     return (0 until batches.length()).count { batches.getJSONObject(it).getString("session_id") == session }

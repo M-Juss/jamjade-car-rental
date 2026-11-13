@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { getNetworkReadiness } from '@/services/telematics/network-readiness';
-import { recoverRentalDriveMonitoring, rentalMotionStatus } from '@/services/telematics/rental-drive-monitoring';
+import { discardCompletedRentalMotion, recoverRentalDriveMonitoring, rentalMotionStatus } from '@/services/telematics/rental-drive-monitoring';
 
 /** Restart only an interrupted upload, never a motion capture. */
 export function usePendingRentalMotionSync(userId: number | null) {
@@ -16,9 +16,17 @@ export function usePendingRentalMotionSync(userId: number | null) {
       try {
         if (!await getNetworkReadiness() || !eligible()) return;
         const status = await rentalMotionStatus(userId);
-        if (!eligible() || !status || status.active || status.state !== 'stopped') return;
-        const pending = status.unfinished[0];
-        if (pending) await recoverRentalDriveMonitoring(userId, pending.booking_code, pending.id, eligible);
+        if (!eligible() || !status) return;
+        for (const pending of status.unfinished) {
+          if (!eligible()) return;
+          try {
+            if (await discardCompletedRentalMotion(userId, pending.booking_code, pending.id, eligible)) continue;
+            if (!status.active && status.state === 'stopped') {
+              await recoverRentalDriveMonitoring(userId, pending.booking_code, pending.id, eligible);
+              return;
+            }
+          } catch { /* A failed server check must preserve this session. */ }
+        }
       } catch {
         // Keep encrypted batches for the next retry or an explicit manual recovery.
       } finally { running = false; }

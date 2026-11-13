@@ -43,6 +43,18 @@ class DriveTransferQueueTest {
     assertEquals(1, DriveTransferQueue.pending(queue, "two"))
   }
 
+  @Test fun discardRemovesOnlyTheCompletedSessionAndItsBatches() {
+    val queue = queue()
+    DriveTransferQueue.bind(queue, "one", "recording1")
+    DriveTransferQueue.bind(queue, "two", "recording2")
+    queue.getJSONArray("batches").put(batch("one", "a")).put(batch("two", "b"))
+    DriveTransferQueue.discard(queue, "one")
+    assertEquals(0, DriveTransferQueue.pending(queue, "one"))
+    assertEquals(1, DriveTransferQueue.pending(queue, "two"))
+    assertNull(queue.getJSONObject("sessions").optJSONObject("one"))
+    assertNotNull(queue.getJSONObject("sessions").optJSONObject("two"))
+  }
+
   @Test(expected = IllegalStateException::class) fun cannotCompleteWithPendingData() {
     val queue = queue()
     DriveTransferQueue.bind(queue, "session", "recording")

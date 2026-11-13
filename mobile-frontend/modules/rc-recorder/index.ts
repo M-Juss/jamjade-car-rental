@@ -7,6 +7,7 @@ export type RcRecorderNative = {
   rentalMonitoringStop?(): Promise<null>;
   rentalMonitoringLock?(): Promise<null>;
   rentalMonitoringRecover?(config: string): Promise<null>;
+  rentalMonitoringDiscardCompleted?(owner: string, booking: string, session: string): Promise<null>;
   rentalMonitoringStatus?(owner: string): Promise<string>;
   startDriveMonitoring?(config: string, runtime: string): Promise<null>;
   configureDriveUpload?(config: string): Promise<null>;

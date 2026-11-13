@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
 
-function harness({ denied = false, lostResponse = false, failedCapture = false, pending = 0, cancelAfterOpen = false, cancelDuringTransfer = false } = {}) {
+function harness({ denied = false, lostResponse = false, failedCapture = false, pending = 0, cancelAfterOpen = false, cancelDuringTransfer = false, closed = false, checkFails = false } = {}) {
   const calls = [];
   let current = true;
   const reference = { rotation_rfu: [[1,0,0],[0,1,0],[0,0,1]], acceleration_mean: [0,0,9.81], gyroscope_mean: [0,0,0] };
@@ -22,8 +22,10 @@ function harness({ denied = false, lostResponse = false, failedCapture = false, 
       rentalMonitoringStop: async () => { calls.push('stop-capture'); },
       rentalMonitoringDiscardStart: async () => { calls.push('clear-identity'); },
       rentalMonitoringRecover: async () => { calls.push('recover'); },
+      rentalMonitoringDiscardCompleted: async (owner, booking, id) => { calls.push(`discard:${owner}:${booking}:${id}`); },
     } },
     '@/services/api/rental-motion.service': {
+      getRentalMotion: async () => { if (checkFails) throw new Error('offline'); return { report_sync_closed: closed }; },
       startRentalMotion: async (booking, input) => {
         calls.push('open'); assert.equal(booking, 'BK-TEST'); assert.equal(input.client_session_id, 'stable-id');
         assert.equal(input.consent_version, 'rental-rc-motion-v1'); assert.equal(input.same_mount_confirmed, true);
@@ -87,4 +89,16 @@ test('pausing while the transfer credentials load cancels native startup', async
   await assert.rejects(h.start(), /cancelled/);
   assert.ok(!h.calls.includes('capture'));
   assert.deepEqual(h.calls.slice(-3), ['stop-capture', 'stop-server', 'clear-identity']);
+});
+
+test('discards only when the server confirms completion', async () => {
+  const closed = harness({ closed: true });
+  assert.equal(await closed.api.discardCompletedRentalMotion(7, 'BK-TEST', 's1'), true);
+  assert.deepEqual(closed.calls, ['discard:7:BK-TEST:s1']);
+  const open = harness();
+  assert.equal(await open.api.discardCompletedRentalMotion(7, 'BK-TEST', 's1'), false);
+  assert.deepEqual(open.calls, []);
+  const failed = harness({ checkFails: true });
+  await assert.rejects(failed.api.discardCompletedRentalMotion(7, 'BK-TEST', 's1'), /offline/);
+  assert.deepEqual(failed.calls, []);
 });

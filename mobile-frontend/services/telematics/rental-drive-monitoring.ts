@@ -1,6 +1,6 @@
 import { ensureMotionNotificationPermission } from './native-recorder';
 import nativeRecorder from '@/modules/rc-recorder';
-import { startRentalMotion, stopRentalMotion } from '@/services/api/rental-motion.service';
+import { getRentalMotion, startRentalMotion, stopRentalMotion } from '@/services/api/rental-motion.service';
 import { getApiAuthToken } from '@/services/http/auth-token';
 import { API_BASE_URL } from '@/services/http/config';
 export type RentalMotionStatus = {
@@ -58,4 +58,13 @@ export async function recoverRentalDriveMonitoring(owner: number, booking: strin
   const destination = await transfer(owner, booking, id);
   if (!isCurrent()) return;
   await nativeRecorder.rentalMonitoringRecover(JSON.stringify(destination));
+}
+
+/** The server is authoritative; an offline or failed check never deletes readings. */
+export async function discardCompletedRentalMotion(owner: number, booking: string, session: string, isCurrent: () => boolean = () => true): Promise<boolean> {
+  if (!nativeRecorder?.rentalMonitoringDiscardCompleted) return false;
+  const state = await getRentalMotion(booking);
+  if (state.report_sync_closed !== true || !isCurrent()) return false;
+  await nativeRecorder.rentalMonitoringDiscardCompleted(String(owner), booking, session);
+  return true;
 }

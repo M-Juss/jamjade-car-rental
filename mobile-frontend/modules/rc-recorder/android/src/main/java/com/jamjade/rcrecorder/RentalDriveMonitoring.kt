@@ -180,6 +180,19 @@ internal class RentalDriveMonitoring private constructor(private val context: Co
         JSONObject().put("id", sid).put("booking_code", sessions.getJSONObject(sid).getString("booking"))
       }.toList())).toString()
   }
+  fun discardCompleted(user: String, code: String, session: String) = call {
+    select(user)
+    val queue = store!!.driveUploadQueue()
+    val binding = queue.optJSONObject("sessions")?.optJSONObject(session) ?: return@call
+    check(binding.getString("booking") == code) { "Monitoring booking changed." }
+    if (active == session) stopInternal()
+    val wasUploading = uploader.sessionId() == session
+    if (wasUploading) uploader.stop()
+    val latest = store!!.driveUploadQueue()
+    DriveTransferQueue.discard(latest, session)
+    store!!.saveDriveUploadQueue(latest)
+    if (active == null && wasUploading) context.stopService(android.content.Intent(context, RentalDriveMonitoringService::class.java))
+  }
   fun recover(config: String) = call {
     val input = JSONObject(config); select(input.getString("owner_id")); validateDestination(input)
     check(active == null && reserved == null)
