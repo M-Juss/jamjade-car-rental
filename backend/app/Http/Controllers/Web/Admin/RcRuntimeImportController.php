@@ -17,6 +17,15 @@ class RcRuntimeImportController extends Controller
     {
         abort_unless(app(RcResearchAccessService::class)->enabled(), 403);
 
+        if ($request->expectsJson()) {
+            try {
+                app(RcRuntimeForestService::class)->probabilities([array_fill(0, 35, 0.0)]);
+                return response()->json(['success' => true, 'message' => 'Model is usable.', 'data' => null]);
+            } catch (\Throwable) {
+                return response()->json(['success' => false, 'message' => 'Model is unavailable.', 'data' => null], 503);
+            }
+        }
+
         return response()->view('rc-runtime-import')->header('Cache-Control', 'no-store');
     }
 

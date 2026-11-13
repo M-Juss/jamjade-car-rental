@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiGet } from "@/services/http";
 import { importRuntimeModel } from "@/services/research/runtime-import.service";
 
 export default function RuntimeImportPage() {
@@ -19,5 +20,5 @@ export default function RuntimeImportPage() {
       <label htmlFor="runtime-model">Runtime model JSON</label>{" "}
       <input id="runtime-model" type="file" accept=".json,application/json" required onChange={event => setModel(event.target.files?.[0] ?? null)} />{" "}
       <button type="submit" disabled={busy}>Install model</button>
-    </form><p role="status">{message}</p></main>;
+    </form><button type="button" onClick={async () => { try { const result = await apiGet("/admin/rc-research/runtime-import"); setMessage(result.message); } catch { setMessage("Model is unavailable."); } }}>Check model</button><p role="status">{message}</p></main>;
 }
