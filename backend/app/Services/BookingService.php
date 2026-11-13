@@ -222,6 +222,10 @@ class BookingService
 
             $this->notifyStatusChange($booking, $targetStatus, $reason);
 
+            if ($targetStatus === BookingStatus::Completed) {
+                app(RentalDrivingReportService::class)->finalize($booking->id);
+            }
+
             return $booking->fresh([
                 'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
                 'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'telematicsSetupSession', 'cancellation',

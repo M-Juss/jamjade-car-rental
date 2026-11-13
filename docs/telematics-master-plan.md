@@ -5431,6 +5431,8 @@ guide. Android and public server acceptance remain pending.
 
 ### Final driving reports — 2026-11-12
 
+Historical behavior below is superseded by Immediate driving reports on completion (2026-11-13).
+
 Foreground rental motion recovery: while a Customer or Driver is signed in and
 the app is open, the app checks the account's encrypted pending queue at startup,
 on foreground return and periodically. If the network is available and no capture
@@ -5511,3 +5513,7 @@ not been tested on a device or emulator for this change.
 ### Hosted runtime installation — 2026-11-13
 
 The pinned private RC runtime model was installed through a temporary authenticated, checksum-verified import and encrypted with the web runtime's application key. The temporary import routes and page were removed after installation. The server terminal reported the model missing despite the web runtime reporting it present; their storage visibility requires further investigation. The operator subsequently reported maneuver events appearing in Admin on a new booking. This does not establish that all previously pending batches synced or that event classification is accurate. The diagnostic command remains available, but its result reflects the environment where it runs.
+
+### Immediate driving reports on completion — 2026-11-13
+
+Completing a booking now finalizes its report inside the booking transition using only server-received motion batches and confirmed events. Active sessions close as interrupted and the report records incomplete synchronization; unresolved candidate events remain uncertain. New batches are rejected after completion, while exact duplicates of accepted batches remain idempotent. The scheduled finalizer also processes older completed bookings without reports. A booking without motion sessions has no report; one without received batches is not graded. The phone may retain rejected encrypted pending batches until separately discarded; no automatic deletion is implied. Sources: `BookingService`, `RentalDrivingReportService`, and `RentalMotionMonitoringTest`.

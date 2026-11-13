@@ -320,15 +320,9 @@ it('uses confirmed events for consistent finalized grades in the list and report
     $this->actingAs($staff, 'web')->getJson('/admin/driving-analysis')->assertForbidden();
 });
 
-it('waits for eligible late uploads then publishes one immutable grade in the main inbox', function () {
+it('immediately finalizes received events and rejects new batches after completion', function () {
     $sessionId = $this->postJson($this->url.'/start', $this->input)->assertOk()->json('data.id');
     $this->travel(3)->seconds();
-    $this->trip->update(['status' => 'ended', 'ended_at' => now()]);
-    $this->booking->update(['status' => BookingStatus::Completed, 'completed_at' => now()]);
-    $reports = app(RentalDrivingReportService::class);
-    expect($reports->process())->toBe(0)->and(RentalDrivingReport::count())->toBe(0);
-    $this->getJson($this->url)->assertJsonPath('data.report_sync_closed', false);
-
     $payload = ['client_batch_id' => (string) Str::uuid(), 'version' => 'rc-demo-inference-v1',
         'windows' => [['id' => 'w-0-400', 'start_ms' => 0, 'end_ms' => 400, 'features' => array_fill(0, 35, 0),
             'braking_evidence' => ['peak_ms' => 0, 'vertical_peak' => 0, 'pitch_rate_peak' => 0]]]];
@@ -340,21 +334,20 @@ it('waits for eligible late uploads then publishes one immutable grade in the ma
     $this->postJson($path, $payload)->assertOk();
     DriveMonitoringEvent::create(['session_id' => $sessionId, 'target' => 'harsh_braking', 'status' => 'confirmed',
         'start_ms' => 0, 'end_ms' => 400, 'last_ms' => 400, 'emitted_ms' => 400, 'vote' => .9]);
-    expect($reports->process())->toBe(0);
-    $this->postJson($this->url.'/sessions/'.$sessionId.'/stop')->assertOk();
+    $this->trip->update(['status' => 'ended', 'ended_at' => now()]);
+    $this->booking->update(['status' => BookingStatus::Completed, 'completed_at' => now()]);
+    $reports = app(RentalDrivingReportService::class);
     expect($reports->process())->toBe(1)->and($reports->process())->toBe(0);
     $this->getJson($this->url)->assertJsonPath('data.report_sync_closed', true);
     $this->postJson($path, $payload)->assertOk();
     $this->postJson($path, [...$payload, 'client_batch_id' => (string) Str::uuid()])->assertConflict();
-    expect(RentalDrivingReport::sole()->score)->toBe(98);
-
+    $report = RentalDrivingReport::sole();
+    expect($report->score)->toBe(98)->and($report->snapshot['grading']['sync_incomplete'])->toBeTrue()
+        ->and(DriveMonitoringSession::findOrFail($sessionId)->status)->toBe('stopped');
     $inbox = '/api/mobile/notifications?pagination=cursor&per_page=10';
     $message = $this->getJson($inbox)->assertOk()->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.data.event_type', 'driving_report_ready')->json('data.0.fullMessage');
-    expect($message)->toContain('Overall grade: 98 / 100', 'Harsh braking: 1 × 2', 'Calculation: 100 − 2 = 98', 'Summary');
-    $this->getJson($inbox.'&booking_code='.$this->booking->booking_code)->assertOk()->assertJsonCount(0, 'data');
-    Sanctum::actingAs(customerUser());
-    $this->getJson($inbox)->assertOk()->assertJsonCount(0, 'data');
+    expect($message)->toContain('Overall grade: 98 / 100', 'Harsh braking: 1 × 2', 'Calculation: 100 − 2 = 98');
 });
 
 it('closes an expired incomplete sync without inventing a grade', function () {

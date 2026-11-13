@@ -21,6 +21,7 @@ use App\Services\BookingService;
 use App\Services\DriverAssignmentService;
 use App\Services\PayPalCheckoutService;
 use App\Services\PayPalClient;
+use App\Services\RentalDrivingReportService;
 use App\Services\RentalReadinessService;
 use App\Services\TelematicsService;
 use App\Services\TelematicsSetupService;
@@ -982,6 +983,8 @@ it('returns a zero-charge booking without completing it and makes retries safe a
     $this->actingAs($actor)->postJson("/admin/bookings/{$booking->id}/finalize-return")
         ->assertOk()->assertJsonPath('data.statusKey', 'returned')->assertJsonPath('data.remainingBalance', 0);
     expect($booking->fresh()->completed_at)->toBeNull();
+    $this->mock(RentalDrivingReportService::class)
+        ->shouldReceive('finalize')->once()->with($booking->id)->andReturn(false);
     $this->postJson("/admin/bookings/{$booking->id}/complete")->assertOk()->assertJsonPath('data.statusKey', 'completed');
     $completedAt = $booking->fresh()->completed_at->toISOString();
     $this->postJson("/admin/bookings/{$booking->id}/finalize-return")->assertOk()->assertJsonPath('data.statusKey', 'completed');

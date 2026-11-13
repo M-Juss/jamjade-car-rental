@@ -7,7 +7,6 @@ use App\Enums\RentalType;
 use App\Models\Booking;
 use App\Models\DriveMonitoringSession;
 use App\Models\RentalDrivingReport;
-use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -42,8 +41,7 @@ class RentalDrivingReportService
 
     public function acceptsLateReadings(Booking $booking): bool
     {
-        return $booking->status !== BookingStatus::Completed
-            || ($this->deadline($booking)->isFuture() && ! RentalDrivingReport::where('booking_id', $booking->id)->exists());
+        return $booking->status !== BookingStatus::Completed;
     }
 
     public function finalize(int $bookingId): bool
@@ -63,13 +61,8 @@ class RentalDrivingReportService
                 return false;
             }
             $active = (clone $sessions)->where('status', 'active');
-            $deadline = $this->deadline($booking);
-            $awaitingSync = (clone $active)->exists();
-            if ($awaitingSync && $deadline->isFuture()) {
-                return false;
-            }
-            $incomplete = $awaitingSync || (clone $sessions)->where(fn ($query) => $query
-                ->where('sync_interrupted', true)->orWhere('ended_at', '>=', $deadline))->exists();
+            $incomplete = (clone $active)->exists()
+                || (clone $sessions)->where('sync_interrupted', true)->exists();
             $finalizedAt = now();
             foreach ($active->lockForUpdate()->get() as $session) {
                 $this->events->finish($session);
@@ -100,12 +93,6 @@ class RentalDrivingReportService
 
             return true;
         }, 3);
-    }
-
-    private function deadline(Booking $booking): CarbonInterface
-    {
-        return ($booking->completed_at ?? $booking->updated_at)->copy()
-            ->addHours(config('telematics.driving_report_sync_hours'));
     }
 
     private function notify(Booking $booking, ?int $operatorId, array $snapshot): void
