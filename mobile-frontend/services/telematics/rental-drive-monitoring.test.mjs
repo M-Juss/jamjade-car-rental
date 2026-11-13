@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
 
-function harness({ denied = false, lostResponse = false, failedCapture = false, pending = 0, cancelAfterOpen = false, cancelDuringTransfer = false, closed = false, checkFails = false } = {}) {
+function harness({ denied = false, lostResponse = false, failedCapture = false, pending = 0, cancelAfterOpen = false, cancelDuringTransfer = false, closed = false, checkFails = false, unfinished = [] } = {}) {
   const calls = [];
   let current = true;
   const reference = { rotation_rfu: [[1,0,0],[0,1,0],[0,0,1]], acceleration_mean: [0,0,9.81], gyroscope_mean: [0,0,0] };
@@ -18,7 +18,7 @@ function harness({ denied = false, lostResponse = false, failedCapture = false, 
         assert.equal(input.token, 'synthetic-token'); assert.deepEqual(input.reference, reference);
         if (failedCapture) throw new Error('capture failed');
       },
-      rentalMonitoringStatus: async () => JSON.stringify({ active: !failedCapture, booking_code: 'BK-TEST', pending_batches: pending }),
+      rentalMonitoringStatus: async () => JSON.stringify({ active: !failedCapture, booking_code: 'BK-TEST', pending_batches: pending, unfinished }),
       rentalMonitoringStop: async () => { calls.push('stop-capture'); },
       rentalMonitoringDiscardStart: async () => { calls.push('clear-identity'); },
       rentalMonitoringRecover: async () => { calls.push('recover'); },
@@ -101,4 +101,10 @@ test('discards only when the server confirms completion', async () => {
   const failed = harness({ checkFails: true });
   await assert.rejects(failed.api.discardCompletedRentalMotion(7, 'BK-TEST', 's1'), /offline/);
   assert.deepEqual(failed.calls, []);
+});
+
+test('clears completed queues before preparing a new booking', async () => {
+  const h = harness({ closed: true, unfinished: [{ id: 'old-session', booking_code: 'BK-OLD' }] });
+  await h.start();
+  assert.ok(h.calls.indexOf('discard:7:BK-OLD:old-session') < h.calls.indexOf('identity'));
 });

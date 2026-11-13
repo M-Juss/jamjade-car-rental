@@ -22,6 +22,13 @@ export async function beginRentalDriveMonitoring(owner: number, booking: string,
   if (!nativeRecorder?.rentalMonitoringPrepare || !nativeRecorder.rentalMonitoringStart) throw new Error('Install the updated Android build to use rental motion monitoring.');
   await ensureMotionNotificationPermission('monitoring');
   if (!isCurrent()) throw new Error('Monitoring start was cancelled.');
+  const previous = await rentalMotionStatus(owner);
+  for (const pending of previous?.unfinished ?? []) {
+    if (!isCurrent()) throw new Error('Monitoring start was cancelled.');
+    try { await discardCompletedRentalMotion(owner, pending.booking_code, pending.id, isCurrent); }
+    catch { /* Never discard when the server cannot confirm completion. */ }
+  }
+  if (!isCurrent()) throw new Error('Monitoring start was cancelled.');
   const clientId = await nativeRecorder.rentalMonitoringPrepare(String(owner), booking);
   if (!isCurrent()) throw new Error('Monitoring start was cancelled.');
   const session = await startRentalMotion(booking, { client_session_id: clientId,
