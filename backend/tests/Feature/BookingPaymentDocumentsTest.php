@@ -331,6 +331,7 @@ it('keeps one issued reference when document generation fails and is retried', f
     app()->instance(BookingConfirmationPdfService::class, $failingPdf);
     expect(app(BookingEmailService::class)->sendDocument($document))->toBeFalse()
         ->and($document->fresh()->delivery_status)->toBe('failed');
+    $this->assertDatabaseHas('operational_errors', ['category' => 'documents', 'booking_id' => $booking->id]);
 
     app()->forgetInstance(BookingConfirmationPdfService::class);
     expect(app(BookingEmailService::class)->sendDocument($document))->toBeTrue()

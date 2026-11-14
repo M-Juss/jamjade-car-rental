@@ -59,6 +59,10 @@ class BookingService
     public function paginateForAdmin(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return Booking::query()
+            ->withSum(['successfulPayments as customer_paid_total' => fn ($query) => $query
+                ->whereColumn('payments.user_id', 'bookings.user_id')
+                ->where('currency', 'PHP')->where('amount', '>', 0)
+                ->where(fn ($query) => $query->whereNull('purpose')->orWhere('purpose', '!=', 'driver_outstanding'))], 'amount')
             ->when(isset($filters['booking_ids']), fn ($query) => $query->whereIn('bookings.id', $filters['booking_ids']))
             ->withExists([
                 'additionalCharges as customer_charges_outstanding' => fn ($query) => $query->where('responsibility', 'customer')->outstanding(),

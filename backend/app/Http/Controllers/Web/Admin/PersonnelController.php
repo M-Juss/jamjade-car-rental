@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Personnel\DeletePersonnelRequest;
 use App\Http\Requests\Admin\Personnel\ListPersonnelRequest;
+use App\Http\Requests\Admin\Personnel\PersonnelPhotoRequest;
 use App\Http\Requests\Admin\Personnel\StoreAdminRequest;
 use App\Http\Requests\Admin\Personnel\StorePersonnelRequest;
 use App\Http\Requests\Admin\Personnel\UpdatePersonnelRequest;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\PersonnelService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PersonnelController extends Controller
 {
@@ -66,5 +68,15 @@ class PersonnelController extends Controller
         $this->personnel->delete($user, $request->user());
 
         return $this->success('Personnel account deleted successfully.');
+    }
+
+    public function uploadPhoto(PersonnelPhotoRequest $request, User $user): JsonResponse
+    {
+        return $this->success('Photo updated.', ['user' => new PersonnelResource($this->personnel->changePhoto($user, $request->user(), $request->file('photo')))]);
+    }
+
+    public function deletePhoto(Request $request, User $user): JsonResponse
+    {
+        return $this->success('Photo removed.', ['user' => new PersonnelResource($this->personnel->changePhoto($user, $request->user(), null))]);
     }
 }

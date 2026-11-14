@@ -43,6 +43,7 @@ class LateReturnPricingService
             $before = $settings->only(['small_vehicle_hourly_rate', 'large_vehicle_hourly_rate']);
             $settings->update($data);
             activity('late-return-pricing')->performedOn($settings)->causedBy($actor)
+                ->event('late_pricing_updated')
                 ->withProperties(['before' => $before, 'after' => $data])->log('Late return pricing updated');
 
             return $this->settings();

@@ -32,8 +32,8 @@ export function TelematicsActivity({ activity, showError }: { activity: ReturnTy
       <View key={`maneuver:${item.id}`} className="gap-2 rounded-field border border-border bg-surface p-3">
         <View className="flex-row items-start justify-between gap-3">
           <Text className="min-w-0 flex-1 font-sans text-body font-semibold text-foreground">{maneuverTitles[item.target]}</Text>
-          <View className={`shrink-0 rounded-full px-2.5 py-1 ${item.status === 'confirmed' ? 'bg-success-surface' : 'bg-warning-surface'}`}>
-            <Text className={`font-sans text-[11px] font-semibold ${item.status === 'confirmed' ? 'text-success' : 'text-warning'}`}>{item.status === 'confirmed' ? 'Detected' : 'Uncertain'}</Text>
+          <View className={`shrink-0 rounded-full px-2.5 py-1 ${item.status === 'confirmed' ? 'bg-destructive-surface' : 'bg-warning-surface'}`}>
+            <Text className={`font-sans text-[11px] font-semibold ${item.status === 'confirmed' ? 'text-destructive' : 'text-warning'}`}>{item.status === 'confirmed' ? 'Detected' : 'Uncertain'}</Text>
           </View>
         </View>
         <Text className="font-sans text-[11px] text-secondary-foreground">{formatRentalDate(item.occurredAt, true)}</Text>

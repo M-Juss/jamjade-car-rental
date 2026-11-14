@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Booking\AssignDriverRequest;
+use App\Http\Requests\Admin\Booking\CancelBookingRequest;
 use App\Http\Requests\Admin\Booking\ListBookingsRequest;
 use App\Http\Requests\Admin\Booking\ListDrivingAnalysisRequest;
 use App\Http\Requests\Admin\Booking\ReceiveVehicleRequest;
@@ -203,8 +204,19 @@ class BookingController extends Controller
         return $this->statusAction($request, $booking, BookingStatus::Rejected, 'Booking rejected successfully.');
     }
 
-    public function cancel(BookingStatusRequest $request, Booking $booking): JsonResponse
+    public function cancel(CancelBookingRequest $request, Booking $booking, BookingCancellationService $service): JsonResponse
     {
+        $data = $request->validated();
+        if (isset($data['refund_mode'])) {
+            return app(OwnerVerificationService::class)->run($request, 'Cancel booking and approve refund', $booking->booking_code, $data,
+                fn () => Booking::query()->lockForUpdate()->findOrFail($booking->id),
+                function ($locked) use ($service, $request, $data) {
+                    $updated = $service->cancelWithRefund($locked, $request->user(), $data);
+
+                    return $this->success('Booking cancelled and refund approved.', new BookingResource($updated->load($this->detailRelations())));
+                });
+        }
+
         return $this->statusAction($request, $booking, BookingStatus::Cancelled, 'Booking cancelled successfully.');
     }
 

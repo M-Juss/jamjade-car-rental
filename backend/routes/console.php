@@ -4,6 +4,7 @@ use App\Models\MobilePasswordReset;
 use App\Models\PendingMobileRegistration;
 use App\Services\BookingEmailService;
 use App\Services\DeliveryQuoteService;
+use App\Services\DocumentRetentionService;
 use App\Services\LocationMonitoringService;
 use App\Services\PaymentDeadlineService;
 use App\Services\RentalDrivingReportService;
@@ -50,6 +51,12 @@ Artisan::command('mobile-registration:purge', function () {
 })->purpose('Remove expired unverified mobile registrations');
 
 Schedule::command('mobile-registration:purge')->hourly()->withoutOverlapping();
+
+Artisan::command('documents:archive-expired', function (DocumentRetentionService $service) {
+    $this->info('Verification documents archived: '.$service->archiveExpired().'.');
+})->purpose('Remove expired verification images and archive their document records');
+
+Schedule::command('documents:archive-expired')->daily()->withoutOverlapping();
 
 Schedule::call(fn () => MobilePasswordReset::query()->where('expires_at', '<=', now())->delete())
     ->name('mobile-password-reset-purge')->hourly()->withoutOverlapping();

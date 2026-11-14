@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
@@ -24,30 +25,14 @@ function fakeAddressDirectory(): void
                     ['code' => '0402100000', 'name' => 'Cavite'],
                 ],
             ]),
-            str_contains($url, '/provinces/0402100000/cities-municipalities/0402106000/barangays') => Http::response([
-                'data' => [
-                    ['code' => '0402106001', 'name' => 'Barangay 1'],
-                ],
-            ]),
-            str_contains($url, '/provinces/0402100000/cities-municipalities') => Http::response([
-                'data' => [
-                    ['code' => '0402106000', 'name' => 'City of Dasmarinas', 'type' => 'City'],
-                ],
-            ]),
-            str_contains($url, '/regions/0400000000/provinces')
-                && ! str_contains($url, 'cities-municipalities') => Http::response([
-                    'data' => [
-                        ['code' => '0402100000', 'name' => 'Cavite'],
-                    ],
-                ]),
             str_contains($url, '/cities-municipalities/0402106000/barangays') => Http::response([
-                'data' => [
-                    ['code' => '0402106001', 'name' => 'Barangay 1'],
-                ],
+                'data' => [['code' => '0402106001', 'name' => 'Barangay 1']],
             ]),
-            str_contains($url, '/provinces/0402100000/cities-municipalities') => Http::response([
+            str_contains($url, '/cities-municipalities?') => Http::response([
                 'data' => [
-                    ['code' => '0402106000', 'name' => 'City of Dasmarinas', 'type' => 'City'],
+                    ['code' => '0402106000', 'name' => 'City of Dasmarinas', 'type' => 'City', 'regionCode' => '0400000000', 'provinceCode' => '0402100000', 'geographicProvinceCode' => '0402100000'],
+                    ['code' => '0402101000', 'name' => 'Alfonso', 'type' => 'Mun', 'regionCode' => '0400000000', 'provinceCode' => '0402100000', 'geographicProvinceCode' => '0402100000'],
+                    ['code' => '0702217000', 'name' => 'Independent City', 'type' => 'City', 'regionCode' => '0700000000', 'provinceCode' => null, 'geographicProvinceCode' => '0702200000'],
                 ],
             ]),
             default => Http::response(['message' => 'Not found'], 404),
@@ -147,4 +132,42 @@ it('requires postal code for a structured profile address', function () {
     ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['postal_code']);
+});
+
+it('uses geographic provinces and refuses inconsistent parent selections', function () {
+    fakeAddressDirectory();
+    Sanctum::actingAs(User::factory()->create());
+
+    $this->getJson('/api/mobile/address/cities-municipalities?province_code=0702200000')
+        ->assertOk()->assertJsonPath('data.0.code', '0702217000');
+    $this->getJson('/api/mobile/address/barangays?region_code=0700000000&province_code=0702200000&city_municipality_code=0402106000')
+        ->assertStatus(503);
+});
+
+it('returns a verified postal code only for a matching municipality', function () {
+    fakeAddressDirectory();
+    Sanctum::actingAs(User::factory()->create());
+
+    $this->getJson('/api/mobile/address/cities-municipalities?province_code=0402100000')
+        ->assertOk()->assertJsonPath('data.0.postalCode', null)->assertJsonPath('data.1.postalCode', '4123');
+});
+
+it('reports directory connection failures without exposing provider errors', function () {
+    Cache::flush();
+    Http::fake(fn () => throw new ConnectionException('provider failed'));
+    Sanctum::actingAs(User::factory()->create());
+
+    $this->getJson('/api/mobile/address/provinces')->assertStatus(503)
+        ->assertJsonMissing(['provider failed']);
+    $this->assertDatabaseMissing('operational_errors', ['category' => 'address', 'booking_id' => null]);
+});
+
+it('does not auto-fill known multi-code municipalities', function () {
+    $postalCodes = json_decode(file_get_contents(config_path('philippine-postal-codes.json')), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($postalCodes)->toHaveKey('0402101000', '4123')
+        ->not->toHaveKey('0402103000') // Bacoor
+        ->not->toHaveKey('0402106000') // Dasmariñas
+        ->not->toHaveKey('0501606000') // Labo
+        ->not->toHaveKey('0403411000'); // Los Baños
 });

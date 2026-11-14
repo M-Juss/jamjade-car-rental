@@ -8,6 +8,7 @@ use App\Services\DocumentVerificationService;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
@@ -19,8 +20,57 @@ beforeEach(function () {
     Sanctum::actingAs(documentCustomerUser());
 });
 
+it('requires the current privacy notice agreement for document uploads', function () {
+    $this->post('/api/mobile/documents/upload', [
+        'document_type' => CustomerDocument::PROOF_OF_BILLING,
+        'file' => UploadedFile::fake()->image('address.jpg'),
+    ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('privacy_notice_version');
+});
+
+it('preserves submitted privacy agreements when resubmission lacks consent and records each consented submission separately', function () {
+    $documentId = $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
+        'document_type' => CustomerDocument::PROOF_OF_BILLING,
+        'file' => UploadedFile::fake()->image('first-address.jpg'),
+    ], ['Accept' => 'application/json'])->assertCreated()->json('data.id');
+
+    $document = CustomerDocument::findOrFail($documentId);
+    $document->update(['status' => DocumentStatus::Approved]);
+    $original = DB::table('document_privacy_acceptances')->where('document_id', $documentId)->sole();
+    $this->travel(1)->minutes();
+
+    $this->post('/api/mobile/documents/upload', [
+        'document_type' => CustomerDocument::PROOF_OF_BILLING,
+        'file' => UploadedFile::fake()->image('unconsented-address.jpg'),
+    ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('privacy_notice_version');
+
+    expect($document->fresh()->status)->toBe(DocumentStatus::Approved);
+    expect(DB::table('document_privacy_acceptances')->where('document_id', $documentId)->count())->toBe(1);
+    expect(DB::table('document_privacy_acceptances')->where('id', $original->id)->sole())->toEqual($original);
+
+    $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
+        'document_type' => CustomerDocument::PROOF_OF_BILLING,
+        'file' => UploadedFile::fake()->image('resubmitted-address.jpg'),
+    ], ['Accept' => 'application/json'])->assertCreated()->assertJsonPath('data.id', $documentId);
+
+    expect(DB::table('document_privacy_acceptances')->where('document_id', $documentId)->count())->toBe(2);
+    expect(DB::table('document_privacy_acceptances')->where('id', $original->id)->sole())->toEqual($original);
+    expect(DB::table('document_privacy_acceptances')->where('document_id', $documentId)->latest('id')->first()->accepted_at)
+        ->not->toBe($original->accepted_at);
+});
+
+it('provides only the active owner contact for the notice', function () {
+    $owner = User::factory()->create(['is_active' => true]);
+    $owner->assignRole(UserRole::Owner->value);
+    $this->getJson('/api/mobile/documents/privacy-notice')->assertOk()
+        ->assertJsonPath('data.contact_email', $owner->email)
+        ->assertJsonPath('data.version', 'document-privacy-v1');
+});
+
 it('normalizes license numbers to uppercase with display hyphens', function (string $input, string $expected) {
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::DRIVERS_LICENSE,
         'document_number' => $input,
         'expires_at' => now()->addYear()->toDateString(),
@@ -41,6 +91,7 @@ it('normalizes license numbers to uppercase with display hyphens', function (str
 
 it('rejects invalid or overlong license numbers without truncating them', function (string $number) {
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::DRIVERS_LICENSE,
         'document_number' => $number,
         'expires_at' => now()->addYear()->toDateString(),
@@ -55,6 +106,7 @@ it('rejects invalid or overlong license numbers without truncating them', functi
 
 it('still requires both license images', function () {
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::DRIVERS_LICENSE,
         'document_number' => 'N03-12-123456',
         'expires_at' => now()->addYear()->toDateString(),
@@ -66,6 +118,7 @@ it('still requires both license images', function () {
 
 it('stores an optional proof of address back image and exposes it to staff', function () {
     $response = $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::PROOF_OF_BILLING,
         'file' => UploadedFile::fake()->create('address.pdf', 512, 'application/pdf'),
         'back_file' => UploadedFile::fake()->image('address-back.jpg'),
@@ -75,6 +128,7 @@ it('stores an optional proof of address back image and exposes it to staff', fun
         ->assertJsonPath('data.backFileUrl', fn ($url) => is_string($url) && str_ends_with($url, '.jpg'));
 
     $document = CustomerDocument::findOrFail($response->json('data.id'));
+    $this->assertDatabaseHas('document_privacy_acceptances', ['document_id' => $document->id, 'user_id' => $document->user_id, 'notice_version' => 'document-privacy-v1']);
     Storage::disk('public')->assertExists([$document->file_path, $document->back_file_path]);
 
     $reviewer = User::factory()->create();
@@ -86,6 +140,7 @@ it('stores an optional proof of address back image and exposes it to staff', fun
 
 it('requires the main proof of address image even when a back image is provided', function () {
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::PROOF_OF_BILLING,
         'back_file' => UploadedFile::fake()->image('back.jpg'),
     ], ['Accept' => 'application/json'])
@@ -95,6 +150,7 @@ it('requires the main proof of address image even when a back image is provided'
 
 it('validates optional proof of address uploads with the same file limits', function () {
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::PROOF_OF_BILLING,
         'file' => UploadedFile::fake()->image('address.jpg'),
         'back_file' => UploadedFile::fake()->image('back.jpg')->size(5121),
@@ -112,6 +168,7 @@ it('rejects new passport uploads while preserving historical passport records', 
     ]);
 
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::PASSPORT,
         'file' => UploadedFile::fake()->image('passport.jpg'),
     ], ['Accept' => 'application/json'])
@@ -146,7 +203,8 @@ it('resubmits an approved document for review and restores eligibility only afte
         'front_file' => UploadedFile::fake()->image('new-front.jpg'),
         'back_file' => UploadedFile::fake()->image('new-back.jpg'),
     ] : ['file' => UploadedFile::fake()->image('new-address.jpg')];
-    $this->post('/api/mobile/documents/upload', ['document_type' => $type, ...$payload], ['Accept' => 'application/json'])
+    $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1', 'document_type' => $type, ...$payload], ['Accept' => 'application/json'])
         ->assertCreated()
         ->assertJsonPath('data.id', $document->id)
         ->assertJsonPath('data.statusKey', 'pending')
@@ -173,6 +231,7 @@ it('keeps pending submissions locked and preserves their existing files', functi
         'file_path' => $oldPath,
     ]);
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::PROOF_OF_BILLING,
         'file' => UploadedFile::fake()->image('replacement.jpg'),
     ], ['Accept' => 'application/json'])

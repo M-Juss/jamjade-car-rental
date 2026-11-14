@@ -7,8 +7,10 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -186,6 +188,32 @@ class PersonnelService
             'driver' => $actor->hasAnyRole(['admin', 'staff']),
             default => false,
         };
+    }
+
+    public function changePhoto(User $account, User $actor, ?UploadedFile $photo): User
+    {
+        abort_if($account->is($actor) || $account->roles()->count() !== 1 || ! $this->canManageRole($actor, $account->roles()->first()->name), 403);
+        $old = $account->personnel_photo_path;
+        $path = $photo?->store('personnel-photos', 'public');
+        if ($photo && ! $path) {
+            abort(503, 'Photo could not be saved.');
+        }
+        try {
+            $account->forceFill(['personnel_photo_path' => $path])->save();
+        } catch (\Throwable $error) {
+            if ($path) {
+                Storage::disk('public')->delete($path);
+            }
+            throw $error;
+        }
+        if ($old) {
+            Storage::disk('public')->delete($old);
+        }
+
+        activity()->causedBy($actor)->performedOn($account)
+            ->event($photo ? 'personnel_photo_updated' : 'personnel_photo_deleted')->log('Personnel photo changed.');
+
+        return $account->load('roles');
     }
 
     private function accountFields(array $data): array

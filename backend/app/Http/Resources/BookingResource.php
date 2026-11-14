@@ -149,8 +149,9 @@ class BookingResource extends JsonResource
             'downPayment' => $isDriverView ? 0 : (float) $this->down_payment_amount,
             'totalAmount' => $isDriverView ? 0 : (float) $this->total_amount,
             'customerPaidAmount' => $this->when(
-                $isManagement && ! $isDriverView && $this->relationLoaded('additionalCharges') && $this->relationLoaded('payments'),
-                fn () => (float) $this->successfulCustomerPayments()->sum('amount'),
+                $isManagement && ! $isDriverView && $this->relationLoaded('payments'),
+                fn () => array_key_exists('customer_paid_total', $this->resource->getAttributes())
+                    ? (float) $this->customer_paid_total : (float) $this->successfulCustomerPayments()->sum('amount'),
             ),
             'remainingBalance' => $isDriverView ? 0 : max((float) $this->remaining_balance, max((float) $this->total_amount - $paidAmount, 0)),
             'balanceDueAt' => $isDriverView ? null : $this->balance_due_at?->toISOString(),

@@ -164,3 +164,13 @@ programming, maintenance, and explaining the system during the capstone defense.
 Laravel issues and consumes one-time owner email codes at protected web write endpoints. `OwnerVerificationService` binds the actor, action, validated data and locked state, and commits consumption with the mutation. The web HTTP service opens a shared confirmation/code dialog when the server requires verification. Fee pricing uses one combined transaction; legacy pricing writes remain protected. See [roles and access](user-roles-and-access.md#owner-verification).
 
 The shared Personnel form uses the role-scoped `/admin/personnel` endpoints: only the Owner can manage Admin accounts, Admins manage Staff and Drivers, and Staff can manage Drivers. Invitation issuance and acceptance are disabled. See [roles and access](user-roles-and-access.md#owner-and-admin-accounts).
+
+Mobile profile address selection uses the server-side PSGC directory and a bounded
+PHLPost postal-code snapshot; see [Roles and access: mobile profile address directory](user-roles-and-access.md#mobile-profile-address-directory--2026-11-13)
+for source, validation, and coverage limits.
+
+The Admin-only Activity Log combines allowlisted business activity records and selected
+operational failures into a paginated, read-only Success/Failed view with actor,
+module, action and search filters. Technical/address-directory issues, telematics and research are excluded. See [Activity Log](user-roles-and-access.md#activity-log).
+
+Personnel photo updates use Laravel-authorized web endpoints and public storage. The Owner web profile uses Laravel session authentication, a database-backed emailed verification challenge for email changes, and the shared password rules. See `user-roles-and-access.md` for permissions and current verification limits.

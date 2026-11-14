@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Admin;
 
+use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +18,7 @@ class PersonnelResource extends JsonResource
             'personnelId' => sprintf('PER-%04d', $this->id),
             'category' => $category,
             'name' => $this->name,
+            'photoUrl' => PublicStorageUrl::make($this->personnel_photo_path),
             'firstName' => $parts[0] ?? '',
             'lastName' => $parts[1] ?? '',
             'email' => $this->email,

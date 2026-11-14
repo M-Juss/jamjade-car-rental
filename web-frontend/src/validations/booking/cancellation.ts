@@ -15,3 +15,16 @@ export type RecordCancellationRefundValues = z.infer<typeof recordCancellationRe
 
 export const cancellationReasonSchema = z.object({ reason: z.string().trim().min(1, "Cancellation reason is required.").max(1000) });
 export type CancellationReasonValues = z.infer<typeof cancellationReasonSchema>;
+
+export const cancellationWithRefundSchema = (paid: number, refundEnabled: boolean) => cancellationReasonSchema.extend({
+  refundMode: z.enum(['full', 'custom']),
+  refundAmount: z.string(),
+}).superRefine((values, context) => {
+  if (!refundEnabled || values.refundMode !== 'custom') return;
+  if (!/^\d+(?:\.\d{1,2})?$/.test(values.refundAmount) || Number(values.refundAmount) <= 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['refundAmount'], message: 'Enter an amount greater than zero with up to two decimal places.' });
+  } else if (Math.round(Number(values.refundAmount) * 100) > Math.round(paid * 100) || Number(values.refundAmount) > 9_999_999.99) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['refundAmount'], message: 'The refund cannot exceed the amount actually paid.' });
+  }
+});
+export type CancellationWithRefundValues = z.infer<ReturnType<typeof cancellationWithRefundSchema>>;

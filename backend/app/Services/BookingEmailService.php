@@ -147,6 +147,7 @@ class BookingEmailService
             return $document;
         });
         if ($updated) {
+            app(OperationalErrorService::class)->record('documents', $updated->booking_id);
             $this->updateSummary($updated);
             Log::error('Booking payment document delivery failed.', [
                 'booking_id' => $updated->booking_id, 'document_id' => $updated->id,

@@ -2,8 +2,15 @@ import type {
   CustomerDocumentId,
   CustomerDocumentUploads,
 } from '@/types/customer';
-import { apiPost } from '@/services/http';
+import { apiGet, apiPost } from '@/services/http';
 import { formatDriverLicenseNumber, isValidDriverLicenseNumber } from '@/lib/customer/driver-license';
+import { z } from 'zod';
+
+const privacyNoticeVersionSchema = z.literal('document-privacy-v1');
+
+export async function getDocumentPrivacyNotice() {
+  return (await apiGet<{ version: string; contact_email: string }>('/mobile/documents/privacy-notice')).data;
+}
 
 import type { MobileDocument } from './types';
 import { mapCustomerDocument } from './profile-mapping';
@@ -56,10 +63,12 @@ function appendUpload(formData: FormData, fieldName: string, uri: string) {
 function buildDocumentBody(
   documentId: CustomerDocumentId,
   documents: CustomerDocumentUploads,
+  privacyNoticeVersion: string,
 ) {
   const formData = new FormData();
 
   formData.append('document_type', DOCUMENT_TYPES[documentId]);
+  formData.append('privacy_notice_version', privacyNoticeVersionSchema.parse(privacyNoticeVersion));
 
   if (documentId === 'driver-license') {
     if (!isValidDriverLicenseNumber(documents.driverLicenseNumber)) {
@@ -82,10 +91,11 @@ function buildDocumentBody(
 export async function uploadCustomerDocument(
   documentId: CustomerDocumentId,
   documents: CustomerDocumentUploads,
+  privacyNoticeVersion: string,
 ) {
   const response = await apiPost<MobileDocument>(
     '/mobile/documents/upload',
-    buildDocumentBody(documentId, documents),
+    buildDocumentBody(documentId, documents, privacyNoticeVersion),
   );
 
   return mapCustomerDocument(response.data);

@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { updatePersonnelPhoto } from "@/services/personnel/personnel.service";
+
+import { useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { appToast } from "@/lib/toast";
@@ -15,6 +18,7 @@ import {
   Save,
   ShieldCheck,
   User,
+  Upload,
 } from "lucide-react";
 import {
   FormDialogContent,
@@ -33,6 +37,7 @@ import type { PersonnelRole, PersonnelUser } from "@/services/personnel";
 import { ApiError } from "@/services/http";
 import {
   createPersonnelAccountSchema,
+  personnelPhotoSchema,
   sanitizeMobileNumber,
   sanitizePersonName,
   type PersonnelAccountFormValues,
@@ -61,6 +66,17 @@ export function PersonnelAccountForm({
   onSave,
 }: PersonnelAccountFormProps) {
   const isViewMode = mode === "view";
+  const [photoUrl, setPhotoUrl] = useState(personnel?.photoUrl ?? null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const changePhoto = async (photo: File | null) => {
+    if (!personnel) return;
+    if (photo && !personnelPhotoSchema.safeParse(photo).success) { appToast.error("Choose a JPEG, PNG or WebP image under 5 MB."); return; }
+    setPhotoBusy(true);
+    try { const result = await updatePersonnelPhoto(personnel.id, photo); setPhotoUrl(result.photoUrl ?? null); appToast.success("Profile photo updated."); }
+    catch (error) { appToast.error(error instanceof ApiError ? error.errors?.photo?.[0] ?? error.message : "Could not update the profile photo."); }
+    finally { setPhotoBusy(false); }
+  };
   const formSchema = useMemo(
     () => createPersonnelAccountSchema(mode === "add"),
     [mode],
@@ -100,7 +116,7 @@ export function PersonnelAccountForm({
   };
 
   const handleDialogOpenChange = (nextOpen: boolean) => {
-    if (isSubmitting) return;
+    if (isSubmitting || photoBusy) return;
     if (!nextOpen) {
       resetForm();
     }
@@ -109,7 +125,7 @@ export function PersonnelAccountForm({
   };
 
   const handleCancel = () => {
-    if (isSubmitting) return;
+    if (isSubmitting || photoBusy) return;
     resetForm();
     onOpenChange(false);
   };
@@ -165,6 +181,7 @@ export function PersonnelAccountForm({
   };
 
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (photoBusy) { event.preventDefault(); return; }
     void handleSubmit(handleSave, () => {
       appToast.error("Check the highlighted personnel account fields.");
     })(event);
@@ -194,6 +211,20 @@ export function PersonnelAccountForm({
 
           <ScrollArea className="flex-1 overflow-y-auto">
             <div className="px-6 py-5 space-y-5">
+              {personnel && <><div className="flex flex-wrap items-center justify-center gap-4">
+                <Avatar className="size-16"><AvatarImage src={photoUrl ?? undefined} alt={`${personnel.name}'s profile photo`} /><AvatarFallback>{personnel.name.slice(0, 1)}</AvatarFallback></Avatar>
+                <div className="min-w-0 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Profile photo</p>
+                  {!isViewMode && <>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" disabled={photoBusy || isSubmitting} onClick={() => photoInput.current?.click()}><Upload size={14} />{photoBusy ? "Updating..." : photoUrl ? "Change photo" : "Upload photo"}</Button>
+                      {photoUrl && <Button type="button" variant="ghost" size="sm" disabled={photoBusy || isSubmitting} onClick={() => void changePhoto(null)}>Remove</Button>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">JPEG, PNG or WebP, up to 5 MB.</p>
+                    <input ref={photoInput} type="file" className="hidden" accept="image/jpeg,image/png,image/webp" aria-label="Upload profile photo" disabled={photoBusy || isSubmitting} onChange={(event) => { const file = event.target.files?.[0]; if (file) void changePhoto(file); event.target.value = ""; }} />
+                  </>}
+                </div>
+              </div><Separator /></>}
               {errors.root?.message && <p role="alert" className="text-sm text-destructive">{errors.root.message}</p>}
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -341,12 +372,6 @@ export function PersonnelAccountForm({
                           message={errors.passwordConfirmation?.message}
                         />
                       </div>
-
-                      {mode === "edit" && (
-                        <p className="sm:col-span-2 -mt-3 text-xs text-subtle-foreground">
-                          Leave both password fields blank to keep the current password.
-                        </p>
-                      )}
                     </>
                   )}
                 </div>
@@ -432,7 +457,7 @@ export function PersonnelAccountForm({
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
-                disabled={isSubmitting}
+                disabled={isSubmitting || photoBusy}
                 className="border-border text-sm font-medium text-muted-foreground hover:bg-background"
               >
                 {isViewMode ? "Close" : "Cancel"}
@@ -440,7 +465,7 @@ export function PersonnelAccountForm({
               {!isViewMode && (
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || photoBusy}
                   className="bg-primary text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Save size={14} className="mr-2" />

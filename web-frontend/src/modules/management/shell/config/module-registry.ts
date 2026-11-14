@@ -5,6 +5,7 @@ import {
   Car,
   ClipboardCheck,
   Fence,
+  Gauge,
   LayoutDashboard,
   MapPin,
   PhilippinePeso,
@@ -12,11 +13,13 @@ import {
   History,
   Wrench,
   Activity,
+  CircleAlert,
 } from "lucide-react";
 
 export type ManagementPortal = "admin" | "staff";
 
 export type ManagementModuleId =
+  | "errors"
   | "dashboard"
   | "bookings"
   | "history"
@@ -52,6 +55,7 @@ export type ManagementModule = {
 };
 
 export const managementModules: readonly ManagementModule[] = [
+  { id: "errors", label: "Activity Log", section: "Administration", icon: CircleAlert, adminOnly: true, path: "errors" },
   {
     id: "dashboard",
     label: "Dashboard",
@@ -116,7 +120,7 @@ export const managementModules: readonly ManagementModule[] = [
     permission: "view fleet tracker",
     path: "fleet",
   },
-  { id: "drivingAnalysis", label: "Driving Analysis", section: "Insights", icon: BarChart3, permission: "view fleet tracker", path: "driving-analysis" },
+  { id: "drivingAnalysis", label: "Driving Analysis", section: "Insights", icon: Gauge, permission: "view fleet tracker", path: "driving-analysis" },
   {
     id: "reports",
     label: "Reports and Analytics",

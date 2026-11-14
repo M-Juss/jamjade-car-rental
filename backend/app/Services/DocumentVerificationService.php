@@ -86,6 +86,13 @@ class DocumentVerificationService
                     'rejection_reason' => null,
                 ])->save();
 
+                DB::table('document_privacy_acceptances')->insert([
+                    'user_id' => $user->id,
+                    'document_id' => $document->id,
+                    'notice_version' => $data['privacy_notice_version'],
+                    'accepted_at' => now(),
+                ]);
+
                 $this->refreshCustomerSelfDriveStatus($user);
 
                 activity()
@@ -170,7 +177,7 @@ class DocumentVerificationService
             activity()
                 ->causedBy($reviewer)
                 ->performedOn($document)
-                ->event('document_reviewed')
+                ->event($status === DocumentStatus::Approved ? 'document_approved' : 'document_rejected')
                 ->withProperties(['status' => $status->value])
                 ->log('Customer document reviewed by admin.');
 
@@ -178,7 +185,7 @@ class DocumentVerificationService
         });
     }
 
-    private function refreshCustomerSelfDriveStatus(User $user): void
+    public function refreshCustomerSelfDriveStatus(User $user): void
     {
         $requiredDocuments = CustomerDocument::requiredSelfDriveDocumentsFor($user);
         $documents = $user->documents()

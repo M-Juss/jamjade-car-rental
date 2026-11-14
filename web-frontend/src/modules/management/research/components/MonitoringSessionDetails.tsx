@@ -36,7 +36,7 @@ export function MonitoringSessionDetails({ data }: { data: MonitoringSessionDeta
         {!data.events.length ? <p className="mt-4 text-sm text-muted-foreground">{!data.received_batches ? data.session.status === "active" ? "Waiting for readings before evaluating events." : "No readings were received for this session." : data.event_summary.pending ? "Event checks are pending." : "No harsh events detected in the received readings."}</p>
           : <div className="mt-3 divide-y divide-border">{visibleEvents.map(event => <div key={event.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
             <div><p className="font-medium">{humanize(event.target)}</p><p className="mt-0.5 tabular-nums text-muted-foreground">{seconds(event.start_ms)}–{seconds(event.end_ms)}</p></div>
-            <Badge variant="outline" className={event.status === "review_required" ? "border-warning-border bg-warning-surface text-warning" : undefined}>{event.status === "review_required" ? "Uncertain" : "Detected"}</Badge>
+            <Badge variant={event.status === "review_required" ? "outline" : "destructive"} className={event.status === "review_required" ? "border-warning-border bg-warning-surface text-warning" : undefined}>{event.status === "review_required" ? "Uncertain" : "Detected"}</Badge>
           </div>)}</div>}
         {data.event_summary.detected + data.event_summary.needs_review > data.events.length && data.events.length > 0 && <p className="mt-3 text-xs text-muted-foreground">Latest {data.events.length} events</p>}
         {lastPage > 1 && <TablePagination page={currentPage} lastPage={lastPage} total={data.events.length} onPageChange={setPage} label="Recent driving events pagination" />}

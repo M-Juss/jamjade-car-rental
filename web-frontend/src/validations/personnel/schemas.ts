@@ -99,3 +99,5 @@ export function sanitizePersonName(value: string) {
 export function sanitizeMobileNumber(value: string) {
   return value.replace(/\D/g, "").slice(0, 11);
 }
+
+export const personnelPhotoSchema = z.custom<File>((value) => value instanceof File && ["image/jpeg", "image/png", "image/webp"].includes(value.type) && value.size <= 5 * 1024 * 1024, "Choose a JPEG, PNG or WebP image under 5 MB.");

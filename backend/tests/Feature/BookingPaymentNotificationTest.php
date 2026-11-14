@@ -317,3 +317,11 @@ it('defers a payment deadline cancellation while the balance capture is unresolv
     expect(app(PaymentDeadlineService::class)->process()['cancelled'])->toBe(1)
         ->and($booking->fresh()->status)->toBe(BookingStatus::Cancelled);
 });
+
+it('records an uncertain payment confirmation without storing provider details', function () {
+    $checkout = notificationCheckout();
+    $this->mock(PayPalClient::class, fn ($mock) => $mock->shouldReceive('captureOrder')->once()->andThrow(new RuntimeException('private provider detail')));
+    expect(fn () => app(PayPalCheckoutService::class)->captureOrder($checkout->booking->user, 'SUMMARY-ORDER-1'))
+        ->toThrow(RuntimeException::class);
+    $this->assertDatabaseHas('operational_errors', ['category' => 'payment', 'booking_id' => $checkout->booking_id]);
+});

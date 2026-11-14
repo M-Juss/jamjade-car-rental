@@ -191,7 +191,6 @@ export function PersonnelPage() {
                   <TableRow key={personnel.id}>
                     <TableCell data-label="Personnel" className={styles.personCell}>
                       <p className="font-semibold text-foreground">{personnel.name}</p>
-                      <p className="mt-1 text-xs tabular-nums text-muted-foreground"><span className="sr-only">Personnel ID: </span>{personnel.personnelId}</p>
                     </TableCell>
                     <TableCell data-label="Role" className={styles.roleCell}>{personnel.role.label}</TableCell>
                     <TableCell data-label="Contact" className={styles.contactCell}>
@@ -228,7 +227,7 @@ export function PersonnelPage() {
         )}
       </TableCard>
 
-      {accountDialog && data && <PersonnelAccountForm key={`${accountDialog.mode}-${accountDialog.personnel?.id ?? category}`} open mode={accountDialog.mode} personnel={accountDialog.personnel} roles={accountDialog.personnel?.role.name === "admin" ? data.roles.filter((role) => role.name === "admin") : accountDialog.mode === "edit" ? data.roles.filter((role) => role.name !== "admin") : data.roles} category={accountDialog.mode === "add" && data.roles.some((role) => role.name === category) ? category as "admin" | "staff" | "driver" : undefined} onOpenChange={(open) => { if (!open) setAccountDialog(null); }} onSave={saveAccount} />}
+      {accountDialog && data && <PersonnelAccountForm key={`${accountDialog.mode}-${accountDialog.personnel?.id ?? category}`} open mode={accountDialog.mode} personnel={accountDialog.personnel} roles={accountDialog.personnel?.role.name === "admin" ? data.roles.filter((role) => role.name === "admin") : accountDialog.mode === "edit" ? data.roles.filter((role) => role.name !== "admin") : data.roles} category={accountDialog.mode === "add" && data.roles.some((role) => role.name === category) ? category as "admin" | "staff" | "driver" : undefined} onOpenChange={(open) => { if (!open) { setAccountDialog(null); setReloadKey((value) => value + 1); } }} onSave={saveAccount} />}
       {deleteTarget && <DeletePersonnelDialog key={deleteTarget.id} personnel={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={() => {
         if (data?.users.length === 1 && page > 1) setPage((current) => current - 1);
         refresh();

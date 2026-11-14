@@ -1,4 +1,3 @@
-import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BookingAttention, BookingRecord, BookingStatus } from "@/services/booking";
 
@@ -41,9 +40,8 @@ export function BookingStatusDisplay({ booking, className }: Props) {
         {booking.adminStatus}
       </span>
       {note && (
-        <p className={cn("flex max-w-full items-start gap-1 whitespace-normal text-xs font-medium leading-4", overdue ? "text-destructive" : needsAttention ? "text-warning" : "text-muted-foreground")}>
-          {needsAttention && <AlertCircle aria-hidden="true" className="mt-0.5 size-3 shrink-0" />}
-          <span>{note}{duration ? <span className="mt-0.5 block font-normal">{duration}</span> : null}</span>
+        <p className={cn("whitespace-nowrap text-xs font-medium leading-4", overdue ? "text-destructive" : needsAttention ? "text-warning" : "text-muted-foreground")}>
+          {note}{duration ? <span className="font-normal"> {duration}</span> : null}
         </p>
       )}
     </div>

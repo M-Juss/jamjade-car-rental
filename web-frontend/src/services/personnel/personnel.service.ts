@@ -60,3 +60,10 @@ export async function createAdmin(values: PersonnelAccountFormValues) {
 export async function revokeAdmin(id: number) {
   await apiPost(`/admin/admins/${id}/revoke`, {});
 }
+
+export async function updatePersonnelPhoto(id: number, photo: File | null) {
+  if (!photo) return (await apiDelete<{ user: PersonnelUser }>(`/admin/personnel/users/${id}/photo`)).data.user;
+  const body = new FormData();
+  body.append("photo", photo);
+  return (await apiPost<{ user: PersonnelUser }>(`/admin/personnel/users/${id}/photo`, body)).data.user;
+}

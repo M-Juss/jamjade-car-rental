@@ -17,6 +17,8 @@ use App\Http\Controllers\Web\Admin\LateReturnPricingController;
 use App\Http\Controllers\Web\Admin\MaintenanceController;
 use App\Http\Controllers\Web\Admin\ManagementNavigationController;
 use App\Http\Controllers\Web\Admin\ModelExplorerController;
+use App\Http\Controllers\Web\Admin\OperationalErrorController;
+use App\Http\Controllers\Web\Admin\OwnerProfileController;
 use App\Http\Controllers\Web\Admin\PaymentController;
 use App\Http\Controllers\Web\Admin\PersonnelController;
 use App\Http\Controllers\Web\Admin\RcAnnotationController;
@@ -105,6 +107,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::middleware('role_or_permission:admin|manage geofences')->get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
         Route::middleware('role:admin')->group(function () {
+            Route::get('/errors', [OperationalErrorController::class, 'index']);
             Route::put('/fee-pricing', [FeePricingController::class, 'update']);
             Route::get('/late-return-pricing', [LateReturnPricingController::class, 'show']);
             Route::put('/late-return-pricing', [LateReturnPricingController::class, 'update']);
@@ -213,6 +216,8 @@ Route::prefix('admin/personnel')->name('personnel.')->middleware(['auth', 'activ
     Route::get('/', [PersonnelController::class, 'index'])->name('index');
     Route::post('/users', [PersonnelController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [PersonnelController::class, 'update'])->name('users.update');
+    Route::post('/users/{user}/photo', [PersonnelController::class, 'uploadPhoto'])->name('users.photo.upload');
+    Route::delete('/users/{user}/photo', [PersonnelController::class, 'deletePhoto'])->name('users.photo.delete');
     Route::delete('/users/{user}', [PersonnelController::class, 'destroy'])->name('users.destroy');
 });
 
@@ -221,4 +226,10 @@ Route::prefix('admin/admins')->middleware(['auth', 'active_admin', 'role:owner',
     Route::post('/users', [PersonnelController::class, 'storeAdmin']);
     Route::delete('/invitations/{invitation}', [AdminInvitationController::class, 'cancel']);
     Route::post('/{user}/revoke', [AdminInvitationController::class, 'revoke']);
+});
+
+Route::prefix('admin/owner-profile')->middleware(['auth', 'active_admin', 'role:owner', 'throttle:10,1'])->group(function () {
+    Route::post('/email', [OwnerProfileController::class, 'requestEmail']);
+    Route::post('/email/confirm', [OwnerProfileController::class, 'confirmEmail']);
+    Route::post('/password', [OwnerProfileController::class, 'password']);
 });

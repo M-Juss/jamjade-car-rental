@@ -5,6 +5,7 @@ export type BackendRole = UserRole | { name?: UserRole | string };
 export type AuthenticatedUser = {
   id: number;
   name: string;
+  photoUrl?: string | null;
   email: string;
   roles?: BackendRole[];
   permissions?: string[];

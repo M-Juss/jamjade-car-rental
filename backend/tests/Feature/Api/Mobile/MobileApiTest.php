@@ -951,6 +951,7 @@ it('uploads all supported customer document formats for review', function () {
     Sanctum::actingAs($customer);
 
     $licenseResponse = $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::DRIVERS_LICENSE,
         'document_number' => 'N01-23-456789',
         'expires_at' => now()->addYear()->toDateString(),
@@ -959,6 +960,7 @@ it('uploads all supported customer document formats for review', function () {
     ], ['Accept' => 'application/json']);
 
     $billingResponse = $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::PROOF_OF_BILLING,
         'file' => UploadedFile::fake()->image('billing.jpg')->size(512),
     ], ['Accept' => 'application/json']);
@@ -989,6 +991,7 @@ it('accepts customer document images up to 5 MB and rejects larger images', func
     Sanctum::actingAs(documentCustomerUser());
 
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::DRIVERS_LICENSE,
         'document_number' => 'N01-23-456789',
         'expires_at' => now()->addYear()->toDateString(),
@@ -998,6 +1001,7 @@ it('accepts customer document images up to 5 MB and rejects larger images', func
         ->assertCreated();
 
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::PROOF_OF_BILLING,
         'file' => UploadedFile::fake()->image('billing.jpg')->size(5121),
     ], ['Accept' => 'application/json'])
@@ -1022,6 +1026,7 @@ it('rejects valid ID uploads because the document is no longer required', functi
         ->assertJsonCount(0, 'data');
 
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::VALID_ID,
         'front_file' => UploadedFile::fake()->image('valid-id-front.jpg')->size(512),
         'back_file' => UploadedFile::fake()->image('valid-id-back.jpg')->size(512),

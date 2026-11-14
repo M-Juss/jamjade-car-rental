@@ -35,10 +35,10 @@ export async function getBookings(filters: {
   };
 }
 
-export async function cancelBooking(booking: BookingRecord, reason: string) {
+export async function cancelBooking(booking: BookingRecord, reason: string, refund?: { mode: 'full' | 'custom'; amount: string }) {
   const response = await apiPost<BookingRecord>(
     `/admin/bookings/${booking.backendId}/cancel`,
-    { reason },
+    { reason, ...(refund ? { refund_mode: refund.mode, ...(refund.mode === 'custom' ? { refund_amount: refund.amount } : {}) } : {}) },
   );
 
   refreshManagementCounts();

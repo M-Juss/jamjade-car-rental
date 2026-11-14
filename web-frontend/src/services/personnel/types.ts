@@ -9,6 +9,7 @@ export type PersonnelRole = {
 export type PersonnelUser = {
   id: number;
   personnelId: string;
+  photoUrl?: string | null;
   category: PersonnelCategory;
   name: string;
   firstName: string;

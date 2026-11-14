@@ -24,8 +24,9 @@ import { bookingWorkflowPhase, bookingWorkflowTitles } from "@/modules/managemen
 
 type Stage = "outgoing" | "handover" | "device-setup" | "calibration" | "incoming" | "charges";
 
-function formatDate(value?: string | null) {
-  return value ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(value)) : "Not recorded";
+function formatDate(value?: string | null, includeTime = true) {
+  if (!value || Number.isNaN(new Date(value).getTime())) return "Not recorded";
+  return new Intl.DateTimeFormat(includeTime ? "en-PH" : "en-US", { dateStyle: "medium", ...(includeTime ? { timeStyle: "short" as const } : {}), timeZone: "Asia/Manila" }).format(new Date(value));
 }
 
 function Detail({ label, value }: { label: string; value?: string | number | null }) {
@@ -200,7 +201,7 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
         </Section>
         <Section title="Customer and vehicle"><div className="grid gap-2 sm:grid-cols-2">
           <Detail label="Customer" value={currentDetails.customer?.name} /><Detail label="Email" value={currentDetails.customer?.email} />
-          <Detail label="Phone" value={currentDetails.customer?.phoneNumber} /><Detail label="Member since" value={currentDetails.customer?.createdAt} />
+          <Detail label="Phone" value={currentDetails.customer?.phoneNumber} /><Detail label="Member since" value={formatDate(currentDetails.customer?.createdAt, false)} />
           <Detail label="Vehicle" value={[currentDetails.brand, currentDetails.vehicleName, currentDetails.model].filter(Boolean).join(" ")} />
           <Detail label="Transmission" value={currentDetails.transmission} /><Detail label="Fuel" value={currentDetails.fuelType} /><Detail label="Seats" value={currentDetails.seats} />
           {currentDetails.driverOption === "owners_driver" ? <Detail label="Assigned Driver" value={currentDetails.assignedDriver?.name ?? "Not assigned"} /> : null}

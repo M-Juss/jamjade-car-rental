@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FieldErrors } from 'react-hook-form';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { SelectWithLabel, type SelectOption } from '@/components/common/SelectWithLabel';
 import { FormInput } from '@/components/ui/FormInput';
@@ -62,8 +62,12 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
   const [provincesLoaded, setProvincesLoaded] = useState(false);
   const [loadedCityKey, setLoadedCityKey] = useState('');
   const [directoryError, setDirectoryError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
 
-  const provinceOptions = useMemo(() => toOptions(provinceItems), [provinceItems]);
+  const provinceOptions = useMemo(
+    () => toOptions(provinceItems).sort((left, right) => left.label.localeCompare(right.label, 'en', { sensitivity: 'base' })),
+    [provinceItems],
+  );
   const cityOptions = useMemo(() => toOptions(cityItems), [cityItems]);
   const barangayOptions = useMemo(() => toOptions(barangayItems), [barangayItems]);
   const selectedProvinceCode = value.provinceCode ?? (value.regionCode === NCR_CODE ? NCR_CODE : '');
@@ -106,7 +110,7 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
     return () => {
       active = false;
     };
-  }, []);
+  }, [retryKey]);
 
   useEffect(() => {
     if (!provincesLoaded || !selectedProvinceCode) {
@@ -138,7 +142,7 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
     return () => {
       active = false;
     };
-  }, [cityKey, provincesLoaded, selectedProvinceCode]);
+  }, [cityKey, provincesLoaded, selectedProvinceCode, retryKey]);
 
   useEffect(() => {
     if (!selectedProvinceCode || !value.cityMunicipalityCode || loadedCityKey !== cityKey) {
@@ -169,7 +173,7 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
     return () => {
       active = false;
     };
-  }, [cityKey, loadedCityKey, selectedProvinceCode, value.cityMunicipalityCode, value.regionCode]);
+  }, [cityKey, loadedCityKey, selectedProvinceCode, value.cityMunicipalityCode, value.regionCode, retryKey]);
 
   return (
     <View className="gap-4">
@@ -187,20 +191,21 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
         error={errors?.provinceCode?.message?.toString()}
         helperText={loading.provinces ? 'Loading provinces...' : undefined}
         icon="location-city"
-        label="Province / Metro Manila"
+        label="Province"
         onValueChange={(provinceCode) => {
           updateValue({
             provinceCode: provinceCode === NCR_CODE ? null : provinceCode,
             regionCode: provinceCode === NCR_CODE ? NCR_CODE : `${provinceCode.slice(0, 2)}00000000`,
             cityMunicipalityCode: '',
             barangayCode: '',
+            postalCode: '',
           });
           setCityItems([]);
           setBarangayItems([]);
           setLoadedCityKey('');
         }}
         options={provinceOptions}
-        placeholder="Select your province or Metro Manila"
+        placeholder="Select your province"
         required
         value={selectedProvinceCode}
       />
@@ -212,7 +217,7 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
         icon="location-city"
         label="City / Municipality"
         onValueChange={(cityMunicipalityCode) => {
-          updateValue({ cityMunicipalityCode, barangayCode: '' });
+          updateValue({ cityMunicipalityCode, barangayCode: '', postalCode: cityItems.find((city) => city.code === cityMunicipalityCode)?.postalCode ?? '' });
           setBarangayItems([]);
         }}
         options={cityOptions}
@@ -262,9 +267,12 @@ export function ProfileAddressFields({ value, onChange, errors }: ProfileAddress
       />
 
       {directoryError ? (
-        <Text className="font-sans -mt-2 text-[11px] font-medium leading-4 text-destructive">
-          {directoryError}
-        </Text>
+        <View className="gap-1">
+          <Text accessibilityLiveRegion="polite" className="font-sans text-caption text-destructive">{directoryError}</Text>
+          <Pressable accessibilityRole="button" onPress={() => setRetryKey((current) => current + 1)} className="min-h-control justify-center">
+            <Text className="font-sans text-body font-semibold text-primary">Retry</Text>
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );

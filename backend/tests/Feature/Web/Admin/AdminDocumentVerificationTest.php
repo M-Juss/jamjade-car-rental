@@ -131,6 +131,7 @@ it('rejects a pending document with a reason and allows resubmission', function 
         ->assertJsonPath('data.0.data.rejectionReason', 'The back image is blurry.');
 
     $this->post('/api/mobile/documents/upload', [
+        'privacy_notice_version' => 'document-privacy-v1',
         'document_type' => CustomerDocument::DRIVERS_LICENSE,
         'document_number' => 'N01-23-456789',
         'expires_at' => now()->addYear()->toDateString(),

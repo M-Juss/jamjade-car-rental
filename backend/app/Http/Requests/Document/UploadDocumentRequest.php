@@ -45,6 +45,7 @@ class UploadDocumentRequest extends BaseFormRequest
         $fileRules = ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'];
 
         return [
+            'privacy_notice_version' => ['required', Rule::in(['document-privacy-v1'])],
             'document_type' => ['required', Rule::in(CustomerDocument::ALLOWED_DOCUMENT_TYPES)],
             'document_number' => [
                 Rule::requiredIf($isDriversLicense),

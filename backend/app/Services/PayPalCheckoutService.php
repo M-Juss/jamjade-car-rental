@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class PayPalCheckoutService
@@ -52,9 +53,16 @@ class PayPalCheckoutService
             ]);
         }
 
-        $booking = $bookingReference === null
-            ? $this->bookingService->createAwaitingPayPalPayment($user, $data)
-            : $this->bookingService->reviseAwaitingPayPalPayment($user, $data, $bookingReference);
+        try {
+            $booking = $bookingReference === null
+                ? $this->bookingService->createAwaitingPayPalPayment($user, $data)
+                : $this->bookingService->reviseAwaitingPayPalPayment($user, $data, $bookingReference);
+        } catch (Throwable $exception) {
+            if (! $exception instanceof ValidationException && ! $exception instanceof HttpExceptionInterface) {
+                app(OperationalErrorService::class)->record('booking');
+            }
+            throw $exception;
+        }
         $amount = $data['payment_option'] === 'full_payment'
             ? (float) $booking->total_amount
             : ceil((float) $booking->total_amount * BookingService::DOWN_PAYMENT_RATE);
@@ -248,6 +256,7 @@ class PayPalCheckoutService
         } catch (Throwable $exception) {
             // The provider may have accepted the request even when the response was lost.
             // Keep the attempt and booking for reconciliation instead of deleting evidence.
+            app(OperationalErrorService::class)->record('payment_start', $booking->id);
 
             throw $exception;
         }
@@ -351,10 +360,14 @@ class PayPalCheckoutService
                 ]);
             }
 
-            $this->updateCaptureAttempt($checkout->id, $captureToken, ['status' => 'approved']);
+            if ($this->updateCaptureAttempt($checkout->id, $captureToken, ['status' => 'approved'])) {
+                app(OperationalErrorService::class)->record('payment', $checkout->booking_id);
+            }
             throw $exception;
         } catch (Throwable $exception) {
-            $this->updateCaptureAttempt($checkout->id, $captureToken, ['status' => 'approved']);
+            if ($this->updateCaptureAttempt($checkout->id, $captureToken, ['status' => 'approved'])) {
+                app(OperationalErrorService::class)->record('payment', $checkout->booking_id);
+            }
             throw $exception;
         }
 
@@ -371,9 +384,11 @@ class PayPalCheckoutService
             $capturedCurrency !== 'PHP' ||
             $this->formatAmount((float) $capturedAmount) !== $this->formatAmount((float) $checkout->amount)
         ) {
-            $this->updateCaptureAttempt($checkout->id, $captureToken, [
+            if ($this->updateCaptureAttempt($checkout->id, $captureToken, [
                 'status' => 'approved', 'provider_response' => json_encode($captureResponse),
-            ]);
+            ])) {
+                app(OperationalErrorService::class)->record('payment', $checkout->booking_id);
+            }
 
             throw ValidationException::withMessages([
                 'paypal' => ['PayPal did not return a completed PHP capture for the expected amount.'],
@@ -530,10 +545,10 @@ class PayPalCheckoutService
         });
     }
 
-    private function updateCaptureAttempt(int $checkoutId, string $token, array $attributes): void
+    private function updateCaptureAttempt(int $checkoutId, string $token, array $attributes): bool
     {
-        PayPalCheckout::query()->whereKey($checkoutId)->where('status', 'capturing')
-            ->where('capture_attempt_token', $token)->update($attributes);
+        return PayPalCheckout::query()->whereKey($checkoutId)->where('status', 'capturing')
+            ->where('capture_attempt_token', $token)->update($attributes) > 0;
     }
 
     private function loadBooking(int $bookingId): Booking

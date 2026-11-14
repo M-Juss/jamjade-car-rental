@@ -114,6 +114,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/driver/services/{booking}', [DriverBookingController::class, 'show'])->name('driver.services.show');
 
         Route::get('/documents', [DocumentController::class, 'index'])->middleware('role:customer')->name('documents.index');
+        Route::get('/documents/privacy-notice', [DocumentController::class, 'privacyNotice'])->middleware('role:customer')->name('documents.privacy-notice');
         Route::post('/documents/upload', [DocumentController::class, 'upload'])->middleware('role:customer')->name('documents.upload');
 
         Route::post('/payments', [PaymentController::class, 'store'])->middleware('role:customer')->name('payments.store');

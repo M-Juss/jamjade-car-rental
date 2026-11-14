@@ -28,11 +28,13 @@ const exports = loadModule('./schemas.ts', {
 });
 
 test('registration passwords match the backend bcrypt byte limit', () => {
-  const base = { email: 'new@example.test', confirmPassword: 'a'.repeat(72) };
-  assert.equal(exports.registerSchema.safeParse({ ...base, password: 'a'.repeat(72) }).success, true);
-  assert.equal(exports.registerSchema.safeParse({ ...base, password: 'é'.repeat(36), confirmPassword: 'é'.repeat(36) }).success, true);
-  assert.equal(exports.registerSchema.safeParse({ ...base, password: '😀'.repeat(19), confirmPassword: '😀'.repeat(19) }).success, false);
-  assert.equal(exports.registerSchema.safeParse({ ...base, password: 'a'.repeat(73), confirmPassword: 'a'.repeat(73) }).success, false);
+  const parse = (password) => exports.registerSchema.safeParse({ email: 'new@example.test', password, confirmPassword: password }).success;
+  assert.equal(parse(`A!${'a'.repeat(70)}`), true);
+  assert.equal(parse(`A!${'é'.repeat(35)}`), true);
+  assert.equal(parse(`A!${'😀'.repeat(18)}`), false);
+  assert.equal(parse(`A!${'a'.repeat(71)}`), false);
+  assert.equal(parse('lowercase!9'), false);
+  assert.equal(parse('Uppercase123'), false);
 });
 
 test('verification accepts exactly six ASCII digits and a UUID session', () => {

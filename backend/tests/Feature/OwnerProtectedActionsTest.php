@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BookingStatus;
 use App\Mail\OwnerVerificationMail;
 use App\Models\OwnerVerification;
 use App\Models\User;
@@ -106,4 +107,18 @@ it('rolls back consumption when a protected action fails business validation', f
     $this->postJson($url, $payload, $headers)->assertUnprocessable();
     expect(OwnerVerification::findOrFail($headers['X-Owner-Verification-Id'])->consumed_at)->toBeNull();
     expect($booking->fresh()->cancellation->reviewed_at)->toBeNull();
+});
+
+it('verifies cancellation and refund approval together before changing the booking', function () {
+    $booking = policyBooking();
+    policyPayment($booking, 1750);
+    $url = "/admin/bookings/{$booking->id}/cancel";
+    $payload = ['reason' => 'Customer cancellation.', 'refund_mode' => 'custom', 'refund_amount' => '800.50'];
+    $this->postJson($url, $payload)->assertStatus(428);
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+    $headers = protectedActionCode($this, 'POST', $url, $payload);
+    $this->postJson($url, $payload, $headers)->assertOk();
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled);
+    expect((float) $booking->fresh()->cancellation->refund_amount)->toBe(800.50);
+    expect($booking->fresh()->cancellation->refunded_at)->toBeNull();
 });

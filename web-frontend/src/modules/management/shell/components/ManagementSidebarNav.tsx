@@ -6,7 +6,7 @@ import type { ManagementNavigationCounts } from "@/services/management/navigatio
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { FlaskConical, ChevronDown, LogOut, Settings } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,7 +98,8 @@ function ManagementSidebarNavContent({
   const modelItems = visibleModules.filter((module) => module.section === "Model Development")
     .sort((a, b) => ["research", "modelExplorer"].indexOf(a.id) - ["research", "modelExplorer"].indexOf(b.id));
   const mainItems = visibleModules.filter((module) => directModuleIds.has(module.id));
-  const managementItems = visibleModules.filter((module) => !directModuleIds.has(module.id) && module.section !== "Model Development");
+  const activityItems = visibleModules.filter((module) => module.id === "errors");
+  const managementItems = visibleModules.filter((module) => module.id !== "errors" && !directModuleIds.has(module.id) && module.section !== "Model Development");
   const managementIsActive = managementItems.some(
     (module) => pathname === module.href || pathname.startsWith(`${module.href}/`),
   );
@@ -218,6 +219,7 @@ function ManagementSidebarNavContent({
         {mainItems.map((module) => renderLink(module))}
 
         {renderGroup("Management", "management-subnavigation", managementItems, Settings, managementOpen, managementIsActive, toggleManagement)}
+        {activityItems.map((module) => renderLink(module))}
         {renderGroup("Model Development", "model-development-subnavigation", modelItems, FlaskConical, modelOpen,
           modelItems.some((module) => pathname === module.href || pathname.startsWith(`${module.href}/`)),
           () => { if (collapsed) { onExpandSidebar?.(); setModelOpen(true); } else { setModelOpen((open) => !open); } })}
@@ -234,6 +236,7 @@ function ManagementSidebarNavContent({
               }`}
             >
               <Avatar className="size-8">
+                <AvatarImage src={user?.photoUrl ?? undefined} alt="" />
                 <AvatarFallback className="bg-muted text-xs font-semibold text-primary">{initials(user?.name)}</AvatarFallback>
               </Avatar>
               {!collapsed ? (
@@ -252,6 +255,7 @@ function ManagementSidebarNavContent({
               <span className="block truncate pt-0.5 text-xs font-normal text-muted-foreground">{roleLabel ?? ""}</span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {roleNames.includes("owner") && <DropdownMenuItem onSelect={() => router.push("/admin/profile")} className="min-h-9 px-2 text-sm">Profile</DropdownMenuItem>}
             <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
               <DialogTrigger asChild>
                 <DropdownMenuItem onSelect={(event) => event.preventDefault()} variant="destructive" className="min-h-9 gap-2 px-2 text-sm">

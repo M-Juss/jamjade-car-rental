@@ -245,3 +245,77 @@ it('saves agreed details before checkout without issuing documents and rejects a
     $document = app(BookingPaymentDocumentService::class)->issue($payment);
     expect($document->context['rentalSnapshot']['vehicle'])->toBe($original['vehicle']);
 });
+
+it('cancels a confirmed booking and approves its full paid amount atomically', function () {
+    $owner = policyAdmin();
+    $owner->assignRole('owner');
+    $booking = policyBooking();
+    policyPayment($booking, 1750);
+    $this->actingAs($owner)->getJson('/admin/bookings?search='.$booking->booking_code)
+        ->assertOk()->assertJsonPath('data.0.customerPaidAmount', 1750);
+    $this->actingAs($owner)->postJson("/admin/bookings/{$booking->id}/cancel", [
+        'reason' => 'Customer requested cancellation.', 'refund_mode' => 'full',
+    ])->assertOk()->assertJsonPath('data.cancellation.refundStatus', 'approved');
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled);
+    expect((float) $booking->fresh()->cancellation->refund_amount)->toBe(1750.0);
+    expect($booking->fresh()->cancellation->refunded_at)->toBeNull();
+    expect($booking->payments()->where('status', 'completed')->count())->toBe(1);
+});
+
+it('accepts positive custom refunds and rolls back cancellation when the paid ceiling is exceeded', function () {
+    $owner = policyAdmin();
+    $owner->assignRole('owner');
+    $booking = policyBooking();
+    policyPayment($booking, 1750);
+    $this->actingAs($owner)->postJson("/admin/bookings/{$booking->id}/cancel", [
+        'reason' => 'Customer requested cancellation.', 'refund_mode' => 'custom', 'refund_amount' => '1750.01',
+    ])->assertUnprocessable()->assertJsonValidationErrors('refund_amount');
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+    expect($booking->fresh()->cancellation)->toBeNull();
+    $this->postJson("/admin/bookings/{$booking->id}/cancel", [
+        'reason' => 'Customer requested cancellation.', 'refund_mode' => 'custom', 'refund_amount' => '500.25',
+    ])->assertOk();
+    expect((float) $booking->fresh()->cancellation->refund_amount)->toBe(500.25);
+});
+
+it('rejects zero negative missing or overly precise custom refunds', function ($amount) {
+    $owner = policyAdmin();
+    $owner->assignRole('owner');
+    $booking = policyBooking();
+    policyPayment($booking);
+    $this->actingAs($owner)->postJson("/admin/bookings/{$booking->id}/cancel", [
+        'reason' => 'Customer cancellation.', 'refund_mode' => 'custom', 'refund_amount' => $amount,
+    ])->assertUnprocessable()->assertJsonValidationErrors('refund_amount');
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+})->with(['zero' => '0', 'negative' => '-1', 'empty' => '', 'too precise' => '10.001']);
+
+it('prevents staff from approving a cancellation refund and protects admin approval with owner verification', function () {
+    $booking = policyBooking();
+    policyPayment($booking);
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
+    $payload = ['reason' => 'Customer cancellation.', 'refund_mode' => 'full'];
+    $this->actingAs($staff)->postJson("/admin/bookings/{$booking->id}/cancel", $payload)->assertForbidden();
+    $owner = policyAdmin();
+    $owner->assignRole('owner');
+    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/cancel", $payload)->assertStatus(428);
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+});
+
+it('does not approve a refund from driver payments or cancel a pending booking through the combined action', function () {
+    $owner = policyAdmin();
+    $owner->assignRole('owner');
+    $booking = policyBooking();
+    $payment = policyPayment($booking);
+    $payment->update(['purpose' => 'driver_outstanding']);
+    $this->actingAs($owner)->postJson("/admin/bookings/{$booking->id}/cancel", [
+        'reason' => 'Cancellation.', 'refund_mode' => 'full',
+    ])->assertUnprocessable();
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+    $booking->update(['status' => BookingStatus::Pending]);
+    $payment->update(['purpose' => 'full_payment']);
+    $this->postJson("/admin/bookings/{$booking->id}/cancel", [
+        'reason' => 'Cancellation.', 'refund_mode' => 'full',
+    ])->assertUnprocessable();
+    expect($booking->fresh()->status)->toBe(BookingStatus::Pending);
+});

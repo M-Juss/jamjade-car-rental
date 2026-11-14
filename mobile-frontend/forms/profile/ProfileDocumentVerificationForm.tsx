@@ -10,6 +10,7 @@ import { Pressable, Text, View } from 'react-native';
 import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenFrame';
 import { UploadDocumentCard } from '@/components/onboarding/UploadDocumentCard';
 import { DocumentReviewBadge } from '@/components/profile';
+import { DocumentPrivacyNotice, useDocumentPrivacyAgreement, DOCUMENT_PRIVACY_VERSION } from '@/components/profile/DocumentPrivacyNotice';
 import { BottomActionButton } from '@/components/ui/BottomActionButton';
 import { DatePickerInput, getRelativeDateKey } from '@/components/ui/DatePickerInput';
 import { FormInput } from '@/components/ui/FormInput';
@@ -93,6 +94,7 @@ export function ProfileDocumentVerificationForm({
   isOnboardingFlow?: boolean;
 }) {
   const router = useRouter();
+  const { accepted } = useDocumentPrivacyAgreement();
   const customer = useCustomer();
   const { refreshProfile } = useAuth();
   const definition = getCustomerDocumentDefinition(documentId);
@@ -149,8 +151,9 @@ export function ProfileDocumentVerificationForm({
   };
 
   const onSubmit = async (values: CustomerDocumentUploads) => {
+    if (!accepted) return;
     try {
-      const submittedDocument = await uploadCustomerDocument(documentId, values);
+      const submittedDocument = await uploadCustomerDocument(documentId, values, DOCUMENT_PRIVACY_VERSION);
       submitCustomerDocument(documentId, values, submittedDocument);
       router.replace(`/profile/documents${isOnboardingFlow ? '?source=onboarding' : ''}` as Href);
     } catch (error) {
@@ -219,7 +222,9 @@ export function ProfileDocumentVerificationForm({
           <BottomActionButton label="Edit & resubmit" onPress={beginVerifiedEdit} />
         ) : isLocked ? undefined :
           <BottomActionButton
-            disabled={isLocked || isSubmitting}
+            disabled={isLocked || isSubmitting || !accepted}
+            secondaryDisabled={isSubmitting}
+            footer={<DocumentPrivacyNotice />}
             label={
               isSubmitting
                 ? 'Submitting...'

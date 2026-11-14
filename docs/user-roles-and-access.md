@@ -357,3 +357,118 @@ account reconciliation still exists. Existing-database transfers preserve their
 accounts rather than rerunning the seed. See [deployment setup](deployment-berrypanel.md).
 Regression coverage is in `tests/Feature/DatabaseSeederTest.php`; the scoped
 seed/access suite passed before the final whole-suite check.
+
+### Mobile profile address directory — 2026-11-13
+
+Basic Information and Personal Information use the Laravel address directory,
+which reads 10-digit PSGC locations from the [PSGC API](https://psgc.billyjamesramos.com/docs).
+Laravel caches directory responses, includes independent cities under their geographic
+province, and verifies the selected region, province, city and barangay before saving.
+Directory failures can be retried in the mobile form. Existing stored address codes
+and editable four-digit postal codes are retained; changing the province or city clears
+the previous postal code. A city selection fills a postal code when the bundled
+conservative lookup contains a match; otherwise the customer enters it.
+The shared mobile address form labels its first location selector Province and sorts
+its displayed options alphabetically, retaining Metro Manila as an option and preserving
+the stored PSGC codes. Verified in the Android Studio emulator on 2026-11-14.
+
+The lookup in `backend/config/philippine-postal-codes.json` is a 2026-11-13
+snapshot. It intersects the [PHLPost ZIP Code Locator](https://phlpost.gov.ph/zip-code-locator/)
+with [ph-postal](https://github.com/kon2raya24/ph-postal)'s community dataset,
+which maps postal entries to PSGC correspondence codes. Postal data: © GeoNames,
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the dataset also includes
+community corrections. The generated snapshot includes only matches where the
+municipality and province name match PHLPost, both sources show the same single
+code, and no differently coded PHLPost place contains the municipality name.
+Known multi-code cities and municipalities are excluded; this snapshot contains 734 matches. The community source notes
+that some multi-code cities are incomplete, and PHLPost does not consistently
+link every postal area to a municipality; therefore this conservative comparison
+still cannot guarantee uniqueness. The field is editable and the snapshot requires
+periodic source review. Cities with multiple, missing, or unmatched codes require
+manual entry. No postal-code membership validation was added to the profile API.
+
+Sources: `backend/app/Services/PhilippineAddressDirectoryService.php`,
+`backend/config/services.php`, `mobile-frontend/components/profile/ProfileAddressFields.tsx`,
+and `backend/tests/Feature/Api/Mobile/ProfileAddressTest.php`. Eight focused address tests (32 assertions), mobile lint and TypeScript, scoped PHP formatting, a live
+provider lookup and Android export passed on 2026-11-13. Physical Android flow
+acceptance remains pending. The provider is external and availability depends on
+the deployment's network and configuration.
+
+## Activity Log
+
+The Admin portal's Activity Log appears immediately below Management. Active Admins, including
+Owners with Admin membership, can read it; Staff and other roles are denied by
+Laravel. It displays Date performed, Performed by, a short Action message, and
+Success/Failed. Search matches the actor or safe message; Module, Action and
+Status filters apply on the server with ten records per page. Open/Resolved and
+the resolve endpoint are retired. Historical resolution fields remain stored;
+those entries still represent failures internally. The user subsequently restored full business-history visibility. Migration `2026_11_14_000004_include_existing_activity_log_entries.php` sets both saved boundaries to zero; old and new supported business entries are shown without copying or deleting records.
+
+`AuditLogService` merges an explicit allowlist of existing business activity
+records with operational failures. Modules cover bookings, payments, vehicles,
+maintenance, personnel, documents and settings.
+Technical/address-directory issues, telematics, GPS, geofencing and research activity are excluded. Address-directory outages still return the existing safe retry response, but no longer create Activity Log entries; historical address failures remain stored and are excluded by the reader's allowlist. Raw activity
+properties, free-text descriptions, provider messages and submitted payloads are
+never returned. Only existing instrumented actions can appear retrospectively;
+this does not invent missing historical successes or failures.
+
+Failure recording is best effort and stores each attempt's actor and action.
+Background work is identified as System. Historical failures without attribution
+show Not recorded. `RecordBusinessFailure` captures unexpected server failures on
+allowlisted business write routes, excluding field validation, permission errors,
+reads and telemetry paths. A request already captured by a domain service is not
+captured again by middleware. Successful activities inside rolled-back database
+transactions do not appear. Activity retention still follows the existing Spatie
+configuration; this screen does not add a purge or delete control.
+
+Sources: `backend/app/Services/AuditLogService.php`,
+`backend/app/Services/OperationalErrorService.php`,
+`backend/app/Http/Middleware/RecordBusinessFailure.php`,
+`backend/app/Http/Controllers/Web/Admin/OperationalErrorController.php`,
+`backend/app/Http/Resources/OperationalErrorResource.php`,
+`backend/database/migrations/2026_11_14_000002_add_actor_to_operational_errors.php`
+and `web-frontend/src/modules/management/errors/ErrorsModule.tsx`.
+The combined reader counts each source directly and applies filters before the
+UNION read, avoiding the materialized filtered-UNION query that crashed local
+MySQL 8.0.33. Historical pricing log names, document-reviewed status properties
+and permanent personnel deletion events are mapped without rewriting stored data.
+Properties are used only to classify the historical document decision and are
+never returned. The UI name is Activity Log; existing `/admin/errors` URLs remain
+unchanged.
+
+Apply the actor migration and `2026_11_14_000003_create_activity_log_start_boundary.php` before deploying the reader. The latter stores existing maximum IDs once, so refreshing or restarting never moves the start point. Apply the follow-up `2026_11_14_000004_include_existing_activity_log_entries.php` as well to restore all supported history.
+Authenticated browser layout acceptance remains pending when browser access is
+unavailable. This change does not alter the Android UI or its request contracts.
+
+Verification on 2026-11-14: all 1,312 backend tests passed (8,174 assertions),
+including audit permissions, combined pagination/filtering, safe response fields,
+actor attribution, retired resolution, rollback behavior and telemetry exclusion.
+Web lint, TypeScript, production build, scoped Pint and `git diff --check` passed.
+The actor migration was applied locally and the combined query was checked against
+the local MySQL database; hosted deployment remains separate.
+
+### Verification document retention
+
+The scheduled `documents:archive-expired` job soft-deletes document records after twelve months from the latest verification decision or completed rental, whichever is later; pending documents use their submission date. It delays archiving while a self-drive booking is pending, confirmed, ongoing or returned, and when a completed booking lacks its completion event. Archival, eligibility recalculation and a durable file-removal queue commit together. Afterward, the job removes images from the public disk and retries failures on subsequent runs; it preserves files referenced by an active document. An interrupted deletion cannot leave a partially removed document approved and active. Images can remain accessible by direct link until removal; backups require their own retention policy. Deployments must run the file-deletion queue migration and the scheduled job. Source: `DocumentRetentionService`, `document_retention_file_deletions` migration and `routes/console.php`. Mobile Documents links to the versioned document privacy notice; its shared agreement is required before submission, and Laravel records the accepted notice version per uploaded document. The current active Owner contact is resolved by the authenticated notice endpoint. Mobile UI validation and Android device verification remain necessary after installation.
+
+Mobile notice presentation (2026-11-14): `DocumentPrivacyNotice` groups the existing policy into six numbered sections without changing its version or retention rules. Documents and document submission use one bottom agreement row; the inline “document privacy notice” link opens the existing `ProfileFormSheet`. The separate Terms link and duplicate checkbox inside the popup are removed. `BottomActionFooter`, extracted from the existing button footer, preserves its border, spacing and Android safe-area handling for both screen types. Contact metadata loads through the document service; unavailable or mismatched notices cannot establish a new agreement. In-flight responses are ignored after unmount/account changes. The bottom placement and inline-link popup were verified in Android Studio; no agreement was accepted or document submitted during this check. Mobile lint, TypeScript, Android export and `git diff --check` passed.
+
+The Documents list also requires the current in-app agreement before opening either document and uses the shared warning toast when it is missing. The detail route redirects to Documents if opened directly without that agreement. This applies equally to verified, pending, rejected and unsubmitted documents; existing approvals do not pre-check consent. It does not change booking eligibility, revoke approval or manufacture historical acceptance. This gate uses the existing runtime agreement state; persisted per-document acceptance is still recorded only on upload, so existing customers are not marked as having agreed in the database by viewing this screen.
+
+When an agreed customer with submitted documents unchecks the box, the existing profile-sheet pattern asks for confirmation and explains that submission/resubmission requires agreement again. Keep agreement cancels; Uncheck changes only the current runtime choice. `DocumentVerificationService` continues to append the notice version and acceptance timestamp in the submission transaction, leaving earlier records intact. No acceptance is written by checkbox changes, and earlier submissions are not retroactively marked agreed. Regression verification: 22 document-contract tests / 107 assertions and scoped Pint passed, including rejection of an unconsented resubmission, preservation of its prior approval/acceptance, and a separate acceptance for a later consented resubmission. Both document-tap warning paths were verified on an existing verified account in Android Studio without accepting the notice.
+
+### Personnel photos and Owner account profile
+
+Authorized managers may add, replace or remove an existing personnel account's optional JPEG, PNG or WebP photo (up to 5 MB) through Personnel. The server applies the same Owner/Admin/Staff management hierarchy, prevents self-editing, stores the image on the public disk and returns its URL in the personnel resource. The Owner can use the sidebar Profile page to request a sign-in email change using the current password; a hashed, single-use six-digit code is emailed to the new address and expires after 15 minutes or five incorrect attempts. Email remains unchanged until successful confirmation. Password changes reuse the account password rules and sign out the current web session. Sources: `PersonnelService`, `PersonnelController`, `OwnerProfileController`, web Personnel and Owner Profile modules. Apply the two new migrations before using these features. Web device-level visual verification and deployed email delivery remain pending.
+
+The Owner Profile page follows management-page spacing and displays the email and password forms side by side on wider screens, stacking them on smaller screens; form behavior is unchanged. Source: `web-frontend/src/modules/management/owner-profile/OwnerProfilePage.tsx`.
+
+The Profile module composes `forms/owner-profile/OwnerProfileForms.tsx`, using shared Card/InputWithLabel controls and account toasts. Verification-code controls reset when the proposed address changes, and submitting controls show pending states. Personnel photo upload uses the existing Button/Avatar pattern, previews photos in View and Edit, and prevents closing or saving during an upload. `UserResource.photoUrl` also supplies the signed-in Staff/Admin sidebar avatar. Customer mobile account forms retain their existing shared field and password-schema flow; the document notice reads through `services/api/document.service.ts` and names its agreement checkbox for accessibility. Verification on 2026-11-14: 44 related backend tests and scoped Pint passed; web/mobile static checks and device limitations are recorded in the implementation handoff. Physical Android checks and deployed email delivery remain separate.
+
+Activity Log filter fix verification (2026-11-14): all 162 filter combinations and filtered page two succeeded on local MySQL 8.0.33 after replacing the materialized query. The full backend suite passed 1,314 tests / 8,507 assertions before the subsequently added start-boundary regression. Web lint, TypeScript, production build and scoped Pint passed. The local start-boundary migration was applied; older records remain stored and the initial visible result count is zero.
+
+Activity Log visibility update (2026-11-14): the user requested full history again. The follow-up migration was applied locally and the reader returned 347 supported entries; telematics/research exclusions and filters remain in force.
+
+Activity Log category cleanup (2026-11-14): Technical was removed from the web filter, request enum and failure allowlist. `AddressDirectoryController` no longer records directory outages in this log. The historical address rows remain stored. The focused 20 tests / 375 assertions and full backend suite (1,325 tests / 8,529 assertions), scoped Pint, web lint, TypeScript and production build passed.
+
+Mobile UI consistency review (2026-11-14): document submission retains the shared `OnboardingScreenFrame`, upload controls, `BottomActionButton` and `ProfileFormSheet`. The privacy notice now uses the existing body text role, paragraph spacing, checkbox treatment, minimum control height and shared Retry button; literal backslash-newline text was removed. Address Retry uses the same minimum touch height, and secondary footer buttons expose their own disabled state visually and to accessibility services. No new layout system or native API was introduced. Mobile lint, TypeScript and Android bundle export passed. The existing Node suite passed 324/325 tests; its unchanged vehicle-image fixture expects seven entries while the bundled map contains 42. No Android device was connected, so physical layout acceptance remains pending.

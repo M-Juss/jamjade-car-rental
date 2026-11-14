@@ -1,10 +1,12 @@
-import { useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams, type Href } from 'expo-router';
 
+import { useDocumentPrivacyAgreement } from '@/components/profile/DocumentPrivacyNotice';
 import { ProfileDocumentVerificationForm } from '@/forms/profile/ProfileDocumentVerificationForm';
 import { isCustomerDocumentId } from '@/lib/customer/document-verification';
 import { InvalidDocumentScreen } from '@/screens/profile/DocumentVerificationListScreen';
 
 export default function DocumentUploadRoute() {
+  const { accepted } = useDocumentPrivacyAgreement();
   const params = useLocalSearchParams<{
     documentId?: string | string[];
     source?: string | string[];
@@ -16,6 +18,10 @@ export default function DocumentUploadRoute() {
 
   if (!documentId || !isCustomerDocumentId(documentId)) {
     return <InvalidDocumentScreen />;
+  }
+
+  if (!accepted) {
+    return <Redirect href={`/profile/documents${source === 'onboarding' ? '?source=onboarding' : ''}` as Href} />;
   }
 
   return (

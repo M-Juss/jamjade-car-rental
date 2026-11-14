@@ -10,11 +10,38 @@ New partial-payment bookings owe the remainder before the start date begins in A
 
 ## Cancellation and no-show decisions
 
-Only Admin and Staff with booking permission can manually cancel bookings through the web management portal, and a reason is required. Customer mobile has no cancellation action or endpoint. The booking becomes Cancelled and releases reserved dates; refund approval is a separate decision and does not keep the reservation active. A cancellation reason alone is not evidence of automatic refund eligibility. Automatic payment-deadline cancellation remains a separate server process.
+Only Admin and Staff with booking permission can manually cancel bookings through the web management portal, and a reason is required. Customer mobile has no cancellation action or endpoint. The booking becomes Cancelled and releases reserved dates; refund approval does not keep the reservation active. In the web confirmed-booking cancellation dialog, Admin/Owner can now approve a full or positive custom refund as part of the same cancellation; reason-only cancellation remains available to Staff and existing callers. A cancellation reason alone is not evidence of automatic refund eligibility. Automatic payment-deadline cancellation remains a separate server process.
 
 Authorized staff record `no_show` only after the entire reserved interval ends, when a confirmed booking was never released. Findings are required. They must inspect the release/contact records and choose ordinary management cancellation when Jamjade could not provide handover or a cancellation was arranged. No-show records retain all rental payments and cannot receive an ordinary refund review. No late charge arises from a never-released booking. No automatic no-show is inferred from unanswered messages or the tentative arrival time.
 
 `booking_cancellations` has one row per cancelled booking. New manual cancellations use `management`; other current kinds are `payment_deadline` and `no_show`. Historical `customer` records remain readable and eligible for the established refund review. Existing historical cancellations without a row remain view-only; no reason, no-show finding or refund amount is inferred retrospectively.
+
+## Confirmed cancellation with refund — 2026-11-14
+
+The web cancellation dialog uses the existing shared SelectWithLabel/InputWithLabel
+controls above the cancellation reason. Confirmed bookings with completed PHP
+Customer payments offer Full refund (the amount actually paid) or Custom (greater
+than zero, at most the paid amount, up to two decimals). Admin/Owner sees these
+controls; Staff retains reason-only cancellation and cannot approve a refund.
+The booking list now returns `customerPaidAmount` whenever payment relations are
+loaded, so the ceiling is available before opening cancellation.
+
+`CancelBookingRequest` accepts optional `refund_mode: full|custom` and requires
+`refund_amount` only for custom. An amount is prohibited with full mode; Laravel
+recomputes the full paid amount while holding the booking lock. Existing
+reason-only requests keep the separate review flow. `BookingCancellationService::cancelWithRefund`
+checks confirmed status and eligible Customer payments, then cancels and reviews
+inside one transaction. Invalid amounts or a failed review roll back cancellation.
+The cancellation reason also records the refund decision reason. Owner verification
+protects the combined write for Admins; Owner acts directly under the established
+verification rules. Approval does not return money, change completed payments,
+or mark a refund returned. Existing Record Money Returned remains required.
+
+Source: `CancelBookingDialog.tsx`, `validations/booking/cancellation.ts`,
+`services/booking/booking.service.ts`, `CancelBookingRequest`,
+`BookingCancellationService`, `BookingController`, `BookingResource`.
+No migration or mobile request changes are required. Physical browser verification
+remains pending if browser access is unavailable.
 
 ## Admin review and actual refund
 
@@ -37,3 +64,22 @@ Regression tests cover the Manila midnight boundary, later-day pickup eligibilit
 ## Owner verification
 
 Every refund decision, including a zero decision, and recording an external refund require a one-time code from the active Owner. The Owner receives the action details by email and shares the code with the requester. See [roles and access](user-roles-and-access.md#owner-verification).
+
+Verification for the combined cancellation/refund change (2026-11-14): the full
+backend suite passed 1,324 tests / 8,559 assertions. After correcting the new list
+payment aggregate to correlate each payment with its booking Customer, all 24
+booking-agreement/refund tests passed independently (137 assertions), including
+the list's paid-amount contract. Regression coverage includes full/partial paid
+amounts, zero/negative/over-precision rejection, overpayment rollback, Staff denial,
+Admin Owner-code execution and keeping external money return separate. Web lint,
+TypeScript, production build, client refund-schema checks and scoped Pint passed.
+An earlier receipt-file failure during overlapping test runs passed when rerun
+alone; backend tests sharing fake storage should run sequentially. Browser visual
+acceptance remains pending.
+
+Cancellation dialog refinement: the refund amount now uses a single React Hook
+Form Controller with a string value in both Full and Custom modes, preventing a
+controlled/uncontrolled input warning while preserving the custom draft. Switching
+modes clears the amount error without validating an empty custom amount prematurely.
+The cancellation sentence is the dialog heading; duplicate approval guidance was
+removed at the user's request. Actual money return remains a separate operation.

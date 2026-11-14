@@ -81,7 +81,7 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
   const kpis = [
     { label: "Completed rentals", value: ready ? summary.completed_rentals : "—", icon: ClipboardCheck },
     { label: "Operators monitored", value: ready ? summary.operators_monitored : "—", icon: Users },
-    { label: "Average grade", value: ready && summary.average_score !== null ? `${summary.average_score.toFixed(1)} / 100` : "—", icon: Gauge, description: ready && summary.incomplete_grades > 0 ? "Includes grades with incomplete sync" : undefined },
+    { label: "Average grade", value: ready && summary.average_score !== null ? `${summary.average_score.toFixed(1)} / 100` : "—", icon: Gauge },
     { label: "Confirmed harsh events", value: ready ? summary.harsh_events : "—", icon: Activity },
   ];
   const reset = () => { setPage(1); setSearch(""); setLoading(true); };
@@ -129,8 +129,8 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
                 : view === "operators" ? operators.map(operator => <TableRow key={operator.id}>
                   <ManagementTableCell data-label="Operator" className="font-medium">{operator.name ?? "Not recorded"}</ManagementTableCell>
                   <ManagementTableCell data-label="Monitored rentals" className="tabular-nums">{operator.monitored_rentals} of {operator.completed_rentals}</ManagementTableCell>
-                  <ManagementTableCell data-label="Average grade" className="tabular-nums">{operator.average_score === null ? "Not graded" : `${operator.average_score.toFixed(1)} / 100`}{operator.incomplete_grades > 0 ? <span className="block text-xs text-muted-foreground">Includes incomplete sync</span> : null}</ManagementTableCell>
-                  <ManagementTableCell data-label="Latest grade" className="tabular-nums">{operator.latest_score === null ? "Not graded" : `${operator.latest_score} / 100`}{operator.latest_sync_incomplete ? <span className="block text-xs text-muted-foreground">Incomplete sync</span> : null}</ManagementTableCell>
+                  <ManagementTableCell data-label="Average grade" className="tabular-nums">{operator.average_score === null ? "Not graded" : `${operator.average_score.toFixed(1)} / 100`}</ManagementTableCell>
+                  <ManagementTableCell data-label="Latest grade" className="tabular-nums">{operator.latest_score === null ? "Not graded" : `${operator.latest_score} / 100`}</ManagementTableCell>
                   <ManagementTableCell data-label="Harsh events" className="tabular-nums">{operator.harsh_events}</ManagementTableCell>
                   <ManagementTableCell data-label="Actions" className="px-4 py-3 md:w-16"><Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`View rentals for ${operator.name ?? "operator"}`} onClick={event => { operatorTrigger.current = event.currentTarget; setSelectedOperator(operator); }}><Eye aria-hidden="true" /></Button></ManagementTableCell>
                 </TableRow>) : bookings.map(booking => <TableRow key={booking.backendId}>

@@ -32,6 +32,26 @@ class BookingCancellationService
         });
     }
 
+    public function cancelWithRefund(Booking $booking, User $actor, array $data): Booking
+    {
+        abort_unless($actor->hasRole('admin') && $actor->can('manage bookings'), 403);
+
+        return DB::transaction(function () use ($booking, $actor, $data) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->status !== BookingStatus::Confirmed) {
+                throw ValidationException::withMessages(['booking' => ['Only a confirmed booking can be cancelled with a refund decision.']]);
+            }
+            $paid = round((float) $booking->successfulCustomerPayments()->sum('amount'), 2);
+            $amount = $data['refund_mode'] === 'full' ? $paid : (float) $data['refund_amount'];
+            if ($amount <= 0 || $amount > $paid || $amount > 9999999.99) {
+                throw ValidationException::withMessages(['refund_amount' => ['Enter a refund greater than zero and no more than the amount actually paid.']]);
+            }
+            $booking = app(BookingService::class)->transition($booking, BookingStatus::Cancelled, $actor, $data['reason']);
+
+            return $this->review($booking, $actor, ['amount' => $amount, 'reason' => $data['reason']]);
+        });
+    }
+
     public function review(Booking $booking, User $actor, array $data): Booking
     {
         abort_unless($actor->hasRole('admin') && $actor->can('manage bookings'), 403);

@@ -17,7 +17,7 @@ const maneuverLabels = {
 export function formatDrivingGrade(grading?: RentalDrivingGrade) {
   if (grading?.status === "pending") return "Finalizing";
   const value = grading?.score != null ? `${grading.score} / ${grading.maximum}` : "Not graded";
-  return grading?.sync_incomplete ? `${value}` : value;
+  return value;
 }
 
 export function GradingDialog({ grading }: { grading: RentalDrivingGrade | null }) {
@@ -59,7 +59,7 @@ export function ScoreCalculation({ grading }: { grading: RentalDrivingGrade | nu
           </dl>
           <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
             <p className="text-sm font-medium">Total Grade</p>
-            <p className="shrink-0 text-right text-xl font-semibold text-foreground tabular-nums">{grading.score}<span className="text-sm font-normal text-muted-foreground"> / {grading.maximum}</span>{grading.sync_incomplete ? <span className="block text-xs font-normal text-muted-foreground">Incomplete sync</span> : null}</p>
+            <p className="shrink-0 text-right text-xl font-semibold text-foreground tabular-nums">{grading.score}<span className="text-sm font-normal text-muted-foreground"> / {grading.maximum}</span></p>
           </div>
         </>}
   </section>;

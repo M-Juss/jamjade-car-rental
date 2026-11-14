@@ -9,9 +9,13 @@ use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\BookingService;
 use App\Services\DeliveryQuoteService;
+use App\Services\OperationalErrorService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 class BookingController extends Controller
 {
@@ -32,11 +36,16 @@ class BookingController extends Controller
 
     public function store(StoreBookingRequest $request): JsonResponse
     {
-        $booking = $this->bookingService->create(
-            $request->user(),
-            $request->validated(),
-            $request->file('proof_of_payment')
-        );
+        try {
+            $booking = $this->bookingService->create(
+                $request->user(), $request->validated(), $request->file('proof_of_payment')
+            );
+        } catch (Throwable $exception) {
+            if (! $exception instanceof ValidationException && ! $exception instanceof HttpExceptionInterface) {
+                app(OperationalErrorService::class)->record('booking');
+            }
+            throw $exception;
+        }
 
         return $this->created('Booking created successfully.', new BookingResource($booking));
     }
