@@ -376,7 +376,7 @@ it('allows only assigned services and denies customer booking mutations to Drive
     $this->getJson("/api/mobile/driver/services/{$other->id}")->assertNotFound();
     $this->getJson('/api/mobile/bookings')->assertForbidden();
     $this->postJson('/api/mobile/bookings', [])->assertForbidden();
-    $this->postJson("/api/mobile/bookings/{$own->id}/cancel")->assertNotFound();
+    $this->postJson("/api/mobile/bookings/{$own->id}/cancel")->assertForbidden();
 });
 
 it('preserves Staff web operations and denies Staff mobile login', function () {

@@ -153,7 +153,7 @@ class TelematicsService
     public function storeEvent(TelematicsTrip $trip, array $data, User $user): TelematicsEvent
     {
         $this->assertTripOwner($trip, $user);
-        if (in_array($data['event_type'], ['geofence_enter', 'geofence_exit'], true)) {
+        if (in_array($data['event_type'], ['geofence_enter', 'geofence_exit', 'geofence_initial_inside'], true)) {
             throw ValidationException::withMessages(['event_type' => ['Geofence events are determined by the server.']]);
         }
 

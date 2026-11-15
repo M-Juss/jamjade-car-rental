@@ -22,19 +22,19 @@ export function FleetGeofenceLog({ activity, onRefresh }: {
   return <Card className="min-w-0">
     <CardHeader className="min-h-14 border-b border-border pb-3">
       <CardTitle className="text-sm font-semibold">Geofencing Log</CardTitle>
-      <CardDescription className="text-xs">Latest zone crossings</CardDescription>
+      <CardDescription className="text-xs">Latest zone activity</CardDescription>
       <CardAction><Button variant="ghost" size="icon" aria-label="Refresh geofencing log" onClick={onRefresh}><RefreshCcw /></Button></CardAction>
     </CardHeader>
     <CardContent className="space-y-3">
       {events.length ? <div className="divide-y divide-border">
         {events.map((event) => <div key={event.id} className="flex flex-wrap justify-between gap-2 py-2 text-sm">
           <div>
-            <p className="font-medium">{event.type === "geofence_enter" ? "Entered" : "Exited"} {event.zoneName}</p>
+            <p className="font-medium">{event.type === "geofence_initial_inside" ? "Inside" : event.type === "geofence_enter" ? "Entered" : "Exited"} {event.zoneName}</p>
             <p className="text-xs text-muted-foreground">{event.occurredAt ? `Occurred ${formatReturnDateTime(event.occurredAt, true)}` : "Event time unavailable"}</p>
           </div>
           {event.notificationRequested ? <span className="text-xs text-muted-foreground">Alert sent</span> : null}
         </div>)}
-      </div> : <p className="text-sm text-muted-foreground">No geofence crossings recorded.</p>}
+      </div> : <p className="text-sm text-muted-foreground">No geofence activity recorded.</p>}
       {activity.length > PAGE_SIZE ? <TablePagination page={currentPage} lastPage={lastPage} total={activity.length} onPageChange={setPage} label="Geofencing log pagination" /> : null}
     </CardContent>
   </Card>;

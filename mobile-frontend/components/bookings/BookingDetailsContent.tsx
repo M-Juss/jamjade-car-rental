@@ -81,8 +81,9 @@ export function BookingDetailsContent({ booking, audience = 'customer' }: { book
     <BookingReceipts key={booking.id} bookingReference={booking.id} /></> : null}
 
     {booking.cancellation ? (
-      <SectionCard title="Cancellation and refund" icon={ReceiptText}>
+      <SectionCard title={booking.cancellation.kind === 'no_show' ? 'No-show' : booking.cancellation.kind === 'customer_unpaid' ? 'Cancellation' : 'Cancellation and refund'} icon={ReceiptText}>
         <InfoRow label="Reason" value={booking.cancellation.reason} />
+        {booking.cancellation.kind === 'no_show' ? <InfoRow label="Refund" value="Not refundable" /> : booking.cancellation.kind !== 'customer_unpaid' ? <>
         <InfoRow
           label="Refund status"
           value={booking.cancellation.refundStatus.replaceAll("_", " ")}
@@ -107,6 +108,7 @@ export function BookingDetailsContent({ booking, audience = 'customer' }: { book
             ).toLocaleString("en-PH", { timeZone: "Asia/Manila" })}
           />
         ) : null}
+        </> : null}
       </SectionCard>
     ) : null}
 

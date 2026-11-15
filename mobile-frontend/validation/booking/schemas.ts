@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-import { isPastDate } from '@/utils/calculateAge';
-import { isFuturePickupTime } from '@/lib/browse/pickup-time';
+import { isBookablePickupDate, isFuturePickupTime } from '@/lib/browse/pickup-time';
 
 export type BookingValidationInput = {
   rentalDate: string;
@@ -49,7 +48,7 @@ export const bookingFormSchema = z
       });
     }
 
-    if (hasValidRentalDate && isPastDate(form.rentalDate)) {
+    if (hasValidRentalDate && !isBookablePickupDate(form.rentalDate)) {
       context.addIssue({
         code: 'custom',
         message: 'Rental date cannot be in the past.',

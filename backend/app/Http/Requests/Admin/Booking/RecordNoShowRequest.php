@@ -11,8 +11,15 @@ class RecordNoShowRequest extends BaseFormRequest
         return $this->user()?->can('manage bookings') ?? false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('reason'))) {
+            $this->merge(['reason' => trim($this->input('reason'))]);
+        }
+    }
+
     public function rules(): array
     {
-        return ['reason' => ['required', 'string', 'max:1000']];
+        return ['reason' => ['required', 'string', 'max:1000'], 'confirmed' => ['required', 'accepted']];
     }
 }

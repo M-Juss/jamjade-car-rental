@@ -95,6 +95,7 @@ const actionsByStatus = {
       variant: 'soft',
     },
   ],
+  'No-show': [detailAction],
   Cancelled: [
     detailAction,
     {

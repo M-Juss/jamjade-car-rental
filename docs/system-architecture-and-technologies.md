@@ -30,6 +30,10 @@ flowchart TD
 RC research uses owner-bound mobile collection and shared Admin web review. Its native
 module and development/standalone Android builds extend the mobile codebase;
 recording a research trial does not require a rental booking.
+The Android Admin collection UI also provides local setup previews for 4-seater,
+7-seater and 12+ seater vehicles. Only RC Pilot reaches the current native
+recording contract; the preview adds no real-vehicle backend/native profile.
+See the [vehicle-first UI boundary](telematics-master-plan.md#android-admin-vehicle-first-collection-ui--2026-11-15).
 
 Rental setup is a separate server-owned flow: six device checks followed by
 stationary and forward reference captures, then Staff release. The captures
@@ -44,6 +48,26 @@ summaries to Laravel. See the
 | Management dashboard | Calendar-centered Next.js module reads the shared Laravel dashboard response. `ReportService` owns calendar/receipt metrics; `DashboardOverviewService` supplies permission-scoped daily operations, balances and fleet/maintenance summaries. | [Dashboard implementation and checks](web-ui-refinement.md#calendar-centered-dashboard--2026-11-11) |
 | Mobile frontend | Expo Router composes Android screens; domain services isolate API calls and device behavior. The secure-storage abstraction persists authentication tokens. | [Routes](../mobile-frontend/app), [services](../mobile-frontend/services), [token storage](../mobile-frontend/services/http/auth-storage.ts) |
 | Native RC recorder | A local Expo module bridges TypeScript to Kotlin. An Android foreground service and SensorManager collect original streams into encrypted local files. Explicit upload transfers them to Laravel. | [TypeScript adapter](../mobile-frontend/services/telematics/native-recorder.ts), [Kotlin implementation](../mobile-frontend/modules/rc-recorder/android/src/main/java/com/jamjade/rcrecorder) |
+
+Android PayPal checkout uses the installed `expo-web-browser` Custom Tabs API
+through [`paypal-browser.ts`](../mobile-frontend/services/payments/paypal-browser.ts),
+with screen lifetime managed by [`use-paypal-browser.ts`](../mobile-frontend/hooks/use-paypal-browser.ts).
+The shared handler owns deep-link and app-state cleanup; Laravel remains the
+capture/abandonment boundary. See [checkout retries](booking-rental-lifecycle.md#android-paypal-checkout-retries--2026-11-15).
+
+Laravel also owns the distinct terminal `no_show` booking status, elapsed-period
+eligibility and required acknowledgement. Web management uses Reject for Pending
+and separate Cancel/No-show decisions for Confirmed; No-show uses a reason form
+and a second confirmation. Both frontend read contracts include No-show in final
+history, while payment/refund guards remain server-owned. Historical
+Cancelled/no-show records are retained without a data rewrite. See
+[final booking outcomes](booking-cancellation-policy.md#final-booking-outcomes--2026-11-15).
+
+Customer mobile also submits owned unpaid-pending cancellation to Laravel at
+`POST /api/mobile/bookings/{booking}/cancel`. The booking policy, locked transition
+and payment evidence own eligibility; mobile renders the server's action flag.
+Paid/confirmed cancellation and refunds keep their management boundaries. See
+[mobile unpaid cancellation](booking-cancellation-policy.md#mobile-unpaid-cancellation--2026-11-15).
 
 Vehicle image delivery — 2026-11-12: the public vehicle showcase, management
 gallery, and 64 px management detail thumbnail use Next.js image optimization for

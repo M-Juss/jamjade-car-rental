@@ -32,6 +32,7 @@ import { TableActionMenu, type TableActionMenuItem } from "@/components/common/t
 import { TablePagination } from "@/components/common/tables/TablePagination";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { appToast } from "@/lib/toast";
+import { BookingDecisionDialog } from "@/forms/booking/BookingDecisionDialog";
 import { CancelBookingDialog } from "@/forms/booking/CancelBookingDialog";
 import { BookingDetailsDialog } from "@/forms/booking/BookingDetailsDialog";
 import { bookingWorkflowPhase, bookingWorkflowTitles } from "./booking-workflow";
@@ -71,7 +72,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(() => {
     const status = searchParams.get("status");
-    return status && ["pending", "confirmed", "ongoing", "returned", "completed", "cancelled", "rejected"].includes(status) ? status : "all";
+    return status && ["pending", "confirmed", "ongoing", "returned", "completed", "cancelled", "rejected", "no_show"].includes(status) ? status : "all";
   });
   const [attentionFilter, setAttentionFilter] = useState(searchParams.get("attention") === "all_attention" ? "all_attention" : "all");
   const [paymentFilter, setPaymentFilter] = useState("all");
@@ -83,6 +84,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [decision, setDecision] = useState<"reject" | "no_show" | null>(null);
   const [workflowAction, setWorkflowAction] = useState<BookingNextAction | "reassign-driver" | null>(null);
   const [loadingActionId, setLoadingActionId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -143,18 +145,19 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
   }, []);
 
   useEffect(() => {
-    if (group !== "booking" || detailsOpen || workflowAction || cancelOpen) return;
+    if (group !== "booking" || detailsOpen || workflowAction || cancelOpen || decision) return;
     const timer = window.setInterval(() => setReloadKey((value) => value + 1), 60000);
     return () => window.clearInterval(timer);
-  }, [group, detailsOpen, workflowAction, cancelOpen]);
+  }, [group, detailsOpen, workflowAction, cancelOpen, decision]);
 
   const count = (status: BookingStatus) => statusCounts[status] ?? 0;
   const summaryCards = group === "history"
     ? [
-        { label: "Total", value: count("completed") + count("cancelled") + count("rejected"), icon: CalendarDays },
+        { label: "Total", value: count("completed") + count("cancelled") + count("rejected") + count("no_show"), icon: CalendarDays },
         { label: "Completed", value: count("completed"), icon: CheckCircle2 },
         { label: "Cancelled", value: count("cancelled"), icon: XCircle },
         { label: "Rejected", value: count("rejected"), icon: XCircle },
+        { label: "No-show", value: count("no_show"), icon: XCircle },
       ]
     : [
         { label: "Total", value: count("pending") + count("confirmed") + count("ongoing") + count("returned"), icon: CalendarDays },
@@ -216,7 +219,22 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
         onClick: () => { void openNext(booking, "reassign-driver"); },
         disabled: loadingActionId === booking.backendId,
       }] : []),
-      ...(["pending", "confirmed"].includes(booking.statusKey) && booking.attention?.key !== "not_started" ? [{
+      ...(booking.statusKey === "pending" ? [{
+        label: "Reject",
+        icon: <XCircle size={13} className="mr-2" />,
+        onClick: () => { setSelectedBooking(booking); setDecision("reject"); },
+        separatorBefore: true,
+        variant: "danger" as const,
+      }] : []),
+      ...(booking.statusKey === "confirmed" ? [{
+        label: "No-show",
+        icon: <XCircle size={13} className="mr-2" />,
+        onClick: () => { setSelectedBooking(booking); setDecision("no_show"); },
+        disabled: !booking.canRecordNoShow,
+        separatorBefore: true,
+        variant: "danger" as const,
+      }] : []),
+      ...(booking.statusKey === "confirmed" ? [{
         label: "Cancel",
         icon: <XCircle size={13} className="mr-2" />,
         onClick: () => { setSelectedBooking(booking); setCancelOpen(true); },
@@ -231,7 +249,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <ManagementPageHeading
           title={group === "history" ? "Booking History" : "Bookings"}
-          description={group === "history" ? "Review completed, cancelled, and rejected bookings." : "Manage reservations, payments, handovers, and returns."}
+          description={group === "history" ? "Review completed, cancelled, rejected, and no-show bookings." : "Manage reservations, payments, handovers, and returns."}
         />
       </div>
 
@@ -241,7 +259,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 ${group === "history" ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {summaryCards.map(({ label, value, icon }) => <KpiCard key={label} label={label} value={isLoading ? "—" : value} icon={icon} />)}
       </div>
 
@@ -265,6 +283,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
                   { value: "completed", label: "Completed" },
                   { value: "cancelled", label: "Cancelled" },
                   { value: "rejected", label: "Rejected" },
+                  { value: "no_show", label: "No-show" },
                 ] : [
                   { value: "all", label: "All Status" },
                   { value: "pending", label: "Pending" },
@@ -463,6 +482,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
         onUpdated={handleBookingUpdated}
       /> : null}
 
+      {decision && selectedBooking ? <BookingDecisionDialog key={`${selectedBooking.backendId}-${decision}`} booking={selectedBooking} action={decision} onClose={() => setDecision(null)} onSaved={(record) => { handleBookingUpdated(record); setDecision(null); }} /> : null}
       {cancelOpen && selectedBooking ? <CancelBookingDialog key={selectedBooking.backendId} booking={selectedBooking} onClose={() => setCancelOpen(false)} onSaved={(record) => { handleBookingUpdated(record); setCancelOpen(false); }} /> : null}
     </div>
   );

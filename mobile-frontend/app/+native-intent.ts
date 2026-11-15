@@ -18,7 +18,7 @@ export function redirectSystemPath({ path, initial }: { path: string; initial: b
       : url.pathname.replace(/^\/--\//, '/');
 
     if (paymentCallbacks.has(callbackPath.replace(/^\/+|\/+$/g, ''))) {
-      // WebBrowser's pending session consumes the original URL and the payment
+      // The PayPal browser service consumes the original URL and the payment
       // screen confirms it. Do not also navigate to a nonexistent callback page.
       // A cold launch has no pending checkout in memory; open the app normally.
       return initial ? '/' : '';

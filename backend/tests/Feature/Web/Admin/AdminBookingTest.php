@@ -104,11 +104,12 @@ it('separates current bookings from terminal history for management users', func
 
     $this->actingAs($admin)->getJson('/admin/bookings?group=history&per_page=10')
         ->assertOk()
-        ->assertJsonPath('meta.total', 3)
+        ->assertJsonPath('meta.total', 4)
         ->assertJsonPath('meta.status_counts.completed', 1)
         ->assertJsonPath('meta.status_counts.cancelled', 1)
         ->assertJsonPath('meta.status_counts.rejected', 1)
-        ->assertJsonCount(3, 'data');
+        ->assertJsonPath('meta.status_counts.no_show', 1)
+        ->assertJsonCount(4, 'data');
 
     $this->actingAs($admin)->getJson('/admin/bookings?group=history&status=returned')
         ->assertOk()
@@ -119,14 +120,14 @@ it('separates current bookings from terminal history for management users', func
         ->assertJsonValidationErrors('group');
 
     $pending = Booking::query()->where('booking_code', 'BK-GROUP-PENDING')->firstOrFail();
-    $this->actingAs($admin)->postJson("/admin/bookings/{$pending->id}/cancel", [
-        'reason' => 'Customer requested cancellation.',
+    $this->actingAs($admin)->postJson("/admin/bookings/{$pending->id}/reject", [
+        'reason' => 'Vehicle unavailable.',
     ])->assertOk();
 
     $this->actingAs($staff)->getJson('/admin/bookings?group=booking')
         ->assertJsonPath('meta.total', 3);
     $this->actingAs($staff)->getJson('/admin/bookings?group=history')
-        ->assertJsonPath('meta.total', 4);
+        ->assertJsonPath('meta.total', 5);
 });
 
 it('keeps terminal booking history view only for management actions', function () {

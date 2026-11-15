@@ -1,6 +1,6 @@
 import { themeColors } from '@/constants/theme';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { AlertCircle, CreditCard } from 'lucide-react-native';
+import { AlertCircle, CreditCard, Info } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,8 +11,8 @@ import { receiptSuccessRoute } from '@/lib/payments/receipt';
 import { capturePayPalOrder } from '@/services/api';
 import { PaymentReceiptScreen } from '@/screens/payments/PaymentReceiptScreen';
 
-function PaymentFailureScreen({ orderId, message, retryPath }: {
-  orderId?: string; message?: string; retryPath?: string;
+function PaymentFailureScreen({ orderId, message, retryPath, cancelled }: {
+  orderId?: string; message?: string; retryPath?: string; cancelled: boolean;
 }) {
   const router = useRouter();
   const [isRetrying, setIsRetrying] = useState(false);
@@ -40,11 +40,11 @@ function PaymentFailureScreen({ orderId, message, retryPath }: {
     <SafeAreaView className="flex-1 bg-background">
       <View className="flex-1 justify-center px-screen py-8">
         <View className="rounded-card border border-border bg-surface px-screen py-8">
-          <View className="h-20 w-20 items-center justify-center self-center rounded-full bg-destructive-surface">
-            <AlertCircle size={43} color={themeColors.destructive} strokeWidth={2.5} />
+          <View className={`h-20 w-20 items-center justify-center self-center rounded-full ${cancelled || orderId ? 'bg-muted' : 'bg-destructive-surface'}`}>
+            {cancelled || orderId ? <Info size={43} color={themeColors.primary} strokeWidth={2.5} /> : <AlertCircle size={43} color={themeColors.destructive} strokeWidth={2.5} />}
           </View>
           <Text className="font-sans mt-section text-center text-title font-semibold text-foreground">
-            {orderId ? 'Confirm payment' : 'Payment unsuccessful'}
+            {orderId ? 'Confirm payment' : cancelled ? 'Payment cancelled' : 'Payment unsuccessful'}
           </Text>
           <Text accessibilityRole="alert" className="font-sans mt-3 text-center text-body leading-6 text-secondary-foreground">
             {retryError || message || (orderId ? 'The payment result could not be confirmed. Check its status before paying again.' : 'The payment was not completed.')}
@@ -54,7 +54,7 @@ function PaymentFailureScreen({ orderId, message, retryPath }: {
             {isRetrying ? <ActivityIndicator color={themeColors.surface} /> : (
               <>
                 <CreditCard size={19} color={themeColors.surface} strokeWidth={2.5} />
-                <Text className="font-sans text-button font-medium text-surface">{orderId ? 'Retry payment confirmation' : 'Try again'}</Text>
+                <Text className="font-sans text-button font-medium text-surface">{orderId ? 'Retry payment confirmation' : cancelled ? 'Review booking' : 'Try again'}</Text>
               </>
             )}
           </Pressable>
@@ -78,7 +78,7 @@ export default function ProtectedPaymentResultScreen() {
       {firstParam(params.status) === 'success' ? (
         <PaymentReceiptScreen orderId={firstParam(params.orderId)} bookingReference={firstParam(params.reference)} />
       ) : (
-        <PaymentFailureScreen orderId={firstParam(params.orderId)} message={firstParam(params.message)} retryPath={firstParam(params.retryPath)} />
+        <PaymentFailureScreen cancelled={firstParam(params.status) === 'cancelled'} orderId={firstParam(params.orderId)} message={firstParam(params.message)} retryPath={firstParam(params.retryPath)} />
       )}
     </AuthenticatedOnly>
   );

@@ -216,14 +216,15 @@ export type PayPalOrderResponse = {
 export type MobileBookingRecord = {
   sharedVehicleLocation?: { latitude: number; longitude: number; accuracy: number; sharedAt: string } | null;
   notes?: string | null;
-  cancellation?: { kind: 'customer' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
+  cancellation?: { kind: 'customer' | 'customer_unpaid' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
   lateReturn?: import('@/types/browse').LateReturnDetails;
   attention?: { key: string; label: string } | null;
   backendId: number;
   id: string;
   bookingCode: string;
   canReviseUnpaid?: boolean;
-  status: 'Pending' | 'Confirmed' | 'Active' | 'Ongoing' | 'Returned' | 'Completed' | 'Rejected' | 'Cancelled';
+  canCancelUnpaid?: boolean;
+  status: 'Pending' | 'Confirmed' | 'Active' | 'Ongoing' | 'Returned' | 'Completed' | 'Rejected' | 'Cancelled' | 'No-show';
   vehicleId: string;
   vehicleName: string;
   vehiclePlateNumber?: string | null;

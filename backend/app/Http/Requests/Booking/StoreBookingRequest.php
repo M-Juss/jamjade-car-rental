@@ -3,8 +3,7 @@
 namespace App\Http\Requests\Booking;
 
 use App\Http\Requests\BaseFormRequest;
-use Carbon\CarbonImmutable;
-use Closure;
+use App\Support\BookingScheduleRules;
 use Illuminate\Validation\Rule;
 
 class StoreBookingRequest extends BaseFormRequest
@@ -21,27 +20,8 @@ class StoreBookingRequest extends BaseFormRequest
 
         return [
             'vehicle_id' => ['required', 'exists:vehicles,id'],
-            'rental_start_at' => [
-                'required',
-                'date',
-                'after_or_equal:today',
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    if (! is_string($value) || ! str_contains($value, ':')) {
-                        return;
-                    }
-
-                    try {
-                        $rentalStart = CarbonImmutable::parse($value);
-                    } catch (\Throwable) {
-                        return;
-                    }
-
-                    if ($rentalStart->lessThanOrEqualTo(now())) {
-                        $fail('The pickup time must be later than the current time.');
-                    }
-                },
-            ],
-            'rental_end_at' => ['required', 'date', 'after:rental_start_at'],
+            'rental_start_at' => BookingScheduleRules::futureStart(),
+            'rental_end_at' => BookingScheduleRules::end(),
             'pickup_location_type' => ['required', Rule::in($pickupLocationTypes)],
             'pickup_location' => ['required', 'string', 'max:255'],
             'return_location' => ['required', 'string', 'max:255'],

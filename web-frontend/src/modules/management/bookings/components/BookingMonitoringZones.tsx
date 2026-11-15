@@ -53,9 +53,9 @@ export function BookingMonitoringZones({ booking, onUpdated }: { booking: Bookin
           {booking.canManageMonitoringZones && zone.scope === "custom" && zone.id ? <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => { setEditing(zone); setEditorOpen(true); }}><Pencil size={13} />Edit</Button><Button type="button" size="sm" variant="outline" onClick={() => setDeleting(zone)}><Trash2 size={13} />Remove</Button></div> : null}
         </div>)}
         <div className="space-y-2 border-t border-border pt-3"><p className="text-xs font-semibold text-foreground">Recent zone activity</p>
-          {(booking.geofenceActivity ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No crossings recorded.</p> : null}
+          {(booking.geofenceActivity ?? []).length === 0 ? <p className="text-xs text-muted-foreground">No zone activity recorded.</p> : null}
           {(booking.geofenceActivity ?? []).map((event) => <div key={event.id} className="rounded-xl bg-background p-3 text-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-foreground">{event.type === "geofence_enter" ? "Entered" : "Exited"} {event.zoneName}</p>{event.notificationRequested ? <Badge variant="outline">Alert</Badge> : null}</div>
+            <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-foreground">{event.type === "geofence_initial_inside" ? "Inside" : event.type === "geofence_enter" ? "Entered" : "Exited"} {event.zoneName}</p>{event.notificationRequested ? <Badge variant="outline">Alert</Badge> : null}</div>
             <p className="mt-1 text-muted-foreground">{new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(event.occurredAt))}</p>
           </div>)}
         </div>

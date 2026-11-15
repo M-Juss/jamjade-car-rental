@@ -6,17 +6,18 @@ import ts from 'typescript';
 import * as zod from 'zod';
 import { toBookingTimestamp } from '../../lib/browse/booking-time.ts';
 
-function loadModule(path, apiPost = async () => ({ data: {} })) {
+function loadModule(path, apiPost = async () => ({ data: {} }), clock = Date) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   const exports = {};
   vm.runInNewContext(compiled, {
-    exports, Intl, Date,
+    exports, Intl, Date: clock,
     require(name) {
       if (name === '@/services/http') return { apiPost };
       if (name === '@/lib/browse/booking-time' || name === './booking-time') return { toBookingTimestamp };
+      if (name === '@/lib/browse/pickup-time') return loadModule('../../lib/browse/pickup-time.ts', apiPost, clock);
       if (name === 'zod') return zod;
       throw new Error(`Unexpected import: ${name}`);
     },
@@ -55,14 +56,50 @@ test('quote matching accepts the corrected interval and rejects the old eight-ho
   assert.equal(matches({ rentalEndAt: '2026-10-20T13:25:00Z' }), false);
 });
 
-test('pickup validation and picker limits use the Manila date across UTC midnight', () => {
-  const { isFuturePickupTime, getLocalDateKey, getLocalTimeKey } = loadModule('../../lib/browse/pickup-time.ts');
+test('pickup validation accepts earlier times today using the Manila date across UTC midnight', () => {
+  const { isBookablePickupDate, getLocalDateKey } = loadModule('../../lib/browse/pickup-time.ts');
   const now = new Date('2026-10-18T16:24:00Z');
   assert.equal(getLocalDateKey(now), '2026-10-19');
-  assert.equal(getLocalTimeKey(now), '00:24');
-  assert.equal(isFuturePickupTime('2026-10-19', '00:25', now), true);
-  assert.equal(isFuturePickupTime('2026-10-19', '00:24', now), false);
-  assert.equal(isFuturePickupTime('2026-10-18', '23:59', now), false);
+  assert.equal(isBookablePickupDate('2026-10-19 00:00', now), true);
+  assert.equal(isBookablePickupDate('2026-10-19 00:24', now), true);
+  assert.equal(isBookablePickupDate('2026-10-19 00:25', now), true);
+  assert.equal(isBookablePickupDate('2026-10-18T16:00:00Z', now), true);
+  assert.equal(isBookablePickupDate('2026-10-18 23:59', now), false);
+  assert.equal(isBookablePickupDate('invalid', now), false);
+});
+
+const clock = new Date('2026-11-15T04:00:00Z');
+class BookingClock extends Date {
+  constructor(...args) { super(...(args.length ? args : [clock.getTime()])); }
+  static now() { return clock.getTime(); }
+}
+
+test('schedule selection rejects past pickup times while retaining date and format rules', () => {
+  const { bookingFormSchema } = loadModule('../../validation/booking/schemas.ts', undefined, BookingClock);
+  const booking = { rentalDate: '2026-11-15', returnDate: '2026-11-16', deliveryTime: '12:05',
+    driverOption: 'self_drive', pickupOption: 'shop', pickupLocation: 'Jamjade Garage', numberOfDays: 1,
+    canSelfDrive: true, selfDriveMessage: '', ownerDriverCoverage: 'metro_manila' };
+  assert.equal(bookingFormSchema.safeParse(booking).success, true);
+  for (const deliveryTime of ['09:00', '12:00']) {
+    const result = bookingFormSchema.safeParse({ ...booking, deliveryTime });
+    assert.equal(result.success, false);
+    assert.equal(result.error.issues.some((issue) => issue.path[0] === 'deliveryTime'), true);
+  }
+  assert.equal(bookingFormSchema.safeParse({ ...booking, rentalDate: '2026-11-16', returnDate: '2026-11-17', deliveryTime: '09:00' }).success, true);
+  assert.equal(bookingFormSchema.safeParse({ ...booking, rentalDate: '2026-11-14' }).success, false);
+  assert.equal(bookingFormSchema.safeParse({ ...booking, deliveryTime: '25:00' }).success, false);
+  assert.equal(bookingFormSchema.safeParse({ ...booking, returnDate: booking.rentalDate }).success, false);
+
+  const { deliveryRoutesSchema } = loadModule('../../validation/booking/delivery.ts', undefined, BookingClock);
+  const delivery = { vehicleId: '1', rentalStartAt: '2026-11-15 12:05', rentalEndAt: '2026-11-16 09:00',
+    ownerDriverCoverage: 'metro_manila', address: 'Demo address', placeId: null, latitude: 14, longitude: 121, pointConfirmed: true };
+  assert.equal(deliveryRoutesSchema.safeParse(delivery).success, true);
+  for (const rentalStartAt of ['2026-11-15 09:00', '2026-11-15 12:00']) {
+    assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalStartAt }).success, false);
+  }
+  assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalStartAt: '2026-11-14 23:59' }).success, false);
+  assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalEndAt: '2026-11-15 11:59' }).success, false);
+  assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalEndAt: '2026-11-15 12:00' }).success, false);
 });
 
 test('delivery validation compares the same instants that the API receives', () => {
@@ -73,4 +110,15 @@ test('delivery validation compares the same instants that the API receives', () 
   assert.equal(deliveryRoutesSchema.safeParse({ ...values, rentalStartAt: '2000-01-01 21:25' }).success, false);
   assert.equal(deliveryRoutesSchema.safeParse({ ...values, rentalEndAt: values.rentalStartAt }).success, false);
   assert.equal(deliveryRoutesSchema.safeParse({ ...values, rentalEndAt: 'invalid' }).success, false);
+});
+
+test('pickup selection uses Manila instants across midnight and disables the current minute', () => {
+  const { isFuturePickupTime, getLocalTimeKey } = loadModule('../../lib/browse/pickup-time.ts');
+  const now = new Date('2026-11-14T16:24:30Z');
+  assert.equal(getLocalTimeKey(now), '00:24');
+  assert.equal(isFuturePickupTime('2026-11-15', '00:20', now), false);
+  assert.equal(isFuturePickupTime('2026-11-15', '00:24', now), false);
+  assert.equal(isFuturePickupTime('2026-11-15', '00:25', now), true);
+  assert.equal(isFuturePickupTime('2026-11-14', '23:55', now), false);
+  assert.equal(isFuturePickupTime('2026-11-16', '00:00', now), true);
 });

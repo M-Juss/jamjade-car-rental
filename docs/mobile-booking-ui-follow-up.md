@@ -1,5 +1,22 @@
 # Mobile booking form follow-up
 
+Vehicle summary columns — 2026-11-15: the shared `VehicleSummaryContent` in
+`mobile-frontend/components/browse/BrowseComponents.tsx` now gives color, seats,
+transmission and fuel four equal flex columns instead of content-sized cells in
+a horizontal scroller. Centered icon/value groups retain the existing separators,
+typography and palette; longer values can wrap within their column. Booking
+creation, checkout, payment and booking details reuse this layout. Mobile lint,
+TypeScript and the scoped `git diff --check` passed. Android visual verification
+at narrow widths and increased font sizes remains pending; no installed app was
+rebuilt or updated for this layout-only change.
+
+Booking details action width — 2026-11-15: `screens/bookings/BookingDetailsScreen.tsx`
+places Edit dates and pay in a full-width row with a flexing button so the action
+fills the available content width while retaining screen gutters and tablet
+width limits. Eligibility and navigation are unchanged. Mobile lint, TypeScript
+and `git diff --check` passed; physical layout verification remains pending
+because no Android device is connected.
+
 Authentication header follow-up — 2026-11-11: shared `AuthScreenFrame.tsx`
 places the back arrow, logo and JamJade name on one aligned row for login,
 registration and email verification. A follow-up restores a thin divider

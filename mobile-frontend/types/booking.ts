@@ -6,7 +6,8 @@ export type BookingStatus =
   | 'Returned'
   | 'Completed'
   | 'Rejected'
-  | 'Cancelled';
+  | 'Cancelled'
+  | 'No-show';
 
 export type BookingStatusFilter = 'All' | Exclude<BookingStatus, 'Ongoing'>;
 
@@ -30,12 +31,13 @@ export type BookingTimelineItem = {
 
 export type Booking = {
   sharedVehicleLocation?: { latitude: number; longitude: number; accuracy: number; sharedAt: string } | null;
-  cancellation?: { kind: 'customer' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
+  cancellation?: { kind: 'customer' | 'customer_unpaid' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
   lateReturn?: import('@/types/browse').LateReturnDetails;
   attention?: { key: string; label: string } | null;
   id: string;
   backendId: number;
   canReviseUnpaid?: boolean;
+  canCancelUnpaid?: boolean;
   vehicleId: string;
   ownerDriverCoverage?: 'metro_manila' | 'outside_manila' | null;
   vehicleName: string;
@@ -114,4 +116,5 @@ export const BOOKING_STATUS_FILTERS: BookingStatusFilter[] = [
   'Completed',
   'Rejected',
   'Cancelled',
+  'No-show',
 ];

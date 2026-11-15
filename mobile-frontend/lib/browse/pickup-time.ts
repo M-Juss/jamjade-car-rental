@@ -18,10 +18,14 @@ export function getLocalTimeKey(date = new Date()) {
   return `${parts.find((part) => part.type === 'hour')?.value}:${parts.find((part) => part.type === 'minute')?.value}`;
 }
 
-export function isFuturePickupTime(
-  rentalDate: string,
-  pickupTime: string,
+export function isFuturePickupTime(rentalDate: string, pickupTime: string, now = new Date()) {
+  return Date.parse(toBookingTimestamp(`${rentalDate} ${pickupTime}`)) > now.getTime();
+}
+
+export function isBookablePickupDate(
+  value: string,
   now = new Date(),
 ) {
-  return Date.parse(toBookingTimestamp(`${rentalDate} ${pickupTime}`)) > now.getTime();
+  const timestamp = Date.parse(toBookingTimestamp(value));
+  return Number.isFinite(timestamp) && getLocalDateKey(new Date(timestamp)) >= getLocalDateKey(now);
 }

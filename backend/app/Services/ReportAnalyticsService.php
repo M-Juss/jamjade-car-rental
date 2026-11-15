@@ -226,7 +226,7 @@ class ReportAnalyticsService
         $outcomes = $period->constrain((clone $booking)->join('booking_events as event', 'event.booking_id', '=', 'bookings.id'), 'event.created_at')
             ->leftJoin('booking_cancellations as cancellation', 'cancellation.booking_id', '=', 'bookings.id')
             ->where('event.event_type', 'status_changed')
-            ->whereIn('event.new_status', ['completed', 'cancelled', 'rejected'])
+            ->whereIn('event.new_status', ['completed', 'cancelled', 'rejected', 'no_show'])
             ->selectRaw("event.id as entry_id, event.created_at as occurred_at,
                 case when event.new_status = 'cancelled' and cancellation.kind = 'no_show' then 'no_show' else event.new_status end as outcome");
 

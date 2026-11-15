@@ -1,3 +1,4 @@
+import { noShowSchema } from "@/validations/booking/decision";
 import { drivingAnalysisQuerySchema } from "@/validations/driving-analysis/schemas";
 import { refreshManagementCounts } from "@/services/management/navigation.service";
 import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
@@ -41,6 +42,12 @@ export async function cancelBooking(booking: BookingRecord, reason: string, refu
     { reason, ...(refund ? { refund_mode: refund.mode, ...(refund.mode === 'custom' ? { refund_amount: refund.amount } : {}) } : {}) },
   );
 
+  refreshManagementCounts();
+  return response.data;
+}
+
+export async function rejectBooking(booking: BookingRecord, reason: string) {
+  const response = await apiPost<BookingRecord>(`/admin/bookings/${booking.backendId}/reject`, { reason });
   refreshManagementCounts();
   return response.data;
 }
@@ -186,8 +193,8 @@ export async function saveReturnFollowUp(booking: BookingRecord, note: string, e
   return (await apiPost<BookingRecord>(`/admin/bookings/${booking.backendId}/return-follow-up`, { note, expected_return_at: expectedReturnAt })).data;
 }
 
-export async function recordBookingNoShow(booking: BookingRecord, reason: string) {
-  const response = await apiPost<BookingRecord>(`/admin/bookings/${booking.backendId}/no-show`, { reason });
+export async function recordBookingNoShow(booking: BookingRecord, reason: string, confirmed: true) {
+  const response = await apiPost<BookingRecord>(`/admin/bookings/${booking.backendId}/no-show`, noShowSchema.parse({ reason, confirmed }));
   refreshManagementCounts();
   return response.data;
 }

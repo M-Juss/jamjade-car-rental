@@ -1,5 +1,35 @@
 # Booking Rental Lifecycle
 
+## Hosted demo data cleanup — 2026-11-15
+
+An explicitly authorized, one-time project-scoped cleanup removed six completed,
+paid demo bookings with no driving grade and their exclusive related records.
+An encrypted, read-back-verified snapshot of affected database rows and 36 private
+files was saved under `backend/storage/app/private/maintenance-backups/` before a
+rollback rehearsal and the committed transaction. Twelve booking receipt/PDF
+files were removed after the database commit; this did not execute provider
+refunds or change external payment records.
+
+All twelve related inspection snapshots were required by a vehicle's current
+condition or later inspection lineage. The user approved preserving those
+snapshots, their checklist/marker records, 24 signatures and inspection activity.
+The existing booking foreign key cleared their booking links when the bookings
+were removed; current-condition pointers and inspection lineage were preserved.
+This exceptional data-maintenance operation adds no application deletion feature
+and does not change finalized-inspection or financial-retention rules.
+
+Fresh production verification found no remaining target bookings or booking-ID
+links, no missing/changed preserved signatures and none of the removed PDFs.
+Driving Analysis retained eleven graded bookings and no ungraded entries in its
+completed-trip population. Other bookings, grades and vehicle state passed
+unchanged checks; research inventories remained 281 recordings and 257 processing
+runs. No other site's data, global service or server-wide configuration changed.
+Relevant contracts: `Booking`, `RentalDrivingAnalysisService`,
+`BookingPaymentDocument`, `VehicleInspection`, and the inspection/current-condition
+foreign keys. No application tests/builds were required because source behavior
+did not change; operational verification used the hosted database and private
+storage, with foreign-key enforcement retained throughout.
+
 The customer vehicle-details screen refreshes the server-backed profile and booking
 status on focus and when returning to the foreground, so completed bookings do not
 leave a stale Book Now lock. The action waits for the check; a failed check offers
@@ -9,16 +39,84 @@ Mobile lint and TypeScript checks passed; device acceptance remains to be confir
 
 ## State boundaries
 
+### Tentative pickup time — 2026-11-15
+
+Choosing or editing a schedule requires a future pickup time. The mobile booking
+form disables elapsed times (including the current minute), rejects them on form
+submission, and clears an invalid time when the rental date changes. The picker
+refreshes while open and rechecks the clock on Apply. Ordinary booking creation
+and delivery confirmation enforce `after:now` through
+`BookingScheduleRules::futureStart()`; mobile booking/delivery Zod validation
+matches this scheduling boundary.
+
+PayPal checkout uses the separate `BookingScheduleRules::checkoutStart()` rule:
+a selected pickup time may pass while the Customer reviews or retries payment,
+provided its date is still today or later in Asia/Manila. This applies to
+`CreatePayPalOrderRequest` and its unpaid-revision subclass. Capture does not
+move either booked timestamp. Return must remain after pickup and the current
+time. Vehicle/Customer availability, delivery quote expiry, pricing, agreement
+and capture safeguards remain authoritative.
+
+Pickup is tentative for operations: preparation and Staff release may begin
+earlier on the booked pickup date, never on a preceding date, and may continue
+later within the reserved interval. A previous ongoing rental or unavailable
+vehicle still blocks release; an early return must complete the normal return
+workflow before the vehicle can be released again. The agreed return deadline,
+partial-payment deadline, automatic unpaid-balance cancellation, no-show rules,
+and remaining release checks are unchanged. Existing production eligibility in
+`TelematicsHandoverEligibilityService` and `RentalReadinessService` already
+supports this; no release-rule changes were required.
+
+Sources: mobile `lib/browse/pickup-time.ts`,
+`components/common/TimePickerWithLabel.tsx`, `forms/booking/BookingForm.tsx`,
+`validation/booking/schemas.ts`, and `validation/booking/delivery.ts`;
+backend `BookingScheduleRules`, `StoreBookingRequest`, `DeliveryRoutesRequest`
+and `CreatePayPalOrderRequest`.
+
+Regression coverage: `BookingPickupTimeTest.php` contrasts strict scheduling
+with tolerant checkout across Manila midnight, exact-current-time, invalid
+inputs and ended intervals. Mocked full PayPal checkout/capture covers the pickup
+time passing before order creation or during approval without moving the return
+deadline. `MobileApiTest.php` rejects ordinary creation with an elapsed pickup.
+Mobile `services/api/booking-time.test.mjs` checks scheduling/Zod boundaries and
+explicit timestamp mapping; `components/common/TimePickerWithLabel.test.mjs`
+checks disabled options, future-date selection, exhausted slots and the Apply
+clock recheck. Existing `RentalEarlyStartTest.php` and
+`BookingRentalLifecycleTest.php` cover production early release, preceding-date
+rejection, readiness requirements and the return deadline.
+
+Verification for this correction: all 1,402 backend tests passed (8,823
+assertions), as did the 11 focused mobile schedule/picker tests, mobile lint,
+TypeScript and Android export. Scoped Pint passed. Whole-repository Pint still
+reports the unrelated existing invitation migration
+(`2026_11_11_210000_add_owner_and_admin_invitations.php`). The full mobile suite
+passed 338/339; its existing vehicle-image test expects 7 bundled upload mappings
+but finds 42. The initial four-file backend run passed 227/228 but could not load
+`postCalibration()` in `RentalEarlyStartTest.php`; the complete suite loads that
+shared helper and passed. `git diff --check` passed. No live booking/payment was
+submitted. Live PayPal sandbox checkout and Android picker acceptance remain
+pending; the shared emulator was being controlled by a separate research UI
+session.
+
+### Booking and payment states
+
 Booking, payment, vehicle operation, inspection, and telematics are separate state dimensions. The ordinary booking path is:
 
 ```text
 pending -> confirmed -> ongoing -> returned -> completed
-   |          |
-   +-> rejected
-   +-> cancelled
+   |          +-> no_show (unreleased, after the reserved period ends)
+   |          +-> cancelled
+   +-> rejected (management)
+   +-> cancelled (Customer unpaid cancellation)
 ```
 
-`pending` may be rejected or cancelled. `confirmed` may be cancelled. Once a rental is `ongoing`, ordinary cancellation is no longer valid. `completed`, `cancelled`, and `rejected` are terminal.
+`pending` may be rejected by management or cancelled through the guarded Customer unpaid flow. `confirmed` may be cancelled or recorded as no-show after the reserved period ends. Once a rental is `ongoing`, ordinary cancellation is no longer valid. `completed`, `cancelled`, `rejected`, and `no_show` are terminal.
+
+Customer mobile can cancel an owned unpaid pending booking with a reason and
+confirmation, using server-provided eligibility. PayPal order retirement,
+uncertain-payment guards, the distinct `customer_unpaid` record and verification
+are documented in [mobile unpaid cancellation](booking-cancellation-policy.md#mobile-unpaid-cancellation--2026-11-15).
+Paid/confirmed booking cancellation remains a management action.
 
 `confirmed` reserves dates but does not authorize handover. `returned` means the physical rental and return processing are finished, while customer money may still be outstanding. `completed` requires a zero customer balance and an explicit authorized Jamjade action; it is never automatic.
 
@@ -130,7 +228,58 @@ When a portal/API proxy replaces the incoming Host, set the optional backend `PA
 
 Callback verification — 2026-10-18: all 724 backend tests (4,120 assertions), PHP formatting and diff checks passed. Mocked checkout/capture tests cover direct and configured public origins; return/cancel tests cover reachable Android fallback URLs and malformed-origin rejection. Read-only HTTP probes through the active public portal verified both callback routes use the public origin instead of loopback. No payment was created, approved or captured during verification. A fresh checkout and physical Android/iOS return remain user-device checks; no mobile runtime code or request payload changed.
 
-PayPal return and cancel callbacks are allowlisted server-side. Android uses an intent URL with a browser fallback; the mobile native-intent handler recognizes customer and Driver return/cancel paths. A warm Android/iOS WebBrowser session lets the payment screen confirm and capture the order, while a cold app launch opens the app normally and does not capture automatically. Capture still occurs only after the app confirms the returned order through Laravel.
+PayPal return and cancel callbacks are allowlisted server-side. Android uses an intent URL with a browser fallback; the mobile native-intent handler recognizes customer and Driver return/cancel paths. A warm Android Custom Tabs checkout lets the payment screen confirm and capture the order, while a cold app launch opens the app normally and does not capture automatically. Capture still occurs only after the app confirms the returned order through Laravel.
+
+### Android PayPal checkout retries — 2026-11-15
+
+The initial Customer, remaining-balance, and Driver payment screens now share
+`mobile-frontend/services/payments/paypal-browser.ts` and
+`mobile-frontend/hooks/use-paypal-browser.ts`. The service calls the installed
+Expo SDK 54 `openBrowserAsync` Custom Tabs API, prefers Chrome when discovered,
+and uses `createTask: false` to keep checkout in the app's Android task. This
+replaces the Android auth-session polyfill, whose browser-close flag can survive
+a rejected native launch and block the next attempt. No dependency, native
+configuration, Laravel endpoint, or request/response contract changed.
+
+Each attempt owns its URL/AppState listeners and return timer. Success,
+interruption, launch rejection, replacement and screen exit release them. A
+500 ms return grace period lets an approval deep link arrive after Android's
+resume event. Approval and explicit cancellation must match the exact generated
+callback path and exactly one matching provider order token; stale, malformed,
+missing-token and other-role callbacks do not confirm or cancel another order.
+`app/+native-intent.ts` still suppresses navigation to the callback itself.
+
+Returning without approval shows a neutral unfinished-payment message on the
+current screen. A failed browser launch also stays on that screen. Continuing
+opens a fresh browser attempt for the same uncaptured PayPal order rather than
+creating a duplicate payment. Explicit cancellation uses the existing guarded
+abandonment endpoint; initial checkout opens a neutral cancellation result and
+the existing booking-review path for a new order, while balance/Driver checkout
+can create a fresh order from the same screen. Screen exit attempts to abandon
+only an order that has not returned approval, including one whose creation
+finished after navigation. Laravel still refuses abandonment after capture has
+started. An approved result retains its order for confirmation retry; the Driver
+screen now retries capture directly instead of creating another order.
+
+The Custom Tabs API cannot programmatically close an existing Android tab or
+erase PayPal login cookies. Fresh attempts reset app listeners, not the PayPal
+account login. The order is kept only in screen memory; process death, a lost
+provider order-creation response, or failed abandonment during network loss can
+still require reconciliation. This change adds no provider-status polling or
+cold-launch payment recovery, and does not treat unknown captures as failures.
+PayPal forbids embedded WebViews; see its [security guidelines](https://developer.paypal.com/api/rest/reference/info-security-guidelines)
+and the [SDK 54 WebBrowser documentation source](https://github.com/expo/expo/blob/sdk-54/docs/pages/versions/v54.0.0/sdk/webbrowser.mdx).
+
+Verification: the 26 payment/callback/receipt/lifecycle Node tests passed; mobile
+lint, `tsc --noEmit`, Expo Doctor (18/18) and Android bundle export passed using
+the installed Node 24.22.1 runtime. The full mobile suite passed 322/323 tests;
+the unchanged vehicle-image test expects 7 bundled upload mappings but finds 42
+(`lib/browse/vehicle-image-source.test.mjs:25`). `adb devices -l` found no connected
+device. Live sandbox approval/cancellation/retry, Chrome task behavior, small/large
+screen layout and physical Android callback timing remain unverified. No payment
+was created or captured during these checks.
+
+### Remaining balance restrictions
 
 An unresolved Customer-responsible balance blocks only creation of a new booking. The Customer can still authenticate, browse, inspect bookings/notifications, and pay. It does not cancel unrelated future bookings.
 
@@ -153,7 +302,7 @@ Vehicle, Customer, and Rental type are visible in one row. On narrow screens the
 fields stack for readability. Web lint and TypeScript checks passed. Browser
 verification was unavailable.
 
-The web booking row exposes a read-only View with progress and stage-specific records, Cancel while allowed, and a state-aware workflow. Continue Booking in the details view opens the next saved stage. Prepare Rental connects Driver assignment when needed, combined Outgoing Inspection/handover for supported rentals, Setup, and explicit Start Rental. Handover is no longer a separate wizard step. Process Return connects Incoming Inspection, inline charge entry and the combined Finalize Charges & Mark Returned confirmation, then advances directly to completion requirements. There is no separate Returned step in the workflow progress. Finish Booking resumes customer settlement and explicit Complete. Each successful save reloads the authoritative booking and advances within the dialog. If that reload fails, staff can retry the read without repeating the saved action. Closing and reopening resumes server state; unsaved form input is not persisted.
+The web booking row exposes a read-only View with progress and stage-specific records, Reject for Pending, Cancel for Confirmed, and a state-aware workflow. Confirmed rows also show No-show, disabled until the entire reserved period ends; an eligible decision requires a reason and a second non-refundable confirmation. No-show is a distinct final status in history; see [final booking outcomes](booking-cancellation-policy.md#final-booking-outcomes--2026-11-15). Continue Booking in the details view opens the next saved stage. Prepare Rental connects Driver assignment when needed, combined Outgoing Inspection/handover for supported rentals, Setup, and explicit Start Rental. Handover is no longer a separate wizard step. Process Return connects Incoming Inspection, inline charge entry and the combined Finalize Charges & Mark Returned confirmation, then advances directly to completion requirements. There is no separate Returned step in the workflow progress. Finish Booking resumes customer settlement and explicit Complete. Each successful save reloads the authoritative booking and advances within the dialog. If that reload fails, staff can retry the read without repeating the saved action. Closing and reopening resumes server state; unsaved form input is not persisted.
 
 Setup, release readiness and returned-booking settlement refresh automatically while staff are waiting. Management readiness includes server-derived `rentalPeriodEligible` for both rental types. Start Rental and Confirm Release remain disabled outside the reserved `[rental_start_at, rental_end_at)` interval, with a concise warning below the rental information card. The local/testing same-start-date timing exception applies to both rental types. Release review refreshes every five seconds without a manual refresh button, including while confirmation is open; Laravel rechecks eligibility on submission. After device checks pass, the next self-drive stage is Calibration Pending while the renter performs guided calibration in the mobile app. The website shows server results and remains responsible for final release. Outstanding customer payment does not block Mark Returned, and Driver-responsible debt does not block Complete. The customer app displays a sanitized server-derived handover state and release/trip status; it does not receive monitoring-zone records or simulate setup verification. Driver mobile is limited to Notifications, Services, and Logout.
 

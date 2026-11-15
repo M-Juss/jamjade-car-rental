@@ -4,11 +4,12 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { themeColors } from '@/constants/theme';
 import { formatPaymentAmount, type SettlementSummary } from '@/lib/payments/settlement-summary';
 
-export function SettlementPaymentCard({ summary, isProcessing, message, onPay }: {
+export function SettlementPaymentCard({ summary, isProcessing, message, onPay, buttonLabel }: {
   summary: SettlementSummary;
   isProcessing: boolean;
   message?: string | null;
   onPay: () => void;
+  buttonLabel?: string;
 }) {
   return (
     <View className="mt-section rounded-card border border-border bg-surface p-card">
@@ -64,7 +65,7 @@ export function SettlementPaymentCard({ summary, isProcessing, message, onPay }:
       {summary.amount > 0 ? (
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: isProcessing, busy: isProcessing }} disabled={isProcessing} onPress={onPay} className={`mt-section min-h-control items-center justify-center rounded-field bg-primary px-4 ${isProcessing ? 'opacity-60' : 'active:opacity-90'}`}>
           {isProcessing ? <ActivityIndicator color={themeColors.surface} /> : (
-            <Text className="font-sans text-button font-medium text-surface">{summary.buttonLabel}</Text>
+            <Text className="font-sans text-button font-medium text-surface">{buttonLabel ?? summary.buttonLabel}</Text>
           )}
         </Pressable>
       ) : null}

@@ -68,7 +68,7 @@ it('starts once after consent and only overwrites an encrypted latest position w
     expect($trip->fresh()->latest_location['latitude'])->toBe(14.001)
         ->and(TelematicsLocationPoint::count())->toBe(0)
         ->and($trip->events()->whereNotNull('latitude')->exists())->toBeFalse()
-        ->and($trip->events()->where('event_type', 'like', 'geofence_%')->exists())->toBeFalse();
+        ->and($trip->events()->whereIn('event_type', ['geofence_enter', 'geofence_exit'])->exists())->toBeFalse();
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/location-monitoring")
         ->assertOk()->assertJsonMissingPath('data.sessionToken')->assertJsonMissingPath('data.latest_location')
         ->assertJsonPath('data.canMonitor', true)->assertJsonPath('data.policy.consentVersion', 3)
@@ -352,7 +352,7 @@ it('evaluates frozen default and custom zones from latest GPS and shares named c
     ]))->assertOk()->json('data.sessionToken');
     $trip = $booking->telematicsTrips()->sole();
     expect($trip->geofenceStates()->count())->toBe(2)
-        ->and($trip->events()->where('event_type', 'like', 'geofence_%')->count())->toBe(0);
+        ->and($trip->events()->whereIn('event_type', ['geofence_enter', 'geofence_exit'])->count())->toBe(0);
 
     sendMonitoringFix($this, $booking, $token, 14.02)->assertOk();
     sendMonitoringFix($this, $booking, $token, 14.02, 2)->assertOk();
@@ -382,7 +382,9 @@ it('evaluates frozen default and custom zones from latest GPS and shares named c
     Sanctum::actingAs(customerUser());
     $this->getJson($path)->assertOk()->assertJsonCount(0, 'data');
     $this->actingAs(vehicleManagerUser())->getJson("/admin/bookings/{$booking->id}")->assertOk()
-        ->assertJsonCount(4, 'data.geofenceActivity')->assertJsonFragment(['zoneName' => 'Garage']);
+        ->assertJsonCount(6, 'data.geofenceActivity')->assertJsonFragment(['type' => 'geofence_initial_inside', 'zoneName' => 'Garage']);
+    $this->getJson('/admin/fleet-tracker')->assertOk()
+        ->assertJsonFragment(['type' => 'geofence_initial_inside', 'zoneName' => 'Garage']);
 })->with(['foreground', 'foreground_background']);
 
 it('records crossings regardless of direction preferences but only notifies enabled directions', function (bool $enter, bool $exit) {
@@ -394,7 +396,7 @@ it('records crossings regardless of direction preferences but only notifies enab
     foreach ([14.006, 14.006, 14, 14] as $latitude) {
         sendMonitoringFix($this, $booking, $token, $latitude, 11)->assertOk();
     }
-    $events = $trip->events()->where('event_type', 'like', 'geofence_%')->get();
+    $events = $trip->events()->whereIn('event_type', ['geofence_enter', 'geofence_exit'])->get();
     $alerts = $booking->user->notifications()->where('data->zone_name', $name)
         ->whereIn('data->event_type', ['geofence_enter', 'geofence_exit'])->get();
     expect($events)->toHaveCount(2)->and($alerts)->toHaveCount((int) $enter + (int) $exit)
@@ -443,7 +445,7 @@ it('starts a fresh baseline on resume without inferring crossings across an unob
         'latitude' => 14.02, 'consent' => true, 'consent_version' => 3, 'sharing_mode' => 'foreground',
     ]))->assertOk()->json('data.sessionToken');
     sendMonitoringFix($this, $booking, $resumed, 14.02, 11)->assertOk();
-    expect($trip->events()->where('event_type', 'like', 'geofence_%')->count())->toBe(0)
+    expect($trip->events()->whereIn('event_type', ['geofence_enter', 'geofence_exit'])->count())->toBe(0)
         ->and($trip->geofenceStates()->where('inside', true)->count())->toBe(0);
     sendMonitoringFix($this, $booking, $resumed, 14)->assertOk();
     sendMonitoringFix($this, $booking, $resumed, 14, 11)->assertOk();

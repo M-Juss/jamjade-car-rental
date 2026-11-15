@@ -9,6 +9,7 @@ const bookingStatusStyle: Record<BookingStatus, string> = {
   returned: "bg-cyan-50 text-cyan-700 border-cyan-200",
   completed: "bg-background text-muted-foreground border-border",
   cancelled: "bg-destructive-surface text-destructive border-destructive-border",
+  no_show: "bg-destructive-surface text-destructive border-destructive-border",
 };
 
 const attentionText: Record<BookingAttention["key"], string | null> = {

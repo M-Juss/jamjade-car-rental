@@ -187,7 +187,7 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
               <Button type="button" size="sm" variant="outline" onClick={() => setStage(step.stage)}>View</Button> : null}
           </div>
         )}</div>
-        {["cancelled", "rejected"].includes(currentDetails.statusKey) ? <p className="text-xs text-muted-foreground">Booking {currentDetails.statusKey}.</p> : null}</Section>
+        {["cancelled", "rejected", "no_show"].includes(currentDetails.statusKey) ? <p className="text-xs text-muted-foreground">Booking {currentDetails.adminStatus.toLowerCase()}.</p> : null}</Section>
         </div></TabsContent>
         <TabsContent value="rental" className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="space-y-4 p-4 sm:p-6">
         <Section title="Booking"><div className="grid gap-2 sm:grid-cols-2">
@@ -212,13 +212,15 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
         </div></TabsContent>
         <TabsContent value="payment" className="min-h-0 flex-auto overflow-y-auto overscroll-contain"><div className="space-y-4 p-4 sm:p-6">
         <BookingPaymentBreakdown booking={currentDetails} />
-        {currentDetails.cancellation ? <Section title="Cancellation and refund"><div className="grid gap-2 sm:grid-cols-2">
-          <Detail label="Cancellation type" value={currentDetails.cancellation.kind.replaceAll("_", " ")} />
+        {currentDetails.cancellation ? <Section title={currentDetails.cancellation.kind === "no_show" ? "No-show" : currentDetails.cancellation.kind === "customer_unpaid" ? "Cancellation" : "Cancellation and refund"}><div className="grid gap-2 sm:grid-cols-2">
+          {currentDetails.cancellation.kind !== "no_show" ? <Detail label="Cancellation type" value={currentDetails.cancellation.kind === "customer_unpaid" ? "Customer (unpaid)" : currentDetails.cancellation.kind.replaceAll("_", " ")} /> : null}
           <Detail label="Reason" value={currentDetails.cancellation.reason} />
+          {currentDetails.cancellation.kind === "no_show" ? <Detail label="Refund" value="Not refundable" /> : currentDetails.cancellation.kind !== "customer_unpaid" ? <>
           <Detail label="Refund status" value={currentDetails.cancellation.refundStatus.replaceAll("_", " ")} />
           <Detail label="Approved refund" value={currentDetails.cancellation.refundAmount === null ? "Pending review" : formatPhilippinePeso(currentDetails.cancellation.refundAmount)} />
           <Detail label="Decision reason" value={currentDetails.cancellation.refundReason} />
           <Detail label="Money returned" value={formatDate(currentDetails.cancellation.refundedAt)} />
+          </> : null}
         </div>
         {currentDetails.canReviewCancellationRefund && currentDetails.cancellation.refundStatus === "pending_review" ? <Button type="button" onClick={() => setRefundAction("review")}>Review Refund</Button> : null}
         {currentDetails.canReviewCancellationRefund && currentDetails.cancellation.refundStatus === "approved" ? <Button type="button" onClick={() => setRefundAction("record")}>Record Money Returned</Button> : null}

@@ -1,5 +1,33 @@
 # User roles and access: Staff and Driver
 
+## Hosted demo Customer cleanup — 2026-11-15
+
+An explicitly authorized, one-time cleanup permanently removed one Customer
+account and its two paid terminal bookings (one cancelled, one completed with a
+saved driving grade). The cleanup included profile/contact/verification records,
+payments and document records, notices, role membership and the linked rental
+motion session, batches, events and coverage intervals. All commands ran within
+the hosted JamJade project; no other site, system service or global setting changed.
+The scoped database rows and existing files were encrypted and read-back verified
+under `backend/storage/app/private/maintenance-backups/` before a rollback rehearsal
+and committed deletion. Eleven referenced files were already absent; the backup
+contains their database references and the two existing files, not reconstructed
+copies of missing originals. No external payment-provider operation occurred.
+
+The user specifically approved preserving two inspection snapshots used by later
+vehicle-condition history, their checklist/marker rows, four signature records,
+and inspection activity. Existing account/booking foreign keys cleared those
+links; historical signer names and the two existing signature files remain.
+Vehicle condition, other accounts/bookings/grades and the 281-recording/257-run RC
+research inventory passed unchanged checks. Fresh verification found zero target
+accounts/bookings, foreign-key links, tokens, role/permission memberships, sessions
+or email-bound recovery/registration records. Ten graded reports remained afterward.
+This is exceptional hosted data maintenance, not a new application account-delete
+feature or a change to normal account retention. Relevant source contracts are
+`User`, `Booking`, `CustomerDocument`, `RentalDrivingAnalysisService` and the
+inspection foreign keys. Operational database/private-storage checks were used;
+application source behavior did not change.
+
 ## Scope
 
 This guide defines the implemented Staff/Driver separation and Personnel. The identified JamJade account has Owner membership alongside Admin membership. Owner membership grants Admin account creation and revocation controls in Personnel. The Owner uses the existing Admin portal.
@@ -36,7 +64,7 @@ Staff's seeded web modules remain Dashboard, Booking Management, Vehicle Managem
 
 Driver mobile remains Services, Notifications, and Logout, with settlement through the existing Driver charge-payment flow. Driver-facing service endpoints require the Driver role and constrain records to the authenticated account's assignment. Customer booking/document/payment-creation routes require the Customer role. Driver access to shared notifications and payment capture remains governed by ownership and existing payment authorization.
 
-Manual booking cancellation is a web Admin/Staff action requiring `manage bookings`. Customer mobile has no cancellation control or endpoint; customers can still view saved cancellation and refund outcomes. Automatic payment-deadline cancellation is unchanged.
+Web booking rejection, confirmed-booking cancellation and no-show recording are Admin/Staff actions requiring `manage bookings`. Pending management bookings use Reject. No-show requires an unreleased Confirmed booking after the full reserved period ends, a reason and explicit confirmation; it is a separate final status with no refundable amount. Active Customers may cancel only their own unpaid pending bookings through the mobile reason/confirmation form. Laravel rechecks status and payment evidence under lock; creating or uncertain capture attempts block cancellation. Paid/confirmed bookings, refunds and Driver services remain outside this Customer action. Customers can view saved cancellation and refund outcomes. Automatic payment-deadline cancellation is unchanged. See [mobile unpaid cancellation](booking-cancellation-policy.md#mobile-unpaid-cancellation--2026-11-15).
 
 ## Management navigation counts
 

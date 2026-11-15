@@ -49,7 +49,7 @@ disabled in Work settings.
 
 ## Contracts and storage
 
-- `DeliveryRoutesRequest` and mobile `validation/booking/delivery.ts` mirror the confirmation payload: vehicle, future start, later end, coverage, address (255), optional Place ID (255), latitude/longitude ranges and accepted point confirmation. Existence, ownership, availability, expiry and consumption remain server rules.
+- `DeliveryRoutesRequest` and mobile `validation/booking/delivery.ts` mirror the confirmation payload: vehicle, a future pickup date and time in Asia/Manila, an end after both pickup and the current time, coverage, address (255), optional Place ID (255), latitude/longitude ranges and accepted point confirmation. Existence, ownership, availability, expiry and consumption remain server rules.
 - `StoreBookingRequest` and `CreatePayPalOrderRequest` retain `delivery_quote_id`, `notes` and reviewed-pricing contracts. Current mobile terms version is `2026-10-19-v4`; v2, v3 and v4 require reviewed pricing through both endpoints. Version 4 also includes the With Assigned Driver latest-location disclosure; see [booking lifecycle](booking-rental-lifecycle.md).
 - New `delivery_quotes.pricing_snapshot.policy_version` is `2026-10-17-deferred-tolls`. New quotes are ready immediately with `delivery_toll_fee=0`; legacy fields/records stay for history. Legacy unconsumed quotes cannot create new bookings.
 - `bookings.delivery_toll_fee` remains a historical accepted amount. Existing nonzero amounts remain visible in financial summaries and documents. Generic return `toll_fee` charges remain distinct.

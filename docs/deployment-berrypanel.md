@@ -2,7 +2,9 @@
 
 Prepared 2026-11-12. Target: `jamjadecarrental.tech`, DNS managed in Hostinger.
 The existing GitHub repository and its `main` branch are the selected source.
-This is deployment preparation, not evidence of a successful hosted deployment.
+These setup instructions are not a complete public deployment acceptance record.
+The dated [hosted RC private storage recovery](telematics-master-plan.md#hosted-rc-private-storage-recovery--2026-11-15)
+records the subsequent research-file restoration and production CLI checks.
 
 ## Project configuration
 
@@ -88,6 +90,10 @@ the matching Laravel application key (or a separately designed re-encryption
 step). Never regenerate that key after importing existing encrypted data.
 Agree a private file/database transfer with the server owner; do not put the key
 or research storage in the public repository. Keep server storage across redeploys.
+Verify private-file access using the actual PHP worker account; deployment-owner
+CLI checks alone do not establish browser access. See the
+[RC storage recovery](telematics-master-plan.md#hosted-rc-private-storage-recovery--2026-11-15)
+for this host's PHP-FPM account and site-group permission requirements.
 
 Enable the scheduler. Configure queue workers to consume **both** `default` and
 `fleet-monitoring` queues; for one worker the command can use

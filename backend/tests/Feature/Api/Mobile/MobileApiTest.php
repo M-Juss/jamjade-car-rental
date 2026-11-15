@@ -395,20 +395,21 @@ it('creates a booking with backend pricing and down payment validation', functio
     ]);
 });
 
-it('rejects a pickup time that has already passed today', function () {
+it('rejects selecting a pickup time that has already passed today', function () {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-15T12:00:00+08:00')->utc());
     $user = customerUser();
     $vehicle = availableVehicle();
     Sanctum::actingAs($user);
 
     $this->postJson('/api/mobile/bookings', [
         'vehicle_id' => $vehicle->id,
-        'rental_start_at' => now()->subMinute()->format('Y-m-d H:i'),
-        'rental_end_at' => now()->addDay()->format('Y-m-d H:i'),
+        'rental_start_at' => '2026-11-15T09:00:00+08:00',
+        'rental_end_at' => '2026-11-16T09:00:00+08:00',
         'pickup_location_type' => 'shop',
         'pickup_location' => 'Jamjade Garage - Cavite',
         'return_location' => 'Jamjade Garage - Cavite',
         'driver_option' => 'self_drive',
-        'down_payment_amount' => 1750,
+        'down_payment_amount' => 3500,
         'payment_method' => 'GCash',
         'transaction_id' => 'GCASH-PAST-TIME',
         'customer_signature' => 'Juan Dela Cruz',

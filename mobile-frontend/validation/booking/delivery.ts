@@ -16,7 +16,7 @@ export const deliveryRoutesSchema = z
       ),
     rentalEndAt: z
       .string()
-      .refine((v) => Number.isFinite(Date.parse(toBookingTimestamp(v))), 'Choose a return date.'),
+      .refine((v) => Number.isFinite(Date.parse(toBookingTimestamp(v))) && Date.parse(toBookingTimestamp(v)) > Date.now(), 'Choose a future return date and time.'),
     ownerDriverCoverage: z.enum(['metro_manila', 'outside_manila']),
     address: z.string().trim().min(1, 'Choose an address.').max(255),
     placeId: z.string().max(255).nullable(),

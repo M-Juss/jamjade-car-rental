@@ -14,6 +14,8 @@ class VehicleOperationalStatusService
         $vehicle->refresh();
         if ($vehicle->maintenanceRecords()->where('status', MaintenanceRecordStatus::InProgress)->exists()) {
             $vehicle->update(['status' => VehicleStatus::Maintenance]);
+        } elseif ($vehicle->bookings()->where('status', BookingStatus::Ongoing)->exists()) {
+            $vehicle->update(['status' => VehicleStatus::Rented]);
         } elseif ($vehicle->status === VehicleStatus::Rented) {
             $vehicle->update(['status' => VehicleStatus::Available]);
         }

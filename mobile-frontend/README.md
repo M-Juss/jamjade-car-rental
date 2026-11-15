@@ -403,6 +403,22 @@ PayPal callbacks are owned by `lib/payments/paypal-callbacks.ts`, while
 `app/+native-intent.ts` consumes the registered `mobilefrontend://paypal/return`
 and `cancel` paths for installed builds. Keep those paths synchronized with the
 scheme in `app.json`; Android Expo Go callbacks use Expo's generated URL.
+All three checkout screens use `hooks/use-paypal-browser.ts` and
+`services/payments/paypal-browser.ts`. They open Android Custom Tabs in the
+app's task, preferring Chrome when available. Browser launch errors and returning
+without approval release the callback listeners and allow another browser attempt
+for the same uncaptured order. An explicit matching cancellation uses the existing
+Laravel abandonment endpoint; confirmation retries keep the original order.
+Screen exit attempts to release an order that has not entered capture. See
+[checkout behavior and verification](../docs/booking-rental-lifecycle.md#android-paypal-checkout-retries--2026-11-15)
+for limits and checks.
+
+Customer booking details offer Cancel booking only when Laravel returns
+`canCancelUnpaid`. `forms/booking/CancelBookingForm.tsx` confirms a required reason
+through `validation/booking/cancellation.ts` and the booking API service. It
+applies only to unpaid pending bookings, excludes unresolved payment attempts and
+uses the existing cancellation timeline/notification flow. See
+[mobile unpaid cancellation](../docs/booking-cancellation-policy.md#mobile-unpaid-cancellation--2026-11-15).
 
 `app.json` owns native plugins, permissions, splash, edge-to-edge behavior, and
 the `mobilefrontend` scheme. `app.config.ts` supplies the Android Maps SDK
@@ -418,7 +434,7 @@ From `mobile-frontend/`, run the installed checks as appropriate:
 npm run lint
 npx tsc --noEmit
 npx expo-doctor
-node --test $(rg --files lib services components -g '*.test.mjs')
+node --test $(rg --files lib services components forms -g '*.test.mjs')
 npx expo export --platform android
 ```
 

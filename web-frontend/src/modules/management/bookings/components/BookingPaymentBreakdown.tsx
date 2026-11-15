@@ -34,7 +34,7 @@ export function BookingPaymentBreakdown({ booking }: { booking: BookingRecord })
     + customerCharges.reduce((sum, charge) => sum + cents(charge.amount), 0);
   const adjustment = total - itemized;
   const balanceDiffers = paid !== null && Math.max(total - paid, 0) !== balance;
-  const cancelled = booking.statusKey === "cancelled" || booking.statusKey === "rejected";
+  const cancelled = ["cancelled", "rejected", "no_show"].includes(booking.statusKey);
   const settled = balance === 0 && booking.paymentStatusKey === "paid" && !cancelled;
   const balanceStyle = balance > 0 && !cancelled
     ? "border-warning-border bg-warning-surface text-warning"

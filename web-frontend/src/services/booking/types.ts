@@ -5,7 +5,8 @@ export type BookingStatus =
   | "ongoing"
   | "returned"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "no_show";
 
 export type PaymentStatus =
   | "unpaid"
@@ -23,12 +24,14 @@ export type LateReturnDetails = {
   requiresManualPricing: boolean; reviewedAt: string | null; approvedAmount: number | null; policy: LateReturnPolicy | null;
 };
 export type BookingCancellation = {
-  kind: "customer" | "management" | "payment_deadline" | "no_show";
+  kind: "customer" | "customer_unpaid" | "management" | "payment_deadline" | "no_show";
   reason: string; refundAmount: number | null;
   refundStatus: "pending_review" | "approved" | "declined" | "refunded" | "not_eligible";
   refundReason: string | null; reviewedAt: string | null; refundedAt: string | null;
 };
 export type BookingRecord = {
+  canCancelUnpaid?: boolean;
+  canRecordNoShow?: boolean;
   cancellation?: BookingCancellation | null;
   canReviewCancellationRefund?: boolean;
   attention?: BookingAttention | null;
@@ -104,7 +107,7 @@ export type BookingRecord = {
   telematicsHandover?: TelematicsHandover;
   monitoringZones?: BookingMonitoringZone[];
   canManageMonitoringZones?: boolean;
-  geofenceActivity?: Array<{ id: string; type: "geofence_enter" | "geofence_exit"; zoneName: string; notificationRequested: boolean; occurredAt: string }>;
+  geofenceActivity?: Array<{ id: string; type: "geofence_enter" | "geofence_exit" | "geofence_initial_inside"; zoneName: string; notificationRequested: boolean; occurredAt: string }>;
 
   returnedAt?: string | null;
   completedAt?: string | null;

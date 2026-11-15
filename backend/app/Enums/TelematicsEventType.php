@@ -8,6 +8,7 @@ enum TelematicsEventType: string
     case TripPaused = 'trip_paused';
     case TripResumed = 'trip_resumed';
     case TripEnded = 'trip_ended';
+    case GeofenceInitialInside = 'geofence_initial_inside';
     case GeofenceEnter = 'geofence_enter';
     case GeofenceExit = 'geofence_exit';
     case GpsUnavailable = 'gps_unavailable';
@@ -26,6 +27,7 @@ enum TelematicsEventType: string
             self::TripPaused => 'Trip paused',
             self::TripResumed => 'Trip resumed',
             self::TripEnded => 'Trip ended',
+            self::GeofenceInitialInside => 'Inside zone',
             self::GeofenceEnter => 'Geofence entered',
             self::GeofenceExit => 'Geofence exit',
             self::GpsUnavailable => 'GPS unavailable',

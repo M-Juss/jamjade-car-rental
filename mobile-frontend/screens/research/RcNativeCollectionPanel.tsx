@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton, InfoRow, SectionCard } from '@/components/bookings';
 import { KeyboardFormScrollView } from '@/components/common/KeyboardFormScrollView';
+import { CollectionMountSetup } from '@/components/research/CollectionMountSetup';
+import { TestVehicleSelection } from '@/components/research/TestVehicleSelection';
 import { RecordingLibrary } from '@/components/research/RecordingLibrary';
 import { ResearchDialog, ResearchIconButton } from '@/components/research/ResearchControls';
 import { ResearchNotes, ExerciseGuide } from '@/components/research/ExerciseGuide';
@@ -15,9 +17,11 @@ import { floatingTabBarContentPadding } from '@/constants/layout';
 import { themeColors } from '@/constants/theme';
 import { CollectionSessionForm, CollectionSetupForm } from '@/forms/research/CollectionSetupForm';
 import { NativeCollectionGroupForm } from '@/forms/research/NativeRecordingForm';
+import { VehicleSetupPreview } from '@/forms/research/VehicleSetupPreview';
 import { ObservationForm } from '@/forms/research/ObservationForm';
 import { exerciseCatalog, recordingDisplay, reviewExerciseCode, type CollectionState, type CollectionStatus, type ExerciseProtocol } from '@/lib/research/collection';
 import { NATIVE_MOUNT_METHOD, type NativeRecorderState, type NativeRecording, type NativeCollectionGroup, type NativeGroupCatalog } from '@/lib/research/native-recorder';
+import { canRecordTestVehicle, previousVehiclePreviewStep, TEST_VEHICLES, type TestVehicle, type VehiclePreviewStep } from '@/lib/research/collection-workflow';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/services/http';
 import { NativeRecorderError, nativeRecorder } from '@/services/telematics/native-recorder';
@@ -35,6 +39,10 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   const [selected, setSelected] = useState<NativeRecording | null>(null), [details, setDetails] = useState(false);
   const [sessionForm, setSessionForm] = useState(true), [groupForm, setGroupForm] = useState(false), [guide, setGuide] = useState<ExerciseProtocol | null>(null), [notes, setNotes] = useState(false), [options, setOptions] = useState(false), [dirty, setDirty] = useState(false);
   const [sessionGroupId, setSessionGroupId] = useState<string | null>(null);
+  const [testVehicle, setTestVehicle] = useState<TestVehicle | null>(null);
+  const [sessionStage, setSessionStage] = useState<'group' | 'session'>('group');
+  const [previewStep, setPreviewStep] = useState<VehiclePreviewStep>('road');
+  const [reviewedMount, setReviewedMount] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const statusRevision = useRef(0);
   const continueCollection = useRef(false);
@@ -97,8 +105,9 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   }, [active, refresh, state?.checking, user]);
   useEffect(() => {
     setSelected(null); setDetails(false); setDirty(false); setGroupForm(false);
-    if (!continueCollection.current) setRepeatExercise(null);
+    if (!continueCollection.current) { setRepeatExercise(null); setTestVehicle(null); }
     setSessionForm(!continueCollection.current); continueCollection.current = false;
+    setSessionStage('group'); setPreviewStep('road');
     setSessionGroupId(null); setAfterSave(null);
   }, [mode]);
 
@@ -115,11 +124,13 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
     } finally { working.current = false; if (mounted.current) setBusy(false); }
   };
   const createGroup = async (values: NativeCollectionGroupInput) => {
+    if (!canRecordTestVehicle(testVehicle)) return null;
     let result: NativeCollectionGroup | null = null;
-    await run(async () => { result = await nativeRecorder.createGroup(values); setSessionGroupId(result.id); setGroups(await nativeRecorder.groups()); setGroupForm(false); setSessionForm(true); });
+    await run(async () => { result = await nativeRecorder.createGroup(values); setSessionGroupId(result.id); setGroups(await nativeRecorder.groups()); setGroupForm(false); setSessionForm(true); setSessionStage('session'); });
     return result;
   };
   const start = async (code: ExerciseCode) => {
+    if (!canRecordTestVehicle(testVehicle) || reviewedMount !== collection.mount?.id) return;
     const session = collection.session, evidence = state?.setup_check;
     if (!session || !evidence || !user) return;
     const protocol = exerciseCatalog.protocols.find(p => p.code === code)!;
@@ -170,21 +181,33 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
   const initialExercise = monitoringSetup ? 'MD' : repeatExercise && repeatExercise.sessionId === collection.session?.id && repeatExercise.mountId === collection.mount?.id && repeatExercise.code !== 'MD'
     ? repeatExercise.code : undefined;
 
-  const setupOpened = mode === 'collect' && Boolean(collection.session && collection.mount) && !sessionForm && !groupForm && !selected && !state?.active;
+  const collectionOpened = mode === 'collect' && canRecordTestVehicle(testVehicle) && Boolean(collection.session && collection.mount) && !sessionForm && !groupForm && !selected && !state?.active;
+  const mountOpened = collectionOpened && reviewedMount !== collection.mount?.id;
+  const setupOpened = collectionOpened && !mountOpened;
+  const previewOpened = mode === 'collect' && Boolean(testVehicle) && !canRecordTestVehicle(testVehicle) && !selected && !state?.active;
   const navigationBlocked = busy || Boolean(state?.active || state?.checking);
-  const opened = Boolean(selected || groupForm || setupOpened || state?.active);
+  const opened = Boolean(selected || groupForm || (mode === 'collect' && testVehicle) || state?.active);
   const goBack = useCallback(() => {
     if (navigationBlocked) return;
     if (details) { setDetails(false); return; }
     const leave = () => {
       if (selected) { setSelected(null); setDirty(false); }
-      else if (groupForm) { setGroupForm(false); setSessionForm(true); }
-      else { setRepeatExercise(null); setSessionForm(true); }
+      else if (testVehicle && !canRecordTestVehicle(testVehicle)) {
+        const previous = previousVehiclePreviewStep(previewStep);
+        if (previous) setPreviewStep(previous); else setTestVehicle(null);
+      }
+      else if (groupForm) { setGroupForm(false); setSessionForm(true); setSessionStage('group'); }
+      else if (!sessionForm) {
+        if (setupOpened) setReviewedMount(null);
+        else { setRepeatExercise(null); setSessionForm(true); setSessionStage('session'); }
+      }
+      else if (sessionStage === 'session') setSessionStage('group');
+      else { setTestVehicle(null); setMonitoringSetup(false); }
     };
     if (dirty) Alert.alert('Discard unsaved observations?', 'The original recording is already saved.', [
       { text: 'Keep editing', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: leave },
     ]); else leave();
-  }, [navigationBlocked, details, dirty, groupForm, selected]);
+  }, [navigationBlocked, details, dirty, groupForm, selected, testVehicle, previewStep, sessionForm, sessionStage, setupOpened]);
   useEffect(() => { onOpenedViewChange(opened); }, [onOpenedViewChange, opened]);
   useEffect(() => {
     if (!active || !opened) return;
@@ -195,19 +218,20 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
     { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => void run(async () => { await nativeRecorder.remove(record.recording_id); setSelected(null); setDirty(false); }) },
   ]);
   const remount = () => {
+    if (!canRecordTestVehicle(testVehicle)) return;
     setOptions(false);
     Alert.alert('Phone remounted?', 'Requires new setup checks and a fresh forward reference.', [
       { text: 'Cancel', style: 'cancel' }, { text: 'Confirm remount', onPress: () => void run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'mount', reason: 'remounted' })); }) },
     ]);
   };
   const newSession = (groupId = collection.session?.recording_group_id) => {
-    if (!groupId) return;
+    if (!groupId || !canRecordTestVehicle(testVehicle)) return;
     setOptions(false);
     const latest = collection.group_sessions?.[groupId];
     if (latest && !latest.session_has_recordings) {
       void run(async () => {
         setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: groupId }));
-        setSessionGroupId(groupId); setSessionForm(false);
+        setSessionGroupId(groupId); setSessionForm(false); setReviewedMount(null); setMonitoringSetup(false);
       });
       return;
     }
@@ -217,24 +241,27 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
       { text: 'Create session', onPress: () => void run(async () => {
         setCollection(await nativeRecorder.collectionAction({ action: 'new_session', group_id: groupId }));
         setSessionGroupId(groupId);
-        setSessionForm(false);
+        setSessionForm(false); setReviewedMount(null); setMonitoringSetup(false);
       }) },
     ]);
   };
 
   return <View className="flex-1">
     <View className="w-full max-w-[640px] flex-row items-center gap-1 self-center px-screen">
-      {opened ? <ResearchIconButton icon={ArrowLeft} label={details ? 'Back to recording' : selected ? mode === 'recordings' ? 'Back to recordings' : 'Back to collection' : 'Back to session selection'} onPress={goBack} disabled={navigationBlocked} /> : null}
-      <View className="flex-1" />
-      {!setupOpened && <ResearchIconButton icon={Info} label="Research notes" onPress={() => setNotes(true)} />}
-      {!selected && !groupForm && !state?.active && <ResearchIconButton icon={RefreshCcw} label="Refresh recordings" disabled={busy} onPress={() => void refresh(true)} />}
+      {opened ? <ResearchIconButton icon={ArrowLeft} label={details ? 'Back to recording' : selected ? mode === 'recordings' ? 'Back to recordings' : 'Back to collection' : 'Back'} onPress={goBack} disabled={navigationBlocked} /> : null}
+      <View className="min-w-0 flex-1 py-3">
+        <Text accessibilityRole="header" className="font-sans text-title font-semibold text-foreground">{selected ? 'Recording' : mode === 'recordings' ? 'Recordings' : 'Data Collection'}</Text>
+        {mode === 'collect' && testVehicle && !selected && !state?.active && <Text className="font-sans text-caption text-secondary-foreground">{TEST_VEHICLES.find(vehicle => vehicle.id === testVehicle)?.label}{!canRecordTestVehicle(testVehicle) ? ' — Preview' : ''}</Text>}
+      </View>
+      {!setupOpened && !previewOpened && <ResearchIconButton icon={Info} label="Research notes" onPress={() => setNotes(true)} />}
+      {!selected && !groupForm && !state?.active && !previewOpened && <ResearchIconButton icon={RefreshCcw} label="Refresh recordings" disabled={busy} onPress={() => void refresh(true)} />}
       {setupOpened && <ResearchIconButton icon={Settings2} label="Session options" onPress={() => setOptions(true)} disabled={navigationBlocked} />}
     </View>
-    <KeyboardFormScrollView key={selected ? `record-${selected.recording_id}` : groupForm ? 'group' : sessionForm ? 'session' : mode} contentContainerClassName="w-full max-w-[640px] self-center px-screen pt-1" contentContainerStyle={{ paddingBottom: opened ? insets.bottom + 20 : floatingTabBarContentPadding + insets.bottom }}>
+    <KeyboardFormScrollView key={selected ? `record-${selected.recording_id}` : groupForm ? 'group' : sessionForm ? 'session' : mode} scrollResetKey={`${testVehicle}-${sessionStage}-${previewStep}-${mountOpened}`} contentContainerClassName="w-full max-w-[640px] self-center px-screen pt-1" contentContainerStyle={{ paddingBottom: opened ? insets.bottom + 20 : floatingTabBarContentPadding + insets.bottom }}>
       <View className="gap-2">
         {loading && <ActivityIndicator accessibilityLabel="Loading recorder" color={themeColors.primary} />}
         {error && <View className="gap-2"><Text accessibilityRole="alert" className="font-sans text-body text-destructive">{error}</Text><ActionButton density="compact" label="Verify access" disabled={busy} onPress={() => void run(async () => { if (user) await nativeRecorder.authorize(user.id); })} /></View>}
-        {!nativeRecorder.collectionAvailable && <Text className="font-sans text-body text-secondary-foreground">Install the updated Android APK for guided collection.</Text>}
+        {canRecordTestVehicle(testVehicle) && !nativeRecorder.collectionAvailable && <Text className="font-sans text-body text-secondary-foreground">Install the updated Android APK for guided collection.</Text>}
         {state?.error && <Text accessibilityRole="alert" className="font-sans text-body text-destructive">{state.error}</Text>}
         {transfer && (transfer.finishing || transfer.unfinished_sessions.length > 0 || transfer.state === 'review_required' || transfer.state === 'access_required') && <SectionCard density="compact" title="Monitoring transfer" icon={Activity}>
           <Text className="font-sans text-body text-foreground">{transfer.pending_batches} pending batches</Text>
@@ -252,11 +279,22 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
             <Pressable accessibilityRole="button" onPress={() => setGuide(currentProtocol)} className="min-h-control flex-row items-center gap-2"><BookOpen size={18} color={themeColors.primary} /><Text className="font-sans text-body font-semibold text-primary">Protocol</Text></Pressable></>}
           <ActionButton density="compact" label={stopping ? 'Saving…' : state.monitoring ? 'Stop monitoring' : 'Stop & save'} variant="primary" disabled={stopping} onPress={stop} />
         </SectionCard>}
-        {mode === 'collect' && !state?.active && !selected && groups && nativeRecorder.collectionAvailable && <>
+        {mode === 'collect' && !state?.active && !selected && !testVehicle && <TestVehicleSelection disabled={navigationBlocked || loading} onSelect={vehicle => {
+          setTestVehicle(vehicle); setSessionForm(true); setSessionStage('group'); setPreviewStep('road'); setMonitoringSetup(false); setReviewedMount(null);
+        }} />}
+        {mode === 'collect' && !state?.active && !selected && testVehicle && !canRecordTestVehicle(testVehicle) && <VehicleSetupPreview key={testVehicle} step={previewStep} onStepChange={setPreviewStep} />}
+        {mode === 'collect' && !state?.active && !selected && canRecordTestVehicle(testVehicle) && groups && nativeRecorder.collectionAvailable && <>
           {groupForm ? <NativeCollectionGroupForm disabled={busy} catalog={groups} onCreate={async values => { await createGroup(values); }} />
-            : !collection.session || !collection.mount || sessionForm ? <CollectionSessionForm catalog={groups} collection={collection} initialGroupId={sessionGroupId} busy={busy} onNewSession={newSession} onMonitoring={async id => { await run(async () => { const next = await nativeRecorder.collectionAction({ action: 'open', group_id: id }); setCollection(next); setSessionGroupId(id); setMonitoringSetup(true); setSessionForm(false); }); }} onOpen={async id => { setMonitoringSetup(false); await run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: id })); setSessionGroupId(id); setSessionForm(false); }); }} onNewGroup={() => setGroupForm(true)} />
+            : !collection.session || !collection.mount || sessionForm ? <CollectionSessionForm key={`${sessionStage}-${sessionGroupId}`} stage={sessionStage} onSelectGroup={id => { setSessionGroupId(id); setSessionStage('session'); }} catalog={groups} collection={collection} initialGroupId={sessionGroupId} busy={busy} onNewSession={newSession} onMonitoring={async id => {
+              if (!canRecordTestVehicle(testVehicle)) return;
+              await run(async () => { const next = await nativeRecorder.collectionAction({ action: 'open', group_id: id }); setCollection(next); setSessionGroupId(id); setMonitoringSetup(true); setSessionForm(false); setReviewedMount(null); });
+            }} onOpen={async id => {
+              if (!canRecordTestVehicle(testVehicle)) return;
+              setMonitoringSetup(false); await run(async () => { setCollection(await nativeRecorder.collectionAction({ action: 'open', group_id: id })); setSessionGroupId(id); setSessionForm(false); setReviewedMount(null); });
+            }} onNewGroup={() => setGroupForm(true)} />
+              : mountOpened && collection.mount ? <CollectionMountSetup mountNumber={collection.mount.mount_number} disabled={busy} onContinue={() => { if (collection.mount) setReviewedMount(collection.mount.id); }} />
               : <CollectionSetupForm key={collection.mount?.id} collection={collection} groupName={group?.name ?? 'Group unavailable'} nextNumber={group?.next_recording_number ?? 1} initialExercise={initialExercise} busy={busy} checking={state?.checking ?? false} evidence={state?.setup_check} stillness={state?.setup_progress} checkError={state?.setup_check_error} phonePower={state?.phone_power}
-                onNotes={() => setNotes(true)} onCheck={async () => { await run(() => nativeRecorder.beginCheck()); }}
+                onNotes={() => setNotes(true)} onCheck={async () => { if (canRecordTestVehicle(testVehicle) && reviewedMount === collection.mount?.id) await run(() => nativeRecorder.beginCheck()); }}
                 onCancelCheck={async () => { await run(() => nativeRecorder.cancelCheck()); }} onStart={start} />}
         </>}
         {current && !state?.active && <View>
@@ -298,6 +336,7 @@ export function RcNativeCollectionPanel({ active, mode, onCollect, onRecordingCh
       progress={progress?.id === afterSave?.record.recording_id ? progress?.label : undefined}
       onClose={() => setAfterSave(null)}
       onAnother={() => {
+        setTestVehicle('rc_pilot');
         const saved = afterSave?.record.collection;
         setRepeatExercise(saved?.protocol_snapshot.recording_kind === 'maneuver_trial'
           ? { sessionId: saved.session.id, mountId: saved.mount.id, code: reviewExerciseCode(saved) } : null);

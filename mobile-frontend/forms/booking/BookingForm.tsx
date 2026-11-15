@@ -41,8 +41,8 @@ import { getBooking } from '@/services/api/booking.service';
 import type { Booking } from '@/types/booking';
 import { startBookingFlow } from '@/lib/browse/booking-flow';
 import { canReviewBooking, overlapsUnavailableDates } from '@/lib/browse/booking-readiness';
-import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
 import { isFuturePickupTime } from '@/lib/browse/pickup-time';
+import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
 import {
   OWNER_DRIVER_METRO_MANILA_DAILY_RATE,
   OWNER_DRIVER_OUTSIDE_MANILA_DAILY_RATE,
@@ -550,7 +550,7 @@ export function BookingForm() {
                   <TimePickerWithLabel
                     required
                     error={errors.deliveryTime?.message}
-                    helperText="The vehicle is picked up and returned at this time."
+                    helperText="Pickup time is tentative. Return is due at this time on the return date."
                     label="Pickup time"
                     placeholder="Select pickup time"
                     value={deliveryTime}

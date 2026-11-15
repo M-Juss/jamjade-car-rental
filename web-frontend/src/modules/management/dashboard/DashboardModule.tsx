@@ -308,7 +308,12 @@ export default function Dashboard() {
         <Card className="min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-none">
           <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5 xl:flex xl:flex-1 xl:flex-col">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-base font-semibold">Rental calendar</h2>
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                <h2 className="text-base font-semibold">Rental calendar</h2>
+                <p className="text-sm font-semibold text-foreground">
+                  {periodLabel(currentDate, view)}
+                </p>
+              </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground" aria-label="Calendar legend">
                 <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-primary" />Confirmed</span>
                 <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-success" />Ongoing</span>
@@ -339,9 +344,6 @@ export default function Dashboard() {
                 >
                   <ChevronRight />
                 </Button>
-                <p className="ml-2 text-sm font-semibold text-foreground">
-                  {periodLabel(currentDate, view)}
-                </p>
               </div>
               <div className="flex w-full rounded-xl border border-border bg-background p-1 sm:w-auto">
                 {(["month", "week", "day"] as View[]).map((option) => (

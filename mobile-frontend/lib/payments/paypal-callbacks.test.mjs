@@ -23,13 +23,11 @@ for (const target of ['customer', 'driver']) {
     const prefix = `mobilefrontend://paypal/${target === 'driver' ? 'driver-' : ''}`;
     assert.equal(urls.returnUrl, `${prefix}return`);
     assert.equal(urls.cancelUrl, `${prefix}cancel`);
-    assert.equal(urls.sessionReturnUrl, prefix);
   });
   test(`Android Expo Go ${target} checkout retains generated development callbacks`, () => {
     const urls = callbacks('storeClient')(target);
     const prefix = `exp://127.0.0.1:8081/--/paypal/${target === 'driver' ? 'driver-' : ''}`;
     assert.equal(urls.returnUrl, `${prefix}return`);
     assert.equal(urls.cancelUrl, `${prefix}cancel`);
-    assert.equal(urls.sessionReturnUrl, prefix);
   });
 }

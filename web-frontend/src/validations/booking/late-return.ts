@@ -1,4 +1,5 @@
 import { z } from "zod/v3";
+import { bookingDecisionSchema } from "./decision";
 import { feePricingSchema } from "@/validations/pricing/schemas";
 
 const money = (min: number, max: number) => z.string().trim().min(1, "Amount is required.")
@@ -33,5 +34,5 @@ export const createLateChargeSchema = (expectedAmount: number | null, selfDrive:
   if (billableHours === 0 && Number(values.amount) > 0) ctx.addIssue({ code: "custom", path: ["amount"], message: "A vehicle received on time cannot incur a late charge." });
 });
 
-export const resolveMissedStartSchema = z.object({ reason: z.string().trim().min(1, "Explain the missed-start resolution.").max(1000), resolution: z.enum(["no_show", "cancel"]) });
+export const resolveMissedStartSchema = bookingDecisionSchema.extend({ resolution: z.enum(["no_show", "cancel"]) });
 export type ResolveMissedStartValues = z.infer<typeof resolveMissedStartSchema>;

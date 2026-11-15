@@ -97,6 +97,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
 
         Route::get('/bookings', [BookingController::class, 'index'])->middleware('role:customer')->name('bookings.index');
         Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:customer')->name('bookings.store');
+        Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->middleware('role:customer')->name('bookings.cancel');
         Route::get('/bookings/{booking}/delivery-estimate', [BookingController::class, 'deliveryEstimate'])->middleware(['role:customer', 'throttle:20,1']);
         Route::get('/bookings/{booking}', [BookingController::class, 'show'])->middleware('role:customer')->name('bookings.show');
         Route::middleware('role:customer')->group(function () {

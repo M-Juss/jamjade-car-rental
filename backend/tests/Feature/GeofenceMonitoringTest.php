@@ -213,7 +213,7 @@ it('records confirmed entry and exit independently for overlapping zones without
         ->and($trip->fresh()->status)->toBe('started')
         ->and($trip->locationPoints()->count())->toBe(8);
     $this->actingAs(monitoringAdmin())->getJson("/admin/bookings/{$booking->id}")->assertOk()
-        ->assertJsonCount(4, 'data.geofenceActivity');
+        ->assertJsonCount(6, 'data.geofenceActivity')->assertJsonFragment(['type' => 'geofence_initial_inside', 'zoneName' => 'Office']);
 });
 
 it('does not infer crossings from duplicate out-of-order poor inaccurate or boundary fixes', function () {
@@ -231,13 +231,13 @@ it('does not infer crossings from duplicate out-of-order poor inaccurate or boun
     $duplicate = $trip->locationPoints()->latest('captured_at')->firstOrFail()->captured_at;
     $send(14.32, 5, $duplicate);
     $send(14.32, 5, $duplicate->copy()->subSecond());
-    expect($trip->events()->count())->toBe(1)
+    expect($trip->events()->count())->toBe(2)
         ->and($trip->fresh()->last_location_at->equalTo($duplicate))->toBeTrue();
     $send(14.32, 100);
     $send(14.32, null);
     $send(14.299 + rad2deg(1000 / 6371008.8));
     $send(14.32, 5, now()->subMinutes(2));
-    expect($trip->events()->count())->toBe(1)
+    expect($trip->events()->count())->toBe(2)
         ->and($trip->geofenceStates()->firstOrFail()->uncertain)->toBeTrue();
     $send(14.32);
     $send(14.32);
@@ -251,6 +251,7 @@ it('rejects client-claimed geofence events and zone labels', function () {
     expect(fn () => $service->storeEvent($trip, ['event_type' => TelematicsEventType::GeofenceEnter->value], $booking->user))->toThrow(ValidationException::class);
     Sanctum::actingAs($booking->user);
     $this->postJson("/api/mobile/telematics/trips/{$trip->id}/events", ['event_type' => 'geofence_enter'])->assertUnprocessable();
+    $this->postJson("/api/mobile/telematics/trips/{$trip->id}/events", ['event_type' => 'geofence_initial_inside'])->assertUnprocessable();
     $this->postJson("/api/mobile/telematics/trips/{$trip->id}/location", [
         'latitude' => 14.299, 'longitude' => 120.958, 'captured_at' => now()->toISOString(), 'current_zone' => 'Claimed zone',
     ])->assertUnprocessable();
@@ -323,6 +324,8 @@ it('notifies the first reliable inside state without inventing an entry event', 
     $service->storeLocation($trip, ['latitude' => 14.299, 'longitude' => 120.958, 'accuracy' => 5, 'captured_at' => now()], $booking->user);
 
     expect($trip->events()->where('event_type', 'geofence_enter')->count())->toBe(0)
+        ->and($trip->events()->where('event_type', 'geofence_initial_inside')->count())->toBe(2)
+        ->and($trip->events()->where('event_type', 'geofence_initial_inside')->get()->pluck('metadata.notification_requested')->sort()->values()->all())->toBe([false, true])
         ->and($booking->user->notifications()->where('title', 'Inside zone')->count())->toBe(1);
     $notice = $booking->user->notifications()->where('title', 'Inside zone')->firstOrFail();
     expect($notice->data['event_type'])->toBe('geofence_initial_inside')

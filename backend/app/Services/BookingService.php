@@ -18,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class BookingService
@@ -123,6 +124,16 @@ class BookingService
                     && data_get($payment->provider_response, 'details.0.issue') === 'ORDER_NOT_APPROVED')));
     }
 
+    public function canCancelUnpaidBooking(Booking $booking): bool
+    {
+        return $booking->status === BookingStatus::Pending && $booking->payment_status === PaymentStatus::Unpaid
+            && $booking->payments->every(fn (Payment $payment) => $payment->provider === 'paypal'
+                && $payment->completed_at === null && $payment->provider_transaction_id === null
+                && ((in_array($payment->status, ['created', 'abandoned'], true)
+                    && $payment->capture_started_at === null && $payment->capture_first_started_at === null)
+                    || ($payment->status === 'failed' && data_get($payment->provider_response, 'details.0.issue') === 'ORDER_NOT_APPROVED')));
+    }
+
     public function reviseAwaitingPayPalPayment(User $user, array $data, string $reference): Booking
     {
         return $this->createBooking($user, $data, null, true, $reference);
@@ -149,13 +160,40 @@ class BookingService
 
     public function transition(Booking $booking, BookingStatus $targetStatus, User $actor, ?string $reason = null, array $extra = []): Booking
     {
-        if ($targetStatus === BookingStatus::Cancelled) {
-            abort_unless($actor->hasAnyRole(['admin', 'staff']) && $actor->can('manage bookings'), 403);
+        $customerCancellation = $targetStatus === BookingStatus::Cancelled && ($extra['cancellation_kind'] ?? null) === 'customer_unpaid';
+        if (in_array($targetStatus, [BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::NoShow], true)) {
+            abort_unless($customerCancellation ? $actor->hasRole('customer')
+                : $actor->hasAnyRole(['admin', 'staff']) && $actor->can('manage bookings'), 403);
         }
 
-        return DB::transaction(function () use ($booking, $targetStatus, $actor, $reason, $extra) {
+        return DB::transaction(function () use ($booking, $targetStatus, $actor, $reason, $extra, $customerCancellation) {
             $booking = Booking::query()->lockForUpdate()->with('vehicle')->findOrFail($booking->id);
             $oldStatus = $booking->status;
+
+            if ($targetStatus === BookingStatus::Cancelled && ! $customerCancellation && $oldStatus === BookingStatus::Pending) {
+                throw ValidationException::withMessages(['status' => ['Reject a pending booking instead of cancelling it.']]);
+            }
+            if (in_array($targetStatus, [BookingStatus::Rejected, BookingStatus::NoShow], true)
+                && (trim($reason ?? '') === '' || mb_strlen(trim($reason)) > 1000)) {
+                throw ValidationException::withMessages(['reason' => ['Enter a reason of up to 1,000 characters.']]);
+            }
+            if ($targetStatus === BookingStatus::NoShow && ($booking->started_at || $booking->rental_end_at->isFuture())) {
+                throw ValidationException::withMessages(['booking' => ['A no-show requires an unreleased confirmed booking whose entire rental period has ended.']]);
+            }
+
+            if ($customerCancellation) {
+                Gate::forUser($actor)->authorize('cancel', $booking);
+                $booking->load('payments');
+                if (! $this->canCancelUnpaidBooking($booking)) {
+                    throw ValidationException::withMessages(['booking' => ['Payment confirmation must be resolved before this booking can be cancelled.']]);
+                }
+                if (trim($reason ?? '') === '' || mb_strlen(trim($reason)) > 1000) {
+                    throw ValidationException::withMessages(['reason' => ['Enter a cancellation reason of up to 1,000 characters.']]);
+                }
+                // Capture and cancellation serialize on this same booking lock.
+                // Retire unapproved orders before releasing the pending booking.
+                $booking->paypalCheckouts()->where('status', 'created')->update(['status' => 'abandoned']);
+            }
 
             if (! in_array($targetStatus, $oldStatus->allowedTransitions(), true)) {
                 throw ValidationException::withMessages([
@@ -163,7 +201,7 @@ class BookingService
                 ]);
             }
 
-            if (in_array($targetStatus, [BookingStatus::Cancelled, BookingStatus::Rejected], true)
+            if (in_array($targetStatus, [BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::NoShow], true)
                 && $booking->paypalCheckouts()->whereIn('status', ['approved', 'capturing'])->exists()) {
                 throw ValidationException::withMessages(['status' => ['Resolve the pending PayPal payment before ending this booking.']]);
             }
@@ -192,8 +230,8 @@ class BookingService
                 app(LocationMonitoringService::class)->close($booking);
             }
 
-            if ($targetStatus === BookingStatus::Cancelled) {
-                app(BookingCancellationService::class)->record($booking, $extra['cancellation_kind'] ?? 'management', $reason ?? 'Booking cancelled.', $actor);
+            if (in_array($targetStatus, [BookingStatus::Cancelled, BookingStatus::NoShow], true)) {
+                app(BookingCancellationService::class)->record($booking, $targetStatus === BookingStatus::NoShow ? 'no_show' : ($extra['cancellation_kind'] ?? 'management'), $reason ?? 'Booking cancelled.', $actor);
             }
 
             if ($targetStatus === BookingStatus::Ongoing) {
@@ -201,7 +239,7 @@ class BookingService
                 $this->telematicsSetup->markReleased($booking);
             }
 
-            if (in_array($targetStatus, [BookingStatus::Returned, BookingStatus::Cancelled, BookingStatus::Rejected], true)) {
+            if (in_array($targetStatus, [BookingStatus::Returned, BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::NoShow], true)) {
                 $this->operationalStatusService->afterBookingEnded($booking->vehicle);
             }
 
@@ -550,6 +588,11 @@ class BookingService
                 'title' => 'Vehicle returned',
                 'message' => "Booking {$booking->booking_code} has finished return processing. Any customer balance remains payable.",
                 'priority' => 'success',
+            ],
+            BookingStatus::NoShow => [
+                'title' => 'Booking no-show',
+                'message' => "Booking {$booking->booking_code} was recorded as a no-show. Rental payments are retained and are not refundable.",
+                'priority' => 'urgent',
             ],
             BookingStatus::Cancelled => [
                 'title' => 'Booking cancelled',

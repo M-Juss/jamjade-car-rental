@@ -12,35 +12,38 @@ import { ResearchIconButton } from '@/components/research/ResearchControls';
 import { themeColors } from '@/constants/theme';
 import { ExerciseGuide } from '@/components/research/ExerciseGuide';
 import { exerciseCatalog, type CollectionState, type ExerciseProtocol, type SetupEvidence } from '@/lib/research/collection';
+import { RC_SLOPES } from '@/lib/research/rc-research';
 import type { NativeGroupCatalog, NativePhonePower, NativeSetupProgress } from '@/lib/research/native-recorder';
 import { collectionExerciseFormSchema, collectionSessionFormSchema, type ExerciseCode } from '@/validation/research/collection';
 
 const intensityPairs = [['LT', 'HLT'], ['RT', 'HRT'], ['SWL', 'HSWL'], ['SWR', 'HSWR']] as const;
 
-export function CollectionSessionForm({ catalog, collection, initialGroupId, busy, onOpen, onNewSession, onNewGroup, onMonitoring }: {
+export function CollectionSessionForm({ catalog, collection, initialGroupId, stage, busy, onSelectGroup, onOpen, onNewSession, onNewGroup, onMonitoring }: {
+  stage: 'group' | 'session'; onSelectGroup: (id: string) => void;
   catalog: NativeGroupCatalog; collection: CollectionState; initialGroupId: string | null; busy: boolean; onOpen: (id: string) => Promise<void>; onNewSession: (id: string) => void; onNewGroup: () => void; onMonitoring: (id: string) => Promise<void>;
 }) {
   const { control, handleSubmit, watch, formState: { isSubmitting } } = useForm<{ group_id: string }>({ resolver: zodResolver(collectionSessionFormSchema),
     defaultValues: { group_id: initialGroupId ?? collection.session?.recording_group_id ?? catalog.selected_group_id ?? catalog.groups[0]?.id ?? '' } });
   const groupId = watch('group_id');
   const latest = collection.group_sessions?.[groupId];
-  const currentGroup = catalog.groups.find(group => group.id === collection.session?.recording_group_id);
-  return <SectionCard density="compact" title="Collection" icon={ClipboardList}><View className="gap-3">
-    {collection.session && <View className="gap-1 border-b border-border pb-3">
-      <Text className="font-sans text-caption text-secondary-foreground">Active collection</Text>
-      <Text className="font-sans text-body font-semibold text-foreground">{currentGroup?.name ?? 'Group unavailable'}</Text>
-      <Text className="font-sans text-caption text-secondary-foreground">Session S{String(collection.session.session_number).padStart(2, '0')}</Text>
-    </View>}
-    <Controller control={control} name="group_id" render={({ field, fieldState }) => <SelectWithLabel label="Group" value={field.value} options={catalog.groups.map(group => ({ value: group.id, label: group.name }))}
+  const selectedGroup = catalog.groups.find(group => group.id === groupId);
+  if (stage === 'group') return <SectionCard density="compact" title="Road group" icon={ClipboardList}><View className="gap-3">
+    {catalog.groups.length > 0 ? <>
+    <Controller control={control} name="group_id" render={({ field, fieldState }) => <SelectWithLabel label="Road group" value={field.value} options={catalog.groups.map(group => ({ value: group.id, label: group.name }))}
       onValueChange={field.onChange} disabled={busy || isSubmitting} error={fieldState.error?.message} />} />
-    <Text className="font-sans text-caption text-secondary-foreground">{latest
-      ? `Latest session S${String(latest.session.session_number).padStart(2, '0')} · ${latest.session_has_recordings ? 'Has recordings' : 'No recordings yet'}`
-      : 'No session yet'}</Text>
+    {selectedGroup && <MetadataList items={[{ label: 'Surface', value: selectedGroup.defaults.surface }, { label: 'Slope', value: RC_SLOPES.find(option => option.value === selectedGroup.defaults.slope)?.label ?? selectedGroup.defaults.slope }]} />}
+    <ActionButton density="compact" label="Continue to session" variant="primary" disabled={busy || isSubmitting} onPress={() => void handleSubmit(v => onSelectGroup(v.group_id))()} />
+    </> : <Text className="font-sans text-body text-secondary-foreground">No road groups yet.</Text>}
+    <ActionButton density="compact" label="Create road group" variant={catalog.groups.length ? 'secondary' : 'primary'} disabled={busy || isSubmitting} onPress={onNewGroup} />
+  </View></SectionCard>;
+  return <SectionCard density="compact" title="Session" icon={ClipboardList}><View className="gap-3">
+    <Text className="font-sans text-body font-semibold text-foreground">{selectedGroup?.name ?? 'Group unavailable'}</Text>
+    {latest ? <MetadataList items={[
+      { label: 'Latest session', value: `S${String(latest.session.session_number).padStart(2, '0')}` },
+      { label: 'Recordings', value: latest.session_has_recordings ? 'Available' : 'None yet' },
+    ]} /> : <Text className="font-sans text-caption text-secondary-foreground">No session yet</Text>}
     <ActionButton density="compact" label={latest ? `Continue session ${String(latest.session.session_number).padStart(2, '0')}` : 'Create session'} variant="primary" disabled={busy || isSubmitting} onPress={() => void handleSubmit(v => onOpen(v.group_id))()} />
-    <View className="flex-row gap-2">
-      <View className="flex-1"><ActionButton density="compact" label="Create group" disabled={busy || isSubmitting} onPress={onNewGroup} /></View>
-      {latest && <View className="flex-1"><ActionButton density="compact" label="New session" disabled={busy || isSubmitting || !latest.session_has_recordings} onPress={() => onNewSession(groupId)} /></View>}
-    </View>
+    {latest && <ActionButton density="compact" label="New session" disabled={busy || isSubmitting || !latest.session_has_recordings} onPress={() => onNewSession(groupId)} />}
     <ActionButton density="compact" label="Drive Monitoring" disabled={busy || isSubmitting || !groupId} onPress={() => void handleSubmit(v => onMonitoring(v.group_id))()} />
   </View></SectionCard>;
 }

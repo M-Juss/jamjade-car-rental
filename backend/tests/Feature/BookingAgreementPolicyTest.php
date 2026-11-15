@@ -3,6 +3,7 @@
 use App\Enums\BookingStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\RentalType;
+use App\Enums\VehicleStatus;
 use App\Models\Booking;
 use App\Models\BookingPaymentDocument;
 use App\Models\Payment;
@@ -95,27 +96,28 @@ it('accepts handover eligibility on a later booked day but never before the star
         ->and($booking->fresh()->rental_end_at->toISOString())->toBe('2026-10-20T06:00:00.000000Z');
 });
 
-it('rejects early no-show classification and retains all payments for a reviewed no-show after the interval', function () {
+it('requires explicit confirmation before retaining payments for a no-show', function () {
     $booking = policyBooking();
     policyPayment($booking);
     $admin = policyAdmin();
-    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-19T18:00:00+08:00')->utc());
-    $this->actingAs($admin)->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'No collection recorded'])->assertUnprocessable();
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T14:00:00+08:00')->utc());
-    $this->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Reserved period ended, no collection or cancellation recorded'])->assertOk()
+    $this->actingAs($admin)->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'No collection recorded'])
+        ->assertUnprocessable()->assertJsonValidationErrors('confirmed');
+    $this->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Reserved period ended, no collection or cancellation recorded', 'confirmed' => true])->assertOk()
+        ->assertJsonPath('data.statusKey', 'no_show')->assertJsonPath('data.status', 'No-show')
         ->assertJsonPath('data.cancellation.kind', 'no_show')->assertJsonPath('data.cancellation.refundStatus', 'not_eligible');
     verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/refund-review", ['amount' => 1000, 'reason' => 'Override'])->assertUnprocessable();
     expect($booking->successfulCustomerPayments()->sum('amount'))->toBe(3500)
         ->and($booking->fresh()->payment_status)->toBe(PaymentStatus::Paid);
 });
 
-it('does not expose mobile cancellation for pending or confirmed bookings', function (BookingStatus $status) {
+it('rejects mobile cancellation of paid pending or confirmed bookings', function (BookingStatus $status) {
     $booking = policyBooking();
     $booking->update(['status' => $status]);
     policyPayment($booking);
     Sanctum::actingAs($booking->user);
-    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/cancel", ['reason' => 'Change of plans'])->assertNotFound();
-    $this->postJson("/api/mobile/bookings/{$booking->id}/cancel", ['reason' => 'Change of plans'])->assertNotFound();
+    $this->postJson("/api/mobile/bookings/{$booking->booking_code}/cancel", ['reason' => 'Change of plans'])->assertForbidden();
+    $this->postJson("/api/mobile/bookings/{$booking->id}/cancel", ['reason' => 'Change of plans'])->assertForbidden();
     $this->postJson("/admin/bookings/{$booking->id}/cancel", ['reason' => 'Change of plans'])->assertForbidden();
     expect($booking->fresh()->status)->toBe($status)
         ->and($booking->fresh()->cancellation)->toBeNull()
@@ -318,4 +320,121 @@ it('does not approve a refund from driver payments or cancel a pending booking t
         'reason' => 'Cancellation.', 'refund_mode' => 'full',
     ])->assertUnprocessable();
     expect($booking->fresh()->status)->toBe(BookingStatus::Pending);
+});
+
+it('rejects a pending management booking instead of cancelling it', function () {
+    $booking = policyBooking();
+    $booking->update(['status' => BookingStatus::Pending, 'payment_status' => PaymentStatus::Unpaid]);
+    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/cancel", ['reason' => 'Unavailable'])
+        ->assertUnprocessable()->assertJsonValidationErrors('status');
+    $this->postJson("/admin/bookings/{$booking->id}/reject", ['reason' => ' '])
+        ->assertUnprocessable()->assertJsonValidationErrors('reason');
+    $this->postJson("/admin/bookings/{$booking->id}/reject", ['reason' => '  Vehicle unavailable  '])
+        ->assertOk()->assertJsonPath('data.statusKey', 'rejected');
+    expect($booking->fresh()->status)->toBe(BookingStatus::Rejected)
+        ->and($booking->cancellation()->exists())->toBeFalse()
+        ->and($booking->events()->where('new_status', 'rejected')->sole()->reason)->toBe('Vehicle unavailable');
+});
+
+it('does not permit no-show for pending or released bookings', function (BookingStatus $status) {
+    $booking = policyBooking();
+    $booking->update(['status' => $status]);
+    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Not eligible', 'confirmed' => true])
+        ->assertUnprocessable();
+    expect($booking->fresh()->status)->toBe($status)->and($booking->cancellation()->exists())->toBeFalse();
+})->with([BookingStatus::Pending, BookingStatus::Ongoing, BookingStatus::Returned, BookingStatus::Completed, BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::NoShow]);
+
+it('keeps no-show authorization and request validation on the server', function () {
+    $booking = policyBooking();
+    $this->actingAs($booking->user)->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Not collecting', 'confirmed' => true])->assertForbidden();
+    $this->actingAs(policyAdmin());
+    foreach ([['reason' => ' ', 'confirmed' => true], ['reason' => str_repeat('a', 1001), 'confirmed' => true], ['reason' => 'Checked', 'confirmed' => false]] as $payload) {
+        $this->postJson("/admin/bookings/{$booking->id}/no-show", $payload)->assertUnprocessable();
+    }
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+});
+
+it('does not turn an active vehicle available when another booking ends as no-show', function () {
+    $booking = policyBooking();
+    $active = policyBooking();
+    $active->update([
+        'vehicle_id' => $booking->vehicle_id, 'status' => BookingStatus::Ongoing,
+        'rental_start_at' => $booking->rental_start_at->copy()->subDays(2),
+        'rental_end_at' => $booking->rental_start_at->copy()->subDay(),
+    ]);
+    $booking->vehicle->update(['status' => VehicleStatus::Rented]);
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T14:00:00+08:00')->utc());
+    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Confirmed non-collection', 'confirmed' => true])->assertOk();
+    expect($booking->vehicle->fresh()->status)->toBe(VehicleStatus::Rented)
+        ->and($active->fresh()->status)->toBe(BookingStatus::Ongoing);
+});
+
+it('includes no-show in terminal history and prevents payment or another outcome afterward', function () {
+    $booking = policyBooking();
+    policyPayment($booking);
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T14:00:00+08:00')->utc());
+    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'No collection', 'confirmed' => true])->assertOk();
+    $this->getJson('/admin/bookings?group=history&status=no_show')->assertOk()
+        ->assertJsonPath('data.0.statusKey', 'no_show')->assertJsonPath('meta.status_counts.no_show', 1);
+    $this->getJson('/admin/bookings?group=booking')->assertOk()->assertJsonCount(0, 'data');
+    $this->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Again', 'confirmed' => true])->assertUnprocessable();
+    expect($booking->cancellation()->count())->toBe(1)
+        ->and(BookingStatus::NoShow->isTerminal())->toBeTrue()
+        ->and(BookingStatus::NoShow->allowedTransitions())->toBe([]);
+    expect(fn () => app(PaymentService::class)->record($booking->fresh(), $booking->user, ['amount' => 100, 'payment_method' => 'GCash']))->toThrow(ValidationException::class);
+    Sanctum::actingAs($booking->user);
+    $this->getJson('/api/mobile/bookings?status=no_show')->assertOk()->assertJsonPath('data.0.status', 'No-show');
+});
+
+it('keeps no-show disabled before the full rental interval ends', function (string $clock, bool $allowed) {
+    $booking = policyBooking();
+    CarbonImmutable::setTestNow(CarbonImmutable::parse($clock)->utc());
+    $this->actingAs(policyAdmin())->getJson("/admin/bookings/{$booking->id}")
+        ->assertOk()->assertJsonPath('data.canRecordNoShow', $allowed);
+    $result = $this->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'No collection', 'confirmed' => true]);
+    if ($allowed) {
+        $result->assertOk()->assertJsonPath('data.statusKey', 'no_show')->assertJsonPath('data.canRecordNoShow', false);
+    } else {
+        $result->assertUnprocessable();
+        expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+        expect(fn () => app(BookingService::class)->transition($booking->fresh(), BookingStatus::NoShow, policyAdmin(), 'Direct attempt'))
+            ->toThrow(ValidationException::class);
+    }
+})->with([
+    'before pickup date' => ['2026-10-18T18:00:00+08:00', false],
+    'after pickup time' => ['2026-10-19T18:00:00+08:00', false],
+    'just before return' => ['2026-10-20T13:59:59+08:00', false],
+    'at return deadline' => ['2026-10-20T14:00:00+08:00', true],
+    'after reserved period' => ['2026-10-20T15:00:00+08:00', true],
+]);
+
+it('blocks no-show while PayPal capture is unresolved', function (string $paymentState) {
+    $booking = policyBooking();
+    $booking->paypalCheckouts()->create([
+        'user_id' => $booking->user_id, 'purpose' => 'balance', 'provider_order_id' => 'NO-SHOW-PENDING',
+        'status' => $paymentState, 'amount' => 100, 'currency' => 'PHP',
+    ]);
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T14:00:00+08:00')->utc());
+    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'No collection', 'confirmed' => true])
+        ->assertUnprocessable()->assertJsonValidationErrors('status');
+    expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed)->and($booking->cancellation()->exists())->toBeFalse();
+})->with(['approved', 'capturing']);
+
+it('allows authorized Staff to record no-show without refund permissions', function () {
+    $booking = policyBooking();
+    policyPayment($booking);
+    $staff = User::factory()->create();
+    $staff->assignRole('staff');
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T14:00:00+08:00')->utc());
+    $this->actingAs($staff)->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'No collection verified', 'confirmed' => true])
+        ->assertOk()->assertJsonPath('data.statusKey', 'no_show')->assertJsonPath('data.cancellation.refundAmount', 0);
+    expect($booking->cancellation->recorded_by)->toBe($staff->id);
+});
+
+it('does not classify a previously released rental as no-show even if its summary says confirmed', function () {
+    $booking = policyBooking();
+    $booking->events()->create(['event_type' => 'status_changed', 'new_status' => 'ongoing']);
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-20T14:00:00+08:00')->utc());
+    $this->actingAs(policyAdmin())->getJson("/admin/bookings/{$booking->id}")->assertOk()->assertJsonPath('data.canRecordNoShow', false);
+    $this->postJson("/admin/bookings/{$booking->id}/no-show", ['reason' => 'Already released', 'confirmed' => true])->assertUnprocessable();
 });

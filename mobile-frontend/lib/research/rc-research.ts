@@ -7,6 +7,7 @@ export const RC_MOVEMENTS = [
 ];
 export const RC_INTENSITIES = [{ value: 'normal', label: 'Normal' }, { value: 'harsh', label: 'Harsh' }];
 export const RC_SURFACES = ['Smooth concrete', 'Rough concrete', 'Asphalt', 'Gravel', 'Other'].map(value => ({ value, label: value }));
+export const RC_COLLECTION_SURFACES = [...RC_SURFACES.filter(option => option.value !== 'Other'), { value: 'Tiles', label: 'Tiles' }, { value: 'Other', label: 'Other' }];
 export const RC_SLOPES = ['level', 'uphill', 'downhill'].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }));
 export const RC_MOUNTS = ['flat', 'upright', 'tilted'].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }));
 export const RC_BATTERY = ['full', 'medium', 'low'].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }));

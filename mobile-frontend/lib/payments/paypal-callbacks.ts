@@ -18,8 +18,5 @@ export function createPayPalCallbackUrls(target: 'customer' | 'driver' = 'custom
   return {
     returnUrl,
     cancelUrl: createCallback(`${prefix}cancel`),
-    // Android's WebBrowser session matches URLs by prefix. Both approval and
-    // cancellation must resolve the session before the app resumes.
-    sessionReturnUrl: createCallback(prefix).split('?')[0],
   };
 }

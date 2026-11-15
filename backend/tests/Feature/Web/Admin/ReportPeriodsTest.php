@@ -230,3 +230,13 @@ it('applies report permissions to analytics and CSV exports', function () {
     $this->actingAs(customerUser())->getJson('/admin/reports?period=day&date=2026-11-02')->assertForbidden();
     $this->actingAs(customerUser())->get('/admin/reports/csv?period=day&date=2026-11-02')->assertForbidden();
 });
+
+it('counts the distinct no-show final status without calling it a cancellation', function () {
+    $booking = periodReportBooking(customerUser(), availableVehicle()->id, 'BK-NEW-NO-SHOW', '2026-11-01 00:00:00', ['status' => BookingStatus::NoShow]);
+    $event = $booking->events()->create(['event_type' => 'status_changed', 'old_status' => 'confirmed', 'new_status' => 'no_show']);
+    $event->forceFill(['created_at' => CarbonImmutable::parse('2026-11-02T06:00:00Z')])->saveQuietly();
+    $booking->cancellation()->create(['kind' => 'no_show', 'reason' => 'No collection', 'refund_amount' => 0]);
+    $result = $this->getJson('/admin/reports?period=day&date=2026-11-02&section=bookings')->assertOk()
+        ->assertJsonPath('data.table.rows.0.outcome', 'No-show')->json('data');
+    expect(reportMetrics($result))->toMatchArray(['No-shows' => 1, 'Cancellations' => 0]);
+});

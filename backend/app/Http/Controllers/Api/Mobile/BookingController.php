@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Booking\CancelUnpaidBookingRequest;
 use App\Http\Requests\Booking\ListCustomerBookingsRequest;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Resources\BookingResource;
@@ -55,6 +57,15 @@ class BookingController extends Controller
         $booking = $this->findOwnedBooking($request, $booking);
 
         return $this->success('Booking fetched successfully.', new BookingResource($booking));
+    }
+
+    public function cancel(CancelUnpaidBookingRequest $request, string $booking): JsonResponse
+    {
+        $record = $this->findOwnedBooking($request, $booking);
+        $record = $this->bookingService->transition($record, BookingStatus::Cancelled, $request->user(),
+            $request->validated('reason'), ['cancellation_kind' => 'customer_unpaid']);
+
+        return $this->success('Booking cancelled successfully.', new BookingResource($record));
     }
 
     public function deliveryEstimate(Request $request, string $booking, DeliveryQuoteService $quotes): JsonResponse

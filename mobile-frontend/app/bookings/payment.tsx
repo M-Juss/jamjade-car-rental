@@ -1,8 +1,6 @@
 import { themeColors } from '@/constants/theme';
 import { receiptSuccessRoute } from '@/lib/payments/receipt';
-import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
@@ -13,15 +11,15 @@ import { SettlementPaymentCard } from '@/components/payments/SettlementPaymentCa
 import { getSettlementSummary } from '@/lib/payments/settlement-summary';
 import { getPaymentErrorMessage } from '@/lib/payments/payment-error';
 import { createPayPalCallbackUrls } from '@/lib/payments/paypal-callbacks';
+import { usePayPalBrowser } from '@/hooks/use-paypal-browser';
 import {
   abandonPayPalOrder,
   capturePayPalOrder,
   createRemainingBalancePayPalOrder,
   getBooking,
+  type PayPalOrderResponse,
 } from '@/services/api';
 import type { Booking } from '@/types/booking';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function RemainingBalancePaymentScreen() {
   const router = useRouter();
@@ -31,6 +29,8 @@ export default function RemainingBalancePaymentScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkout, setCheckout] = useState<PayPalOrderResponse | null>(null);
+  const openCheckout = usePayPalBrowser();
 
   useEffect(() => {
     if (!bookingId) {
@@ -60,38 +60,33 @@ export default function RemainingBalancePaymentScreen() {
     let approved = false;
 
     try {
-      const { returnUrl, cancelUrl, sessionReturnUrl } = createPayPalCallbackUrls();
-      const order = await createRemainingBalancePayPalOrder(booking.id, returnUrl, cancelUrl);
+      const { returnUrl, cancelUrl } = createPayPalCallbackUrls();
+      const order = checkout ?? await createRemainingBalancePayPalOrder(booking.id, returnUrl, cancelUrl);
       orderId = order.orderId;
+      setCheckout(order);
       if (Math.round(order.amount * 100) !== Math.round(summary.amount * 100)) {
         await abandonPayPalOrder(order.orderId);
+        setCheckout(null);
         setBooking(await getBooking(booking.id));
         setError('The amount due changed. Review the updated balance before paying.');
         return;
       }
-      const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, sessionReturnUrl);
+      const result = await openCheckout(order);
 
-      if (result.type !== 'success') {
-        await abandonPayPalOrder(order.orderId);
-        router.replace(
-          `/browse/success?status=failed&source=balance&message=${encodeURIComponent('The PayPal checkout was closed before payment approval. No payment was made; please try again.')}&retryPath=${encodeURIComponent(`/bookings/payment?bookingId=${booking.id}`)}` as Href,
-        );
+      if (result === 'exited') {
         return;
       }
 
-      if (result.url.includes('/cancel')) {
-        await abandonPayPalOrder(order.orderId);
-        router.replace(
-          `/browse/success?status=failed&source=balance&message=${encodeURIComponent('The payment was cancelled.')}&retryPath=${encodeURIComponent(`/bookings/payment?bookingId=${booking.id}`)}` as Href,
-        );
+      if (result === 'interrupted') {
+        setError('Payment not completed. You can continue with PayPal.');
         return;
       }
 
-      const redirect = Linking.parse(result.url);
-      const returnedOrderId = redirect.queryParams?.token;
-
-      if (typeof returnedOrderId === 'string' && returnedOrderId !== order.orderId) {
-        throw new Error('PayPal returned a different order reference.');
+      if (result === 'cancelled') {
+        await abandonPayPalOrder(order.orderId);
+        setCheckout(null);
+        setError('You cancelled the PayPal checkout. You can try again.');
+        return;
       }
 
       approved = true;
@@ -105,8 +100,9 @@ export default function RemainingBalancePaymentScreen() {
         'The payment could not be completed.',
       );
 
-      if (orderId && !approved) {
-        await abandonPayPalOrder(orderId).catch(() => undefined);
+      if (!approved) {
+        setError(message);
+        return;
       }
 
       router.replace(
@@ -150,6 +146,7 @@ export default function RemainingBalancePaymentScreen() {
               summary={summary}
               isProcessing={isProcessing}
               message={error}
+              buttonLabel={checkout ? 'Continue with PayPal' : undefined}
               onPay={() => void payBalance()}
             />
           ) : (

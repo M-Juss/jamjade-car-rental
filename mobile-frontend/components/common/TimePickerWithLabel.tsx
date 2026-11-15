@@ -3,7 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getLocalDateKey, getLocalTimeKey } from '@/lib/browse/pickup-time';
+import { getLocalDateKey, getLocalTimeKey, isFuturePickupTime } from '@/lib/browse/pickup-time';
 
 const HOURS = Array.from({ length: 12 }, (_, index) => index + 1);
 const MINUTES = Array.from({ length: 12 }, (_, index) => index * 5);
@@ -125,12 +125,20 @@ export function TimePickerWithLabel({
   const [selectedHour, setSelectedHour] = useState(parsedTime.hour);
   const [selectedMinute, setSelectedMinute] = useState(parsedTime.minute);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>(parsedTime.period);
-  const minimumTime = pickupDate === getLocalDateKey() ? getLocalTimeKey() : undefined;
+  const [pickerNow, setPickerNow] = useState(() => new Date());
+  const today = getLocalDateKey(pickerNow);
+  const minimumTime = pickupDate === today ? getLocalTimeKey(pickerNow) : undefined;
   const availableTimeValues = useMemo(
-    () => TIME_VALUES.filter((time) => !minimumTime || time > minimumTime),
-    [minimumTime],
+    () => TIME_VALUES.filter((time) => (!pickupDate || pickupDate >= today) && (!minimumTime || time > minimumTime)),
+    [minimumTime, pickupDate, today],
   );
   const hasAvailableTimes = availableTimeValues.length > 0;
+
+  useEffect(() => {
+    if (!isOpen || !pickupDate) return;
+    const interval = setInterval(() => setPickerNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, [isOpen, pickupDate]);
 
   useEffect(() => {
     if (isOpen) {
@@ -146,7 +154,8 @@ export function TimePickerWithLabel({
   const handleApply = () => {
     const nextValue = toTimeValue(selectedHour, selectedMinute, selectedPeriod);
 
-    if (!availableTimeValues.includes(nextValue)) {
+    if (!availableTimeValues.includes(nextValue) || (pickupDate && !isFuturePickupTime(pickupDate, nextValue))) {
+      setPickerNow(new Date());
       return;
     }
 
@@ -172,7 +181,10 @@ export function TimePickerWithLabel({
         accessibilityRole="button"
         accessibilityState={{ disabled: !hasAvailableTimes }}
         disabled={!hasAvailableTimes}
-        onPress={() => setIsOpen(true)}
+        onPress={() => {
+          setPickerNow(new Date());
+          setIsOpen(true);
+        }}
         className={cx(
           'min-h-control flex-row items-center rounded-field border bg-surface px-4',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-[#E5EAF2]',

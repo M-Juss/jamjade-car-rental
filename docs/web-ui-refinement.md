@@ -228,6 +228,13 @@ right-aligned values. Fleet status uses tighter legend spacing and wraps whole
 entries on narrow cards so labels stay on one line. Web lint and TypeScript
 passed. Browser verification was unavailable because local browser use is disabled.
 
+Calendar heading follow-up — 2026-11-15: `DashboardModule.tsx` now places the
+selected period beside Rental calendar, reusing its existing section typography
+and wrapping header layout. The navigation row keeps Previous/Today/Next; the
+period continues to update for month, week and day views. Web lint, TypeScript,
+production build and `git diff --check` passed using Node 24. Responsive browser
+verification remains pending; no form or API contract changed.
+
 ## Reports and Analytics — 2026-11-11
 
 Reports and Analytics appears in the management navigation for Admin and Staff

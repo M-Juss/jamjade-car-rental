@@ -56,6 +56,13 @@ const statusStyles = {
     color: themeColors.destructive,
     icon: CircleAlert,
   },
+  'No-show': {
+    bg: 'bg-destructive-surface',
+    border: 'border-destructive-border',
+    text: 'text-destructive',
+    color: themeColors.destructive,
+    icon: CircleAlert,
+  },
   Cancelled: {
     bg: 'bg-[#F8FAFC]',
     border: 'border-[#E5E7EB]',

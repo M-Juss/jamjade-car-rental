@@ -32,7 +32,6 @@ import {
   Image,
   Modal,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -323,17 +322,16 @@ export function VehicleSummaryContent({ title, image, pricePerDay, color, seats,
           <Text className="text-[11px] font-medium text-secondary-foreground"> / day</Text>
         </Text> : null}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 border-t border-border pt-3"
-        contentContainerStyle={{ alignItems: 'center', columnGap: 12 }}>
+      <View className="mt-3 flex-row items-stretch border-t border-border pt-3">
         {specs.map(({ icon: Icon, value, label }, index) => (
-          <View key={label} accessible accessibilityLabel={`${label}: ${value}`} className={cx('shrink-0 flex-row items-center gap-1.5', index < specs.length - 1 && 'border-r border-border pr-3')}>
+          <View key={label} accessible accessibilityLabel={`${label}: ${value}`} className={cx('min-w-0 flex-1 flex-row items-center justify-center gap-1 px-1', index < specs.length - 1 && 'border-r border-border')}>
             <Icon accessible={false} size={16} color={themeColors.primary} strokeWidth={2} />
-            <Text numberOfLines={1} className="font-sans text-[12px] font-semibold text-foreground">
+            <Text className="font-sans min-w-0 shrink text-[12px] font-semibold text-foreground">
               {value}
             </Text>
           </View>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }

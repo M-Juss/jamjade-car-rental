@@ -14,7 +14,7 @@ class BookingCancellationService
     {
         $booking->cancellation()->create([
             'kind' => $kind, 'reason' => $reason, 'recorded_by' => $actor?->id,
-            'refund_amount' => in_array($kind, ['no_show', 'payment_deadline'], true) ? 0 : null,
+            'refund_amount' => in_array($kind, ['no_show', 'payment_deadline', 'customer_unpaid'], true) ? 0 : null,
         ]);
     }
 
@@ -28,7 +28,7 @@ class BookingCancellationService
                 throw ValidationException::withMessages(['booking' => ['A no-show requires an unreleased confirmed booking whose entire rental period has ended.']]);
             }
 
-            return app(BookingService::class)->transition($booking, BookingStatus::Cancelled, $actor, $reason, ['cancellation_kind' => 'no_show']);
+            return app(BookingService::class)->transition($booking, BookingStatus::NoShow, $actor, $reason);
         });
     }
 

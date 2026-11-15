@@ -73,8 +73,11 @@ the root guide before changing a cross-application contract.
   sign in again. Preserve server error mapping and the existing sign-out flow.
 - PayPal return and cancellation URLs are built in
   `lib/payments/paypal-callbacks.ts`. `app/+native-intent.ts` consumes the
-  `mobilefrontend://paypal/...` callbacks so a pending WebBrowser session can
-  resume the payment screen without navigating to a callback route. Keep the
+  `mobilefrontend://paypal/...` callbacks so the shared Custom Tabs handler at
+  `services/payments/paypal-browser.ts` can resume the payment screen without
+  navigating to a callback route. `hooks/use-paypal-browser.ts` owns screen
+  cleanup; retain an interrupted order for retry and never abandon a capture
+  whose result is uncertain. Keep the
   callback paths and the scheme in `app.json` synchronized; never put
   authentication credentials or Sanctum tokens in a public URL. Provider order
   references may appear in the allowlisted callback URL because the payment
@@ -222,7 +225,7 @@ From `mobile-frontend/`, use the installed scripts and Expo tooling:
 npm run lint
 npx tsc --noEmit
 npx expo-doctor
-node --test $(rg --files lib services components -g '*.test.mjs')
+node --test $(rg --files lib services components forms -g '*.test.mjs')
 npx expo export --platform android
 npm start
 ```

@@ -54,7 +54,7 @@ export function DriverServicesScreen() {
   };
   const visible = useMemo(() => services.filter(booking => {
     const matchesStatus = filter === 'Active' ? ['Active', 'Ongoing'].includes(booking.status)
-      : filter === 'History' ? ['Returned', 'Completed', 'Cancelled', 'Rejected'].includes(booking.status)
+      : filter === 'History' ? ['Returned', 'Completed', 'Cancelled', 'Rejected', 'No-show'].includes(booking.status)
         : ['Pending', 'Confirmed'].includes(booking.status);
     return matchesStatus && matchesBookingSearch(booking, search);
   }), [services, filter, search]);

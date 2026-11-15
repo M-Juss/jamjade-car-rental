@@ -4,7 +4,8 @@ import type {
   DriverType,
   PaymentStatus,
 } from '@/types/booking';
-import { apiGet, API_BASE_URL } from '@/services/http';
+import { apiGet, apiPost, API_BASE_URL } from '@/services/http';
+import type { CancelUnpaidBookingInput } from '@/validation/booking/cancellation';
 
 import type { MobileBookingRecord } from './types';
 
@@ -66,6 +67,7 @@ export function mapBooking(record: MobileBookingRecord): Booking {
     id: record.bookingCode || record.id,
     backendId: Number(record.backendId),
     canReviseUnpaid: record.canReviseUnpaid,
+    canCancelUnpaid: record.canCancelUnpaid,
     vehicleId: record.vehicleId,
     ownerDriverCoverage: record.ownerDriverCoverage,
     vehicleName: record.vehicleName,
@@ -142,6 +144,13 @@ export async function getBooking(bookingId: string) {
     `/mobile/bookings/${encodeURIComponent(bookingId)}`,
   );
 
+  return mapBooking(response.data);
+}
+
+export async function cancelUnpaidBooking(bookingId: string, values: CancelUnpaidBookingInput) {
+  const response = await apiPost<MobileBookingRecord>(
+    `/mobile/bookings/${encodeURIComponent(bookingId)}/cancel`, { reason: values.reason },
+  );
   return mapBooking(response.data);
 }
 

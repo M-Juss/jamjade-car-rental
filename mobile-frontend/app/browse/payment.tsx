@@ -1,9 +1,7 @@
 import { themeColors } from '@/constants/theme';
 import { receiptSuccessRoute } from '@/lib/payments/receipt';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRootNavigationState, useRouter, type Href } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { ArrowLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
@@ -13,6 +11,7 @@ import { BookingStepper, ErrorState, SelectedVehicleSummary, browseIcons } from 
 import { AuthenticatedOnly } from '@/components/auth/AuthenticatedOnly';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { useVehicle } from '@/hooks/use-vehicles';
+import { usePayPalBrowser } from '@/hooks/use-paypal-browser';
 import { firstParam } from '@/lib/browse/booking-params';
 import { getBookingFlow, resetBookingFlow } from '@/lib/browse/booking-flow';
 import { canUseDownPayment, DOWN_PAYMENT_MINIMUM_LEAD_DAYS } from '@/lib/browse/payment-options';
@@ -28,8 +27,6 @@ import {
 } from '@/services/api';
 
 type PaymentSelection = 'down_payment' | 'full_payment';
-
-WebBrowser.maybeCompleteAuthSession();
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -98,6 +95,8 @@ function PaymentScreen() {
   const [checkout, setCheckout] = useState<PayPalOrderResponse | null>(null);
   const [approvalCompleted, setApprovalCompleted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const openCheckout = usePayPalBrowser();
   const toast = useFormToast();
 
   useEffect(() => {
@@ -179,6 +178,7 @@ function PaymentScreen() {
     }
 
     setIsProcessing(true);
+    setCheckoutMessage(null);
     let approved = approvalCompleted;
     let activeOrder = checkout;
 
@@ -196,7 +196,7 @@ function PaymentScreen() {
 
       if (!booking.lateReturnPolicy && !activeOrder) throw new Error('Review the current late return terms before payment. Restart the booking.');
 
-      const { returnUrl, cancelUrl, sessionReturnUrl } = createPayPalCallbackUrls();
+      const { returnUrl, cancelUrl } = createPayPalCallbackUrls();
       const order =
         activeOrder ??
         (await createPayPalOrder({
@@ -224,30 +224,24 @@ function PaymentScreen() {
         setCheckout(order);
       }
 
-      const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, sessionReturnUrl);
+      const result = await openCheckout(order);
 
-      if (result.type !== 'success') {
-        await abandonPayPalOrder(order.orderId);
-        router.replace(
-          `/browse/success?status=failed&message=${encodeURIComponent('PayPal checkout was closed. Review your booking to try again.')}&retryPath=${encodeURIComponent(`/bookings/${encodeURIComponent(order.bookingCode)}`)}` as Href,
-        );
+      if (result === 'exited') {
         return;
       }
 
-      const redirect = Linking.parse(result.url);
-
-      if (redirect.path?.includes('cancel') || result.url.includes('/cancel')) {
-        await abandonPayPalOrder(order.orderId);
-        router.replace(
-          `/browse/success?status=failed&message=${encodeURIComponent('PayPal payment was cancelled.')}&retryPath=${encodeURIComponent(`/bookings/${encodeURIComponent(order.bookingCode)}`)}` as Href,
-        );
+      if (result === 'interrupted') {
+        setCheckoutMessage('Payment not completed. You can continue with PayPal.');
         return;
       }
 
-      const returnedOrderId = redirect.queryParams?.token;
-
-      if (typeof returnedOrderId === 'string' && returnedOrderId !== order.orderId) {
-        throw new Error('PayPal returned a different order reference.');
+      if (result === 'cancelled') {
+        await abandonPayPalOrder(order.orderId);
+        setCheckout(null);
+        router.replace(
+          `/browse/success?status=cancelled&message=${encodeURIComponent('You cancelled the PayPal checkout.')}&retryPath=${encodeURIComponent(`/bookings/${encodeURIComponent(order.bookingCode)}`)}` as Href,
+        );
+        return;
       }
 
       setApprovalCompleted(true);
@@ -256,8 +250,9 @@ function PaymentScreen() {
     } catch (checkoutError) {
       const message = getPaymentErrorMessage(checkoutError, 'PayPal checkout failed. Please try again.');
 
-      if (activeOrder && !approved) {
-        await abandonPayPalOrder(activeOrder.orderId).catch(() => undefined);
+      if (!approved) {
+        setCheckoutMessage(message);
+        return;
       }
 
       const retryPath = activeOrder
@@ -362,19 +357,25 @@ function PaymentScreen() {
               </Text>
             </View>
 
+            {checkoutMessage ? (
+              <Text accessibilityRole="alert" className="font-sans mt-4 text-caption leading-5 text-secondary-foreground">
+                {checkoutMessage}
+              </Text>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
               disabled={isProcessing}
               onPress={() => void handlePayPalCheckout()}
               className={cx(
-                'mt-section min-h-control flex-row items-center justify-center gap-3 rounded-field bg-[#0070BA]',
+                'mt-section min-h-control flex-row items-center justify-center gap-3 rounded-field bg-primary',
                 isProcessing && 'opacity-65',
               )}>
               {isProcessing ? (
                 <ActivityIndicator color={themeColors.surface} />
               ) : (
                 <Text className="font-sans text-button font-medium text-surface">
-                  {approvalCompleted ? 'Retry Payment Confirmation' : 'Continue with PayPal'}
+                  {approvalCompleted ? 'Retry payment confirmation' : 'Continue with PayPal'}
                 </Text>
               )}
             </Pressable>

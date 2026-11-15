@@ -7,6 +7,7 @@ import {
   RotateCcw,
   Navigation,
   CreditCard,
+  CircleX,
 } from "lucide-react-native";
 import {
   ActivityIndicator,
@@ -26,6 +27,8 @@ import {
 import { getBooking, getDriverService } from "@/services/api";
 import { useAuth } from "@/providers/AuthProvider";
 import { ApiError } from "@/services/http";
+import { CancelBookingForm } from '@/forms/booking/CancelBookingForm';
+import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import type { Booking } from "@/types/booking";
 
 export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
@@ -38,6 +41,8 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
   bookingRef.current = booking;
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const toast = useFormToast();
 
   const loadBooking = useCallback(async (quiet = false) => {
     if (!bookingId) {
@@ -149,13 +154,21 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                 label="Pay charges" icon={CreditCard} onPress={() => router.push(`/driver-payment?bookingId=${encodeURIComponent(booking.id)}` as Href)} /> : null}
             </View> : null}
             {!isDriver && booking.canReviseUnpaid ? (
-              <ActionButton density="compact" className="w-full" icon={CreditCard} label="Edit dates and pay" variant="primary"
-                onPress={() => router.push(`/browse/booking?vehicleId=${encodeURIComponent(booking.vehicleId)}&bookingId=${encodeURIComponent(booking.id)}` as Href)} />
+              <View className="w-full flex-row">
+                <ActionButton density="compact" className="flex-1" icon={CreditCard} label="Edit dates and pay" variant="primary"
+                  onPress={() => router.push(`/browse/booking?vehicleId=${encodeURIComponent(booking.vehicleId)}&bookingId=${encodeURIComponent(booking.id)}` as Href)} />
+              </View>
             ) : null}
-            {!isDriver && booking.status === 'Pending' && booking.paymentStatus === 'Unpaid' && !booking.canReviseUnpaid ? (
+            {!isDriver && booking.status === 'Pending' && booking.paymentStatus === 'Unpaid' && !booking.canReviseUnpaid && !booking.canCancelUnpaid ? (
               <Text className="font-sans text-body text-secondary-foreground">Payment is awaiting confirmation. Contact JamJade if confirmation is unavailable.</Text>
             ) : null}
-            {!isDriver && ['Completed', 'Cancelled', 'Rejected'].includes(booking.status) ? (
+            {!isDriver && booking.canCancelUnpaid ? (
+              <View className="w-full flex-row">
+                <ActionButton density="compact" className="flex-1" icon={CircleX} label="Cancel booking" variant="danger"
+                  onPress={() => setIsCancelOpen(true)} />
+              </View>
+            ) : null}
+            {!isDriver && ['Completed', 'Cancelled', 'Rejected', 'No-show'].includes(booking.status) ? (
               <ActionButton
                 density="compact"
                 className="self-start"
@@ -168,6 +181,16 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
           </View>
         </View>
       </ScrollView>
+      {!isDriver ? <CancelBookingForm bookingId={booking.id} visible={isCancelOpen} onClose={() => {
+        setIsCancelOpen(false);
+        void loadBooking(true);
+      }}
+        onCancelled={(updated) => {
+          setBooking(updated);
+          setIsCancelOpen(false);
+          toast.showToast('Booking cancelled.', 'success');
+        }} /> : null}
+      <FormToast message={toast.message} title={toast.title} variant={toast.variant} onDismiss={toast.clearToast} />
     </View>
   );
 }

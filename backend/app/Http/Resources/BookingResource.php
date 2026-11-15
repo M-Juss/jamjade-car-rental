@@ -44,6 +44,8 @@ class BookingResource extends JsonResource
 
         return [
             'backendId' => $this->id,
+            'canRecordNoShow' => $isManagement && $this->status === BookingStatus::Confirmed
+                && ! $this->started_at && $this->rental_end_at?->lte(now()),
             'canReviewCancellationRefund' => $isManagement && ($request->user()?->hasRole('admin') ?? false),
             'cancellation' => $this->when(! $isDriverView, fn () => $this->cancellation ? [
                 'kind' => $this->cancellation->kind,
@@ -51,7 +53,7 @@ class BookingResource extends JsonResource
                 'refundAmount' => $this->cancellation->refund_amount === null ? null : (float) $this->cancellation->refund_amount,
                 'refundStatus' => $this->cancellation->refunded_at ? 'refunded'
                     : ($this->cancellation->reviewed_at ? ((float) $this->cancellation->refund_amount > 0 ? 'approved' : 'declined')
-                        : (in_array($this->cancellation->kind, ['no_show', 'payment_deadline'], true) ? 'not_eligible' : 'pending_review')),
+                        : (in_array($this->cancellation->kind, ['no_show', 'payment_deadline', 'customer_unpaid'], true) ? 'not_eligible' : 'pending_review')),
                 'refundReason' => $this->cancellation->refund_reason,
                 'reviewedAt' => $this->cancellation->reviewed_at?->toISOString(),
                 'refundedAt' => $this->cancellation->refunded_at?->toISOString(),
@@ -60,6 +62,8 @@ class BookingResource extends JsonResource
             'bookingCode' => $this->booking_code,
             'canReviseUnpaid' => $request->user()?->id === $this->user_id && $this->relationLoaded('payments')
                 && app(BookingService::class)->canReviseUnpaidBooking($this->resource),
+            'canCancelUnpaid' => ($request->user()?->can('cancel', $this->resource) ?? false) && $this->relationLoaded('payments')
+                && app(BookingService::class)->canCancelUnpaidBooking($this->resource),
             'status' => $this->status->mobileLabel(),
             'statusKey' => $this->status->value,
             'adminStatus' => $this->status->adminLabel(),
@@ -106,7 +110,7 @@ class BookingResource extends JsonResource
                 fn () => BookingGeofenceResource::collection(app(BookingGeofenceService::class)->zonesFor($this->resource))),
             'canManageMonitoringZones' => $isManagement && ($request->user()?->hasRole('admin') ?? false)
                 && $telematicsSupported && in_array($this->status->value, ['pending', 'confirmed'], true) && ! $this->started_at,
-            'geofenceActivity' => $this->when($hasMonitoringDetails, fn () => $this->telematicsEvents()->whereIn('event_type', ['geofence_enter', 'geofence_exit'])->orderByDesc('occurred_at')->limit(30)->get()->map(fn ($event) => [
+            'geofenceActivity' => $this->when($hasMonitoringDetails, fn () => $this->telematicsEvents()->whereIn('event_type', ['geofence_enter', 'geofence_exit', 'geofence_initial_inside'])->orderByDesc('occurred_at')->limit(30)->get()->map(fn ($event) => [
                 'id' => (string) $event->id, 'type' => $event->event_type->value, 'zoneName' => $event->metadata['zone_name'] ?? 'Monitoring zone',
                 'notificationRequested' => $event->metadata['notification_requested'] ?? false, 'occurredAt' => $event->occurred_at?->toISOString(),
             ])),
@@ -261,7 +265,7 @@ class BookingResource extends JsonResource
                 'title' => 'Booking Confirmed',
                 'description' => 'Your booking has been confirmed.',
                 'timestamp' => $this->confirmed_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
-                'completed' => in_array($this->status, [BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Returned, BookingStatus::Completed], true),
+                'completed' => in_array($this->status, [BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Returned, BookingStatus::Completed, BookingStatus::NoShow], true),
             ],
             [
                 'title' => 'Rental Active',
@@ -293,6 +297,15 @@ class BookingResource extends JsonResource
                     'completed' => true,
                 ],
             ];
+        }
+
+        if ($this->status === BookingStatus::NoShow) {
+            return array_merge(array_slice($items, 0, 2), [[
+                'title' => 'No-show',
+                'description' => $this->cancellation?->reason ?: 'This booking was recorded as a no-show. Rental payments are not refundable.',
+                'timestamp' => $this->cancellation?->created_at?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
+                'completed' => true,
+            ]]);
         }
 
         if ($this->status === BookingStatus::Cancelled) {

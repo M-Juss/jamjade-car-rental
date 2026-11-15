@@ -1,5 +1,46 @@
 # Telematics and RC Research: central implementation guide
 
+### Android Admin vehicle-first collection UI — 2026-11-15
+
+Data Collection starts with RC Pilot, 4-seater, 7-seater or 12+ seater selection.
+RC Pilot proceeds through Road group → Session → Phone mount → the existing
+consented setup checks and recording flow. Road groups retain the existing
+surface/slope defaults, generated names, IDs and historical recordings. Session
+selection preserves Continue, New session and Drive Monitoring. Mount review
+shows the existing adjustable-screw RC roof position; it does not accept alignment
+or replace the native preflight/forward-reference requirements. A remount still
+creates a new native mount version and needs fresh setup/reference evidence.
+
+The three real-vehicle categories are UI previews only. Their road/slope choices,
+new-session preview and Phone holder Portrait/Landscape selection stay in React
+Hook Form state and are discarded on exit. Portrait/Landscape describes a future
+physical holder position; it does not change Android screen orientation. The
+review shows uncaptured references, the unavailable-recording reason and a
+disabled Start recording action. It receives no recorder/session/upload callbacks;
+RC handlers also guard vehicle selection before creating groups/sessions, running
+preflight or starting capture/Drive Monitoring. Preview validation is a local UI
+schema, not a new Laravel or native write contract. No real-car calibration,
+classification, thresholds, profile persistence or rental-release integration is
+implemented by this change. Historical data and restricted Admin access remain.
+
+The implementation reuses the existing compact SectionCard, ActionButton,
+SelectWithLabel, ResearchIconButton, keyboard-aware scroll and safe-area patterns.
+Sources: `mobile-frontend/screens/research/RcNativeCollectionPanel.tsx`,
+`forms/research/CollectionSetupForm.tsx`, `forms/research/VehicleSetupPreview.tsx`,
+`components/research/TestVehicleSelection.tsx`,
+`components/research/CollectionMountSetup.tsx`,
+`lib/research/collection-workflow.ts` and
+`validation/research/vehicle-setup-preview.ts` (paths after the first are relative
+to `mobile-frontend/`).
+
+Checks: mobile lint, TypeScript, Android export and 62 focused collection,
+native-recorder and Drive Monitoring tests passed with Node 24. An isolated
+Android emulator UI preview checked vehicle choices, required-surface errors,
+session/mount layouts, Portrait/Landscape selection, disabled real-vehicle Start
+and Back navigation. Temporary preview routing was removed and the normal app
+entry restored. Authenticated physical RC capture/upload, smaller-device/text
+scaling checks and an updated standalone APK installation remain pending.
+
 ### Shared Admin research review — 2026-11-12
 
 All active Admin accounts can review verified and uploaded native research recordings in Data Collection and the shared reviewed maneuver comparison in Model Explorer, including annotation revisions, processing and contact review. Annotation revisions retain the actual reviewer; original recording ownership, encrypted originals, session identity and same-owner reference compatibility remain unchanged. Mobile research uploads, context and observations remain restricted to their original account. The older Expo v1 routes remain owner-bound; the pinned classifier examples are shared among authorized Admins. Sources: `RcNativeRecordingController`, `RcProcessingRunController`, `RcAnnotationController`, `RcNativeResearchService`, `RcCollectionService`, `RcAnnotationService`, and `RcManeuverComparisonService`. Hosted access still requires RC demo configuration and the original encrypted data and application key. Focused web and mobile research tests cover shared Admin access and continued mobile ownership enforcement.
@@ -5428,6 +5469,52 @@ The focused hosted access, model, seeder, calibration and rental suite passed
 with 31 failures and 2 errors (the same counts as the pre-change baseline).
 Scoped PHP formatting passed. Final verification is recorded in the deployment
 guide. Android and public server acceptance remain pending.
+
+### Hosted RC private storage recovery — 2026-11-15
+
+The hosted database contained the research records and its private classifier
+passed decryption and identity checks, but all 281 recording manifests, 2,785
+sensor chunks and 257 prepared-signal files were absent. Data Collection could
+list records but could not open a recording; Model Explorer showed reviewed
+event counts without measurements or selectable prepared signals.
+
+The matching local encrypted files were transferred over SSH to a private
+staging directory owned by the site account. Before installation, all 3,323
+files decrypted with the existing hosted application key and matched their
+database SHA-256 values. A missing-file-only copy restored the original
+`storage/app/private/rc-research-v2/<recording>/` paths. The database, application
+key, classifier and dataset exports were preserved. Temporary transfer and
+verification files were removed after the restored paths passed the same checks.
+Keep this private disk persistent across deployments; Git and frontend rebuilds
+do not restore these files.
+
+The initial checks as the deployment owner (`user_6`) passed while both browser
+views still lacked file access. The website uses PHP-FPM as `www-data`, a member
+of the existing `berrypanel` site group. The restored encrypted files had owner-only
+access. Only the 281 restored recording trees were updated to allow the existing
+site group to read/write files and traverse/write directories. Owner and world
+permission bits were preserved; dataset/model paths were untouched. Verify
+private-file access as the actual PHP worker account as well as the deployment
+owner when restoring this host.
+
+Production CLI checks verified every restored manifest, chunk and processing
+result, plus decryption of 326 label revisions, 302 observation revisions and
+281 collection contexts. A Data Collection recording-detail controller call
+returned 200, and a bounded original-signal read returned 44 samples. Model
+Explorer returned 246 recordings, 479 reviewed events and 451 events with
+eligible measurements; the default left-cornering selection had 49 reviewed
+events and 45 with measurements. Existing contact, coverage and processing-run
+eligibility rules still apply. The private classifier also passed its runtime
+check. Checks repeated as `www-data` found zero unreadable files across all three
+inventories and returned the same 451 measured events. Authenticated browser
+verification then opened recording R280 with original-signal graphs and saved
+labels and confirmed populated Model Explorer comparison statistics and enabled
+recording selectors. Physical Android acceptance remains separate.
+Relevant source: `backend/config/filesystems.php`,
+`backend/app/Services/RcNativeResearchService.php`,
+`backend/app/Services/RcProcessingRunService.php` and
+`backend/app/Services/RcManeuverComparisonService.php`. No application code or
+classification settings changed during this recovery.
 
 ### Final driving reports — 2026-11-12
 

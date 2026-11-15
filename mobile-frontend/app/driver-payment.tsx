@@ -1,6 +1,5 @@
 import { themeColors } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { ArrowLeft } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
@@ -10,15 +9,15 @@ import { SettlementPaymentCard } from '@/components/payments/SettlementPaymentCa
 import { getSettlementSummary } from '@/lib/payments/settlement-summary';
 import { getPaymentErrorMessage } from '@/lib/payments/payment-error';
 import { createPayPalCallbackUrls } from '@/lib/payments/paypal-callbacks';
+import { usePayPalBrowser } from '@/hooks/use-paypal-browser';
 import {
   abandonPayPalOrder,
   capturePayPalOrder,
   createDriverOutstandingPayPalOrder,
   getDriverService,
+  type PayPalOrderResponse,
 } from '@/services/api';
 import type { Booking } from '@/types/booking';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function DriverPaymentScreen() {
   const router = useRouter();
@@ -28,6 +27,9 @@ export default function DriverPaymentScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [checkout, setCheckout] = useState<PayPalOrderResponse | null>(null);
+  const [approvalCompleted, setApprovalCompleted] = useState(false);
+  const openCheckout = usePayPalBrowser();
 
   useEffect(() => {
     if (!bookingId) {
@@ -47,41 +49,45 @@ export default function DriverPaymentScreen() {
     if (!booking || !summary || summary.amount <= 0 || isProcessing) return;
     setIsProcessing(true);
     setMessage(null);
-    let orderId: string | null = null;
-    let approved = false;
-
     try {
-      const { returnUrl, cancelUrl, sessionReturnUrl } = createPayPalCallbackUrls('driver');
-      const order = await createDriverOutstandingPayPalOrder(booking.id, returnUrl, cancelUrl);
-      orderId = order.orderId;
-      if (Math.round(order.amount * 100) !== Math.round(summary.amount * 100)) {
+      const { returnUrl, cancelUrl } = createPayPalCallbackUrls('driver');
+      const order = checkout ?? await createDriverOutstandingPayPalOrder(booking.id, returnUrl, cancelUrl);
+      setCheckout(order);
+      if (!approvalCompleted && Math.round(order.amount * 100) !== Math.round(summary.amount * 100)) {
         await abandonPayPalOrder(order.orderId);
+        setCheckout(null);
         setBooking(await getDriverService(booking.id));
         setMessage('The amount due changed. Review the updated balance before paying.');
         return;
       }
-      const result = await WebBrowser.openAuthSessionAsync(order.approvalUrl, sessionReturnUrl);
+      if (!approvalCompleted) {
+        const result = await openCheckout(order, 'driver');
 
-      if (result.type !== 'success') {
-        await abandonPayPalOrder(order.orderId);
-        setMessage(
-          'The PayPal checkout was closed before payment approval. No payment was made; please try again.',
-        );
-        return;
+        if (result === 'exited') {
+          return;
+        }
+
+        if (result === 'interrupted') {
+          setMessage('Payment not completed. You can continue with PayPal.');
+          return;
+        }
+
+        if (result === 'cancelled') {
+          await abandonPayPalOrder(order.orderId);
+          setCheckout(null);
+          setMessage('You cancelled the PayPal checkout. You can try again.');
+          return;
+        }
+
+        setApprovalCompleted(true);
       }
 
-      if (result.type === 'success' && result.url.includes('/driver-cancel')) {
-        await abandonPayPalOrder(order.orderId);
-        setMessage('The PayPal payment was cancelled.');
-        return;
-      }
-
-      approved = true;
       await capturePayPalOrder(order.orderId);
+      setCheckout(null);
+      setApprovalCompleted(false);
       setMessage('Driver charges paid successfully.');
       setBooking(await getDriverService(booking.id));
     } catch (error) {
-      if (orderId && !approved) await abandonPayPalOrder(orderId).catch(() => undefined);
       setMessage(getPaymentErrorMessage(error, 'The Driver balance payment could not be completed.'));
     } finally {
       setIsProcessing(false);
@@ -112,6 +118,7 @@ export default function DriverPaymentScreen() {
               summary={summary}
               isProcessing={isProcessing}
               message={message}
+              buttonLabel={approvalCompleted ? 'Retry payment confirmation' : checkout ? 'Continue with PayPal' : undefined}
               onPay={() => void pay()}
             />
           ) : !isLoading ? (

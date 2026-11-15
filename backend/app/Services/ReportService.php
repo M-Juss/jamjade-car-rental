@@ -510,7 +510,7 @@ class ReportService
         return $vehicles->map(function (Vehicle $vehicle) use ($rangeDays) {
             $bookings = $vehicle->bookings;
             $bookedDays = $bookings
-                ->whereNotIn('status', [BookingStatus::Cancelled, BookingStatus::Rejected])
+                ->whereNotIn('status', [BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::NoShow])
                 ->sum('duration_days');
             $incidentCount = $bookings->sum(
                 fn (Booking $booking) => $booking->telematicsEvents
@@ -587,7 +587,7 @@ class ReportService
                 'totalBookings' => $bookings->count(),
                 'completedBookings' => $bookings->where('status', BookingStatus::Completed)->count(),
                 'cancelledBookings' => $bookings
-                    ->whereIn('status', [BookingStatus::Cancelled, BookingStatus::Rejected])
+                    ->whereIn('status', [BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::NoShow])
                     ->count(),
                 'totalSpent' => (float) $bookings->sum(
                     fn (Booking $booking) => $booking->payments
@@ -677,7 +677,7 @@ class ReportService
             BookingStatus::Returned => '#14B8A6',
             BookingStatus::Confirmed => '#60A5FA',
             BookingStatus::Pending => '#F59E0B',
-            BookingStatus::Cancelled => '#F43F5E',
+            BookingStatus::Cancelled, BookingStatus::NoShow => '#F43F5E',
             BookingStatus::Rejected => '#A855F7',
         };
     }

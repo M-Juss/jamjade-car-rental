@@ -7,10 +7,10 @@ import { Text, View } from 'react-native';
 import { ActionButton, InfoRow, SectionCard } from '@/components/bookings';
 import { SelectWithLabel } from '@/components/common/SelectWithLabel';
 import { NATIVE_MOUNT_METHOD, NATIVE_RECORDING_PURPOSES, nativeCollectionGroupName, type NativeCollectionGroup, type NativeGroupCatalog, type NativePhonePower } from '@/lib/research/native-recorder';
-import { RC_SLOPES, RC_SURFACES } from '@/lib/research/rc-research';
+import { RC_COLLECTION_SURFACES, RC_SLOPES } from '@/lib/research/rc-research';
 import { nativeCollectionGroupFormSchema, nativeRecordingSchema, type NativeCollectionGroupInput, type NativeRecordingInput } from '@/validation/research/native-recorder';
 
-const surfaces = [...RC_SURFACES.filter(option => option.value !== 'Other'), { value: 'Tiles', label: 'Tiles' }, { value: 'Other', label: 'Other' }];
+const surfaces = RC_COLLECTION_SURFACES;
 type Props = {
   disabled: boolean; catalog: NativeGroupCatalog; onStart: (values: NativeRecordingInput) => Promise<void>;
   onCreateGroup: (values: NativeCollectionGroupInput) => Promise<NativeCollectionGroup | null>; initialValues?: NativeRecordingInput;
@@ -95,13 +95,13 @@ export function NativeCollectionGroupForm({ disabled, catalog, onCancel, onCreat
   const slope = useWatch({ control, name: 'slope' });
   const name = nativeCollectionGroupName({ surface, slope }, catalog.groups);
   const busy = disabled || isSubmitting;
-  return <SectionCard density="compact" title="New collection group" icon={ClipboardList}><View className="gap-4">
-    <Controller control={control} name="surface" render={({ field, fieldState }) => <SelectWithLabel label="Surface" required options={surfaces}
+  return <SectionCard density="compact" title="New road group" icon={ClipboardList}><View className="gap-4">
+    <Controller control={control} name="surface" render={({ field, fieldState }) => <SelectWithLabel label="Road surface" required options={surfaces}
       value={field.value} onValueChange={field.onChange} disabled={busy} error={fieldState.error?.message} />} />
     <Controller control={control} name="slope" render={({ field, fieldState }) => <SelectWithLabel label="Slope" required options={RC_SLOPES}
       value={field.value} onValueChange={field.onChange} disabled={busy} error={fieldState.error?.message} />} />
     <InfoRow label="Name" value={name || 'Select a surface'} />
-    <ActionButton density="compact" label={busy ? 'Creating…' : 'Create group'} variant="primary" disabled={busy} onPress={() => void handleSubmit(onCreate)()} />
+    <ActionButton density="compact" label={busy ? 'Creating…' : 'Create road group'} variant="primary" disabled={busy} onPress={() => void handleSubmit(onCreate)()} />
     {onCancel && <ActionButton density="compact" label="Cancel" disabled={busy} onPress={onCancel} />}
   </View></SectionCard>;
 }
