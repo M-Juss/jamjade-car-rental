@@ -424,7 +424,10 @@ the deployment's network and configuration.
 
 ## Activity Log
 
-The Admin portal's Activity Log appears immediately below Management. Active Admins, including
+The Admin portal's Activity Log follows Model Development and uses a clipboard
+list icon. `ManagementSidebarNav.tsx` and `module-registry.ts` define its placement
+and icon. A browser fixture verified the desktop sidebar and narrow-screen menu.
+Active Admins, including
 Owners with Admin membership, can read it; Staff and other roles are denied by
 Laravel. It displays Date performed, Performed by, a short Action message, and
 Success/Failed. Search matches the actor or safe message; Module, Action and

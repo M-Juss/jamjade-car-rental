@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
-use App\Enums\VehicleStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Vehicle\ListVehiclesRequest;
 use App\Http\Resources\VehicleResource;
@@ -10,6 +9,7 @@ use App\Models\Vehicle;
 use App\Services\VehicleService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
@@ -20,23 +20,25 @@ class VehicleController extends Controller
     public function index(ListVehiclesRequest $request): JsonResponse
     {
         $filters = $request->safe()->only(['search', 'brand', 'transmission']);
-        $filters['status'] = VehicleStatus::Available->value;
-
-        $vehicles = $this->vehicleService->paginate(
+        $vehicles = $this->vehicleService->paginateMobileCatalog(
             $filters,
-            $request->integer('per_page', 10)
+            $request->integer('per_page', 10),
+            $this->customerId($request),
         );
 
         return $this->paginated('Vehicles fetched successfully.', $vehicles, VehicleResource::class);
     }
 
-    public function show(Vehicle $vehicle): JsonResponse
+    public function show(Request $request, Vehicle $vehicle): JsonResponse
     {
-        abort_unless($vehicle->status === VehicleStatus::Available, 404);
-
         return $this->success(
             'Vehicle fetched successfully.',
-            new VehicleResource($vehicle->load(['images', 'features', 'dateBlockingBookings', 'scheduledMaintenanceWindows']))
+            new VehicleResource($this->vehicleService->mobileCatalogVehicle($vehicle->id, $this->customerId($request)))
         );
+    }
+
+    private function customerId(Request $request): ?int
+    {
+        return $request->routeIs('mobile.customer.vehicles.*') ? $request->user()->id : null;
     }
 }

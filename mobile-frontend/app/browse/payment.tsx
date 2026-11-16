@@ -14,7 +14,7 @@ import { useVehicle } from '@/hooks/use-vehicles';
 import { usePayPalBrowser } from '@/hooks/use-paypal-browser';
 import { firstParam } from '@/lib/browse/booking-params';
 import { getBookingFlow, resetBookingFlow } from '@/lib/browse/booking-flow';
-import { canUseDownPayment, DOWN_PAYMENT_MINIMUM_LEAD_DAYS } from '@/lib/browse/payment-options';
+import { canUseDownPayment } from '@/lib/browse/payment-options';
 import { formatPeso } from '@/lib/browse/pricing';
 import { TERMS_VERSION } from '@/lib/browse/rental-config';
 import { getPaymentErrorMessage } from '@/lib/payments/payment-error';
@@ -310,13 +310,7 @@ function PaymentScreen() {
                   setPaymentSelection('down_payment');
                 }}
               />
-            ) : (
-              <Text className="font-sans rounded-card border border-border bg-muted px-4 py-3 text-[12px] font-semibold leading-5 text-[#536888]">
-                Full payment is required because the rental starts in less than{' '}
-                {DOWN_PAYMENT_MINIMUM_LEAD_DAYS} days. The down-payment option appears when the rental date is
-                at least {DOWN_PAYMENT_MINIMUM_LEAD_DAYS} days from today.
-              </Text>
-            )}
+            ) : null}
             <PaymentChoiceCard
               title="Full Payment"
               description="Pay the full booking cost."

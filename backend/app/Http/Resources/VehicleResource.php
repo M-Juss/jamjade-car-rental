@@ -22,18 +22,18 @@ class VehicleResource extends JsonResource
         $imageUrls = collect($images)->pluck('url')->filter()->values();
         $features = $this->whenLoaded('features', fn () => $this->features->pluck('feature_name')->values(), collect());
         $unavailableDateRanges = $this->whenLoaded(
-            'dateBlockingBookings',
-            fn () => $this->dateBlockingBookings->map(fn ($booking) => [
-                'startDate' => $booking->rental_start_at->toDateString(),
-                'endDate' => $booking->rental_end_at->toDateString(),
+            'mobileDateBlockingBookings',
+            fn () => $this->mobileDateBlockingBookings->map(fn ($booking) => [
+                'startDate' => $booking->rental_start_at->copy()->setTimezone('Asia/Manila')->toDateString(),
+                'endDate' => $booking->rental_end_at->copy()->setTimezone('Asia/Manila')->toDateString(),
             ])->values(),
             collect()
         );
         $maintenanceDateRanges = $this->whenLoaded(
             'scheduledMaintenanceWindows',
             fn () => $this->scheduledMaintenanceWindows->map(fn ($record) => [
-                'startDate' => $record->scheduled_start->toDateString(),
-                'endDate' => $record->scheduled_end->toDateString(),
+                'startDate' => $record->scheduled_start->copy()->setTimezone('Asia/Manila')->toDateString(),
+                'endDate' => $record->scheduled_end->copy()->setTimezone('Asia/Manila')->toDateString(),
             ])->values(),
             collect()
         );
@@ -57,6 +57,7 @@ class VehicleResource extends JsonResource
             'color' => $this->color,
             'status' => $this->status->value,
             'statusLabel' => $this->status->label(),
+            'hasOpenCustomerBooking' => (bool) ($this->resource->getAttributes()['has_open_customer_booking'] ?? false),
             'description' => $this->description,
             'isFeatured' => (bool) $this->is_featured,
             'images' => $imageUrls,

@@ -22,7 +22,7 @@ export default function VehicleDetailsScreen() {
   const router = useRouter();
   const { vehicleId } = useLocalSearchParams<{ vehicleId?: string }>();
   const resolvedVehicleId = firstParam(vehicleId);
-  const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
+  const { vehicle, isLoading, error, reload, refresh: refreshVehicle } = useVehicle(resolvedVehicleId);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
   const { status, refreshProfile } = useAuth();
@@ -36,12 +36,12 @@ export default function VehicleDetailsScreen() {
     const currentRequest = ++requestId.current;
     setAvailabilityState('checking');
     try {
-      await refreshProfile();
-      if (currentRequest === requestId.current) setAvailabilityState('ready');
+      const [, latestVehicle] = await Promise.all([refreshProfile(), refreshVehicle()]);
+      if (currentRequest === requestId.current) setAvailabilityState(latestVehicle ? 'ready' : 'error');
     } catch {
       if (currentRequest === requestId.current) setAvailabilityState('error');
     }
-  }, [refreshProfile, status]);
+  }, [refreshProfile, refreshVehicle, status]);
 
   useFocusEffect(useCallback(() => {
     void checkAvailability();
@@ -72,13 +72,15 @@ export default function VehicleDetailsScreen() {
     );
   }
 
+  const accountLocked = bookingAvailability.reason === 'balance' || bookingAvailability.reason === 'active_booking';
+  const vehicleLocked = vehicle.hasOpenCustomerBooking || vehicle.status !== 'available';
+  const bookingLockMessage = accountLocked ? bookingAvailability.message : vehicle.hasOpenCustomerBooking
+    ? 'Finish your active booking before creating another booking.' : vehicleLocked ? 'This vehicle is unavailable for booking.' : undefined;
+
   const handleBookNow = () => {
     if (status === 'authenticated') {
+      if (availabilityState !== 'ready' || vehicleLocked || accountLocked) return;
       if (!bookingAvailability.canBook) {
-        if (bookingAvailability.reason === 'balance' || bookingAvailability.reason === 'active_booking') {
-          return;
-        }
-
         router.push(
           bookingAvailability.reason === 'profile'
             ? '/onboarding/basic-info'
@@ -107,8 +109,8 @@ export default function VehicleDetailsScreen() {
         isBookmarked={bookmarkedVehicleIds.includes(vehicle.id)}
         onBookmarkPress={() => toggleBookmarkedVehicle(vehicle.id)}
         onBackPress={() => router.back()}
-        bookNowDisabled={status === 'authenticated' && (availabilityState !== 'ready' || ['balance', 'active_booking'].includes(bookingAvailability.reason ?? ''))}
-        bookNowInfo={status === 'authenticated' && availabilityState === 'checking' ? 'Checking booking availability…' : status === 'authenticated' && availabilityState === 'error' ? 'Unable to check booking availability.' : ['balance', 'active_booking'].includes(bookingAvailability.reason ?? '') ? bookingAvailability.message : undefined}
+        bookNowDisabled={status === 'authenticated' && (availabilityState !== 'ready' || vehicleLocked || accountLocked)}
+        bookNowInfo={status === 'authenticated' && availabilityState === 'checking' ? 'Checking booking availability…' : status === 'authenticated' && availabilityState === 'error' ? 'Unable to check booking availability.' : bookingLockMessage}
         onRetryAvailability={status === 'authenticated' && availabilityState === 'error' ? () => void checkAvailability() : undefined}
         onBookNow={handleBookNow}
       />

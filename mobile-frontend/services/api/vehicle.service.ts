@@ -48,6 +48,7 @@ function mapVehicle(record: MobileVehicleRecord): Vehicle {
     model: record.model,
     pricePerDay: Number(record.pricePerDay),
     status: record.status,
+    hasOpenCustomerBooking: record.hasOpenCustomerBooking === true,
     cardImage,
     images,
     seats: Number(record.seats),
@@ -62,15 +63,14 @@ function mapVehicle(record: MobileVehicleRecord): Vehicle {
   };
 }
 
-export async function getAvailableVehicles() {
+export async function getBrowseVehicles(forCustomer: boolean, signal: AbortSignal) {
   const vehicles: Vehicle[] = [];
   let page = 1;
   let lastPage = 1;
 
   do {
-    const response = await apiGet<MobileVehicleRecord[]>(
-      `/mobile/vehicles?status=available&per_page=100&page=${page}`,
-    );
+    const path = forCustomer ? '/mobile/customer/vehicles' : '/mobile/vehicles';
+    const response = await apiGet<MobileVehicleRecord[]>(`${path}?per_page=100&page=${page}`, { signal });
 
     vehicles.push(...response.data.map(mapVehicle));
     lastPage = Number(response.meta?.last_page ?? 1);
@@ -80,9 +80,11 @@ export async function getAvailableVehicles() {
   return vehicles;
 }
 
-export async function getVehicle(vehicleId: string) {
+export async function getVehicle(vehicleId: string, forCustomer: boolean, signal: AbortSignal) {
+  const path = forCustomer ? '/mobile/customer/vehicles' : '/mobile/vehicles';
   const response = await apiGet<MobileVehicleRecord>(
-    `/mobile/vehicles/${encodeURIComponent(vehicleId)}`,
+    `${path}/${encodeURIComponent(vehicleId)}`,
+    { signal },
   );
 
   return mapVehicle(response.data);

@@ -13,7 +13,7 @@ import type { LocationConsentInput, LocationMonitoringPolicy } from '@/validatio
 
 const labels: Record<LocationSharingPhase, string> = {
   idle: 'Not sharing', starting: 'Starting location sharing', waiting: 'Waiting for GPS',
-  sharing: 'Sharing location', reconnecting: 'Location sharing paused', paused: 'Sharing paused',
+  sharing: 'Sharing location', reconnecting: 'GPS reconnecting', paused: 'Sharing paused',
   offline: 'Sharing stopped while offline', error: 'Sharing interrupted',
 };
 
@@ -26,6 +26,7 @@ export function RentalLocationMonitoring({ bookingCode }: { bookingCode: string 
   startRef.current = start;
   const phase = sharing?.phase ?? 'idle';
   const active = isLocationSharingActive(phase);
+  const label = phase === 'reconnecting' && !sharing?.latestFix ? labels.waiting : labels[phase];
   const lastUpdate = sharing?.lastUploadedAt ?? snapshot?.lastLocationAt;
   const beginPending = useCallback(() => {
     const consent = pendingConsent.current;
@@ -46,7 +47,7 @@ export function RentalLocationMonitoring({ bookingCode }: { bookingCode: string 
   return <SectionCard title="Monitoring" icon={MapPin}>
     <View accessibilityLiveRegion="polite" className="flex-row items-center gap-2">
       {phase === 'starting' || phase === 'waiting' || phase === 'reconnecting' ? <ActivityIndicator size="small" color={themeColors.primary} /> : <View className={`h-2.5 w-2.5 rounded-full ${phase === 'sharing' ? 'bg-success' : phase === 'error' || phase === 'offline' ? 'bg-warning' : 'bg-subtle-foreground'}`} />}
-      <Text className={`font-sans min-w-0 flex-1 text-section font-semibold ${phase === 'sharing' ? 'text-success' : 'text-foreground'}`}>{labels[phase]}</Text>
+      <Text className={`font-sans min-w-0 flex-1 text-section font-semibold ${phase === 'sharing' ? 'text-success' : 'text-foreground'}`}>{label}</Text>
     </View>
     {sharing?.message ? <Text className="font-sans mt-2 text-body leading-6 text-secondary-foreground">{sharing.message}</Text> : null}
     {lastUpdate ? <View className="mt-3 border-t border-border pt-1"><InfoRow label="Last shared" value={formatLastShared(lastUpdate)} /></View> : null}

@@ -219,10 +219,10 @@ function ManagementSidebarNavContent({
         {mainItems.map((module) => renderLink(module))}
 
         {renderGroup("Management", "management-subnavigation", managementItems, Settings, managementOpen, managementIsActive, toggleManagement)}
-        {activityItems.map((module) => renderLink(module))}
         {renderGroup("Model Development", "model-development-subnavigation", modelItems, FlaskConical, modelOpen,
           modelItems.some((module) => pathname === module.href || pathname.startsWith(`${module.href}/`)),
           () => { if (collapsed) { onExpandSidebar?.(); setModelOpen(true); } else { setModelOpen((open) => !open); } })}
+        {activityItems.map((module) => renderLink(module))}
       </nav>
 
       <div className="mt-3 border-t border-border px-3 pb-3 pt-3">

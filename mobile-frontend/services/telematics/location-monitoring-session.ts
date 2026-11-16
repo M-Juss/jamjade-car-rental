@@ -23,6 +23,7 @@ export type LocationMonitoringDependencies = {
   prepare: (isActive: () => boolean, mode: LocationConsentInput['sharing_mode']) => Promise<void>;
   watch: (interval: number, onReading: (reading: ForegroundLocationReading) => Promise<void>, onError: () => Promise<void>, mode: LocationConsentInput['sharing_mode']) => Promise<{ remove: () => void }>;
   cleanup?: () => Promise<void>;
+  onRentalUnavailable: () => void;
   connected: () => Promise<boolean>;
   foreground: () => boolean;
   now: () => number;
@@ -38,19 +39,29 @@ export class LocationMonitoringIssue extends Error {
 
 function sharingFailure(error: unknown, fallback: string): string {
   if (!error || typeof error !== 'object') return fallback;
-  if ('status' in error && [401, 403, 404].includes(Number(error.status))) return 'This rental is no longer available for sharing. Refresh or sign in again.';
+  if (isRentalAccessDenied(error)) return 'This rental is no longer available for sharing. Refresh or sign in again.';
   const fields = 'errors' in error && error.errors && typeof error.errors === 'object' ? error.errors : null;
   if (!fields) return fallback;
   if ('consent' in fields || 'consent_version' in fields) return 'Location sharing terms changed. Refresh and agree again.';
-  if ('captured_at' in fields) return 'A fresh GPS reading is required. Check automatic date and time, then try again.';
-  if ('accuracy' in fields || 'latitude' in fields || 'longitude' in fields) return 'An accurate GPS reading is required. Move to a clearer area and try again.';
   if ('session_token' in fields) return 'The sharing session changed. Tap Resume sharing to start again.';
   if ('monitoring' in fields) return 'Location sharing is unavailable for this rental. Refresh its status.';
   return fallback;
 }
 
+function isRentalAccessDenied(error: unknown): boolean {
+  return !!error && typeof error === 'object' && 'status' in error && [401, 403, 404].includes(Number(error.status));
+}
+
 function isConnectionFailure(error: unknown): boolean {
-  return !!error && typeof error === 'object' && 'status' in error && (error.status === 0 || error.status === 408);
+  if (!error || typeof error !== 'object' || !('status' in error) || typeof error.status !== 'number') return false;
+  return [0, 408, 429].includes(error.status) || (error.status >= 500 && error.status < 600);
+}
+
+function isRejectedGpsFix(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('status' in error) || error.status !== 422
+    || !('errors' in error) || !error.errors || typeof error.errors !== 'object') return false;
+  const fields = Object.keys(error.errors);
+  return fields.length > 0 && fields.every((field) => ['captured_at', 'accuracy', 'latitude', 'longitude'].includes(field));
 }
 
 // One ephemeral session and at most one pending point, shared by native callbacks and UI.
@@ -69,9 +80,7 @@ export class LocationMonitoringSession {
   private lastChecked = 0;
   private lastSent = 0;
   private retryAt = 0;
-  private lastFix = 0;
   private started = 0;
-  private readingValid = false;
 
   constructor(private dependencies: LocationMonitoringDependencies) {}
   getSnapshot = () => this.state;
@@ -138,7 +147,7 @@ export class LocationMonitoringSession {
 
   async start(code: string, values: LocationConsentInput) {
     const consent = locationConsentSchema.parse(values);
-    const cleanup = this.stop();
+    const cleanup = this.stop(undefined, 'paused', false, 'interrupted');
     const generation = this.generation;
     await cleanup;
     if (generation !== this.generation) return;
@@ -146,14 +155,13 @@ export class LocationMonitoringSession {
     this.emit({ ...emptyState, bookingCode: code, phase: 'starting' });
     this.started = this.dependencies.now();
     this.lastSent = 0;
-    this.lastFix = 0;
-    this.readingValid = false;
     try {
       if (!active()) { await this.stop('Return to the app and start sharing again.'); return; }
       if (!await this.dependencies.connected()) { if (active()) await this.stop('Connect to the internet, then resume sharing.', 'offline'); return; }
       if (!active()) return;
       const snapshot = await this.withRequest((signal) => this.dependencies.read(code, signal));
       if (!active()) return;
+      if (!snapshot.canMonitor) this.dependencies.onRentalUnavailable();
       if (!snapshot.canMonitor || consent.consent_version !== snapshot.policy.consentVersion) throw new LocationMonitoringIssue('Location sharing is unavailable. Refresh the rental and try again.');
       this.policy = snapshot.policy;
       this.consent = consent;
@@ -165,14 +173,17 @@ export class LocationMonitoringSession {
         if (!active()) return;
         this.reading(reading);
         await this.pump(generation);
-      }, async () => { if (active()) await this.stop('GPS updates stopped. Check location access and try again.', 'error'); }, consent.sharing_mode);
+      }, async () => { if (active()) this.waitForGps(); }, consent.sharing_mode);
       if (!active()) { subscription.remove(); return; }
       this.watch = subscription;
       this.emit({ backgroundEnabled: consent.sharing_mode === 'foreground_background' });
       this.timer = setInterval(() => { void this.pump(generation); }, 1000);
     } catch (error) {
-      if (active()) await this.stop(error instanceof LocationMonitoringIssue
-        ? error.message : sharingFailure(error, 'Location sharing could not start. Check your connection and try again.'), 'error', error instanceof LocationMonitoringIssue && error.needsSettings);
+      if (active()) {
+        if (isRentalAccessDenied(error)) this.dependencies.onRentalUnavailable();
+        await this.stop(error instanceof LocationMonitoringIssue
+          ? error.message : sharingFailure(error, 'Location sharing could not start. Check your connection and try again.'), 'error', error instanceof LocationMonitoringIssue && error.needsSettings);
+      }
     }
   }
 
@@ -181,18 +192,20 @@ export class LocationMonitoringSession {
     const parsed = latestLocationSchema(this.policy).safeParse(reading);
     const age = this.dependencies.now() - Date.parse(reading.captured_at);
     if (!parsed.success || Date.parse(reading.captured_at) < this.started || age < -this.policy.futureSkewSeconds * 1000 || age > this.policy.maximumAgeSeconds * 1000) {
-      this.readingValid = false;
-      this.pending = null;
       const accuracy = typeof reading.accuracy === 'number' && Number.isFinite(reading.accuracy) && reading.accuracy >= 0 ? reading.accuracy : null;
-      this.emit(this.state.phase === 'reconnecting'
-        ? { latestFix: null, accuracy }
-        : { phase: 'waiting', latestFix: null, accuracy, message: waitingForGps });
+      this.waitForGps(accuracy);
       return;
     }
-    this.readingValid = true;
-    this.lastFix = Math.min(Date.parse(parsed.data.captured_at), this.dependencies.now());
-    if (!this.pending || Date.parse(parsed.data.captured_at) > Date.parse(this.pending.captured_at)) this.pending = parsed.data;
+    if (this.state.latestFix && Date.parse(parsed.data.captured_at) < Date.parse(this.state.latestFix.captured_at)) return;
+    this.pending = parsed.data;
     this.emit({ accuracy: parsed.data.accuracy, latestFix: parsed.data });
+  }
+
+  private waitForGps(accuracy: number | null = null) {
+    this.pending = null;
+    this.emit(this.state.phase === 'reconnecting'
+      ? { latestFix: null, accuracy }
+      : { phase: 'waiting', latestFix: null, accuracy, message: waitingForGps });
   }
 
   private async withRequest<T>(action: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -206,18 +219,19 @@ export class LocationMonitoringSession {
   private connectionLost() {
     this.retryAt = this.dependencies.now() + reconnectIntervalMs;
     if (this.state.phase !== 'reconnecting') {
-      this.emit({ phase: 'reconnecting', message: 'Location sharing paused — no connection. It will resume when connected.' });
+      this.emit({ phase: 'reconnecting', message: 'GPS sharing will resume when the connection returns.' });
     }
   }
 
   private async pump(generation: number) {
     const active = () => generation === this.generation && (this.dependencies.foreground() || this.canContinueInBackground()) && isLocationSharingActive(this.state.phase);
-    if (!active() || this.busy || !this.policy || !this.consent || !this.state.bookingCode) return;
+    if (!active() || !this.policy || !this.consent || !this.state.bookingCode) return;
     const now = this.dependencies.now();
-    if ((!this.lastFix && now - this.started >= 30_000) || (this.lastFix && now - this.lastFix > this.policy.maximumAgeSeconds * 1000)) {
-      await this.stop('GPS readings were interrupted. Move to a clearer area and resume sharing.', 'error');
-      return;
+    const latestFix = this.state.latestFix;
+    if (latestFix && now - Date.parse(latestFix.captured_at) > this.policy.maximumAgeSeconds * 1000) {
+      this.waitForGps();
     }
+    if (this.busy) return;
     const reconnecting = this.state.phase === 'reconnecting';
     if (reconnecting && now < this.retryAt) return;
     const checkDue = reconnecting || now - this.lastChecked >= 15_000;
@@ -225,16 +239,18 @@ export class LocationMonitoringSession {
     if (!checkDue && !(sendDue && this.pending)) return;
     this.busy = true;
     const code = this.state.bookingCode;
+    let attemptedFix: LatestLocationFix | null = null;
     try {
-      const connected = await this.dependencies.connected();
+      const connected = await this.dependencies.connected().catch(() => false);
       if (!active()) return;
       if (!connected) { await this.connectionLost(); return; }
       if (checkDue) {
         const snapshot = await this.withRequest((signal) => this.dependencies.read(code, signal));
         if (!active()) return;
         this.lastChecked = this.dependencies.now();
+        if (!snapshot.canMonitor) this.dependencies.onRentalUnavailable();
         if (!snapshot.canMonitor || snapshot.policy.consentVersion !== this.consent.consent_version || (this.token && snapshot.tripStatus !== 'started')) {
-          await this.stop('This rental is no longer available for sharing. Refresh its status.');
+          await this.stop('Location sharing stopped. Refresh the rental status.', 'paused', false, 'interrupted');
           return;
         }
         this.policy = snapshot.policy;
@@ -242,18 +258,17 @@ export class LocationMonitoringSession {
       const fix = this.pending;
       if (!fix || !sendDue) {
         if (reconnecting) {
-          const shared = this.readingValid && this.state.lastUploadedAt !== null;
+          const shared = this.state.latestFix !== null && this.state.lastUploadedAt !== null;
           this.emit({ phase: shared ? 'sharing' : 'waiting', message: shared ? null : waitingForGps });
         }
         return;
       }
       if (this.dependencies.now() - Date.parse(fix.captured_at) > this.policy.maximumAgeSeconds * 1000) {
-        this.pending = null;
-        this.readingValid = false;
-        this.emit({ phase: 'waiting', latestFix: null, accuracy: null, message: waitingForGps });
+        this.waitForGps();
         return;
       }
       const beginning = !this.token;
+      attemptedFix = fix;
       const result = this.token
         ? await this.withRequest((signal) => this.dependencies.update(code, fix, this.token!, this.policy!, signal))
         : await this.withRequest((signal) => this.dependencies.start(code, fix, this.consent!, this.policy!, signal));
@@ -264,15 +279,24 @@ export class LocationMonitoringSession {
       }
       if (this.pending === fix) this.pending = null;
       this.lastSent = this.dependencies.now();
+      const hasFreshFix = this.state.latestFix !== null
+        && this.lastSent - Date.parse(this.state.latestFix.captured_at) <= this.policy.maximumAgeSeconds * 1000;
+      if (!hasFreshFix && this.state.latestFix) this.waitForGps();
       this.emit({
-        phase: this.readingValid ? 'sharing' : 'waiting',
-        message: this.readingValid ? null : waitingForGps,
+        phase: hasFreshFix ? 'sharing' : 'waiting',
+        message: hasFreshFix ? null : waitingForGps,
         lastUploadedAt: result.lastLocationAt,
       });
     } catch (error) {
       if (!active()) return;
-      if (isConnectionFailure(error)) await this.connectionLost();
-      else await this.stop(sharingFailure(error, 'Location sharing was interrupted. Check your connection and resume sharing.'), 'error');
+      if (isConnectionFailure(error)) {
+        this.connectionLost();
+      } else if (attemptedFix && isRejectedGpsFix(error)) {
+        if (this.state.latestFix === attemptedFix) this.waitForGps();
+      } else {
+        if (isRentalAccessDenied(error)) this.dependencies.onRentalUnavailable();
+        await this.stop(sharingFailure(error, 'Location sharing was interrupted. Check your connection and resume sharing.'), 'error');
+      }
     } finally { if (generation === this.generation) this.busy = false; }
   }
 }

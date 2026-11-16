@@ -1,14 +1,54 @@
 # Mobile booking form follow-up
 
-Vehicle summary columns — 2026-11-15: the shared `VehicleSummaryContent` in
-`mobile-frontend/components/browse/BrowseComponents.tsx` now gives color, seats,
-transmission and fuel four equal flex columns instead of content-sized cells in
-a horizontal scroller. Centered icon/value groups retain the existing separators,
-typography and palette; longer values can wrap within their column. Booking
-creation, checkout, payment and booking details reuse this layout. Mobile lint,
-TypeScript and the scoped `git diff --check` passed. Android visual verification
-at narrow widths and increased font sizes remains pending; no installed app was
-rebuilt or updated for this layout-only change.
+### Calendar, booking lock, and review controls — 2026-11-16
+
+The Android booking form fetches current vehicle availability before opening
+either date picker and before Review Booking. `BookingForm.tsx` rejects a
+range that crosses a blocked day and shows a retry message if availability
+cannot be checked. `DateWithLabel.tsx` retains the existing date display format.
+The mobile vehicle resource projects stored booking timestamps to inclusive
+Manila date keys. Confirmed bookings and existing payment-in-progress holds
+block the displayed days. Mark Returned releases that rental's date range,
+subject to other reservations and maintenance. Laravel still validates exact
+rental timestamps at checkout and capture.
+
+The authenticated `/api/mobile/customer/vehicles` list and detail routes include
+the renter's vehicle while their booking is open. `VehicleController.php` and
+`VehicleService.php` serve the account-scoped `hasOpenCustomerBooking` flag.
+`use-vehicles.ts` scopes its cache by account, refreshes Browse on focus and uses
+the flag to keep the renter's restriction visible on their vehicle. The existing
+account-wide booking guard keeps Book Now disabled through Returned until
+customer settlement and staff completion.
+
+`TermsSignatureModal.tsx` enables Sign when the terms reach the bottom, including
+when all terms fit in the viewport. Profile setup step 3 shows its missing-choice
+message as a toast. Payment shows Full Payment alone when the existing two-day
+down-payment lead rule makes the option unavailable.
+
+Verification passed all 1,424 backend tests, including a two-customer vehicle
+catalog regression, scoped Pint, mobile lint and TypeScript, and the Android
+bundle export. Android emulator fixtures verified Sign, the missing-choice
+toast, both disabled calendar dates and the selected date format. The full
+mobile test run passed 353 of 354 tests with the existing bundled vehicle-image
+mapping assertion failing. Live two-account Android checkout was not exercised.
+
+Vehicle summary specs — 2026-11-16: `VehicleSummaryContent` in
+`mobile-frontend/components/browse/BrowseComponents.tsx` sizes color, seats,
+transmission and fuel by their content and distributes any spare width across
+the four cells. Values stay on one line and the row scrolls horizontally when
+the full values exceed the card width. Booking creation, checkout, payment and
+booking details reuse this layout. An Android emulator fixture confirmed that
+Black, 6 seater, Automatic and Gas fit in one row in a 292 dp card and that
+scrolling reveals longer custom values. Larger system font sizes remain untested.
+
+Document submission — 2026-11-16: `ProfileDocumentVerificationForm.tsx` in
+`mobile-frontend/forms/profile/` removes the introductory paragraph and review
+notice card. The header badge shows review status, rejected submissions display
+the reviewer's reason inline when available, and editable Proof of Address
+shows its requirements under the front image field. The Android emulator
+fixture confirmed the pending badge, both image preview actions and the locked
+form. Mobile lint, TypeScript, Android bundle export and `git diff --check`
+passed for both changes. Emulator checks used sample data and no live submission.
 
 Booking details action width — 2026-11-15: `screens/bookings/BookingDetailsScreen.tsx`
 places Edit dates and pay in a full-width row with a flexing button so the action

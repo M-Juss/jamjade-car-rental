@@ -325,6 +325,11 @@ timezone suffix. Existing issued financial documents remain immutable. Saved
 bookings created with the earlier offset-free mobile payload require individual
 review before correcting their reserved interval; there is no bulk shift.
 
+The web Booking and History lists show Pickup as `Nov 16, 2026 - 12:15 PM`.
+`web-frontend/src/modules/management/bookings/BookingsModule.tsx` applies this
+format to table rows and compact cards. Web lint, TypeScript and the production
+build passed. A browser fixture verified both layouts with a sample booking.
+
 ## Delivery and initial pricing
 
 Self Drive uses free garage pickup and return only. With Driver allows free garage pickup or paid delivery with the same delivery/end trip address. Laravel selects the quickest returned driving estimate and consumes an owned, complete, unexpired delivery quote before booking/PayPal creation. New quotes have zero upfront toll; actual tolls use existing `toll_fee` Additional Charges after Incoming Inspection, with notice before booking. Accepted delivery fees and historical initial tolls stay fixed. Legacy unconsumed quotes require fresh confirmation. Admin-only pricing affects new quotes. See [delivery pricing](delivery-pricing.md).

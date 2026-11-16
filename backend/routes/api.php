@@ -96,6 +96,10 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         });
 
         Route::get('/bookings', [BookingController::class, 'index'])->middleware('role:customer')->name('bookings.index');
+        Route::middleware('role:customer')->prefix('customer/vehicles')->name('customer.vehicles.')->group(function () {
+            Route::get('/', [VehicleController::class, 'index'])->name('index');
+            Route::get('/{vehicle}', [VehicleController::class, 'show'])->name('show');
+        });
         Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:customer')->name('bookings.store');
         Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->middleware('role:customer')->name('bookings.cancel');
         Route::get('/bookings/{booking}/delivery-estimate', [BookingController::class, 'deliveryEstimate'])->middleware(['role:customer', 'throttle:20,1']);

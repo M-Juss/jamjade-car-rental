@@ -41,7 +41,7 @@ import { getBooking } from '@/services/api/booking.service';
 import type { Booking } from '@/types/booking';
 import { startBookingFlow } from '@/lib/browse/booking-flow';
 import { canReviewBooking, overlapsUnavailableDates } from '@/lib/browse/booking-readiness';
-import { isFuturePickupTime } from '@/lib/browse/pickup-time';
+import { getLocalDateKey, isFuturePickupTime } from '@/lib/browse/pickup-time';
 import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
 import {
   OWNER_DRIVER_METRO_MANILA_DAILY_RATE,
@@ -55,7 +55,7 @@ import {
   getSelfDriveBookingAvailability,
   useCustomer,
 } from '@/lib/customer/customer-store';
-import type { BookingFormData, VehicleUnavailableDateRange } from '@/types/browse';
+import type { BookingFormData, Vehicle, VehicleUnavailableDateRange } from '@/types/browse';
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -224,7 +224,9 @@ export function BookingForm() {
   const [revision, setRevision] = useState<Booking | null>(null);
   const [revisionError, setRevisionError] = useState<string | null>(null);
   const resolvedVehicleId = firstParam(vehicleId);
-  const { vehicle, isLoading, error, reload } = useVehicle(resolvedVehicleId);
+  const { vehicle, isLoading, error, reload, refresh: refreshVehicle } = useVehicle(resolvedVehicleId);
+  const scheduleRequest = useRef(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
   const customer = useCustomer();
   const bookingAvailability = useMemo(() => getBookingAvailability(customer), [customer]);
   const selfDriveAvailability = useMemo(() => getSelfDriveBookingAvailability(customer), [customer]);
@@ -313,7 +315,8 @@ export function BookingForm() {
     setValue('pickupOption', pickupOption);
   }, [numberOfDays, pickupOption, setValue]);
 
-  const minimumReturnDate = rentalDate ? getNextDateKey(rentalDate) : undefined;
+  const today = getLocalDateKey();
+  const minimumReturnDate = rentalDate ? getNextDateKey(rentalDate) : today;
   const maximumReturnDate = useMemo(
     () => getMaximumReturnDate(rentalDate, vehicle?.unavailableDateRanges ?? []),
     [rentalDate, vehicle?.unavailableDateRanges],
@@ -449,12 +452,35 @@ export function BookingForm() {
     clearErrors(['deliveryTime', 'driverOption', 'pickupLocation']);
   };
 
-  const onSubmit = (values: BookingValidationInput) => {
+  const checkSchedule = async () => {
+    if (scheduleRequest.current) return null;
+    scheduleRequest.current = true;
+    setCheckingAvailability(true);
+    try {
+      const current = await refreshVehicle();
+      if (!current) {
+        toast.showToast('Could not check vehicle availability. Try again.');
+        return null;
+      }
+      if (current.status !== 'available' || (current.hasOpenCustomerBooking && !revisionId)) {
+        toast.showToast('This vehicle is unavailable for booking.');
+        return null;
+      }
+      return current;
+    } finally {
+      scheduleRequest.current = false;
+      setCheckingAvailability(false);
+    }
+  };
+
+  const openCalendar = async () => Boolean(await checkSchedule());
+
+  const onSubmit = (values: BookingValidationInput, current: Vehicle) => {
     if (
-      overlapsUnavailableDates(values.rentalDate, values.returnDate, vehicle?.unavailableDateRanges ?? [])
+      overlapsUnavailableDates(values.rentalDate, values.returnDate, current.unavailableDateRanges)
     ) {
       setError('returnDate', {
-        message: 'These dates overlap a confirmed booking for this vehicle.',
+        message: 'Choose a range without unavailable dates.',
         type: 'validate',
       });
       toast.showToast('Selected dates are not available.');
@@ -462,17 +488,22 @@ export function BookingForm() {
     }
 
     const pickupTime = values.deliveryTime ? ` ${values.deliveryTime}` : '';
-    if (values.pickupOption === 'delivery' && (!isReadyDeliveryQuote(deliveryQuote) || !quoteMatches(deliveryQuote, vehicle.id, `${values.rentalDate}${pickupTime}`, `${values.returnDate}${pickupTime}`, values.ownerDriverCoverage, values.pickupLocation))) {
+    const verifiedQuote = values.pickupOption === 'delivery' && isReadyDeliveryQuote(deliveryQuote)
+      && quoteMatches(deliveryQuote, current.id, `${values.rentalDate}${pickupTime}`, `${values.returnDate}${pickupTime}`, values.ownerDriverCoverage, values.pickupLocation)
+      ? deliveryQuote : undefined;
+    if (values.pickupOption === 'delivery' && !verifiedQuote) {
       setError('pickupLocation', { message: 'Choose a complete, valid delivery quote before continuing.' });
       toast.showToast('Delivery needs a complete, valid quote before checkout.');
       return;
     }
 
+    const reviewedPrice = getPriceBreakdown(current, values.numberOfDays, values.driverOption, values.pickupOption,
+      values.ownerDriverCoverage, values.pickupLocation, verifiedQuote);
     const booking: BookingFormData = {
-      deliveryQuoteId: values.pickupOption === 'delivery' ? deliveryQuote?.id : undefined,
-      deliveryQuoteExpiresAt: values.pickupOption === 'delivery' ? deliveryQuote?.expiresAt ?? undefined : undefined,
-      priceBreakdown: breakdown,
-      vehicleId: vehicle.id,
+      deliveryQuoteId: verifiedQuote?.id,
+      deliveryQuoteExpiresAt: verifiedQuote?.expiresAt ?? undefined,
+      priceBreakdown: reviewedPrice,
+      vehicleId: current.id,
       rentalDate: values.rentalDate,
       returnDate: values.returnDate,
       rentalStartAt: `${values.rentalDate}${pickupTime}`,
@@ -485,15 +516,23 @@ export function BookingForm() {
       returnLocation: values.pickupOption === 'shop' ? JAMJADE_GARAGE : values.pickupLocation.trim(),
       driverOption: values.driverOption,
       ownerDriverCoverage: values.driverOption === 'owners_driver' ? values.ownerDriverCoverage : undefined,
-      totalAmount: breakdown.totalAmount,
-      downPaymentAmount: breakdown.downPaymentAmount,
-      remainingBalance: breakdown.remainingBalance,
+      totalAmount: reviewedPrice.totalAmount,
+      downPaymentAmount: reviewedPrice.downPaymentAmount,
+      remainingBalance: reviewedPrice.remainingBalance,
     };
     const flowId = startBookingFlow(booking, revisionId);
 
     router.push(
-      `/browse/checkout?flow=${encodeURIComponent(flowId)}&vehicleId=${encodeURIComponent(vehicle.id)}` as Href,
+      `/browse/checkout?flow=${encodeURIComponent(flowId)}&vehicleId=${encodeURIComponent(current.id)}` as Href,
     );
+  };
+
+  const reviewBooking = async () => {
+    const current = await checkSchedule();
+    if (!current) return;
+    await handleSubmit((values) => onSubmit(values, current), () => {
+      toast.showToast('Check the highlighted booking details.');
+    })();
   };
 
   return (
@@ -529,14 +568,19 @@ export function BookingForm() {
               <Section title="Rental Schedule">
                 <View className="gap-4 rounded-card border border-border bg-surface p-4">
                   <DateWithLabel
+                    beforeOpen={openCalendar}
+                    disabled={checkingAvailability}
                     disabledDateRanges={vehicle.unavailableDateRanges}
                     error={errors.rentalDate?.message}
                     label="Rental date"
+                    minimumDate={today}
                     value={rentalDate}
                     onChange={handleRentalDateChange}
                     placeholder="Select rental date"
                   />
                   <DateWithLabel
+                    beforeOpen={openCalendar}
+                    disabled={checkingAvailability}
                     disabledDateRanges={vehicle.unavailableDateRanges}
                     error={errors.returnDate?.message}
                     helperText={rentalDate ? 'Confirmed booking dates are unavailable.' : undefined}
@@ -693,11 +737,11 @@ export function BookingForm() {
 
                   <Pressable
                     accessibilityRole="button"
-                    onPress={handleSubmit(onSubmit, () => {
-                      toast.showToast('Check the highlighted booking details.');
-                    })}
-                    className="mt-section min-h-control items-center justify-center rounded-field bg-primary">
-                    <Text className="font-sans text-[16px] font-semibold text-surface">Review Booking</Text>
+                    accessibilityState={{ disabled: checkingAvailability, busy: checkingAvailability }}
+                    disabled={checkingAvailability}
+                    onPress={() => void reviewBooking()}
+                    className="mt-section min-h-control items-center justify-center rounded-field bg-primary disabled:opacity-50">
+                    <Text className="font-sans text-[16px] font-semibold text-surface">{checkingAvailability ? 'Checking dates…' : 'Review Booking'}</Text>
                   </Pressable>
                 </>
               ) : null}

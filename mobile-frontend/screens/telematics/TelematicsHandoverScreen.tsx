@@ -197,7 +197,8 @@ export function TelematicsHandoverScreen() {
   const gpsReconnecting = sharing?.phase === 'reconnecting';
   const monitoringNotice = gpsReconnecting ? sharing.message : loadError ?? monitoring.error
     ?? (sharing?.phase === 'offline' || sharing?.phase === 'error' ? sharing.message : null);
-  const gpsStatus = gpsReconnecting ? 'GPS reconnecting' : sharing?.phase === 'sharing' ? 'GPS sharing active' : 'Waiting for GPS…';
+  const gpsStatus = sharing?.phase === 'sharing' ? 'GPS sharing active'
+    : gpsReconnecting && sharing.latestFix ? 'GPS reconnecting' : 'Waiting for GPS';
 
   return <View className="flex-1 bg-background">
     <Stack.Screen options={{ gestureEnabled: !busy }} />

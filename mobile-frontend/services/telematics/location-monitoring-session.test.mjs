@@ -21,6 +21,7 @@ function harness(overrides = {}) {
   let now = Date.parse('2026-10-18T04:00:00Z');
   let reading, failure, tick;
   let removes = 0;
+  let rentalUnavailable = 0;
   const starts = [], updates = [], pauses = [], watches = [];
   let snapshot = { bookingCode: 'DEMO', canMonitor: true, tripStatus: null, lastLocationAt: null, policy };
   const { LocationMonitoringSession, LocationMonitoringIssue } = load('./location-monitoring-session.ts', {
@@ -37,12 +38,14 @@ function harness(overrides = {}) {
     pause: async (code, token, signal, reason) => { pauses.push({ code, token, reason }); snapshot = { ...snapshot, tripStatus: 'paused' }; },
     prepare: async () => {},
     watch: async (interval, onReading, onFailure) => { watches.push(interval); reading = onReading; failure = onFailure; return { remove: () => { removes++; } }; },
+    onRentalUnavailable: () => { rentalUnavailable++; },
     foreground: () => true, connected: async () => true, now: () => now, ...overrides,
   };
   const session = new LocationMonitoringSession(deps);
   return {
     session, deps, starts, updates, pauses, watches, LocationMonitoringIssue,
     get removes() { return removes; },
+    get rentalUnavailable() { return rentalUnavailable; },
     setSnapshot: (changes) => { snapshot = { ...snapshot, ...changes }; },
     advance: (ms) => { now += ms; },
     send: async (changes = {}) => { reading({ latitude: 14, longitude: 121, accuracy: 5, captured_at: new Date(now).toISOString(), ...changes }); await flush(); },
@@ -75,14 +78,28 @@ test('the map receives only a valid current fix and drops it on invalid evidence
   assert.equal(h.session.getSnapshot().bookingCode, null);
 });
 
-test('an interruption uses the authenticated pause path so its in-app notice has an explicit reason', async () => {
-  const h = harness();
-  await h.session.start('DEMO', consent);
-  await h.send();
-  await h.fail();
-  assert.equal(h.session.getSnapshot().phase, 'error');
-  assert.equal(h.session.getSnapshot().latestFix, null);
-  assert.equal(h.pauses.at(-1).reason, 'interrupted');
+test('an Android GPS error waits for the next fix without interrupting motion or the rental session', async () => {
+  for (const sharingMode of ['foreground', 'foreground_background']) {
+    const h = harness();
+    await h.session.start('DEMO', { ...consent, sharing_mode: sharingMode });
+    await h.send();
+    const lastUploadedAt = h.session.getSnapshot().lastUploadedAt;
+    await h.fail();
+    assert.equal(h.session.getSnapshot().phase, 'waiting');
+    assert.equal(h.session.getSnapshot().latestFix, null);
+    assert.equal(h.session.getSnapshot().lastUploadedAt, lastUploadedAt);
+    h.advance(15000);
+    await h.tick();
+    assert.equal(h.session.getSnapshot().phase, 'waiting');
+    assert.equal(h.updates.length, 0);
+    assert.equal(h.pauses.length, 0);
+    assert.equal(h.rentalUnavailable, 0);
+    assert.equal(h.removes, 0);
+    await h.send({ latitude: 14.001 });
+    assert.equal(h.session.getSnapshot().phase, 'sharing');
+    assert.equal(h.starts.length, 1);
+    assert.equal(h.updates[0].token, 'a'.repeat(64));
+  }
 });
 
 test('a released rental and valid first GPS fix precede the first upload; no speed or motion is sent', async () => {
@@ -101,15 +118,89 @@ test('a released rental and valid first GPS fix precede the first upload; no spe
   h.session.reset();
 });
 
-test('poor, stale, nonfinite and future GPS fixes never create a trip', async () => {
+test('start keeps waiting through poor GPS and starts only when an acceptable fix arrives', async () => {
   const h = harness();
   await h.session.start('DEMO', consent);
   for (const bad of [{ accuracy: null }, { accuracy: 51 }, { latitude: Infinity }, { captured_at: '2026-10-18T03:58:00Z' }, { captured_at: '2026-10-18T03:59:59Z' }, { captured_at: '2026-10-18T04:00:11Z' }]) await h.send(bad);
   assert.equal(h.starts.length, 0);
-  h.advance(31000);
+  h.advance(120_000);
   await h.tick();
-  assert.equal(h.session.getSnapshot().phase, 'error');
+  assert.equal(h.session.getSnapshot().phase, 'waiting');
+  assert.equal(h.removes, 0);
+  assert.equal(h.starts.length, 0);
+  await h.send();
+  assert.equal(h.starts.length, 1);
+  assert.equal(h.session.getSnapshot().phase, 'sharing');
+});
+
+test('a long GPS gap keeps background monitoring in the same session and clears the expired map point', async () => {
+  let foreground = true;
+  const h = harness({ foreground: () => foreground });
+  await h.session.start('DEMO', { ...consent, sharing_mode: 'foreground_background' });
+  await h.send();
+  const lastUploadedAt = h.session.getSnapshot().lastUploadedAt;
+  foreground = false;
+  await h.session.onAppStateChange(false);
+  h.advance(120_000);
+  await h.tick();
+  assert.equal(h.session.getSnapshot().phase, 'waiting');
+  assert.equal(h.session.getSnapshot().latestFix, null);
+  assert.equal(h.session.getSnapshot().lastUploadedAt, lastUploadedAt);
+  assert.equal(h.session.canContinueInBackground(), true);
+  assert.equal(h.pauses.length, 0);
+  assert.equal(h.removes, 0);
+  assert.equal(h.updates.length, 0);
+  await h.send({ latitude: 14.002 });
+  assert.equal(h.starts.length, 1);
+  assert.equal(h.updates.length, 1);
+  assert.equal(h.updates[0].token, 'a'.repeat(64));
+  assert.equal(h.updates[0].fix.latitude, 14.002);
+  assert.equal(h.session.getSnapshot().phase, 'sharing');
+});
+
+test('manual pause while waiting for GPS prevents a later fix from resuming', async () => {
+  const h = harness();
+  await h.session.start('DEMO', consent);
+  await h.send();
+  h.advance(120_000);
+  await h.tick();
+  await h.session.stop();
+  await h.send();
+  assert.equal(h.session.getSnapshot().phase, 'paused');
+  assert.equal(h.pauses.at(-1).reason, 'manual');
+  assert.equal(h.updates.length, 0);
   assert.equal(h.removes, 1);
+});
+
+test('replacing the GPS watcher alone does not request a motion cutoff', async () => {
+  const h = harness();
+  await h.session.start('DEMO', consent);
+  await h.send();
+  await h.session.start('DEMO', consent);
+  assert.equal(h.session.getSnapshot().phase, 'waiting');
+  assert.equal(h.pauses.at(-1).reason, 'interrupted');
+  assert.equal(h.rentalUnavailable, 0);
+});
+
+test('when connectivity returns during a GPS gap, the expired queued point is not sent', async () => {
+  let online = true;
+  const h = harness({ connected: async () => online });
+  await h.session.start('DEMO', consent);
+  await h.send();
+  online = false;
+  h.advance(5000);
+  await h.send({ latitude: 14.001 });
+  assert.equal(h.session.getSnapshot().phase, 'reconnecting');
+  h.advance(120_000);
+  online = true;
+  await h.tick();
+  assert.equal(h.session.getSnapshot().phase, 'waiting');
+  assert.equal(h.session.getSnapshot().latestFix, null);
+  assert.equal(h.updates.length, 0);
+  await h.send({ latitude: 14.002 });
+  assert.equal(h.updates.length, 1);
+  assert.equal(h.updates[0].fix.latitude, 14.002);
+  assert.equal(h.pauses.length, 0);
 });
 
 test('uploads are bounded and intermediate points are replaced by the latest point', async () => {
@@ -201,6 +292,29 @@ test('a failed upload retains its fix and rechecks authorization before retrying
   assert.equal(h.session.getSnapshot().phase, 'paused');
 });
 
+test('temporary server failures retry GPS without closing motion or replacing the session', async () => {
+  for (const status of [429, 502, 503]) {
+    const attemptedTokens = [];
+    const h = harness({ update: async (_code, fix, token) => {
+      attemptedTokens.push(token);
+      if (attemptedTokens.length === 1) throw { status };
+      return { lastLocationAt: fix.captured_at };
+    } });
+    await h.session.start('DEMO', consent);
+    await h.send();
+    h.advance(5000);
+    await h.send();
+    assert.equal(h.session.getSnapshot().phase, 'reconnecting');
+    h.advance(5000);
+    await h.tick();
+    assert.equal(h.session.getSnapshot().phase, 'sharing');
+    assert.deepEqual(attemptedTokens, ['a'.repeat(64), 'a'.repeat(64)]);
+    assert.equal(h.pauses.length, 0);
+    assert.equal(h.rentalUnavailable, 0);
+    assert.equal(h.removes, 0);
+  }
+});
+
 test('manual pause during an outage prevents automatic upload', async () => {
   let online = true;
   const h = harness({ connected: async () => online });
@@ -259,6 +373,8 @@ test('background reconnect never sends a fix after consent version changes', asy
   assert.equal(h.session.getSnapshot().phase, 'paused');
   assert.equal(h.updates.length, 0);
   assert.equal(h.removes, 1);
+  assert.equal(h.rentalUnavailable, 0);
+  assert.equal(h.pauses.at(-1).reason, 'interrupted');
 });
 
 test('stop removes the watcher immediately and ignores delayed watcher registration and callbacks', async () => {
@@ -288,29 +404,80 @@ test('a late start response after stopping cannot restart sharing or publish suc
   assert.equal(h.removes, 1);
 });
 
-test('server receipt or eligibility loss stops an existing watcher on its next check', async () => {
+test('server receipt stops the watcher even while waiting for GPS', async () => {
   const h = harness();
   await h.session.start('DEMO', consent);
   await h.send();
+  h.advance(120_000);
+  await h.tick();
+  assert.equal(h.session.getSnapshot().phase, 'waiting');
   h.setSnapshot({ canMonitor: false, tripStatus: 'ended' });
   h.advance(15000);
   await h.tick();
   assert.equal(h.session.getSnapshot().phase, 'paused');
   assert.equal(h.removes, 1);
   assert.equal(h.updates.length, 0);
+  assert.equal(h.rentalUnavailable, 1);
 });
 
-test('native errors and rejected uploads stop the watcher without exposing raw failures', async () => {
+test('unrecoverable GPS startup errors stop GPS without exposing raw failures', async () => {
   const h = harness({ start: async () => { throw new Error('private server internals'); } });
   await h.session.start('DEMO', consent);
   await h.send();
   assert.equal(h.session.getSnapshot().phase, 'error');
   assert.equal(h.removes, 1);
   assert.doesNotMatch(h.session.getSnapshot().message, /private/);
-  const native = harness();
+  assert.equal(h.rentalUnavailable, 0);
+  const native = harness({ watch: async () => { throw new Error('private native details'); } });
   await native.session.start('DEMO', consent);
-  await native.fail();
-  assert.equal(native.removes, 1);
+  assert.equal(native.session.getSnapshot().phase, 'error');
+  assert.doesNotMatch(native.session.getSnapshot().message, /private/);
+  assert.equal(native.rentalUnavailable, 0);
+});
+
+test('confirmed access denial stops motion even when the watcher is waiting for GPS', async () => {
+  let denied = false;
+  const h = harness({ read: async () => {
+    if (denied) throw { status: 403 };
+    return { canMonitor: true, tripStatus: 'started', policy };
+  } });
+  await h.session.start('DEMO', consent);
+  await h.send();
+  await h.fail();
+  denied = true;
+  h.advance(15000);
+  await h.tick();
+  assert.equal(h.session.getSnapshot().phase, 'error');
+  assert.equal(h.rentalUnavailable, 1);
+  assert.equal(h.pauses.at(-1).reason, 'interrupted');
+  assert.equal(h.removes, 1);
+});
+
+test('the app-wide native stop handler ignores GPS-only states', () => {
+  let stopCalls = 0;
+  class LocationMonitoringSession {
+    constructor(dependencies) { this.rentalUnavailable = dependencies.onRentalUnavailable; }
+    subscribe(listener) { this.listener = listener; }
+    getSnapshot() { return { phase: this.phase }; }
+    publish(phase) { this.phase = phase; this.listener(); }
+  }
+  const { locationMonitoring } = load('./location-monitoring.ts', {
+    './location-monitoring-session': { LocationMonitoringSession },
+    './rental-drive-monitoring': { pauseRentalDriveMonitoring: async () => { stopCalls++; } },
+    'react-native': { AppState: { currentState: 'active' } },
+    '@/services/api/location-monitoring.service': {},
+    './foreground-location': {},
+    './network-readiness': {},
+    './background-location-collector': {},
+  });
+  for (const phase of ['starting', 'waiting', 'reconnecting', 'error', 'offline', 'paused', 'sharing']) {
+    locationMonitoring.publish(phase);
+    assert.equal(stopCalls, 0, phase);
+  }
+  locationMonitoring.rentalUnavailable();
+  assert.equal(stopCalls, 1);
+  locationMonitoring.publish('idle');
+  assert.equal(stopCalls, 2);
 });
 
 test('reset discards the old account and never automatically resumes sharing', async () => {
@@ -324,8 +491,8 @@ test('reset discards the old account and never automatically resumes sharing', a
   assert.equal(h.starts.length, 1);
 });
 
-test('non-editable upload fields and expired consent/session errors receive specific safe recovery', async () => {
-  for (const [field, message] of [['consent_version', /terms changed/], ['session_token', /session changed/], ['captured_at', /date and time/], ['accuracy', /accurate GPS/]]) {
+test('expired consent and session errors receive specific safe recovery', async () => {
+  for (const [field, message] of [['consent_version', /terms changed/], ['session_token', /session changed/]]) {
     const h = harness({ start: async () => { throw { status: 422, errors: { [field]: ['private backend detail'] } }; } });
     await h.session.start('DEMO', consent);
     await h.send();
@@ -333,6 +500,30 @@ test('non-editable upload fields and expired consent/session errors receive spec
     assert.match(h.session.getSnapshot().message, message);
     assert.doesNotMatch(h.session.getSnapshot().message, /private/);
   }
+});
+
+test('a rejected GPS point is discarded and the next fresh reading is uploaded using the same session', async () => {
+  const attempts = [];
+  const h = harness({ update: async (_code, fix, token) => {
+    attempts.push({ fix, token });
+    if (attempts.length === 1) throw { status: 422, errors: { captured_at: ['The previous reading expired in transit.'] } };
+    return { lastLocationAt: fix.captured_at };
+  } });
+  await h.session.start('DEMO', consent);
+  await h.send();
+  h.advance(5000);
+  await h.send({ latitude: 14.001 });
+  assert.equal(h.session.getSnapshot().phase, 'waiting');
+  assert.equal(h.session.getSnapshot().latestFix, null);
+  h.advance(5000);
+  await h.tick();
+  assert.equal(attempts.length, 1);
+  await h.send({ latitude: 14.002 });
+  assert.equal(h.session.getSnapshot().phase, 'sharing');
+  assert.equal(attempts[1].fix.latitude, 14.002);
+  assert.equal(attempts[1].token, attempts[0].token);
+  assert.equal(h.pauses.length, 0);
+  assert.equal(h.removes, 0);
 });
 
 test('explicit background consent continues uploads while minimized and stops on manual stop', async () => {

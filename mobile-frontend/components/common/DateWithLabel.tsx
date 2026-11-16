@@ -113,6 +113,8 @@ export function getPreviousDateKey(value: string) {
 }
 
 export function DateWithLabel({
+  beforeOpen,
+  disabled = false,
   disabledDateRanges = [],
   error,
   helperText,
@@ -123,6 +125,8 @@ export function DateWithLabel({
   placeholder = 'Select date',
   value,
 }: {
+  beforeOpen?: () => Promise<boolean>;
+  disabled?: boolean;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -193,7 +197,11 @@ export function DateWithLabel({
       <Text className="font-sans text-[12px] font-normal text-secondary-foreground">{label}</Text>
       <Pressable
         accessibilityRole="button"
-        onPress={() => setIsCalendarOpen(true)}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={async () => {
+          if (!beforeOpen || await beforeOpen()) setIsCalendarOpen(true);
+        }}
         className={cx(
           'min-h-control flex-row items-center rounded-field border bg-surface px-4',
           error ? 'border-destructive-border bg-destructive-surface' : 'border-border',
@@ -239,7 +247,7 @@ export function DateWithLabel({
                 <Text className="font-sans text-[22px] font-semibold text-foreground">{label}</Text>
                 <Text className="font-sans mt-1 text-[12px] font-medium text-secondary-foreground">
                   {disabledDateRanges.length > 0
-                    ? 'Past dates and confirmed booking dates are disabled.'
+                    ? 'Past dates and unavailable dates are disabled.'
                     : 'Past dates are disabled.'}
                 </Text>
               </View>

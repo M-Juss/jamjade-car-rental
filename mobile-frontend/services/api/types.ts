@@ -158,6 +158,7 @@ export type EmergencyContactPayload = {
 };
 
 export type MobileVehicleRecord = {
+  hasOpenCustomerBooking?: boolean;
   lateReturnPolicy: import('@/types/browse').LateReturnPolicy;
   id: string;
   name: string;

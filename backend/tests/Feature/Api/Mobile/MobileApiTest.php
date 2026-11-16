@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\BookingService;
 use App\Services\PaymentDeadlineService;
 use App\Services\PayPalClient;
+use App\Services\VehicleOperationalStatusService;
 use App\Support\BookingAgreement;
 use App\Support\PayPalAppUrl;
 use Carbon\CarbonImmutable;
@@ -289,13 +290,15 @@ it('validates mobile collection filters and pagination limits', function () {
         ->assertJsonValidationErrors(['category', 'per_page']);
 });
 
-it('returns confirmed booking date ranges for the specific vehicle', function () {
+it('shows confirmed Manila dates to another customer and keeps the returned vehicle locked for its renter', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-15 12:00', 'Asia/Manila')->utc());
     $user = customerUser();
+    $otherCustomer = customerUser();
     $vehicle = availableVehicle();
-    $start = now()->addDays(5)->startOfDay();
-    $end = now()->addDays(7)->startOfDay();
+    $start = CarbonImmutable::parse('2026-11-16 07:00', 'Asia/Manila')->utc();
+    $end = CarbonImmutable::parse('2026-11-17 07:00', 'Asia/Manila')->utc();
 
-    Booking::create([
+    $booking = Booking::create([
         'booking_code' => 'BK-BLOCKED-DATES',
         'user_id' => $user->id,
         'vehicle_id' => $vehicle->id,
@@ -317,12 +320,48 @@ it('returns confirmed booking date ranges for the specific vehicle', function ()
         'confirmed_at' => now(),
     ]);
 
-    Sanctum::actingAs($user);
+    $catalog = '/api/mobile/customer/vehicles';
+    $range = ['startDate' => '2026-11-16', 'endDate' => '2026-11-17'];
+    $this->getJson($catalog)->assertUnauthorized();
+    $this->getJson("/api/mobile/vehicles/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.unavailableDateRanges.0', $range)
+        ->assertJsonPath('data.hasOpenCustomerBooking', false);
 
-    $this->getJson("/api/mobile/vehicles/{$vehicle->id}")
-        ->assertOk()
-        ->assertJsonPath('data.unavailableDateRanges.0.startDate', $start->toDateString())
-        ->assertJsonPath('data.unavailableDateRanges.0.endDate', $end->toDateString());
+    Sanctum::actingAs($otherCustomer);
+    $this->getJson($catalog)->assertOk()->assertJsonPath('data.0.unavailableDateRanges.0', $range)
+        ->assertJsonPath('data.0.hasOpenCustomerBooking', false);
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.unavailableDateRanges.0', $range);
+
+    $this->travelTo(CarbonImmutable::parse('2026-11-17 12:00', 'Asia/Manila')->utc());
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.unavailableDateRanges.0', $range);
+
+    $booking->update(['status' => BookingStatus::Ongoing]);
+    $vehicle->update(['status' => VehicleStatus::Rented]);
+    $this->getJson($catalog)->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertNotFound();
+
+    Sanctum::actingAs($user);
+    $this->getJson($catalog)->assertOk()->assertJsonPath('data.0.status', 'rented')
+        ->assertJsonPath('data.0.hasOpenCustomerBooking', true);
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.hasOpenCustomerBooking', true);
+    $this->getJson("/api/mobile/vehicles/{$vehicle->id}")->assertNotFound();
+
+    $booking->update(['status' => BookingStatus::Returned]);
+    app(VehicleOperationalStatusService::class)->afterBookingEnded($vehicle);
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()->assertJsonPath('data.status', 'available')
+        ->assertJsonPath('data.hasOpenCustomerBooking', true);
+
+    Sanctum::actingAs($otherCustomer);
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()->assertJsonPath('data.hasOpenCustomerBooking', false)
+        ->assertJsonCount(0, 'data.unavailableDateRanges');
+
+    $booking->update(['status' => BookingStatus::Completed]);
+    Sanctum::actingAs($user);
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.hasOpenCustomerBooking', false);
 });
 
 it('creates a booking with backend pricing and down payment validation', function () {

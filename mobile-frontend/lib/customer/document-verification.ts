@@ -8,7 +8,6 @@ export type CustomerDocumentDefinition = {
   id: CustomerDocumentId;
   name: string;
   shortDescription: string;
-  uploadDescription: string;
 };
 
 export const CUSTOMER_DOCUMENT_DEFINITIONS: CustomerDocumentDefinition[] = [
@@ -16,13 +15,11 @@ export const CUSTOMER_DOCUMENT_DEFINITIONS: CustomerDocumentDefinition[] = [
     id: 'driver-license',
     name: "Driver's License",
     shortDescription: 'License details with clear front and back images.',
-    uploadDescription: 'Add your license number, expiration date, and clear images of both sides.',
   },
   {
     id: 'proof-of-address',
     name: 'Proof of Address',
     shortDescription: 'Recent document showing your current address.',
-    uploadDescription: 'Upload a clear, recent document showing your name and current residential address, such as a utility bill, billing statement, or official address document. Add the back image only if the document has one.',
   },
 ];
 

@@ -63,6 +63,10 @@ function peso(value: number) {
   })}`;
 }
 
+function pickupLabel(value?: string | null) {
+  return value?.replace(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), /, "") || "Not provided";
+}
+
 function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
   const router = useRouter();
   const { portal, user } = useManagementSession();
@@ -361,7 +365,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-muted-foreground">Pickup</span>
-                      <span className="text-foreground">{booking.rentalDate || "Not provided"}</span>
+                      <span className="text-foreground">{pickupLabel(booking.rentalDate)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-muted-foreground">Total</span>
@@ -436,7 +440,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
                           ? "Self drive"
                           : booking.assignedDriver?.name || "Not assigned"}
                       </TableCell>
-                      <TableCell className="px-2 py-3 text-sm text-muted-foreground">{booking.rentalDate || "Not provided"}</TableCell>
+                      <TableCell className="px-2 py-3 text-sm text-muted-foreground">{pickupLabel(booking.rentalDate)}</TableCell>
                       <TableCell className="px-2 py-3">
                         <BookingStatusDisplay booking={booking} />
                       </TableCell>

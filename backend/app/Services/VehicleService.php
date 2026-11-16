@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -13,12 +14,31 @@ class VehicleService
 {
     private const VEHICLE_UPLOAD_DIRECTORY = 'vehicles';
 
+    private const MOBILE_CATALOG_RELATIONS = ['images', 'features', 'mobileDateBlockingBookings', 'scheduledMaintenanceWindows'];
+
     public function __construct(private readonly VehicleInspectionService $inspectionService) {}
 
     public function paginate(array $filters = [], int $perPage = 10): LengthAwarePaginator
     {
+        return $this->catalogQuery($filters)->with(['images', 'features', 'dateBlockingBookings', 'scheduledMaintenanceWindows'])
+            ->paginate($perPage);
+    }
+
+    public function paginateMobileCatalog(array $filters, int $perPage, ?int $customerId): LengthAwarePaginator
+    {
+        return $this->catalogQuery($filters)->visibleInMobileCatalog($customerId)
+            ->with(self::MOBILE_CATALOG_RELATIONS)->paginate($perPage);
+    }
+
+    public function mobileCatalogVehicle(int $vehicleId, ?int $customerId): Vehicle
+    {
+        return Vehicle::query()->visibleInMobileCatalog($customerId)
+            ->with(self::MOBILE_CATALOG_RELATIONS)->findOrFail($vehicleId);
+    }
+
+    private function catalogQuery(array $filters): Builder
+    {
         return Vehicle::query()
-            ->with(['images', 'features', 'dateBlockingBookings', 'scheduledMaintenanceWindows'])
             ->when($filters['search'] ?? null, function ($query, string $search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
@@ -31,8 +51,7 @@ class VehicleService
             ->when($filters['brand'] ?? null, fn ($query, string $brand) => $query->where('brand', $brand))
             ->when($filters['transmission'] ?? null, fn ($query, string $transmission) => $query->where('transmission', $transmission))
             ->orderBy('brand')
-            ->orderBy('model')
-            ->paginate($perPage);
+            ->orderBy('model');
     }
 
     public function create(array $data, User $user): Vehicle

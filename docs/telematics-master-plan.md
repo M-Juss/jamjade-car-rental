@@ -2972,16 +2972,36 @@ Legacy trip/location endpoints are separate and cannot bypass the consented flow
 Accepted reliable latest fixes also drive frozen-zone evaluation and enabled
 named in-app crossing alerts; see [geofence monitoring](geofence-monitoring.md).
 
+When GPS readings are missing, expire, or a registered Android watcher reports
+a delivery error, the mobile app shows **Waiting for GPS**, clears the point
+from its map, and keeps the consented watcher and rental session active. It
+still checks rental access and sends the next fresh, accurate fix on the same
+session. A server rejection limited to GPS fields also discards the rejected
+point and waits for another reading. GPS delivery failures leave an active
+motion capture running. A failed watcher registration can require restarting
+GPS. Restarting GPS alone or losing GPS consent interrupts the GPS stream
+without closing the motion capture period. Explicit rental Pause, sign-out,
+confirmed loss of rental access and rental end still stop motion.
+
+`mobile-frontend/services/telematics/location-monitoring-session.ts` owns the
+GPS retry and wait transitions. `location-monitoring.ts` calls the native motion
+stop for confirmed rental access loss or account reset. The Telematics and
+location controls show Waiting for GPS independently of Drive Monitoring status.
+Verification passed 59 focused mobile tests, 54 existing backend GPS and
+motion tests, mobile lint, TypeScript and Android bundle export. The full mobile
+run passed 353 of 354 tests with the existing vehicle image mapping failure.
+A physical signal-loss retest remains pending because no phone was connected.
+
 Foreground mode stops when backgrounded; background mode is explicitly selected
 with appropriate native permission. Current runtime consent/session state and
 collection tokens are in memory. Stop, interruption, sign-out, runtime loss, and
 cold tasks do not silently restart sharing. There is no persistent GPS route queue.
 Receipt/expiry clears retained location and invalidates collection as implemented.
 
-After location collection starts, a connection loss or request timeout keeps
-the existing GPS watcher running while JamJade is open, and while backgrounded
-only if background sharing was explicitly authorized. The app shows that sharing
-is paused without a connection, holds only the latest valid fix in memory, and
+After location collection starts, connection loss, timeouts, rate limits and
+server errors keep the existing GPS watcher running while JamJade is open, and while backgrounded
+only if background sharing was explicitly authorized. The app shows that GPS
+is reconnecting when a valid fix is available, holds only that fix in memory, and
 retries every five seconds while the runtime remains alive. On reconnect it
 rechecks rental access and consent before sending the newest fresh fix with its
 capture time. Manual pause and sign-out stop capture and discard the pending fix;

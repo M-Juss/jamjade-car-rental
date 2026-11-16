@@ -14,6 +14,7 @@ export type Vehicle = {
   model: string;
   pricePerDay: number;
   status: 'available' | 'rented' | 'maintenance' | 'unavailable';
+  hasOpenCustomerBooking: boolean;
   cardImage: string | null;
   images: string[];
   seats: number;

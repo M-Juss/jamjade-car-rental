@@ -23,7 +23,7 @@ import {
   type SortOption,
 } from '@/components/browse';
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
-import { useAvailableVehicles } from '@/hooks/use-vehicles';
+import { useBrowseVehicles } from '@/hooks/use-vehicles';
 import { toggleBookmarkedVehicle, useBookmarkedVehicleIds } from '@/lib/browse/bookmarks';
 import type { Vehicle } from '@/types/browse';
 
@@ -128,16 +128,16 @@ export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
   const [filters, setFilters] = useState<BrowseFilters>(defaultFilters);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const bookmarkedVehicleIds = useBookmarkedVehicleIds();
-  const { vehicles: availableVehicles, isLoading, error, refresh } = useAvailableVehicles();
+  const { vehicles: catalogVehicles, isLoading, error, refresh } = useBrowseVehicles(mode === 'customer');
 
   const vehicles = useMemo(() => {
-    const filteredVehicles = availableVehicles.filter(
+    const filteredVehicles = catalogVehicles.filter(
       (vehicle) =>
         matchesSearch(vehicle, searchTerm) && matchesFilters(vehicle, filters, bookmarkedVehicleIds),
     );
 
     return sortVehicles(filteredVehicles, filters.sort);
-  }, [availableVehicles, bookmarkedVehicleIds, filters, searchTerm]);
+  }, [catalogVehicles, bookmarkedVehicleIds, filters, searchTerm]);
 
   const activeFilterCount =
     Number(filters.minPrice !== undefined || filters.maxPrice !== undefined) +
@@ -157,7 +157,7 @@ export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
         refreshControl={
           <RefreshControl
             colors={[themeColors.primary]}
-            refreshing={isLoading && availableVehicles.length > 0}
+            refreshing={isLoading && catalogVehicles.length > 0}
             tintColor={themeColors.primary}
             onRefresh={() => void refresh()}
           />
@@ -177,14 +177,14 @@ export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
 
           <View className="mt-section">
             <Text className="font-sans text-[13px] font-semibold text-foreground">
-              {vehicles.length} available vehicles
+              {vehicles.length} {vehicles.length === 1 ? 'vehicle' : 'vehicles'}
             </Text>
           </View>
 
           <View className="mt-4 gap-3">
-            {isLoading && availableVehicles.length === 0 ? (
+            {isLoading && catalogVehicles.length === 0 ? (
               <LoadingState />
-            ) : error && availableVehicles.length === 0 ? (
+            ) : error && catalogVehicles.length === 0 ? (
               <ErrorState
                 actionLabel="Try Again"
                 title="Vehicles unavailable"
@@ -212,7 +212,7 @@ export function VehicleCatalogScreen({ mode }: VehicleCatalogScreenProps) {
         bookmarkedVehicleIds={bookmarkedVehicleIds}
         visible={isFilterOpen}
         filters={filters}
-        vehicles={availableVehicles}
+        vehicles={catalogVehicles}
         onApply={setFilters}
         onClose={() => setIsFilterOpen(false)}
       />

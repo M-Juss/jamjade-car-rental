@@ -2,7 +2,7 @@ import { themeColors } from '@/constants/theme';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
-import { ArrowLeft, Clock3, RotateCcw } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, Text, View } from 'react-native';
@@ -29,8 +29,6 @@ import type { DocumentImagePickError } from '@/lib/customer/image-picker';
 import type { CustomerDocumentId, CustomerDocumentUploads } from '@/types/customer';
 import { useAuth } from '@/providers/AuthProvider';
 
-const IMAGE_HELPER = 'Use a clear, visible, well-lit image. Maximum file size is 5 MB.';
-
 function clearPreviousDocumentImages(documentId: CustomerDocumentId, documents: CustomerDocumentUploads) {
   const clearServerImage = (value: string) => (/^https?:\/\//i.test(value) ? '' : value);
 
@@ -49,43 +47,6 @@ function clearPreviousDocumentImages(documentId: CustomerDocumentId, documents: 
   };
 }
 
-function ReviewStateNotice({
-  rejectionReason,
-  status,
-}: {
-  status: 'pending-review' | 'rejected';
-  rejectionReason?: string;
-}) {
-  const isRejected = status === 'rejected';
-  const Icon = isRejected ? RotateCcw : Clock3;
-  const iconColor = isRejected
-      ? themeColors.destructive
-      : themeColors.warning;
-  const background = isRejected
-      ? 'bg-destructive-surface border-destructive-border'
-      : 'bg-warning-surface border-warning-border';
-  const title = isRejected
-      ? 'Document needs an update'
-      : 'Document pending review';
-  const message = isRejected
-      ? `Your previous submission was not accepted. ${rejectionReason ? `Reason: ${rejectionReason} ` : ''}Upload corrected document images and submit again.`
-      : 'Your upload is locked while Jamjade reviews the submitted document.';
-
-  return (
-    <View className={`mt-section flex-row items-start gap-3 rounded-card border p-4 ${background}`}>
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-surface">
-        <Icon size={20} color={iconColor} strokeWidth={2.45} />
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text className="font-sans text-[13px] font-semibold text-foreground">{title}</Text>
-        <Text className="font-sans mt-1 text-[12px] font-normal leading-5 text-secondary-foreground">
-          {message}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 export function ProfileDocumentVerificationForm({
   documentId,
   isOnboardingFlow = false,
@@ -99,6 +60,7 @@ export function ProfileDocumentVerificationForm({
   const { refreshProfile } = useAuth();
   const definition = getCustomerDocumentDefinition(documentId);
   const status = customer.documentStatuses[documentId];
+  const rejectionReason = status === 'rejected' ? customer.documentRejectionReasons[documentId] : undefined;
   const [isEditingVerified, setIsEditingVerified] = useState(false);
   const isLocked = status === 'pending-review' || (status === 'verified' && !isEditingVerified);
   const toast = useFormToast();
@@ -200,7 +162,9 @@ export function ProfileDocumentVerificationForm({
       allowPreview
       disabled={isLocked || isSubmitting}
       error={errors[key]?.message}
-      helperText={isLocked ? undefined : IMAGE_HELPER}
+      helperText={key === 'proofOfAddress'
+        ? 'Use a clear, recent bill or official document showing your name and current address. Maximum 5 MB.'
+        : undefined}
       isUploading={isSubmitting}
       label={label}
       onChange={(value) => {
@@ -255,18 +219,11 @@ export function ProfileDocumentVerificationForm({
         {isEditingVerified ? <Text className="font-sans mt-3 text-caption leading-5 text-secondary-foreground">
           Upload new images. Resubmitting pauses self-drive eligibility until approval.
         </Text> : null}
-        {status !== 'verified' ? <View className="mt-section">
-          <Text className="font-sans mt-2 text-body text-secondary-foreground">{definition.uploadDescription}</Text>
-        </View> : null}
-
-        {status !== 'not-submitted' && status !== 'verified' ? (
-          <ReviewStateNotice
-            rejectionReason={customer.documentRejectionReasons[documentId]}
-            status={status}
-          />
-        ) : null}
 
         <View className="mt-section gap-4">
+          {rejectionReason ? (
+            <Text className="font-sans text-caption text-destructive">{rejectionReason}</Text>
+          ) : null}
           {documentId === 'driver-license' ? (
             <>
               <View className="rounded-card border border-border bg-surface p-4">

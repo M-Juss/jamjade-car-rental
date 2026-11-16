@@ -18,6 +18,7 @@ import {
   type MobileUser,
 } from '@/services/api';
 import { isResearchAdmin } from '@/lib/auth/mobile-access';
+import { resetVehicleCatalog } from '@/lib/browse/vehicle-store';
 import {
   hydrateCustomerFromProfile,
   hydrateCustomerFromUser,
@@ -156,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           await logout(options);
         } finally {
+          resetVehicleCatalog();
           setUnreadNotificationCount(0);
           setUser(null);
           setOnboardingRoute(null);

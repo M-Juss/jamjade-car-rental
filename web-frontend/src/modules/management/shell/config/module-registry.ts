@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   Car,
   ClipboardCheck,
+  ClipboardList,
   Fence,
   Gauge,
   LayoutDashboard,
@@ -13,7 +14,6 @@ import {
   History,
   Wrench,
   Activity,
-  CircleAlert,
 } from "lucide-react";
 
 export type ManagementPortal = "admin" | "staff";
@@ -55,7 +55,7 @@ export type ManagementModule = {
 };
 
 export const managementModules: readonly ManagementModule[] = [
-  { id: "errors", label: "Activity Log", section: "Administration", icon: CircleAlert, adminOnly: true, path: "errors" },
+  { id: "errors", label: "Activity Log", section: "Administration", icon: ClipboardList, adminOnly: true, path: "errors" },
   {
     id: "dashboard",
     label: "Dashboard",

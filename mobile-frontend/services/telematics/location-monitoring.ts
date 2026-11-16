@@ -7,6 +7,10 @@ import { LocationMonitoringSession } from './location-monitoring-session';
 import { getNetworkReadiness } from './network-readiness';
 import { prepareBackgroundCollection, stopBackgroundCollection, watchBackgroundLocation } from './background-location-collector';
 
+function stopMotion() {
+  void pauseRentalDriveMonitoring().catch(() => {});
+}
+
 export const locationMonitoring = new LocationMonitoringSession({
   read: getLocationMonitoring,
   start: startLocationMonitoring,
@@ -16,15 +20,14 @@ export const locationMonitoring = new LocationMonitoringSession({
   watch: (interval, reading, error, mode) => mode === 'foreground_background'
     ? watchBackgroundLocation(interval, reading, error) : watchForegroundLocation(interval, reading, error),
   cleanup: stopBackgroundCollection,
+  onRentalUnavailable: stopMotion,
   connected: getNetworkReadiness,
   foreground: () => AppState.currentState === 'active',
   now: Date.now,
 });
 
-// Revoked access and account cleanup also stop motion. Explicit user pause is
-// coupled in useTelematicsMonitoring. A temporary
-// offline state alone does not stop the native feature collector.
+// Account reset and confirmed rental access loss stop motion. User Pause is
+// handled by useTelematicsMonitoring, independently of GPS availability.
 locationMonitoring.subscribe(() => {
-  const phase = locationMonitoring.getSnapshot().phase;
-  if (phase === 'idle' || phase === 'error') void pauseRentalDriveMonitoring().catch(() => {});
+  if (locationMonitoring.getSnapshot().phase === 'idle') stopMotion();
 });

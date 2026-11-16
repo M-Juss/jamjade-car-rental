@@ -1,7 +1,7 @@
 import { useRouter, type Href } from 'expo-router';
 import { CarFront, CircleHelp, ShieldCheck, UserRound } from 'lucide-react-native';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { OnboardingScreenFrame } from '@/components/onboarding/OnboardingScreenFrame';
@@ -23,7 +23,6 @@ export default function DrivingIntentScreen() {
   const { refreshProfile } = useAuth();
   const customer = useCustomer();
   const [intent, setIntent] = useState<DrivingIntent>(customer.drivingIntent);
-  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const toast = useFormToast();
 
@@ -33,7 +32,7 @@ export default function DrivingIntentScreen() {
     }
 
     if (!intent) {
-      setError('Choose a driving option to continue.');
+      toast.showToast('Choose a driving option to continue.');
       return;
     }
 
@@ -60,7 +59,7 @@ export default function DrivingIntentScreen() {
 
   const selectIntent = (nextIntent: DrivingIntent) => {
     setIntent(nextIntent);
-    setError('');
+    toast.clearToast();
   };
 
   return (
@@ -104,12 +103,6 @@ export default function DrivingIntentScreen() {
             title="Not sure yet"
           />
         </View>
-
-        {error ? (
-          <Text className="font-sans mt-3 rounded-[20px] border border-destructive-border bg-destructive-surface px-4 py-3 text-[12px] font-medium leading-5 text-destructive">
-            {error}
-          </Text>
-        ) : null}
       </OnboardingScreenFrame>
       <FormToast
         message={toast.message}

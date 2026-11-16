@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\BookingStatus;
 use App\Enums\VehicleStatus;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -96,6 +98,27 @@ class Vehicle extends Model
             ->blockingVehicleDates()
             ->where('rental_end_at', '>=', today())
             ->orderBy('rental_start_at');
+    }
+
+    public function mobileDateBlockingBookings(): HasMany
+    {
+        return $this->bookings()->blockingVehicleDates()
+            ->where('rental_end_at', '>=', CarbonImmutable::today('Asia/Manila')->utc())
+            ->orderBy('rental_start_at');
+    }
+
+    public function scopeVisibleInMobileCatalog(Builder $query, ?int $customerId): Builder
+    {
+        if ($customerId === null) {
+            return $query->where('status', VehicleStatus::Available);
+        }
+
+        $ownedOpenBookings = fn (Builder $bookings) => $bookings->where('user_id', $customerId)
+            ->whereIn('status', [BookingStatus::Pending, BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Returned]);
+
+        return $query->withExists(['bookings as has_open_customer_booking' => $ownedOpenBookings])
+            ->where(fn (Builder $vehicles) => $vehicles->where('status', VehicleStatus::Available)
+                ->orWhereHas('bookings', $ownedOpenBookings));
     }
 
     public function upcomingConfirmedBookings(): HasMany

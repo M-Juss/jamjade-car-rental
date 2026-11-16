@@ -10,6 +10,8 @@ import {
   Text,
   View,
   type GestureResponderEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -148,14 +150,30 @@ export function TermsSignatureModal({
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<'terms' | 'signature'>('terms');
   const [strokes, setStrokes] = useState<SignatureStroke[]>([]);
+  const [readToEnd, setReadToEnd] = useState(false);
+  const termsSize = useRef({ viewport: 0, content: 0 });
   const hasSignature = strokes.some((stroke) => stroke.length > 1);
 
   useEffect(() => {
-    if (visible) {
+    if (!visible) {
       setStep('terms');
       setStrokes([]);
+      setReadToEnd(false);
+      termsSize.current = { viewport: 0, content: 0 };
     }
   }, [visible]);
+
+  const checkTermsEnd = (offset = 0) => {
+    const { viewport, content } = termsSize.current;
+    if (viewport > 0 && content > 0 && offset + viewport >= content - 2) {
+      setReadToEnd(true);
+    }
+  };
+
+  const handleTermsScroll = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+    termsSize.current = { viewport: nativeEvent.layoutMeasurement.height, content: nativeEvent.contentSize.height };
+    checkTermsEnd(nativeEvent.contentOffset.y);
+  };
 
   const signatureResponder = useRef(
     PanResponder.create({
@@ -238,7 +256,21 @@ export function TermsSignatureModal({
 
           {step === 'terms' ? (
             <>
-              <ScrollView className="px-screen" showsVerticalScrollIndicator>
+              <ScrollView
+                className="px-screen"
+                showsVerticalScrollIndicator
+                scrollEventThrottle={16}
+                onLayout={({ nativeEvent }) => {
+                  termsSize.current.viewport = nativeEvent.layout.height;
+                  checkTermsEnd();
+                }}
+                onContentSizeChange={(_width, height) => {
+                  termsSize.current.content = height;
+                  checkTermsEnd();
+                }}
+                onScroll={handleTermsScroll}
+                onScrollEndDrag={handleTermsScroll}
+                onMomentumScrollEnd={handleTermsScroll}>
                 <View className="pb-6 pt-5">
                   {termsSections.map((section, sectionIndex) => (
                     <View
@@ -282,9 +314,11 @@ export function TermsSignatureModal({
               <View className="border-t border-border bg-surface px-screen pt-4">
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: !readToEnd }}
+                  disabled={!readToEnd}
                   onPress={() => setStep('signature')}
-                  className="min-h-control items-center justify-center rounded-field bg-primary px-4 py-3">
-                  <Text className="font-sans text-[15px] font-semibold text-surface">Sign</Text>
+                  className={`min-h-control items-center justify-center rounded-field px-4 py-3 ${readToEnd ? 'bg-primary' : 'bg-muted'}`}>
+                  <Text className={`font-sans text-[15px] font-semibold ${readToEnd ? 'text-surface' : 'text-secondary-foreground'}`}>Sign</Text>
                 </Pressable>
               </View>
             </>
