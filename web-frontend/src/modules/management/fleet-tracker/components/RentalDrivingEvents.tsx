@@ -9,9 +9,10 @@ import { getRentalDrivingEvents, type RentalDrivingEvents as DrivingEvents } fro
 import { getBookingDrivingAnalysis } from "@/services/booking";
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScoreCalculation } from "@/modules/management/driving-analysis/components/DrivingGradeDetails";
 import type { BookingRecord } from "@/services/booking";
+import { FleetActivityCard } from "./FleetActivityCard";
 
 const ANALYSIS_LOG_PAGE_SIZE = 5;
 type DrivingEventsSource = { bookingCode: string; dataVersion: number; analysisBookingId?: never }
@@ -94,18 +95,19 @@ export function RentalDrivingEvents({ bookingCode, dataVersion, analysisBookingI
       {!error ? <ScoreCalculation grading={data?.grading ?? null} /> : null}
     </div>;
   }
-  return <Card>
-    <CardHeader className="min-h-14 border-b border-border pb-3">
-      <CardTitle className="text-sm font-semibold">Driving events</CardTitle>
-      <CardDescription className="text-xs">{data ? data.latest_received_at ? `Last received ${formatReturnDateTime(data.latest_received_at)}` : "No motion readings received" : "Loading driving events…"}</CardDescription>
-      <CardAction><Button variant="ghost" size="icon" aria-label="Refresh driving events" onClick={() => setRefresh(value => value + 1)}><RefreshCcw /></Button></CardAction>
-    </CardHeader>
-    <CardContent className="space-y-3">
+  const lastReceived = data?.latest_received_at
+    ? `Last received ${formatReturnDateTime(data.latest_received_at)}`
+    : data ? "No motion readings received" : error ? "Last received unavailable" : "Loading driving events…";
+  return <FleetActivityCard
+    title="Vehicle Activity Monitoring"
+    description={lastReceived}
+    onRefresh={() => setRefresh(value => value + 1)}
+  >
     {error ? <p role="alert" className="text-sm text-destructive">Driving events unavailable. Refresh to retry.</p> : !data ? <p role="status" className="text-sm text-muted-foreground">Loading driving events…</p> : <>
-      <SummaryList label="Driving event totals" items={[{ label: "detected", value: data.event_summary.detected }, { label: "uncertain", value: data.event_summary.needs_review }, ...(data.event_summary.pending ? [{ label: "pending", value: data.event_summary.pending }] : [])]} />
+      <SummaryList label="Driving event totals" className="gap-x-2.5" items={[{ label: "detected", value: data.event_summary.detected }, { label: "uncertain", value: data.event_summary.needs_review }, ...(data.event_summary.pending ? [{ label: "pending", value: data.event_summary.pending }] : [])]} />
       {data.events.length > 0 ? <div className="divide-y divide-border">
         {data.events.slice((currentPage - 1) * 10, currentPage * 10).map(event => <div key={event.id} className="flex flex-wrap justify-between gap-2 py-2 text-sm">
-          <div>
+          <div className="min-w-0 break-words">
             <p className="font-medium">{event.target.replaceAll("_", " ").replace(/^./, value => value.toUpperCase())}</p>
             <p className="text-xs text-muted-foreground">{event.occurred_at ? `Occurred ${formatReturnDateTime(event.occurred_at, true)}` : "Event time unavailable"}</p>
           </div>
@@ -114,6 +116,5 @@ export function RentalDrivingEvents({ bookingCode, dataVersion, analysisBookingI
       </div> : emptyMessage ? <p className="text-sm text-muted-foreground">{emptyMessage}</p> : null}
       {lastPage > 1 ? <TablePagination page={currentPage} lastPage={lastPage} total={data.events.length} onPageChange={setPage} label="Driving events pagination" /> : null}
     </>}
-    </CardContent>
-  </Card>;
+  </FleetActivityCard>;
 }

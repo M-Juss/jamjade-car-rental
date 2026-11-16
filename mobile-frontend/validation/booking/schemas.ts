@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { isBookablePickupDate, isFuturePickupTime } from '@/lib/browse/pickup-time';
+import { isBookablePickupDate } from '@/lib/browse/pickup-time';
 
 export type BookingValidationInput = {
   rentalDate: string;
@@ -115,12 +115,6 @@ export const bookingFormSchema = z
       context.addIssue({
         code: 'custom',
         message: 'Choose a pickup time.',
-        path: ['deliveryTime'],
-      });
-    } else if (hasValidRentalDate && !isFuturePickupTime(form.rentalDate, form.deliveryTime)) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Choose a pickup time later than the current time.',
         path: ['deliveryTime'],
       });
     }

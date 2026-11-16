@@ -196,13 +196,15 @@ it('lists every customer and separates pending review from self-drive eligibilit
         ]);
     }
 
-    $response = $this->actingAs(documentReviewer())
+    $this->actingAs(documentReviewer())
         ->getJson('/admin/self-drive-verification/customers?per_page=2')
         ->assertOk()
         ->assertJsonPath('meta.summary.total', 3)
         ->assertJsonPath('meta.summary.eligible', 1)
         ->assertJsonPath('meta.total', 3)
-        ->assertJsonCount(2, 'data');
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.id', $pendingCustomer->id)
+        ->assertJsonPath('data.1.id', $approvedCustomer->id);
 
     $this->getJson('/admin/self-drive-verification/customers?eligibility=eligible')
         ->assertOk()
@@ -216,6 +218,70 @@ it('lists every customer and separates pending review from self-drive eligibilit
         ->assertJsonPath('meta.total', 2)
         ->assertJsonFragment(['id' => $withoutDocuments->id, 'reviewStatus' => 'documents_required'])
         ->assertJsonFragment(['id' => $pendingCustomer->id, 'reviewStatus' => 'pending_review']);
+});
+
+it('filters the customer queue by its document review badges', function () {
+    $noDocuments = documentCustomerUser();
+    $noDocuments->documents()->create(['document_type' => CustomerDocument::PASSPORT, 'status' => DocumentStatus::Pending]);
+    $noDocuments->documents()->create(['document_type' => CustomerDocument::DRIVERS_LICENSE, 'status' => DocumentStatus::Approved])->delete();
+
+    $incomplete = documentCustomerUser();
+    $incomplete->documents()->create(['document_type' => CustomerDocument::DRIVERS_LICENSE, 'status' => DocumentStatus::Approved]);
+
+    $pending = documentCustomerUser();
+    $pending->documents()->create(['document_type' => CustomerDocument::DRIVERS_LICENSE, 'status' => DocumentStatus::Pending]);
+    $pending->documents()->create(['document_type' => CustomerDocument::PASSPORT, 'status' => DocumentStatus::Rejected]);
+
+    $needsCorrection = documentCustomerUser();
+    $needsCorrection->documents()->create(['document_type' => CustomerDocument::DRIVERS_LICENSE, 'status' => DocumentStatus::Pending]);
+    $needsCorrection->documents()->create(['document_type' => CustomerDocument::PROOF_OF_BILLING, 'status' => DocumentStatus::Rejected]);
+
+    $this->actingAs(documentReviewer());
+
+    foreach ([
+        'no_documents' => [$noDocuments, 'documents_required', 2],
+        'incomplete' => [$incomplete, 'documents_required', 1],
+        'pending_review' => [$pending, 'pending_review', 1],
+    ] as $filter => [$customer, $reviewStatus, $missing]) {
+        $this->getJson('/admin/self-drive-verification/customers?eligibility='.$filter)
+            ->assertOk()
+            ->assertJsonPath('meta.summary.total', 4)
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $customer->id)
+            ->assertJsonPath('data.0.reviewStatus', $reviewStatus)
+            ->assertJsonPath('data.0.documentCounts.missing', $missing);
+    }
+
+    $this->getJson('/admin/self-drive-verification/customers?eligibility=pending_review&search='.$needsCorrection->email)
+        ->assertOk()
+        ->assertJsonPath('meta.total', 0);
+});
+
+it('prioritizes pending review before pagination and preserves newest-first order within each group', function () {
+    $firstPending = documentCustomerUser();
+    $firstPending->forceFill(['created_at' => now()->subDays(3)])->save();
+    $firstPending->documents()->create(['document_type' => CustomerDocument::DRIVERS_LICENSE, 'status' => DocumentStatus::Pending]);
+
+    $secondPending = documentCustomerUser();
+    $secondPending->forceFill(['created_at' => now()->subDays(2)])->save();
+    $secondPending->documents()->create(['document_type' => CustomerDocument::PROOF_OF_BILLING, 'status' => DocumentStatus::Pending]);
+
+    $olderWithoutDocuments = documentCustomerUser();
+    $olderWithoutDocuments->forceFill(['created_at' => now()->subDay()])->save();
+    $newerWithoutDocuments = documentCustomerUser();
+
+    $this->actingAs(documentReviewer());
+
+    $this->getJson('/admin/self-drive-verification/customers?per_page=2')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 4)
+        ->assertJsonPath('data.0.id', $secondPending->id)
+        ->assertJsonPath('data.1.id', $firstPending->id);
+
+    $this->getJson('/admin/self-drive-verification/customers?per_page=2&page=2')
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $newerWithoutDocuments->id)
+        ->assertJsonPath('data.1.id', $olderWithoutDocuments->id);
 });
 
 it('ignores legacy passport requirements and preserves old documents outside the active review', function () {

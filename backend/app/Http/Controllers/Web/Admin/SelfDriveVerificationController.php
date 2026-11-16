@@ -29,14 +29,10 @@ class SelfDriveVerificationController extends Controller
             ->orWhere('email', 'like', "%{$value}%")
             ->orWhere('phone_number', 'like', "%{$value}%")));
 
-        if ($request->validated('eligibility') === 'eligible') {
-            $this->verification->eligibleCustomers($customers);
-        } elseif ($request->validated('eligibility') === 'not_eligible') {
-            $customers->whereNotIn('users.id', $this->verification
-                ->eligibleCustomers(User::role('customer')->select('users.id')));
-        }
+        $this->verification->filterCustomers($customers, $request->validated('eligibility'));
 
-        $page = $customers->with(['customerProfile', 'documents'])->withExists('completeEmergencyContacts')
+        $page = $this->verification->prioritizePendingReview($customers)
+            ->with(['customerProfile', 'documents'])->withExists('completeEmergencyContacts')
             ->orderByDesc('users.created_at')
             ->orderByDesc('users.id')
             ->paginate($request->integer('per_page', 15));

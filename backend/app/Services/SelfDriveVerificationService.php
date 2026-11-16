@@ -24,6 +24,45 @@ class SelfDriveVerificationService
                 ->where('status', DocumentStatus::Approved->value));
     }
 
+    public function filterCustomers(Builder $query, ?string $status): Builder
+    {
+        return match ($status) {
+            'eligible' => $this->eligibleCustomers($query),
+            'not_eligible' => $query->whereNotIn('users.id', $this->eligibleCustomers(User::role('customer')->select('users.id'))),
+            'no_documents' => $query->whereDoesntHave('documents', $this->requiredDocuments(...)),
+            'pending_review' => $query->whereExists($this->pendingReviewDocuments()),
+            'incomplete' => $query
+                ->whereHas('documents', $this->requiredDocuments(...), '<', count(CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS))
+                ->whereHas('documents', fn (Builder $documents) => $this->requiredDocuments($documents)
+                    ->where('status', DocumentStatus::Approved->value))
+                ->whereDoesntHave('documents', fn (Builder $documents) => $this->requiredDocuments($documents)
+                    ->where('status', '!=', DocumentStatus::Approved->value)),
+            default => $query,
+        };
+    }
+
+    public function prioritizePendingReview(Builder $query): Builder
+    {
+        return $query->orderByDesc($this->pendingReviewDocuments()->limit(1));
+    }
+
+    private function requiredDocuments(Builder $documents): Builder
+    {
+        return $documents->whereIn('document_type', CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS);
+    }
+
+    private function pendingReviewDocuments(): Builder
+    {
+        // Rejected required documents take precedence over pending documents in summary().
+        return $this->requiredDocuments(CustomerDocument::query())
+            ->selectRaw('1')
+            ->whereColumn('customer_documents.user_id', 'users.id')
+            ->where('status', DocumentStatus::Pending->value)
+            ->whereNotIn('user_id', $this->requiredDocuments(CustomerDocument::query())
+                ->select('user_id')
+                ->where('status', DocumentStatus::Rejected->value));
+    }
+
     public function summary(User $customer): array
     {
         $customer->loadMissing(['customerProfile', 'documents']);

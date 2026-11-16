@@ -18,6 +18,7 @@ function loadModule(path, apiPost = async () => ({ data: {} }), clock = Date) {
       if (name === '@/services/http') return { apiPost };
       if (name === '@/lib/browse/booking-time' || name === './booking-time') return { toBookingTimestamp };
       if (name === '@/lib/browse/pickup-time') return loadModule('../../lib/browse/pickup-time.ts', apiPost, clock);
+      if (name === '@/validation/booking/schemas') return loadModule('../../validation/booking/schemas.ts', apiPost, clock);
       if (name === 'zod') return zod;
       throw new Error(`Unexpected import: ${name}`);
     },
@@ -68,34 +69,46 @@ test('pickup validation accepts earlier times today using the Manila date across
   assert.equal(isBookablePickupDate('invalid', now), false);
 });
 
+test('the calendar advances to tomorrow once the last pickup time today has passed', () => {
+  const { getEarliestPickupDate } = loadModule('../../lib/browse/pickup-time.ts');
+  assert.equal(getEarliestPickupDate(new Date('2026-11-15T15:54:59Z')), '2026-11-15');
+  assert.equal(getEarliestPickupDate(new Date('2026-11-15T15:55:00Z')), '2026-11-16');
+  assert.equal(getEarliestPickupDate(new Date('2026-11-15T16:00:00Z')), '2026-11-16');
+});
+
 const clock = new Date('2026-11-15T04:00:00Z');
 class BookingClock extends Date {
   constructor(...args) { super(...(args.length ? args : [clock.getTime()])); }
   static now() { return clock.getTime(); }
 }
 
-test('schedule selection rejects past pickup times while retaining date and format rules', () => {
+test('review accepts a selected pickup time after it passes on the same date', () => {
   const { bookingFormSchema } = loadModule('../../validation/booking/schemas.ts', undefined, BookingClock);
+  const { canReviewBooking } = loadModule('../../lib/browse/booking-readiness.ts', undefined, BookingClock);
   const booking = { rentalDate: '2026-11-15', returnDate: '2026-11-16', deliveryTime: '12:05',
     driverOption: 'self_drive', pickupOption: 'shop', pickupLocation: 'Jamjade Garage', numberOfDays: 1,
     canSelfDrive: true, selfDriveMessage: '', ownerDriverCoverage: 'metro_manila' };
   assert.equal(bookingFormSchema.safeParse(booking).success, true);
   for (const deliveryTime of ['09:00', '12:00']) {
-    const result = bookingFormSchema.safeParse({ ...booking, deliveryTime });
-    assert.equal(result.success, false);
-    assert.equal(result.error.issues.some((issue) => issue.path[0] === 'deliveryTime'), true);
+    const selected = { ...booking, deliveryTime };
+    assert.equal(bookingFormSchema.safeParse(selected).success, true);
+    assert.equal(canReviewBooking(selected, [], false), true);
+    assert.equal(canReviewBooking(selected, [{ startDate: booking.rentalDate, endDate: booking.rentalDate }], false), false);
   }
   assert.equal(bookingFormSchema.safeParse({ ...booking, rentalDate: '2026-11-16', returnDate: '2026-11-17', deliveryTime: '09:00' }).success, true);
   assert.equal(bookingFormSchema.safeParse({ ...booking, rentalDate: '2026-11-14' }).success, false);
+  assert.equal(bookingFormSchema.safeParse({ ...booking, deliveryTime: '' }).success, false);
   assert.equal(bookingFormSchema.safeParse({ ...booking, deliveryTime: '25:00' }).success, false);
   assert.equal(bookingFormSchema.safeParse({ ...booking, returnDate: booking.rentalDate }).success, false);
+});
 
+test('delivery can be confirmed after the selected pickup time on the same date', () => {
   const { deliveryRoutesSchema } = loadModule('../../validation/booking/delivery.ts', undefined, BookingClock);
   const delivery = { vehicleId: '1', rentalStartAt: '2026-11-15 12:05', rentalEndAt: '2026-11-16 09:00',
     ownerDriverCoverage: 'metro_manila', address: 'Demo address', placeId: null, latitude: 14, longitude: 121, pointConfirmed: true };
   assert.equal(deliveryRoutesSchema.safeParse(delivery).success, true);
   for (const rentalStartAt of ['2026-11-15 09:00', '2026-11-15 12:00']) {
-    assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalStartAt }).success, false);
+    assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalStartAt }).success, true);
   }
   assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalStartAt: '2026-11-14 23:59' }).success, false);
   assert.equal(deliveryRoutesSchema.safeParse({ ...delivery, rentalEndAt: '2026-11-15 11:59' }).success, false);

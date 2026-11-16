@@ -246,7 +246,7 @@ export function TelematicsHandoverScreen() {
         {tab === 'activity' ? <>
           {(released || ended) && user?.id && handover.calibration.profile.id === 'rc_demo' ? <RentalMotionMonitoring key={handover.bookingCode} bookingCode={handover.bookingCode} userId={user.id}
             status={monitoring.motionStatus} starting={monitoring.motionStarting} motionError={monitoring.motionError} refreshStatus={monitoring.refreshMotionStatus}
-            ended={ended} gpsActive={monitoring.active && !gpsReconnecting} onResumeCheck={stationaryCheck.open} /> : null}
+            ended={ended} /> : null}
           {monitoringNotice || sharing?.needsSettings ? <SectionCard title="GPS monitoring" icon={CircleAlert}>
             {monitoringNotice ? <Text accessibilityLiveRegion="polite" className="font-sans text-body text-secondary-foreground">{monitoringNotice}</Text> : null}
             {sharing?.needsSettings ? <ActionButton label="Open device settings" onPress={() => void Linking.openSettings().catch(() => Alert.alert('Settings unavailable', 'Open device Settings to allow location access.'))} /> : null}

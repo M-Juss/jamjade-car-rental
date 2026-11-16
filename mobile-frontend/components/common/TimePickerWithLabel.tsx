@@ -3,17 +3,14 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getLocalDateKey, getLocalTimeKey, isFuturePickupTime } from '@/lib/browse/pickup-time';
+import { getLocalDateKey, getLocalTimeKey, isFuturePickupTime, PICKUP_TIME_STEP_MINUTES } from '@/lib/browse/pickup-time';
 
 const HOURS = Array.from({ length: 12 }, (_, index) => index + 1);
-const MINUTES = Array.from({ length: 12 }, (_, index) => index * 5);
+const MINUTES = Array.from({ length: 60 / PICKUP_TIME_STEP_MINUTES }, (_, index) => index * PICKUP_TIME_STEP_MINUTES);
 const PERIODS = ['AM', 'PM'] as const;
-const TIME_VALUES = Array.from({ length: 24 * 12 }, (_, index) => {
-  const hour = Math.floor(index / 12);
-  const minute = (index % 12) * 5;
-
-  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-});
+const TIME_VALUES = Array.from({ length: 24 }, (_, hour) => MINUTES.map((minute) =>
+  `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+)).flat();
 
 type Period = (typeof PERIODS)[number];
 

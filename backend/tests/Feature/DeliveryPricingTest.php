@@ -57,6 +57,23 @@ it('breaks equal estimated times by distance and prices unrounded road metres', 
     $this->postJson('/api/mobile/delivery/quotes', $this->payload)->assertOk()
         ->assertJsonPath('data.distanceMeters', 5150)->assertJsonPath('data.quote.deliveryFee', 254);
 });
+it('confirms delivery for an elapsed pickup on the current Manila date', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-11-16T00:05:00+08:00')->utc());
+    Http::fake(['routes.googleapis.com/*' => Http::response(['routes' => [deliveryRouteResponse()]])]);
+    $payload = [
+        ...$this->payload,
+        'rental_start_at' => '2026-11-16T00:00:00+08:00',
+        'rental_end_at' => '2026-11-17T00:00:00+08:00',
+    ];
+
+    $id = $this->postJson('/api/mobile/delivery/quotes', $payload)->assertOk()
+        ->assertJsonPath('data.quote.status', 'ready')->json('data.quote.id');
+    expect(DeliveryQuote::findOrFail($id)->rental_start_at->utc()->toIso8601String())->toBe('2026-11-15T16:00:00+00:00');
+
+    $this->postJson('/api/mobile/delivery/quotes', [...$payload, 'rental_start_at' => '2026-11-15T23:59:00+08:00'])
+        ->assertUnprocessable()->assertJsonValidationErrors('rental_start_at');
+    Http::assertSentCount(1);
+});
 it('applies the minimum fee through the included kilometre', function () {
     $s = DeliveryPricingSetting::current();
     expect($s->fee(0))->toBe(150.0)->and($s->fee(1000))->toBe(150.0)->and($s->fee(1020))->toBe(151.0)->and($s->fee(5150))->toBe(254.0);

@@ -22,11 +22,9 @@ import { TablePagination } from "@/components/common/tables/TablePagination";
 import { KpiCard } from "@/components/common/data-display/KpiCard";
 import { appToast } from "@/lib/toast";
 import { RejectDocumentDialog } from "@/forms/verification/RejectDocumentDialog";
-import { approveVerification, getSelfDriveCustomer, getSelfDriveCustomers, type SelfDriveCustomer, type SelfDriveCustomerPage, type SelfDriveReviewStatus, type VerificationRecord } from "@/services/verification";
+import { approveVerification, getSelfDriveCustomer, getSelfDriveCustomers, type SelfDriveCustomer, type SelfDriveCustomerPage, type SelfDriveReviewStatus, type SelfDriveStatusFilter, type VerificationRecord } from "@/services/verification";
 import { VerificationDocumentSidePreview, type DocumentPreviewSelection } from "./components/VerificationDocumentSidePreview";
 import { VerificationStatusBadge } from "./components/VerificationStatusBadge";
-
-type EligibilityFilter = "all" | "eligible" | "not_eligible";
 
 const reviewStatus: Record<SelfDriveReviewStatus, { label: string; className: string }> = {
   eligible: { label: "Eligible", className: "border-success-border bg-success-surface text-success" },
@@ -37,16 +35,16 @@ const reviewStatus: Record<SelfDriveReviewStatus, { label: string; className: st
   emergency_contact_required: { label: "Emergency contact required", className: "border-warning-border bg-warning-surface text-warning" },
 };
 
+const incompleteStatus = { label: "Incomplete", className: reviewStatus.pending_review.className };
+
 const documentLabels: Record<string, string> = {
   drivers_license: "Driver's License",
   proof_of_billing: "Proof of Address",
 };
 
 function ReviewStatusBadge({ customer }: { customer: SelfDriveCustomer }) {
-  const meta = reviewStatus[customer.reviewStatus];
   const isIncomplete = customer.reviewStatus === "documents_required" && customer.documentCounts.missing < customer.requiredDocumentCount;
-  const label = isIncomplete ? "Incomplete" : meta.label;
-  const className = isIncomplete ? reviewStatus.pending_review.className : meta.className;
+  const { label, className } = isIncomplete ? incompleteStatus : reviewStatus[customer.reviewStatus];
   return <Badge variant="outline" className={`h-auto min-h-6 max-w-full whitespace-normal rounded-lg px-2.5 py-1 text-center text-xs font-semibold [overflow-wrap:anywhere] ${className}`}>{label}</Badge>;
 }
 
@@ -60,7 +58,7 @@ export default function SelfDriveVerificationModule() {
   const [editing, setEditing] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [eligibility, setEligibility] = useState<EligibilityFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<SelfDriveStatusFilter>("all");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<SelfDriveCustomerPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,12 +87,12 @@ export default function SelfDriveVerificationModule() {
 
   useEffect(() => {
     let live = true;
-    getSelfDriveCustomers({ search, eligibility, page })
+    getSelfDriveCustomers({ search, status: statusFilter, page })
       .then((data) => { if (live) setResult(data); })
       .catch(() => { if (live) setLoadError(true); })
       .finally(() => { if (live) setIsLoading(false); });
     return () => { live = false; };
-  }, [search, eligibility, page, reloadKey]);
+  }, [search, statusFilter, page, reloadKey]);
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -151,15 +149,16 @@ export default function SelfDriveVerificationModule() {
           <CardContent className="flex flex-wrap items-center gap-2.5 border-b border-border p-4">
             <SearchInput value={searchInput} onValueChange={setSearchInput} placeholder="Search customer name, email, or phone number..." wrapperClassName="min-w-[220px] flex-1" />
             <FilterSelect
-              value={eligibility}
-              onValueChange={(value) => { setIsLoading(true); setLoadError(false); setEligibility(value as EligibilityFilter); setPage(1); }}
-              ariaLabel="Filter customers by self-drive eligibility"
-              placeholder="Eligibility"
+              value={statusFilter}
+              onValueChange={(value) => { setIsLoading(true); setLoadError(false); setStatusFilter(value); setPage(1); }}
+              ariaLabel="Filter customers by review status"
               className="sm:w-[210px]"
               options={[
-                { value: "all", label: "All Customers" },
-                { value: "eligible", label: "Eligible for Self Drive" },
-                { value: "not_eligible", label: "Not Eligible" },
+                { value: "all", label: "All statuses" },
+                { value: "eligible", label: reviewStatus.eligible.label },
+                { value: "no_documents", label: reviewStatus.documents_required.label },
+                { value: "pending_review", label: reviewStatus.pending_review.label },
+                { value: "incomplete", label: incompleteStatus.label },
               ]}
             />
           </CardContent>
@@ -169,7 +168,7 @@ export default function SelfDriveVerificationModule() {
               ) : loadError ? (
                 <div className="py-10 text-center text-sm text-muted-foreground">Customers could not be loaded. <Button variant="outline" onClick={refresh}>Retry</Button></div>
               ) : !result?.customers.length ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">No customers found. Try a different search or eligibility filter.</p>
+                <p className="py-10 text-center text-sm text-muted-foreground">No customers found. Try a different search or status filter.</p>
               ) : result.customers.map((item) => (
                 <div key={item.id} className="min-w-0 bg-surface p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -219,7 +218,7 @@ export default function SelfDriveVerificationModule() {
                     <TableRow><TableCell colSpan={5} className="py-16 text-center">
                       <FileCheck className="mx-auto mb-2 size-6 text-primary" />
                       <p className="text-sm font-semibold text-muted-foreground">No customers found.</p>
-                      <p className="text-xs text-subtle-foreground">Try a different search or eligibility filter.</p>
+                      <p className="text-xs text-subtle-foreground">Try a different search or status filter.</p>
                     </TableCell></TableRow>
                   ) : result.customers.map((item) => (
                     <TableRow key={item.id} className="border-b border-background transition-colors hover:bg-background">

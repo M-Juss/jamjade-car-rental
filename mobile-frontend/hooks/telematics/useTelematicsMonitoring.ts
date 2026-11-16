@@ -20,7 +20,7 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
   const [motionStatus, setMotionStatus] = useState<RentalMotionStatus | null>(null);
   const [motionError, setMotionError] = useState<string | null>(null);
   const [motionStarting, setMotionStarting] = useState(false);
-  const motionIntent = useRef<{ started: boolean; gpsStarting: boolean } | null>(null);
+  const motionIntent = useRef<object | null>(null);
   const released = handover?.eligibility.state === 'released';
   const ended = handover?.eligibility.state === 'rental_ended';
   const checkMotionStatus = released || ended || !handover;
@@ -50,7 +50,7 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
     if (accessLost || ended) {
       preparation.current.clear();
       setPrepared(false);
-      if (motionActive || gpsActive) void stopRef.current();
+      if (motionActive || gpsActive || motionIntent.current) void stopRef.current();
     }
   }, [accessLost, ended, gpsActive, motionActive]);
 
@@ -71,7 +71,7 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
     return () => { current = false; };
   }, [userId, bookingCode, snapshot?.policy.consentVersion, monitoring.loading]);
   useEffect(() => {
-    if (snapshot && !snapshot.canMonitor && (motionActive || isLocationSharingActive(monitoring.sharing?.phase ?? 'idle'))) void stopRef.current();
+    if (snapshot && !snapshot.canMonitor && (motionActive || motionIntent.current || isLocationSharingActive(monitoring.sharing?.phase ?? 'idle'))) void stopRef.current();
   }, [snapshot, monitoring.sharing?.phase, motionActive]);
 
   const refreshMotionStatus = useCallback(async () => {
@@ -89,25 +89,13 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
   }, [checkMotionStatus, bookingCode, userId, foreground, refreshMotionStatus]);
 
   const start = useCallback((code: string, consent: LocationConsentInput, includeMotion = false) => {
-    if (!focused.current || AppState.currentState !== 'active' || code !== bookingCode) return;
-    motionIntent.current = includeMotion && userId && handover?.calibration.profile.id === 'rc_demo' ? { started: false, gpsStarting: false } : null;
+    if (!focused.current || AppState.currentState !== 'active' || code !== bookingCode || !released || accessLost || motionIntent.current) return;
+    if (!gpsActive) void startRef.current(code, consent);
     setMotionError(null);
-    setMotionStarting(Boolean(motionIntent.current));
-    void startRef.current(code, consent);
-  }, [bookingCode, userId, handover?.calibration.profile.id]);
-
-  const sharingPhase = monitoring.sharing?.phase;
-  useEffect(() => {
-    const intent = motionIntent.current;
-    if (!intent || !userId || !released || !focused.current) return;
-    if (sharingPhase === 'starting' || sharingPhase === 'waiting') intent.gpsStarting = true;
-    if ((sharingPhase === 'paused' && intent.gpsStarting) || sharingPhase === 'offline' || sharingPhase === 'error') {
-      motionIntent.current = null;
-      setMotionStarting(false);
-      return;
-    }
-    if (intent.started || !foreground || sharingPhase !== 'sharing') return;
-    intent.started = true;
+    if (!includeMotion || !userId || handover?.calibration.profile.id !== 'rc_demo') return;
+    const intent = {};
+    motionIntent.current = intent;
+    setMotionStarting(true);
     const isCurrent = () => motionIntent.current === intent && focused.current && AppState.currentState === 'active';
     void (async () => {
       try {
@@ -126,7 +114,7 @@ export function useTelematicsMonitoring(bookingCode: string, userId: number | un
         }
       }
     })();
-  }, [bookingCode, userId, released, foreground, sharingPhase, refreshMotionStatus]);
+  }, [bookingCode, userId, released, accessLost, gpsActive, handover?.calibration.profile.id, refreshMotionStatus]);
   useEffect(() => {
     if (!prepared || blocked || !focused.current) return;
     if (!userId || !handover || !preparation.current.matches(context)) {

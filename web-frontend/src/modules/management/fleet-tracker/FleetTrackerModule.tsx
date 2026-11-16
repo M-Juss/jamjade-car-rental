@@ -7,6 +7,7 @@ import { Loader2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MetadataList } from "@/components/common/data-display/MetadataList";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { SearchInput } from "@/components/common/forms/SearchInput";
 import { TablePagination } from "@/components/common/tables/TablePagination";
@@ -21,7 +22,7 @@ import { formatReturnDateTime } from "@/services/booking/return-time";
 import type { FleetQuery } from "@/validations/fleet/schemas";
 import { FleetVehicleCard } from "./components/FleetVehicleCard";
 import { fleetVehicleName } from "./fleet-presentation";
-import { fleetStatusLabels, fleetTrackingFilters } from "./fleet-status";
+import { fleetTrackingFilters } from "./fleet-status";
 import { useFleetRentals } from "./useFleetRentals";
 import { FleetGoogleMap } from "./components/google-maps/FleetGoogleMap";
 import { FleetGeofenceLog } from "./components/FleetGeofenceLog";
@@ -247,62 +248,52 @@ export default function FleetTracker() {
           {selected ? (
             <>
               <SheetHeader className="border-b border-border px-6 py-4">
-                <SheetTitle>
+                <SheetTitle className="pr-8">
                   {fleetVehicleName(selected.vehicle)}
                 </SheetTitle>
               </SheetHeader>
               <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-2">
-              <Card className="min-w-0 lg:col-span-2">
-              <CardHeader className="min-h-14 border-b border-border pb-3"><CardTitle className="text-sm font-semibold">Booking information</CardTitle><CardDescription className="text-xs">{selected.bookingCode}</CardDescription></CardHeader>
-              <CardContent>
-              <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                {[
-                  ["Plate", selected.vehicle?.plateNumber || "Unavailable"],
-                  ["Customer", selected.customerName || "Unavailable"],
-                  ["Operator", selected.operator?.name || "Unavailable"],
-                  ["Contact", selected.operator?.phoneNumber || "Unavailable"],
-                  ["Email", selected.operator?.email || "Unavailable"],
-                  [
-                    "Rental type",
-                    selected.rentalType === "self_drive"
-                      ? "Self-Drive"
-                      : "Assigned driver",
-                  ],
-                  ["Tracking", fleetStatusLabels[selected.tracking.status]],
-                  [
-                    "Scheduled start",
-                    formatReturnDateTime(selected.rentalStartAt),
-                  ],
-                  ["Return by", formatReturnDateTime(selected.rentalEndAt)],
-                  [
-                    "Last location update",
-                    selected.tracking.lastLocationAt
-                      ? formatReturnDateTime(
-                          selected.tracking.lastLocationAt,
-                          true,
-                        )
-                      : "No location received",
-                  ],
-                  ...(selected.tracking.location ? [
-                    ["Last location", `${selected.tracking.location.latitude.toFixed(6)}, ${selected.tracking.location.longitude.toFixed(6)}`],
-                    ["GPS accuracy", `±${Math.round(selected.tracking.location.accuracy)} m`],
-                  ] : [["Last location", "Unavailable"]]),
-                ].map(([label, value]) => (
-                  <div key={label} className="min-w-0 space-y-1">
-                    <dt className="text-xs text-muted-foreground">{label}</dt>
-                    <dd className="break-words font-medium text-foreground">
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="mt-4 border-t border-border pt-4 text-sm">
-                <p className="font-semibold">Customer emergency contacts</p>
-                {selected.emergencyContacts.length ? selected.emergencyContacts.map((contact, index) => <p key={index} className="mt-1 text-muted-foreground">{contact.name} · {contact.relationship} · {contact.phoneNumber}</p>) : <p className="mt-1 text-muted-foreground">No emergency contact provided</p>}
-              </div>
-              </CardContent></Card>
-              <RentalDrivingEvents key={selected.bookingCode} bookingCode={selected.bookingCode} dataVersion={dataVersion} />
-              <FleetGeofenceLog activity={selected.geofenceActivity} onRefresh={() => refresh(true)} />
+                <Card className="lg:col-span-2">
+                  <CardHeader className="min-h-14 border-b border-border pb-3">
+                    <CardTitle className="text-sm font-semibold">Booking information</CardTitle>
+                    <CardDescription className="text-xs">{selected.bookingCode}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <p className="font-semibold">Customer emergency contacts</p>
+                    {selected.emergencyContacts.length ? (
+                      <ul className="flex flex-wrap gap-x-6 gap-y-2">
+                        {selected.emergencyContacts.map((contact, index) => (
+                          <li key={index} className="min-w-0 break-words">
+                            <p className="font-medium">{contact.name}</p>
+                            <p className="flex flex-wrap gap-x-2 text-muted-foreground">
+                              <span className="min-w-0">{contact.relationship}</span>
+                              <span className="min-w-0">{contact.phoneNumber}</span>
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground">No emergency contact provided</p>
+                    )}
+                  </CardContent>
+                  <CardContent className="border-t border-border pt-4">
+                    <MetadataList
+                      className="grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4 [&_dt]:text-xs"
+                      items={[
+                        { label: "Plate", value: selected.vehicle?.plateNumber || "Unavailable" },
+                        { label: "Customer", value: selected.customerName || "Unavailable" },
+                        { label: "Operator", value: selected.operator?.name || "Unavailable" },
+                        { label: "Contact", value: selected.operator?.phoneNumber || "Unavailable" },
+                        { label: "Email", value: selected.operator?.email || "Unavailable" },
+                        { label: "Rental type", value: selected.rentalType === "self_drive" ? "Self-Drive" : "Assigned driver" },
+                        { label: "Scheduled start", value: formatReturnDateTime(selected.rentalStartAt) },
+                        { label: "Return by", value: formatReturnDateTime(selected.rentalEndAt) },
+                      ]}
+                    />
+                  </CardContent>
+                </Card>
+                <RentalDrivingEvents key={selected.bookingCode} bookingCode={selected.bookingCode} dataVersion={dataVersion} />
+                <FleetGeofenceLog activity={selected.geofenceActivity} tracking={selected.tracking} onRefresh={() => refresh(true)} />
               </div>
             </>
           ) : null}

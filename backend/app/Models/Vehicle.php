@@ -103,21 +103,23 @@ class Vehicle extends Model
     public function mobileDateBlockingBookings(): HasMany
     {
         return $this->bookings()->blockingVehicleDates()
-            ->where('rental_end_at', '>=', CarbonImmutable::today('Asia/Manila')->utc())
+            ->where(fn (Builder $query) => $query->where('rental_end_at', '>=', CarbonImmutable::today('Asia/Manila')->utc())
+                ->orWhere('status', BookingStatus::Ongoing))
             ->orderBy('rental_start_at');
     }
 
     public function scopeVisibleInMobileCatalog(Builder $query, ?int $customerId): Builder
     {
+        $catalogStatuses = [VehicleStatus::Available, VehicleStatus::Rented];
         if ($customerId === null) {
-            return $query->where('status', VehicleStatus::Available);
+            return $query->whereIn('status', $catalogStatuses);
         }
 
         $ownedOpenBookings = fn (Builder $bookings) => $bookings->where('user_id', $customerId)
             ->whereIn('status', [BookingStatus::Pending, BookingStatus::Confirmed, BookingStatus::Ongoing, BookingStatus::Returned]);
 
         return $query->withExists(['bookings as has_open_customer_booking' => $ownedOpenBookings])
-            ->where(fn (Builder $vehicles) => $vehicles->where('status', VehicleStatus::Available)
+            ->where(fn (Builder $vehicles) => $vehicles->whereIn('status', $catalogStatuses)
                 ->orWhereHas('bookings', $ownedOpenBookings));
     }
 

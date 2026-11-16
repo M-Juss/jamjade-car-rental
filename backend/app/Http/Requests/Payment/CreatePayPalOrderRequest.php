@@ -22,7 +22,7 @@ class CreatePayPalOrderRequest extends BaseFormRequest
 
         return [
             'vehicle_id' => ['required', 'exists:vehicles,id'],
-            'rental_start_at' => BookingScheduleRules::checkoutStart(),
+            'rental_start_at' => BookingScheduleRules::selectedStart(),
             'rental_end_at' => BookingScheduleRules::end(),
             'pickup_location_type' => ['required', Rule::in($pickupLocationTypes)],
             'pickup_location' => ['required', 'string', 'max:255'],

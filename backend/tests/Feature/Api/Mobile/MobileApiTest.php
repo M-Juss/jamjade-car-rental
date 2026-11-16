@@ -290,7 +290,7 @@ it('validates mobile collection filters and pagination limits', function () {
         ->assertJsonValidationErrors(['category', 'per_page']);
 });
 
-it('shows confirmed Manila dates to another customer and keeps the returned vehicle locked for its renter', function () {
+it('keeps a rented vehicle visible, allows later reservations and reopens valid slots on return', function () {
     $this->travelTo(CarbonImmutable::parse('2026-11-15 12:00', 'Asia/Manila')->utc());
     $user = customerUser();
     $otherCustomer = customerUser();
@@ -339,24 +339,81 @@ it('shows confirmed Manila dates to another customer and keeps the returned vehi
 
     $booking->update(['status' => BookingStatus::Ongoing]);
     $vehicle->update(['status' => VehicleStatus::Rented]);
-    $this->getJson($catalog)->assertOk()->assertJsonCount(0, 'data');
-    $this->getJson("{$catalog}/{$vehicle->id}")->assertNotFound();
+    $this->getJson($catalog)->assertOk()->assertJsonPath('data.0.status', 'rented')
+        ->assertJsonPath('data.0.unavailableDateRanges.0', $range)
+        ->assertJsonPath('data.0.hasOpenCustomerBooking', false);
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.canReserve', true);
+    $this->getJson('/api/mobile/vehicles')->assertOk()->assertJsonPath('data.0.status', 'rented');
+    $this->getJson("/api/mobile/vehicles/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.unavailableDateRanges.0', $range);
+
+    Http::preventStrayRequests();
+    $this->mock(PayPalClient::class, function ($mock) {
+        $mock->shouldReceive('createOrder')->once()->andReturn([
+            'id' => 'NEXT-RENTAL', 'status' => 'CREATED',
+            'links' => [['rel' => 'approve', 'href' => 'https://www.sandbox.paypal.com/checkoutnow?token=NEXT-RENTAL']],
+        ]);
+        $mock->shouldReceive('captureOrder')->once()->andReturn([
+            'id' => 'NEXT-RENTAL', 'status' => 'COMPLETED',
+            'purchase_units' => [['payments' => ['captures' => [[
+                'id' => 'NEXT-RENTAL-CAPTURE', 'status' => 'COMPLETED',
+                'amount' => ['currency_code' => 'PHP', 'value' => '3500.00'],
+            ]]]]],
+        ]);
+    });
+    $payload = [
+        'vehicle_id' => $vehicle->id,
+        'driver_option' => 'self_drive', 'pickup_location_type' => 'shop',
+        'pickup_location' => 'Jamjade Garage', 'return_location' => 'Jamjade Garage',
+        'customer_signature' => 'Test Customer', 'terms_version' => BookingAgreement::VERSION,
+        'reviewed_pricing' => ['price_per_day' => 3500, 'subtotal' => 3500, 'delivery_fee' => 0, 'delivery_toll_fee' => 0, 'owner_driver_fee' => 0, 'total_amount' => 3500],
+        'late_return_policy_version' => lateReturnPolicyVersion($vehicle->id),
+    ];
+    $paypal = $payload + [
+        'payment_option' => 'full_payment',
+        'app_return_url' => 'mobilefrontend://paypal/return', 'app_cancel_url' => 'mobilefrontend://paypal/cancel',
+    ];
+    $this->postJson('/api/mobile/paypal/orders', $paypal + [
+        'rental_start_at' => '2026-11-17T13:00:00+08:00', 'rental_end_at' => '2026-11-18T13:00:00+08:00',
+    ])->assertUnprocessable()->assertJsonValidationErrors('rental_start_at');
+
+    $this->travelTo(CarbonImmutable::parse('2026-11-18 12:00', 'Asia/Manila')->utc());
+    $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()
+        ->assertJsonPath('data.unavailableDateRanges.0.endDate', '2026-11-18');
+    $sameDay = ['rental_start_at' => '2026-11-18T13:00:00+08:00', 'rental_end_at' => '2026-11-19T13:00:00+08:00'];
+    $this->postJson('/api/mobile/paypal/orders', $paypal + $sameDay)
+        ->assertUnprocessable()->assertJsonValidationErrors('rental_start_at');
+    $this->postJson('/api/mobile/paypal/orders', $paypal + [
+        'rental_start_at' => '2026-11-20T09:00:00+08:00', 'rental_end_at' => '2026-11-21T09:00:00+08:00',
+    ])->assertCreated()->assertJsonPath('data.orderId', 'NEXT-RENTAL');
+    $this->postJson('/api/mobile/paypal/orders/NEXT-RENTAL/capture')->assertOk()
+        ->assertJsonPath('data.status', 'Confirmed')->assertJsonPath('data.paymentStatus', 'Paid');
 
     Sanctum::actingAs($user);
     $this->getJson($catalog)->assertOk()->assertJsonPath('data.0.status', 'rented')
         ->assertJsonPath('data.0.hasOpenCustomerBooking', true);
     $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()
         ->assertJsonPath('data.hasOpenCustomerBooking', true);
-    $this->getJson("/api/mobile/vehicles/{$vehicle->id}")->assertNotFound();
 
     $booking->update(['status' => BookingStatus::Returned]);
     app(VehicleOperationalStatusService::class)->afterBookingEnded($vehicle);
     $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()->assertJsonPath('data.status', 'available')
         ->assertJsonPath('data.hasOpenCustomerBooking', true);
 
-    Sanctum::actingAs($otherCustomer);
+    Sanctum::actingAs(customerUser());
     $this->getJson("{$catalog}/{$vehicle->id}")->assertOk()->assertJsonPath('data.hasOpenCustomerBooking', false)
-        ->assertJsonCount(0, 'data.unavailableDateRanges');
+        ->assertJsonPath('data.unavailableDateRanges', [['startDate' => '2026-11-20', 'endDate' => '2026-11-21']]);
+
+    $direct = $payload + ['down_payment_amount' => 3500, 'payment_method' => 'GCash'];
+    $this->postJson('/api/mobile/bookings', $direct + [
+        'rental_start_at' => '2026-11-17T13:00:00+08:00', 'rental_end_at' => '2026-11-19T13:00:00+08:00',
+    ])->assertUnprocessable()->assertJsonValidationErrors('rental_start_at');
+    $this->postJson('/api/mobile/bookings', $direct + [
+        'rental_start_at' => '2026-11-18T11:00:00+08:00', 'rental_end_at' => '2026-11-19T11:00:00+08:00',
+    ])->assertUnprocessable()->assertJsonValidationErrors('rental_start_at');
+    $this->postJson('/api/mobile/bookings', $direct + $sameDay)->assertCreated()
+        ->assertJsonPath('data.status', 'Confirmed');
 
     $booking->update(['status' => BookingStatus::Completed]);
     Sanctum::actingAs($user);

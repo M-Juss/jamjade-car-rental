@@ -15,7 +15,7 @@ import {
   X,
   Image as ImageIcon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
@@ -149,43 +149,39 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 bg-background min-h-screen">
       {configurationError ? <div role="alert" className="flex items-center justify-between gap-3 text-sm text-destructive">{configurationError}<Button type="button" variant="outline" onClick={reloadConfiguration}>Retry</Button></div> : !configuration ? <p role="status" className="text-sm text-muted-foreground">Loading options...</p> : null}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => router.push(vehiclePath)}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors duration-150 group"
-        >
-          <ChevronLeft
-            size={15}
-            className="group-hover:-translate-x-0.5 transition-transform duration-150"
-          />
-          Vehicle Management
-        </button>
-        <span className="text-border text-sm">/</span>
-        <span className="text-sm font-semibold text-foreground">
-          {vehicleName || "Vehicle"}
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <nav aria-label="Vehicle breadcrumb" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <button
+            type="button"
+            onClick={() => router.push(vehiclePath)}
+            className="group -ml-1.5 flex min-w-0 items-center gap-1.5 rounded-md p-1.5 text-left text-sm text-muted-foreground transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <ChevronLeft size={15} className="shrink-0 transition-transform group-hover:-translate-x-0.5" />
+            <span>Vehicle Management</span>
+          </button>
+          <div className="flex min-w-0 items-center gap-2">
+            <span aria-hidden="true" className="text-sm text-border">/</span>
+            <h1 className="min-w-0 break-words text-sm font-semibold text-foreground">
+              {vehicleName || "Vehicle"}
+            </h1>
+          </div>
+        </nav>
+        {!isLoading && !error && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-auto min-h-9 max-w-[50%] rounded-xl border-border py-1.5 text-left font-semibold whitespace-normal text-primary sm:max-w-none"
+            onClick={() => router.push(`${vehiclePath}/${vehicleId}/condition`)}
+          >
+            <ClipboardPenLine size={14} /> <span className="min-w-0">Edit Vehicle Condition</span>
+          </Button>
+        )}
       </div>
 
       <div>
-        <Card className="rounded-2xl border border-border shadow-none bg-surface overflow-hidden">
-          <CardHeader className="flex flex-col items-stretch justify-between gap-3 border-b border-border px-5 pb-3 pt-5 sm:flex-row sm:items-center">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <Car size={16} className="text-primary" /> {vehicleName || "Vehicle"}
-            </CardTitle>
-            {!isLoading && !error && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full rounded-xl border-border font-semibold text-primary sm:w-auto"
-                onClick={() => router.push(`${vehiclePath}/${vehicleId}/condition`)}
-              >
-                <ClipboardPenLine size={14} /> Edit Vehicle Condition
-              </Button>
-            )}
-          </CardHeader>
-
-          <CardContent className="p-5 md:p-6 space-y-6">
+        <Card className="overflow-hidden rounded-2xl border border-border bg-surface py-5 shadow-none md:py-6">
+          <CardContent className="space-y-6 px-5 md:px-6">
             {isLoading ? (
               <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm font-medium text-muted-foreground">
                 Loading vehicle...
@@ -206,7 +202,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <div className="flex shrink-0 items-center justify-center text-primary">
                   <ImageIcon size={12} className="text-primary" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground">Image Gallery</h3>
+                <h2 className="text-sm font-semibold text-foreground">Image Gallery</h2>
               </div>
 
               {images.length > 0 ? (
@@ -225,7 +221,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <div className="flex shrink-0 items-center justify-center text-primary">
                   <Car size={12} className="text-primary" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground">Basic Information</h3>
+                <h2 className="text-sm font-semibold text-foreground">Basic Information</h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -307,7 +303,7 @@ export default function EditVehicleForm({ vehicleId }: EditVehicleFormProps) {
                 <div className="flex shrink-0 items-center justify-center text-primary">
                   <Settings2 size={12} className="text-primary" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground">Specifications</h3>
+                <h2 className="text-sm font-semibold text-foreground">Specifications</h2>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

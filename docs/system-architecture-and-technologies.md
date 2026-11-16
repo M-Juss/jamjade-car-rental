@@ -41,6 +41,13 @@ use the same native Android sensor source as RC collection and submit bounded
 summaries to Laravel. See the
 [native calibration contract](telematics-master-plan.md#native-pre-release-calibration).
 
+Released rental GPS and RC motion have independent collectors behind the shared
+Start/Resume and Pause controls. Either collector can start the rental's single
+trip through its authorized Laravel endpoint. A motion start needs no GPS fix;
+GPS records consent and location only when its own validated update arrives.
+See [independent rental collectors](telematics-master-plan.md#independent-rental-collectors--2026-11-16)
+for runtime behavior, source paths and verification limits.
+
 | Layer | Responsibility and implementation pattern | Source |
 | --- | --- | --- |
 | Laravel backend | Routes/middleware and authorization control entry; Form Requests validate input; services own domain workflows; Eloquent handles persistence; API Resources shape model responses. | [Routes](../backend/routes), [requests](../backend/app/Http/Requests), [services](../backend/app/Services), [resources](../backend/app/Http/Resources) |

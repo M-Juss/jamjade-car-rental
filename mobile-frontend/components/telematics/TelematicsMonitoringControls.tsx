@@ -47,7 +47,7 @@ export function TelematicsMonitoringControls({ monitoring, released, ended = fal
     };
     const phase = monitoring.sharing?.phase;
     const resuming = current.tripStatus === 'paused' || current.tripStatus === 'started' || ['paused', 'offline', 'error'].includes(phase ?? '');
-    if (resuming && AppState.currentState === 'active') {
+    if (resuming && !monitoring.motionActive && AppState.currentState === 'active') {
       onResumeCheck(start);
       return;
     }
@@ -62,15 +62,17 @@ export function TelematicsMonitoringControls({ monitoring, released, ended = fal
     ],
   );
   const active = monitoring.active || monitoring.motionActive || monitoring.motionStarting;
-  const resuming = monitoring.snapshot?.tripStatus === 'paused' || ['paused', 'offline', 'error'].includes(monitoring.sharing?.phase ?? '');
+  const allActive = monitoring.active && (!offerMotion || monitoring.motionActive);
+  const resuming = active || monitoring.snapshot?.tripStatus === 'paused' || monitoring.snapshot?.tripStatus === 'started'
+    || ['paused', 'offline', 'error'].includes(monitoring.sharing?.phase ?? '');
   const label = ended ? 'Ended' : !released ? monitoring.prepared ? 'Ready' : 'Await release' : resuming ? 'Resume' : 'Start';
 
   return <>
     <View pointerEvents="box-none" className="absolute left-0 right-0 items-center" style={{ bottom: insets.bottom + mobileLayout.floatingGap, paddingLeft: Math.max(mobileLayout.screenPadding, insets.left), paddingRight: Math.max(mobileLayout.screenPadding, insets.right) }}>
       <FloatingTabBarSurface items={[
         { key: 'pause', label: 'Pause', icon: 'pause', accessibilityLabel: 'Pause vehicle activity monitoring', onPress: confirmPause, disabled: !active },
-        { key: 'monitoring', label, icon: monitoring.active ? 'steering' : 'play', featured: true, featuredActive: monitoring.active,
-          disabled: ended || monitoring.active || monitoring.motionStarting || !released || blocked || monitoring.loading || !monitoring.snapshot?.canMonitor,
+        { key: 'monitoring', label, icon: active ? 'steering' : 'play', featured: true, featuredActive: active,
+          disabled: ended || allActive || monitoring.motionStarting || !released || blocked || monitoring.loading || !monitoring.snapshot?.canMonitor,
           accessibilityLabel: !released ? 'Start is available after staff release' : label,
           onPress: () => void requestStart() },
         { key: 'activity', label: 'Activity', icon: 'bell-outline', badgeCount: unread, onPress: onActivity, disabled: blocked },

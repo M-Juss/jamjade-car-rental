@@ -2685,8 +2685,8 @@ supports the current assigned Driver for With Assigned Driver rentals.
   create trips or start motion monitoring. In Device Setup, the operator can
   opt into Drive Monitoring alongside automatic GPS. The one-use preparation is
   bound to the booking, operator and setup context and stays in memory while
-  Telematics is open. After release, the app starts GPS and waits for an
-  accepted GPS update before requesting the motion segment. Cancelling or
+  Telematics is open. After release, the app starts GPS and motion independently,
+  without waiting for an accepted GPS update. Cancelling or
   leaving Telematics clears a pending start. For an RC rental, manual Start or
   Resume opens a Start/Cancel prompt in `TelematicsMonitoringControls.tsx`.
   Start confirms the calibrated mount position and opts into both streams.
@@ -5370,11 +5370,30 @@ CardContent, removing the nested outer wrapper. Browser measurements confirmed
 matching 57px headers, padding, 14px titles and dividers. Web lint, TypeScript
 and whitespace checks passed. Driving Analysis and telemetry behavior unchanged.
 
+Fleet detail layout (2026-11-16): the Admin and Staff sheet shows the booking
+customer's emergency contacts at the top of the Booking information card, below
+the booking code and above the plate, customer, operator, contact details,
+rental type and rental dates. Vehicle Activity Monitoring and Geofencing Log
+share `FleetActivityCard` for their headers, refresh buttons and content
+spacing. Both use `SummaryList` above their event rows. Geofencing Log shows
+the last location update under its title in the same minute-based format as
+Last received, followed by tracking status, coordinates and accuracy. The two
+cards sit side by side on desktop and stack on narrow screens.
+
+Verification: web lint, TypeScript, production build and whitespace checks passed.
+Browser checks used synthetic responses at 1280, 390 and 320 px and covered
+matching card structure, distinct timestamps, empty contact and zone activity
+states, missing GPS, pagination, loading, refresh after a failed motion read,
+and keyboard focus. Live fleet data and physical GPS were outside this layout
+check.
+
 Driving Analysis displays the Drive summary and Score calculation directly on
 the page beneath the logs. Deduction rows align amounts on the right, with a
 single divider before the provisional score.
 
 ### Rental monitoring startup transition — 2026-11-11
+
+Historical startup behavior, superseded by Independent rental collectors below.
 
 The shared Customer/Driver monitoring hook preserves a consented motion start
 while GPS clears an earlier session and briefly reports paused. Once GPS startup
@@ -5398,19 +5417,64 @@ and `mobile-frontend/components/telematics/TelematicsActivity.tsx`.
 
 ### Motion-only stop for geofence testing — 2026-11-11
 
-The Activity card also offers Start motion after a stopped capture is synced and
-closed. It requires active GPS, explicit confirmation that the calibrated phone
-has not moved, and the existing stationary resume check before starting a new
-motion segment. It does not restart GPS or validate a remounted phone. Customer
-and Driver share this component. Mobile lint, TypeScript and 13 existing motion
-and resume tests passed; the new control still needs physical device acceptance.
+Historical controls: the Activity card offered motion-only Start and Stop actions.
+The 2026-11-16 shared-control update below replaces those actions with the main
+Start/Resume and Pause. The native Android notification retains its explicit
+motion stop action.
 
-The Activity tab's Drive Monitoring card offers Stop motion while the current
-rental's native motion capture is active. It verifies the active booking before
-calling the existing native stop and transfer-closure flow. GPS sharing and the
-main Pause control retain their existing behavior. The existing main pause/resume
-workflow can restart motion after the user completes its checks. This control is
-implemented in `mobile-frontend/components/telematics/RentalMotionMonitoring.tsx`.
+### Independent rental collectors — 2026-11-16
+
+The shared Customer and assigned-Driver Start/Resume action starts the consented
+GPS and RC motion collectors independently. Motion startup no longer waits for
+a GPS fix, watcher registration or successful GPS upload. GPS waiting,
+reconnection and delivery errors leave native motion capture running. A failed
+motion start or unfinished motion transfer leaves the GPS collector running.
+Resume can retry a missing collector without replacing the other runtime.
+When motion is already active, GPS recovery skips the stationary sensor check.
+Starting a stopped motion capture still uses the existing stationary resume
+check and calibrated-mount confirmation. Initial server authorization and fresh
+consent still require a reachable backend.
+
+`useTelematicsMonitoring.ts` launches the independent starts and cancels delayed
+motion startup on Pause, loss of access, rental end or leaving the screen.
+`TelematicsMonitoringControls.tsx` owns the shared actions. The Activity card
+in `RentalMotionMonitoring.tsx` shows motion status, startup errors and sync
+recovery; its startup label is Starting. The native motion runtime, sampling,
+encrypted feature queue, GPS consent and point rules keep their existing owners.
+
+`RentalMotionMonitoringService::start` creates or resumes the released rental's
+single trip under the booking lock, including when no GPS session or point
+exists. It records no location or GPS consent for a motion-only start. The first
+GPS fix attaches to that trip through `LocationMonitoringService::start` and
+records its own GPS start/resume event. A motion-only capture closure pauses the
+trip when it has no GPS session. Vehicle receipt also closes motion-only trips
+and freezes their capture cutoff. Existing request/response fields and motion
+consent version remain the active contracts.
+
+Pause stops both collectors and cancels pending startup. Runtime loss and account
+cleanup retain explicit restart requirements. Native motion notification stop,
+sensor/queue limits and interrupted-upload recovery remain separate stop paths.
+Physical Android acceptance of GPS-off startup, signal recovery and joint Pause
+is pending.
+
+Verification: 59 focused mobile checks passed, covering independent startup,
+GPS failure during delayed motion startup, recovery of one collector, shared
+Pause, cancellation and existing GPS/motion consent rules. The 102 focused
+backend GPS, rental-motion, coverage and Fleet tests passed, including motion
+feature ingestion before any GPS fix and later GPS attachment to the same
+trip. Full `composer test` passed 1,433 tests. Mobile lint, TypeScript, Android
+bundle export, scoped Pint and whitespace checks passed. The full mobile run
+passed 362 of 363 checks, with the existing vehicle-image mapping count failure.
+Full Pint reported the existing Owner/Admin invitations migration formatting
+issue. No Android device was connected for a physical smoke test.
+
+Regression sources: `hooks/telematics/useTelematicsMonitoring.test.mjs`,
+`components/telematics/monitoring-controls.test.mjs` in mobile, and
+`backend/tests/Feature/RentalMotionMonitoringTest.php`. Reviewed
+`StartRentalMotionRequest`, `StartLocationMonitoringRequest`,
+`PauseLocationMonitoringRequest` and `StopRentalMotionRequest` with the matching
+mobile schemas and service mappings. Collection payload fields retain their
+existing validation and source boundaries.
 
 ### Recorded maneuver times in mobile Activity
 

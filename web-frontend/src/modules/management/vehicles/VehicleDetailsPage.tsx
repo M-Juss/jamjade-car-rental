@@ -182,11 +182,10 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
               )}
             </div>
             <div className="min-w-0">
-              <h1 className="flex flex-wrap items-baseline gap-x-2 text-lg font-semibold text-foreground">
-                <span className="break-words">{vehicle.name}</span>
-                <span aria-hidden="true" className="text-border">|</span>
-                <span className="break-words text-sm font-semibold">
-                  {vehicle.plateNumber ? <><span className="sr-only">Plate number: </span>{vehicle.plateNumber}</> : "Plate unavailable"}
+              <h1 className="break-words text-lg font-semibold text-foreground">
+                {vehicle.name}{" "}
+                <span className="text-sm">
+                  ({vehicle.plateNumber ? <><span className="sr-only">Plate number </span>{vehicle.plateNumber}</> : "Plate unavailable"})
                 </span>
               </h1>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -194,9 +193,9 @@ export function VehicleDetailsPage({ section = "general" }: { section?: VehicleD
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${statusStyle[getStatusLabel(vehicle)] ?? statusStyle.Unavailable}`}>{getStatusLabel(vehicle)}</span>
+          <div className="ml-auto flex shrink-0 flex-col items-end gap-1.5">
             <p className="whitespace-nowrap text-lg font-semibold text-primary">₱{vehicle.pricePerDay.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">/ day</span></p>
+            <span className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${statusStyle[getStatusLabel(vehicle)] ?? statusStyle.Unavailable}`}>{getStatusLabel(vehicle)}</span>
           </div>
         </CardContent>
       </Card>

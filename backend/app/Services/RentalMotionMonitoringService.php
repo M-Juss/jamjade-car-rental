@@ -24,8 +24,13 @@ class RentalMotionMonitoringService
             $booking = $this->booking($user, $code);
             abort_unless($this->enabled() && $this->locations->canMonitor($booking), 422, 'Motion monitoring is unavailable for this rental.');
             $trip = $booking->telematicsTrip;
-            abort_unless($trip && $trip->status === 'started' && $trip->operator_user_id === $user->id, 422, 'Start rental monitoring first.');
-            TelematicsTrip::whereKey($trip->id)->lockForUpdate()->firstOrFail();
+            if (! $trip) {
+                $trip = $booking->telematicsTrips()->create([
+                    'operator_user_id' => $user->id, 'status' => 'started', 'started_at' => now(),
+                ]);
+            }
+            abort_unless($trip->operator_user_id === $user->id, 403);
+            $trip = TelematicsTrip::whereKey($trip->id)->lockForUpdate()->firstOrFail();
             $previous = DriveMonitoringSession::where('user_id', $user->id)->where('client_session_id', $input['client_session_id'])->first();
             if ($previous) {
                 abort_unless((int) $previous->telematics_trip_id === $trip->id, 409, 'Monitoring details changed.');
@@ -34,6 +39,9 @@ class RentalMotionMonitoringService
             }
             abort_if(DriveMonitoringSession::where('user_id', $user->id)->where('status', 'active')->exists(), 409, 'Finish the previous motion transfer before starting again.');
             $reference = app(RentalMotionReferenceService::class)->reference($booking->telematicsSetupSession);
+            if ($trip->status === 'paused') {
+                $trip->update(['status' => 'started', 'resumed_at' => now()]);
+            }
 
             return DriveMonitoringSession::create(['telematics_trip_id' => $trip->id, 'user_id' => $user->id,
                 'client_session_id' => $input['client_session_id'], 'reference_run_id' => null,
@@ -49,7 +57,7 @@ class RentalMotionMonitoringService
             $booking = $this->booking($user, $code);
             $session = $this->session($booking, $user, $id);
             abort_unless($this->enabled(), 403);
-            // A stopped GPS/rental can drain earlier windows, never collect new ones.
+            // Closed captures and ended rentals can drain only earlier windows.
             $cutoff = $session->capture_closed_ms;
             if (! $this->locations->canMonitor($booking)) {
                 $cutoff ??= ($booking->returnRecord?->vehicle_received_at ?? $booking->telematicsTrip->ended_at ?? now())->getTimestampMs();
@@ -74,6 +82,10 @@ class RentalMotionMonitoringService
                 app(DriveMonitoringEventService::class)->finish($session);
                 $session->update(['status' => 'stopped', 'ended_at' => now(),
                     'sync_interrupted' => $interrupted, 'capture_closed_ms' => $session->capture_closed_ms ?? now()->getTimestampMs()]);
+                $trip = TelematicsTrip::whereKey($session->telematics_trip_id)->lockForUpdate()->firstOrFail();
+                if ($trip->status === 'started' && ! $trip->location_session_hash) {
+                    $trip->update(['status' => 'paused', 'paused_at' => now()]);
+                }
                 app(FleetMonitoringPublisher::class)->changed();
             }
 

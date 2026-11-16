@@ -10,6 +10,7 @@ import type {
   VerificationStatus,
   SelfDriveCustomer,
   SelfDriveCustomerPage,
+  SelfDriveStatusFilter,
 } from "./types";
 
 const DOCUMENT_TYPE_LABELS: Record<string, DocumentType> = {
@@ -86,12 +87,12 @@ function toCustomer(customer: BackendSelfDriveCustomer): SelfDriveCustomer {
 
 export async function getSelfDriveCustomers(params: {
   search?: string;
-  eligibility?: "all" | "eligible" | "not_eligible";
+  status: SelfDriveStatusFilter;
   page: number;
 }): Promise<SelfDriveCustomerPage> {
   const query = new URLSearchParams({ page: String(params.page), per_page: String(TABLE_PAGE_SIZE) });
   if (params.search) query.set("search", params.search);
-  if (params.eligibility && params.eligibility !== "all") query.set("eligibility", params.eligibility);
+  if (params.status !== "all") query.set("eligibility", params.status);
   const response = await apiGet<BackendSelfDriveCustomer[]>(`/admin/self-drive-verification/customers?${query}`);
   const meta = response.meta ?? {};
   const summary = (meta.summary ?? {}) as Partial<SelfDriveCustomerPage["summary"]>;

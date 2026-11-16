@@ -2,13 +2,35 @@
 
 namespace App\Services;
 
+use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\VehicleMaintenanceRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 class VehicleAvailabilityService
 {
+    public function assertCustomerReservationAvailable(int $vehicleId, mixed $start, mixed $end, ?int $ignoreBookingId = null): void
+    {
+        $firstDay = CarbonImmutable::parse($start)->setTimezone('Asia/Manila')->startOfDay();
+        $lastDay = CarbonImmutable::parse($end)->setTimezone('Asia/Manila')->endOfDay();
+        $ongoingConflict = Booking::query()->where('vehicle_id', $vehicleId)
+            ->where('status', BookingStatus::Ongoing)
+            ->where('rental_start_at', '<=', $lastDay->utc())
+            // An overdue rental still occupies the vehicle today.
+            ->when($firstDay->isAfter(CarbonImmutable::today('Asia/Manila')), fn ($query) => $query->where('rental_end_at', '>=', $firstDay->utc()))
+            ->when($ignoreBookingId, fn ($query, int $id) => $query->whereKeyNot($id))->exists();
+
+        if ($ongoingConflict) {
+            throw ValidationException::withMessages([
+                'rental_start_at' => ['This vehicle is already booked for one or more of the selected dates.'],
+            ]);
+        }
+
+        $this->assertBookingIntervalAvailable($vehicleId, $start, $end, $ignoreBookingId);
+    }
+
     public function assertBookingIntervalAvailable(int $vehicleId, mixed $start, mixed $end, ?int $ignoreBookingId = null): void
     {
         $bookingConflict = Booking::query()->where('vehicle_id', $vehicleId)

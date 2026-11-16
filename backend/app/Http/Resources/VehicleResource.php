@@ -2,8 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\BookingStatus;
+use App\Enums\VehicleStatus;
 use App\Services\LateReturnPricingService;
 use App\Support\PublicStorageUrl;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,12 +24,17 @@ class VehicleResource extends JsonResource
 
         $imageUrls = collect($images)->pluck('url')->filter()->values();
         $features = $this->whenLoaded('features', fn () => $this->features->pluck('feature_name')->values(), collect());
+        $today = CarbonImmutable::today('Asia/Manila')->toDateString();
         $unavailableDateRanges = $this->whenLoaded(
             'mobileDateBlockingBookings',
-            fn () => $this->mobileDateBlockingBookings->map(fn ($booking) => [
-                'startDate' => $booking->rental_start_at->copy()->setTimezone('Asia/Manila')->toDateString(),
-                'endDate' => $booking->rental_end_at->copy()->setTimezone('Asia/Manila')->toDateString(),
-            ])->values(),
+            fn () => $this->mobileDateBlockingBookings->map(function ($booking) use ($today) {
+                $endDate = $booking->rental_end_at->copy()->setTimezone('Asia/Manila')->toDateString();
+
+                return [
+                    'startDate' => $booking->rental_start_at->copy()->setTimezone('Asia/Manila')->toDateString(),
+                    'endDate' => $booking->status === BookingStatus::Ongoing ? max($endDate, $today) : $endDate,
+                ];
+            })->values(),
             collect()
         );
         $maintenanceDateRanges = $this->whenLoaded(
@@ -57,6 +65,8 @@ class VehicleResource extends JsonResource
             'color' => $this->color,
             'status' => $this->status->value,
             'statusLabel' => $this->status->label(),
+            'canReserve' => $this->whenLoaded('mobileDateBlockingBookings', fn () => $this->status === VehicleStatus::Available
+                || ($this->status === VehicleStatus::Rented && $this->mobileDateBlockingBookings->contains('status', BookingStatus::Ongoing))),
             'hasOpenCustomerBooking' => (bool) ($this->resource->getAttributes()['has_open_customer_booking'] ?? false),
             'description' => $this->description,
             'isFeatured' => (bool) $this->is_featured,

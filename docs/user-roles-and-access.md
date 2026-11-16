@@ -1,5 +1,29 @@
 # User roles and access: Staff and Driver
 
+## Hosted demo Customer cleanup — 2026-11-17
+
+An authorized, user-executed Tinker cleanup permanently removed one Customer and
+two unpaid terminal bookings, one cancelled and one rejected. Both PayPal
+attempts were abandoned. The scoped cleanup included the profile, emergency
+contact, document and two file records, privacy acceptance, notices, booking
+events/terms/cancellation, delivery quote, activity and role membership. The
+inspection audit found zero linked snapshots or current-condition dependencies.
+
+The script verified an encrypted backup of scoped raw rows and existing file
+bytes under `backend/storage/app/private/maintenance-backups/` before committing.
+User-supplied hosted verification reported zero target accounts, bookings and
+remaining backed-up database rows, with successful backup decryption. Two files
+remained. A follow-up command checks project-local public storage, backup hashes
+and other file references before removal; the user confirmed its expected result
+of two files deleted and zero remaining. Tinker output paging failed after the
+database operation, so subsequent checks use compact JSON output.
+
+The maintenance script passed disposable SQLite checks for success, unexpected
+references, shared files, changed payment evidence and missing files, including
+execution through Tinker. Hosted commands were run by the user; the agent could
+not access Terminal. Relevant existing contracts are `User`, `Booking`,
+`CustomerDocumentFile`, `Payment`, `DeliveryQuote` and the current foreign keys.
+
 ## Hosted demo Customer cleanup — 2026-11-15
 
 An explicitly authorized, one-time cleanup permanently removed one Customer
@@ -136,6 +160,30 @@ web and mobile lint and type checks, and web production build passed.
 The full backend suite reproduced
 five existing failures in booking time formatting and overlap tests against
 the prior code. Live browser and Android checks are pending.
+
+### Self-drive review queue — 2026-11-16
+
+The Admin and Staff queue offers All statuses, Eligible, No documents, Pending,
+and Incomplete. No documents means neither required document is active.
+Incomplete means a required document is approved and another is missing.
+Pending matches the Pending badge. Customers with any other review status can
+still be found under All statuses.
+
+`GET /admin/self-drive-verification/customers` applies search and the existing
+`eligibility` query parameter before pagination. The endpoint now also accepts
+`no_documents`, `pending_review`, and `incomplete`. All statuses omits the
+parameter. `SelfDriveVerificationService` puts pending-review customers first
+so they appear from page one, with newest-first ordering within each group.
+Legacy and archived documents are excluded from these filters. The list Form
+Request validates the values, and `VerificationModule.tsx` uses the shared
+`FilterSelect` and the existing verification service to send them.
+
+Verification: 15 focused Pest tests and all 1,428 backend tests passed. Scoped
+Pint, web lint, TypeScript, the production build and whitespace checks passed.
+Full Pint reported a formatting issue in the existing Owner/Admin invitations
+migration. Browser checks used synthetic responses in Admin at 1280 px and
+Staff at 390 px to verify option order, pagination reset, search, loading,
+empty results, keyboard focus and retry.
 
 ### Mobile sign-in credentials
 

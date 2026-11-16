@@ -16,7 +16,7 @@ class ListSelfDriveCustomersRequest extends BaseFormRequest
     {
         return [
             'search' => ['sometimes', 'nullable', 'string', 'max:160'],
-            'eligibility' => ['sometimes', 'string', Rule::in(['eligible', 'not_eligible'])],
+            'eligibility' => ['sometimes', 'string', Rule::in(['eligible', 'not_eligible', 'no_documents', 'pending_review', 'incomplete'])],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];

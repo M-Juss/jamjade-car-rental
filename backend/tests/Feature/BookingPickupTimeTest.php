@@ -17,11 +17,11 @@ uses(RefreshDatabase::class);
 
 afterEach(fn () => CarbonImmutable::setTestNow());
 
-it('keeps schedule selection strict while letting checkout continue after pickup time', function (string $requestClass, string $clock, string $start, string $end, ?string $errorField) {
+it('accepts an elapsed pickup for delivery quotes and checkout when the pickup date is still today', function (string $requestClass, string $clock, string $start, string $end, ?string $errorField) {
     CarbonImmutable::setTestNow(CarbonImmutable::parse($clock)->utc());
     $rules = array_intersect_key((new $requestClass)->rules(), array_flip(['rental_start_at', 'rental_end_at']));
     $validator = Validator::make(['rental_start_at' => $start, 'rental_end_at' => $end], $rules);
-    if ($errorField === null && in_array($requestClass, [StoreBookingRequest::class, DeliveryRoutesRequest::class])
+    if ($errorField === null && $requestClass === StoreBookingRequest::class
         && CarbonImmutable::parse($start)->lte(CarbonImmutable::now())) {
         $errorField = 'rental_start_at';
     }
@@ -45,7 +45,7 @@ it('keeps schedule selection strict while letting checkout continue after pickup
     'invalid pickup' => ['2026-11-15T12:00:00+08:00', 'invalid', '2026-11-16T09:00:00+08:00', 'rental_start_at'],
 ]);
 
-it('creates and captures a full PayPal payment around the tentative pickup without moving the return deadline', function (string $orderClock) {
+it('creates and captures a full PayPal payment around the tentative pickup without moving the return deadline', function (string $orderClock, string $captureClock) {
     $this->seed(RoleAndPermissionSeeder::class);
     CarbonImmutable::setTestNow(CarbonImmutable::parse($orderClock)->utc());
     Http::preventStrayRequests();
@@ -76,12 +76,13 @@ it('creates and captures a full PayPal payment around the tentative pickup witho
         'app_return_url' => 'mobilefrontend://paypal/return', 'app_cancel_url' => 'mobilefrontend://paypal/cancel',
     ])->assertCreated()->assertJsonPath('data.orderId', 'TENTATIVE-PICKUP');
 
-    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-11-15T12:00:00+08:00')->utc());
+    CarbonImmutable::setTestNow(CarbonImmutable::parse($captureClock)->utc());
     $this->postJson('/api/mobile/paypal/orders/TENTATIVE-PICKUP/capture')->assertOk()
         ->assertJsonPath('data.status', 'Confirmed')->assertJsonPath('data.paymentStatus', 'Paid')
         ->assertJsonPath('data.rentalStartAt', '2026-11-15T01:00:00.000000Z')
         ->assertJsonPath('data.rentalEndAt', '2026-11-16T01:00:00.000000Z');
 })->with([
-    'pickup passes during PayPal approval' => '2026-11-15T08:55:00+08:00',
-    'checkout retry after pickup time' => '2026-11-15T12:00:00+08:00',
+    'pickup passes during PayPal approval' => ['2026-11-15T08:55:00+08:00', '2026-11-15T12:00:00+08:00'],
+    'checkout retry after pickup time' => ['2026-11-15T12:00:00+08:00', '2026-11-15T12:00:00+08:00'],
+    'capture after the pickup date and before return' => ['2026-11-15T23:55:00+08:00', '2026-11-16T00:05:00+08:00'],
 ]);

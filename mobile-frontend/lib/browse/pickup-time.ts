@@ -1,5 +1,7 @@
 import { toBookingTimestamp } from './booking-time';
 
+export const PICKUP_TIME_STEP_MINUTES = 5;
+
 function manilaParts(date: Date) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -16,6 +18,11 @@ export function getLocalDateKey(date = new Date()) {
 export function getLocalTimeKey(date = new Date()) {
   const parts = manilaParts(date);
   return `${parts.find((part) => part.type === 'hour')?.value}:${parts.find((part) => part.type === 'minute')?.value}`;
+}
+
+export function getEarliestPickupDate(now = new Date()) {
+  // The final pickup option is one step before midnight.
+  return getLocalDateKey(new Date(now.getTime() + PICKUP_TIME_STEP_MINUTES * 60_000));
 }
 
 export function isFuturePickupTime(rentalDate: string, pickupTime: string, now = new Date()) {

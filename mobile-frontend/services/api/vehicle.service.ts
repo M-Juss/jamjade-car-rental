@@ -48,6 +48,7 @@ function mapVehicle(record: MobileVehicleRecord): Vehicle {
     model: record.model,
     pricePerDay: Number(record.pricePerDay),
     status: record.status,
+    canReserve: record.canReserve ?? record.status === 'available',
     hasOpenCustomerBooking: record.hasOpenCustomerBooking === true,
     cardImage,
     images,

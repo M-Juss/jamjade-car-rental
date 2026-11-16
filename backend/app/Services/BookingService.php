@@ -281,7 +281,7 @@ class BookingService
         mixed $end,
         ?int $ignoreBookingId = null
     ): void {
-        $this->availabilityService->assertBookingIntervalAvailable($vehicleId, $start, $end, $ignoreBookingId);
+        $this->availabilityService->assertCustomerReservationAvailable($vehicleId, $start, $end, $ignoreBookingId);
     }
 
     public function assertCustomerAgeEligible(User $user): void
@@ -329,7 +329,8 @@ class BookingService
             }
             $vehicle = Vehicle::query()->lockForUpdate()->findOrFail($data['vehicle_id']);
 
-            if ($vehicle->status !== VehicleStatus::Available) {
+            if ($vehicle->status !== VehicleStatus::Available
+                && ! ($vehicle->status === VehicleStatus::Rented && $vehicle->ongoingBookings()->exists())) {
                 throw ValidationException::withMessages([
                     'vehicle_id' => ['This vehicle is not available for booking.'],
                 ]);

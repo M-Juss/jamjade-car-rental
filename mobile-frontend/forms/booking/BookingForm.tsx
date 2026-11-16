@@ -41,7 +41,7 @@ import { getBooking } from '@/services/api/booking.service';
 import type { Booking } from '@/types/booking';
 import { startBookingFlow } from '@/lib/browse/booking-flow';
 import { canReviewBooking, overlapsUnavailableDates } from '@/lib/browse/booking-readiness';
-import { getLocalDateKey, isFuturePickupTime } from '@/lib/browse/pickup-time';
+import { getEarliestPickupDate, isFuturePickupTime } from '@/lib/browse/pickup-time';
 import { JAMJADE_GARAGE } from '@/lib/browse/rental-config';
 import {
   OWNER_DRIVER_METRO_MANILA_DAILY_RATE,
@@ -315,8 +315,8 @@ export function BookingForm() {
     setValue('pickupOption', pickupOption);
   }, [numberOfDays, pickupOption, setValue]);
 
-  const today = getLocalDateKey();
-  const minimumReturnDate = rentalDate ? getNextDateKey(rentalDate) : today;
+  const minimumRentalDate = getEarliestPickupDate(new Date(now));
+  const minimumReturnDate = rentalDate >= minimumRentalDate ? getNextDateKey(rentalDate) : minimumRentalDate;
   const maximumReturnDate = useMemo(
     () => getMaximumReturnDate(rentalDate, vehicle?.unavailableDateRanges ?? []),
     [rentalDate, vehicle?.unavailableDateRanges],
@@ -462,7 +462,7 @@ export function BookingForm() {
         toast.showToast('Could not check vehicle availability. Try again.');
         return null;
       }
-      if (current.status !== 'available' || (current.hasOpenCustomerBooking && !revisionId)) {
+      if (!current.canReserve || (current.hasOpenCustomerBooking && !revisionId)) {
         toast.showToast('This vehicle is unavailable for booking.');
         return null;
       }
@@ -573,7 +573,7 @@ export function BookingForm() {
                     disabledDateRanges={vehicle.unavailableDateRanges}
                     error={errors.rentalDate?.message}
                     label="Rental date"
-                    minimumDate={today}
+                    minimumDate={minimumRentalDate}
                     value={rentalDate}
                     onChange={handleRentalDateChange}
                     placeholder="Select rental date"

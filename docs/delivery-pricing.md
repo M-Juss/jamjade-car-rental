@@ -25,6 +25,10 @@ Updated 2026-10-17 for the approved automatic estimate and deferred-toll policy.
 8. Laravel rechecks eligibility, ownership, vehicle availability, exact booking context and expiry, then consumes the quote once inside the booking transaction. A second use is rejected.
 9. Booking details show a pin-only map, Note and **current** distance/time estimate beside the **agreed** delivery fee. Estimate failures offer retry and do not block access to accepted booking information or change its price.
 
+Confirm Location and Reconfirm Location accept an already selected pickup time
+after it passes on the current Manila date. The quote still uses the selected
+timestamps and its existing expiry and booking-context checks.
+
 The mobile app does not list, restore or resume saved delivery requests. Starting a new booking flow requires fresh location confirmation. Old quote notification actions open a fresh vehicle booking form, without restoring a quote, schedule or destination. Existing financial records are retained; legacy quotes still cannot be consumed under the new policy. New staff toll-review notifications are no longer generated.
 
 ## Driver and staff flow

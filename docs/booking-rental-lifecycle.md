@@ -39,23 +39,22 @@ Mobile lint and TypeScript checks passed; device acceptance remains to be confir
 
 ## State boundaries
 
-### Tentative pickup time — 2026-11-15
+### Tentative pickup time — 2026-11-16
 
-Choosing or editing a schedule requires a future pickup time. The mobile booking
-form disables elapsed times (including the current minute), rejects them on form
-submission, and clears an invalid time when the rental date changes. The picker
-refreshes while open and rechecks the clock on Apply. Ordinary booking creation
-and delivery confirmation enforce `after:now` through
-`BookingScheduleRules::futureStart()`; mobile booking/delivery Zod validation
-matches this scheduling boundary.
+Selecting a pickup requires a future time. The mobile picker disables elapsed
+options, including the current minute, refreshes while open, and rechecks the
+clock on Apply. Changing the rental date clears a time that has already passed
+on the new date.
 
-PayPal checkout uses the separate `BookingScheduleRules::checkoutStart()` rule:
-a selected pickup time may pass while the Customer reviews or retries payment,
-provided its date is still today or later in Asia/Manila. This applies to
-`CreatePayPalOrderRequest` and its unpaid-revision subclass. Capture does not
-move either booked timestamp. Return must remain after pickup and the current
-time. Vehicle/Customer availability, delivery quote expiry, pricing, agreement
-and capture safeguards remain authoritative.
+After selection, Booking Details, delivery quote confirmation, and PayPal order
+creation accept an elapsed pickup time on the current Manila date. The mobile
+Zod schemas match `BookingScheduleRules::selectedStart()` for delivery quotes,
+new PayPal orders, and unpaid revisions. An existing full-payment order can
+complete after the pickup date if the booked interval is still open and the
+other capture checks pass. Return must remain after pickup and the current
+time. The checkout preserves both selected timestamps, and delivery quote
+expiry and vehicle availability still apply. Direct `POST /api/mobile/bookings`
+enforces `after:now` through `BookingScheduleRules::futureStart()`.
 
 Pickup is tentative for operations: preparation and Staff release may begin
 earlier on the booked pickup date, never on a preceding date, and may continue
@@ -73,11 +72,12 @@ Sources: mobile `lib/browse/pickup-time.ts`,
 backend `BookingScheduleRules`, `StoreBookingRequest`, `DeliveryRoutesRequest`
 and `CreatePayPalOrderRequest`.
 
-Regression coverage: `BookingPickupTimeTest.php` contrasts strict scheduling
-with tolerant checkout across Manila midnight, exact-current-time, invalid
-inputs and ended intervals. Mocked full PayPal checkout/capture covers the pickup
-time passing before order creation or during approval without moving the return
-deadline. `MobileApiTest.php` rejects ordinary creation with an elapsed pickup.
+`BookingPickupTimeTest.php` covers Manila midnight, exact-current-time, invalid
+inputs and ended intervals. Mocked full PayPal checkout and capture cover the
+pickup passing before order creation or during approval, including an approval
+completed after midnight. `DeliveryPricingTest.php` verifies same-day delivery
+confirmation and rejects an earlier pickup date. `MobileApiTest.php` rejects
+direct booking creation with an elapsed pickup.
 Mobile `services/api/booking-time.test.mjs` checks scheduling/Zod boundaries and
 explicit timestamp mapping; `components/common/TimePickerWithLabel.test.mjs`
 checks disabled options, future-date selection, exhausted slots and the Apply
@@ -85,7 +85,13 @@ clock recheck. Existing `RentalEarlyStartTest.php` and
 `BookingRentalLifecycleTest.php` cover production early release, preceding-date
 rejection, readiness requirements and the return deadline.
 
-Verification for this correction: all 1,402 backend tests passed (8,823
+The Nov 16 follow-up passed all 1,426 Laravel tests (8,996 assertions), 13 mobile
+schedule and picker tests, scoped Pint, mobile lint, TypeScript and Android export. The Redmi
+Note 8 Pro QA build retained a selected 8:10 PM pickup and reached Review
+Booking after that time elapsed. PayPal and delivery-provider tests used
+mocked responses. Device verification stopped at review.
+
+Earlier verification for the checkout boundary passed 1,402 backend tests (8,823
 assertions), as did the 11 focused mobile schedule/picker tests, mobile lint,
 TypeScript and Android export. Scoped Pint passed. Whole-repository Pint still
 reports the unrelated existing invitation migration

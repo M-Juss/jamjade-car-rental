@@ -10,6 +10,7 @@ use App\Models\RentalDrivingReport;
 use App\Models\TelematicsSetupSession;
 use App\Models\TelematicsSetupStep;
 use App\Models\User;
+use App\Services\LocationMonitoringService;
 use App\Services\NotificationService;
 use App\Services\RcDemoInferenceService;
 use App\Services\RentalDrivingReportService;
@@ -63,19 +64,95 @@ it('binds an explicitly consented RC motion segment to the existing real-car ren
     expect($this->booking->telematicsTrips()->count())->toBe(1);
 });
 
-it('requires release, started GPS, RC mode, fresh motion consent and unchanged mount confirmation', function () {
+it('requires release, RC mode, fresh motion consent and unchanged mount confirmation', function () {
     $this->postJson($this->url.'/start', [...$this->input, 'consent' => false])->assertUnprocessable();
     $this->postJson($this->url.'/start', [...$this->input, 'same_mount_confirmed' => false])->assertUnprocessable();
     $this->postJson($this->url.'/start', [...$this->input, 'consent_version' => 'drive-monitoring-v1'])->assertUnprocessable();
     config(['telematics.calibration_profile' => 'standard']);
     $this->postJson($this->url.'/start', $this->input)->assertUnprocessable();
     config(['telematics.calibration_profile' => 'rc_demo']);
-    $this->trip->update(['status' => 'paused']);
-    $this->postJson($this->url.'/start', $this->input)->assertUnprocessable();
-    $this->trip->update(['status' => 'started']);
     $this->booking->telematicsSetupSession()->update(['status' => 'ready_for_release']);
     $this->postJson($this->url.'/start', $this->input)->assertUnprocessable();
     expect(DriveMonitoringSession::count())->toBe(0);
+});
+
+it('starts motion before any GPS fix and lets GPS join the same trip later', function () {
+    $this->trip->delete();
+    $id = $this->postJson($this->url.'/start', $this->input)->assertOk()->json('data.id');
+    $trip = $this->booking->telematicsTrips()->sole();
+    expect($trip->status)->toBe('started')
+        ->and($trip->latest_location)->toBeNull()
+        ->and($trip->last_location_at)->toBeNull()
+        ->and($trip->location_consent_at)->toBeNull()
+        ->and($trip->location_session_hash)->toBeNull()
+        ->and($trip->events()->count())->toBe(0);
+
+    $this->travel(2)->seconds();
+    $this->mock(RcDemoInferenceService::class)->shouldReceive('predict')->once()->andReturn([
+        'version' => 'rc-demo-inference-v1', 'model_sha256' => RcDemoInferenceService::MODEL_SHA256,
+        'predictions' => [['id' => 'w-0-400', 'class' => 'normal_motion', 'vote' => .9]],
+    ]);
+    $this->postJson($this->url.'/sessions/'.$id.'/batches', [
+        'client_batch_id' => (string) Str::uuid(), 'version' => 'rc-demo-inference-v1',
+        'windows' => [['id' => 'w-0-400', 'start_ms' => 0, 'end_ms' => 400, 'features' => array_fill(0, 35, 0),
+            'braking_evidence' => ['peak_ms' => 0, 'vertical_peak' => 0, 'pitch_rate_peak' => 0]]],
+    ])->assertOk();
+    expect($trip->fresh()->last_location_at)->toBeNull()
+        ->and(DriveMonitoringSession::find($id)->capture_closed_ms)->toBeNull();
+
+    $this->postJson(str_replace('motion-monitoring', 'location-monitoring', $this->url).'/start', [
+        'consent' => true, 'consent_version' => 3, 'sharing_mode' => 'foreground',
+        'latitude' => 14, 'longitude' => 121, 'accuracy' => 5, 'captured_at' => now()->toISOString(),
+    ])->assertOk();
+
+    expect($this->booking->telematicsTrips()->count())->toBe(1)
+        ->and($trip->fresh()->last_location_at)->not->toBeNull()
+        ->and($trip->events()->where('event_type', 'trip_started')->count())->toBe(1)
+        ->and(DriveMonitoringSession::find($id)->capture_closed_ms)->toBeNull();
+});
+
+it('resumes motion on the same paused trip while GPS has no active session', function () {
+    $this->trip->update(['status' => 'paused', 'location_session_hash' => null]);
+    $this->postJson($this->url.'/start', $this->input)->assertOk()
+        ->assertJsonPath('data.telematics_trip_id', $this->trip->id);
+    expect($this->trip->fresh()->status)->toBe('started')
+        ->and($this->trip->fresh()->location_session_hash)->toBeNull()
+        ->and($this->trip->fresh()->last_location_at)->toBeNull()
+        ->and($this->booking->telematicsTrips()->count())->toBe(1);
+});
+
+it('rejects an ended trip and a mismatched recorded operator before starting motion', function () {
+    $this->trip->update(['status' => 'ended']);
+    $this->postJson($this->url.'/start', $this->input)->assertUnprocessable();
+    $this->trip->update(['status' => 'started', 'operator_user_id' => customerUser()->id]);
+    $this->postJson($this->url.'/start', $this->input)->assertForbidden();
+    expect(DriveMonitoringSession::count())->toBe(0);
+});
+
+it('pauses a motion-only trip when capture closes and closes it when the vehicle is received', function () {
+    $this->trip->delete();
+    $id = $this->postJson($this->url.'/start', $this->input)->assertOk()->json('data.id');
+    $trip = $this->booking->telematicsTrips()->sole();
+    $this->postJson($this->url.'/sessions/'.$id.'/stop')->assertOk();
+    expect($trip->fresh()->status)->toBe('paused')
+        ->and(DriveMonitoringSession::find($id)->capture_closed_ms)->not->toBeNull();
+
+    $secondId = $this->postJson($this->url.'/start', [...$this->input, 'client_session_id' => (string) Str::uuid()])
+        ->assertOk()->json('data.id');
+    app(LocationMonitoringService::class)->close($this->booking->fresh());
+    expect($trip->fresh()->status)->toBe('ended')
+        ->and(DriveMonitoringSession::find($secondId)->capture_closed_ms)->not->toBeNull()
+        ->and($this->booking->telematicsTrips()->count())->toBe(1);
+    $this->postJson($this->url.'/start', [...$this->input, 'client_session_id' => (string) Str::uuid()])->assertUnprocessable();
+});
+
+it('rolls back a new motion-only trip when its calibration reference is unavailable', function () {
+    $this->trip->delete();
+    $this->mock(RentalMotionReferenceService::class)->shouldReceive('reference')
+        ->andThrow(ValidationException::withMessages(['monitoring' => ['Complete calibration first.']]));
+    $this->postJson($this->url.'/start', $this->input)->assertUnprocessable();
+    expect($this->booking->telematicsTrips()->count())->toBe(0)
+        ->and(DriveMonitoringSession::count())->toBe(0);
 });
 
 it('rejects other customers and Admin research tokens without widening research permissions', function () {

@@ -8,24 +8,52 @@ range that crosses a blocked day and shows a retry message if availability
 cannot be checked. `DateWithLabel.tsx` retains the existing date display format.
 The mobile vehicle resource projects stored booking timestamps to inclusive
 Manila date keys. Confirmed bookings and existing payment-in-progress holds
-block the displayed days. Mark Returned releases that rental's date range,
-subject to other reservations and maintenance. Laravel still validates exact
-rental timestamps at checkout and capture.
+block the displayed days. An ongoing rental blocks its scheduled days and keeps
+today blocked when overdue. Mark Returned releases that rental's date range
+for other customers, subject to other reservations, maintenance and remaining
+pickup times. The calendar skips past days and skips today after its final
+pickup time, and the time picker only accepts a future pickup.
 
-The authenticated `/api/mobile/customer/vehicles` list and detail routes include
-the renter's vehicle while their booking is open. `VehicleController.php` and
-`VehicleService.php` serve the account-scoped `hasOpenCustomerBooking` flag.
-`use-vehicles.ts` scopes its cache by account, refreshes Browse on focus and uses
-the flag to keep the renter's restriction visible on their vehicle. The existing
-account-wide booking guard keeps Book Now disabled through Returned until
-customer settlement and staff completion.
+The public and authenticated mobile list and detail routes include rented cars.
+`Vehicle.php` and `VehicleResource.php` expose blocked days and `canReserve` so
+another customer can open the calendar and reserve a later slot. An editable
+Rented status without a matching ongoing booking still requires staff to resolve
+the vehicle's status before it can be reserved. `VehicleAvailabilityService.php`
+checks ongoing rental days as well as exact booking intervals and maintenance at
+reservation and PayPal capture. Staff release continues to require return of the
+previous rental. Authenticated `/api/mobile/customer/vehicles` returns the
+account-scoped `hasOpenCustomerBooking` flag. `use-vehicles.ts` scopes its cache by
+account and refreshes Browse on focus. The renter's account stays locked through
+Returned until customer settlement and staff completion.
 
 `TermsSignatureModal.tsx` enables Sign when the terms reach the bottom, including
 when all terms fit in the viewport. Profile setup step 3 shows its missing-choice
 message as a toast. Payment shows Full Payment alone when the existing two-day
 down-payment lead rule makes the option unavailable.
 
-Verification passed all 1,424 backend tests, including a two-customer vehicle
+Calendar regression checks passed 78 backend tests, including overdue rental
+blocking, a mocked PayPal reservation of a later slot, and same-day reopening
+after return. Scoped Pint, mobile lint, TypeScript, 12 pickup-time tests and
+the Android export passed. A local Android emulator verified that a rented car
+appears in Customer Browse, its reserved and past dates are disabled, and a
+later date can be selected in the existing display format. The same-day return
+case was verified at the API boundary. The 16 focused handover interval cases
+passed when run in isolation. The full backend run reported failures in shared
+test storage while another backend test command was running. The serial rerun
+was interrupted. The full mobile suite passed 375 of 376 tests with the existing
+bundled-image count mismatch. Full Pint found an existing invitation-migration
+formatting issue.
+
+Physical Android verification used a separate debug APK built from the Android
+Studio project on a Redmi Note 8 Pro running Android 11. A test customer saw the
+rented vehicle in Browse, found Nov 16–17 blocked, and selected Nov 18. After the
+local Laravel fixture was marked Returned, the customer reopened the calendar,
+selected Nov 16 and Nov 17, and applied a future same-day pickup time. Nov 15
+and elapsed pickup options stayed disabled. An API check confirmed that the
+original renter still had a booking lock. The test used local fixture data and
+stopped at Booking Details.
+
+Earlier verification passed all 1,424 backend tests, including a two-customer vehicle
 catalog regression, scoped Pint, mobile lint and TypeScript, and the Android
 bundle export. Android emulator fixtures verified Sign, the missing-choice
 toast, both disabled calendar dates and the selected date format. The full

@@ -11,7 +11,7 @@ final class BookingScheduleRules
         return ['required', 'date', 'after:now'];
     }
 
-    public static function checkoutStart(): array
+    public static function selectedStart(): array
     {
         return ['required', 'date', 'after_or_equal:'.CarbonImmutable::now('Asia/Manila')->startOfDay()->toIso8601String()];
     }

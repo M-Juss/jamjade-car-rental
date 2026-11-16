@@ -329,8 +329,8 @@ export default function Vehicle() {
                               "🚗"
                             )}
                           </div>
-                          <span className="text-sm font-semibold text-foreground whitespace-normal">
-                            {v.plateNumber ? `${v.name} ${v.plateNumber}` : v.name}
+                          <span className="min-w-0 break-words text-sm font-semibold text-foreground whitespace-normal">
+                            {v.plateNumber ? `${v.name} (${v.plateNumber})` : v.name}
                           </span>
                         </div>
                       </TableCell>

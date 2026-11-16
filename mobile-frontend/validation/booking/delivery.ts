@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { toBookingTimestamp } from '@/lib/browse/booking-time';
+import { isBookablePickupDate } from '@/lib/browse/pickup-time';
+
 export const deliveryRoutesSchema = z
   .object({
     vehicleId: z
@@ -10,10 +12,7 @@ export const deliveryRoutesSchema = z
       ),
     rentalStartAt: z
       .string()
-      .refine(
-        (v) => Number.isFinite(Date.parse(toBookingTimestamp(v))) && Date.parse(toBookingTimestamp(v)) > Date.now(),
-        'Choose a future pickup date and time.',
-      ),
+      .refine((value) => isBookablePickupDate(value), 'Choose a pickup date today or later.'),
     rentalEndAt: z
       .string()
       .refine((v) => Number.isFinite(Date.parse(toBookingTimestamp(v))) && Date.parse(toBookingTimestamp(v)) > Date.now(), 'Choose a future return date and time.'),

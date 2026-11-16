@@ -133,6 +133,37 @@ document is approved, in both desktop and mobile web lists. View customer
 retains pending-document review actions for Admin and Staff, so customers with
 no approved documents can still have their submissions reviewed.
 
+## Vehicle name and status — 2026-11-16
+
+The Vehicle Management table and the shared Admin and Staff detail header show
+the vehicle name followed by its plate in parentheses. On the detail card, the
+existing status badge sits directly below the daily price. The detail header
+uses “Plate unavailable” when the record has no plate. The layout is owned by
+`src/modules/management/vehicles/VehiclesModule.tsx` and
+`src/modules/management/vehicles/VehicleDetailsPage.tsx`.
+
+Verification: web lint, TypeScript, production build and whitespace checks
+passed. Browser checks with sample records at 1280, 390 and 320 px covered the
+table and detail header, badge placement, and a record without a plate.
+
+## Vehicle edit gallery and navigation — 2026-11-16
+
+`src/forms/vehicle/details/EditVehicleForm.tsx` starts its main card with Image
+Gallery. The vehicle name appears once in the breadcrumb as the page heading.
+Edit Vehicle Condition sits beside that breadcrumb, linking to the existing
+condition section. The navigation and action stay on the same row on phones,
+with text wrapping inside their available widths. The form reuses its existing
+Card, Button and VehicleImageGallery, following the vehicle detail navigation.
+
+Verification: web lint, TypeScript, production build and whitespace checks
+passed. Browser checks with sample responses covered Admin at 1280 px and Staff
+at 390 and 320 px, including a long vehicle name, empty images, loading/error
+states, keyboard focus and both navigation actions. Form checks exercised
+client validation, Laravel-style 422 errors, server failure and a successful
+save, including pending-state controls and outcome toasts. Reviewed
+`VehicleRequest`, `editVehicleFormSchema` and the existing `updateVehicle`
+mapping for the affected form.
+
 ## Uniform web tabs — 2026-11-11
 
 The vehicle-detail section navigation is the approved visual reference for all

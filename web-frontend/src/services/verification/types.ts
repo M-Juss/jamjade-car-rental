@@ -6,6 +6,8 @@ export type FileType = "image" | "pdf";
 
 export type SelfDriveReviewStatus = "eligible" | "pending_review" | "needs_correction" | "documents_required" | "age_ineligible" | "emergency_contact_required";
 
+export type SelfDriveStatusFilter = "all" | "eligible" | "no_documents" | "pending_review" | "incomplete";
+
 export type SelfDriveCustomer = {
   id: number;
   name: string;

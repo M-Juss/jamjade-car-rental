@@ -73,7 +73,7 @@ export default function VehicleDetailsScreen() {
   }
 
   const accountLocked = bookingAvailability.reason === 'balance' || bookingAvailability.reason === 'active_booking';
-  const vehicleLocked = vehicle.hasOpenCustomerBooking || vehicle.status !== 'available';
+  const vehicleLocked = vehicle.hasOpenCustomerBooking || !vehicle.canReserve;
   const bookingLockMessage = accountLocked ? bookingAvailability.message : vehicle.hasOpenCustomerBooking
     ? 'Finish your active booking before creating another booking.' : vehicleLocked ? 'This vehicle is unavailable for booking.' : undefined;
 

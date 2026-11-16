@@ -100,9 +100,11 @@ class LocationMonitoringService
                 $this->event($trip, 'trip_started');
             } else {
                 abort_unless($trip->operator_user_id === $user->id, 403);
-                if ($trip->status === 'paused') {
-                    $this->event($trip, 'trip_resumed');
-                    $trip->resumed_at = now();
+                if (! $trip->location_session_hash) {
+                    $this->event($trip, $trip->location_consent_at ? 'trip_resumed' : 'trip_started');
+                    if ($trip->location_consent_at) {
+                        $trip->resumed_at = now();
+                    }
                 }
             }
             $trip->fill([
@@ -163,8 +165,9 @@ class LocationMonitoringService
     // Called while the booking is locked by receipt/return; never changes legacy history.
     public function close(Booking $booking): void
     {
-        $trip = $booking->telematicsTrips()->whereNotNull('location_consent_version')->lockForUpdate()->first();
-        if (! $trip) {
+        $trip = $booking->telematicsTrips()->lockForUpdate()->first();
+        if (! $trip || (! $trip->location_consent_version
+            && ! DriveMonitoringSession::where('telematics_trip_id', $trip->id)->exists())) {
             return;
         }
         if ($trip->status !== 'ended') {
