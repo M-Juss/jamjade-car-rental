@@ -21,7 +21,7 @@ class FleetTrackerService
         'updating' => ['recent_location'],
         'paused' => ['paused'],
         'no_updates' => ['no_recent_updates'],
-        'not_tracking' => ['not_started', 'awaiting_location', 'ended', 'unavailable'],
+        'not_tracking' => ['not_started', 'awaiting_location', 'no_recent_updates', 'ended', 'unavailable'],
     ];
 
     public function rentals(array $filters, int $viewerId): array

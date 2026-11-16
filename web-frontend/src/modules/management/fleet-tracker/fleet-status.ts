@@ -1,19 +1,18 @@
 import type { FleetTrackingStatus } from "@/services/fleet/types";
 
-export const fleetStatusLabels: Record<FleetTrackingStatus, string> = {
-  not_started: "Not started",
-  awaiting_location: "Awaiting location",
-  recent_location: "Recent location",
-  no_recent_updates: "No recent updates",
+export const fleetStatusLabels = {
+  not_started: "Not Tracking",
+  awaiting_location: "Not Tracking",
+  recent_location: "Active",
+  no_recent_updates: "Not Tracking",
   paused: "Paused",
-  ended: "Ended",
-  unavailable: "Unavailable",
-};
+  ended: "Not Tracking",
+  unavailable: "Not Tracking",
+} as const satisfies Record<FleetTrackingStatus, string>;
 
 export const fleetTrackingFilters = [
-  { value: "all", label: "All statuses" },
-  { value: "updating", label: "Updating" },
+  { value: "all", label: "All" },
+  { value: "updating", label: "Active" },
   { value: "paused", label: "Paused" },
-  { value: "no_updates", label: "No recent updates" },
-  { value: "not_tracking", label: "Not tracking" },
+  { value: "not_tracking", label: "Not Tracking" },
 ] as const;

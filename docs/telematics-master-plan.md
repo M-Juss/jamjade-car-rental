@@ -5270,15 +5270,17 @@ update. No backend behavior, API status, stored data or APK change was needed.
 
 ### Fleet Monitoring active rental cards — 2026-11-11
 
-The Tracking select now offers All statuses plus four operational groups:
-Updating (recent_location), Paused (paused), No recent updates
-(no_recent_updates), and Not tracking (not_started, awaiting_location, ended,
-unavailable). `tracking_state` is a validated grouped read filter implemented by
-`FleetTrackerService::TRACKING_FILTERS`; the existing precise status query and
-response statuses remain available. `ListFleetRentalsRequest` and the fleet Zod
-schema accept the same group values. Grouping never changes the underlying trip,
-consent, location recency cutoff, retention or map eligibility. The card continues
-to show the specific state rather than hiding the reason under a broad label.
+The Tracking select offers All, Active, Paused and Not Tracking. Active uses
+the `updating` API filter for recent_location, Paused uses paused, and Not
+Tracking includes not_started, awaiting_location, no_recent_updates, ended and
+unavailable. The same three display labels appear on rental cards, map marker
+descriptions and the detail-sheet status badge. This GPS status does not establish
+whether the separate motion collector is running. `tracking_state` is a validated
+grouped read filter implemented by `FleetTrackerService::TRACKING_FILTERS`.
+Existing precise status queries, response statuses and the `no_updates` filter
+remain supported for deployed clients. `ListFleetRentalsRequest` and the fleet
+Zod schema accept the same query values. Trip state, consent, location recency,
+retention and map eligibility retain their existing rules.
 
 `FleetRentalResource` adds vehicle brand/model and a limited operator contact
 object (ID, name, phoneNumber), using the recorded trip operator when available,
@@ -5290,8 +5292,8 @@ The web FleetRental type mirrors this response.
 
 The card header aligns the complete vehicle name (for example Toyota Hiace 2024)
 and booking code, with the plate below. Its body uses two columns: operator name
-and contact number, then rental and return date/time. Rental type and exact
-tracking state retain the compact footer. Missing contacts/identities have
+and contact number, then rental and return date/time. Rental type and grouped
+tracking status retain the compact footer. Missing contacts/identities have
 explicit unavailable text. `fleet-presentation.ts` composes brand/name/model
 without repeating a brand or model already included in the name; the card,
 map marker description and detail sheet reuse it. The sheet also exposes the
@@ -5370,15 +5372,43 @@ CardContent, removing the nested outer wrapper. Browser measurements confirmed
 matching 57px headers, padding, 14px titles and dividers. Web lint, TypeScript
 and whitespace checks passed. Driving Analysis and telemetry behavior unchanged.
 
-Fleet detail layout (2026-11-16): the Admin and Staff sheet shows the booking
-customer's emergency contacts at the top of the Booking information card, below
-the booking code and above the plate, customer, operator, contact details,
-rental type and rental dates. Vehicle Activity Monitoring and Geofencing Log
+Fleet detail layout (2026-11-17): the Admin and Staff sheet shows the booking
+customer's emergency contacts in a fifth desktop column alongside the rental
+details grid. The booking reference is the card heading. Tracking status appears
+beside the vehicle name at the right of the sheet header, before Close.
+Each contact uses the relationship as the label above the name, followed by
+Emergency number above the saved number. The single CardContent reuses
+MetadataList, preserving four columns for the existing rental details with
+the emergency contact alongside them. Details use two columns at the small
+breakpoint and one column on narrow screens. Missing contacts retain their
+existing empty-state message. Vehicle Activity Monitoring and Geofencing Log
 share `FleetActivityCard` for their headers, refresh buttons and content
 spacing. Both use `SummaryList` above their event rows. Geofencing Log shows
 the last location update under its title in the same minute-based format as
-Last received, followed by tracking status, coordinates and accuracy. The two
-cards sit side by side on desktop and stack on narrow screens.
+Last received, followed by Last location and Accuracy beside each other. Each
+shows Unavailable when a location is missing. The two groups stay beside each
+other on narrow screens, allowing the coordinates to wrap. Alert sent uses the warning
+palette's yellow surface and border. The two cards sit side by side on desktop
+and stack on narrow screens.
+
+Contact layout verification on Nov 17 used synthetic browser responses at
+1440, 390 and 320 px, covering one contact, multiple contacts, no contact,
+label/value ordering, desktop column alignment and sheet overflow. Web lint,
+TypeScript, production build and whitespace checks passed. The source is
+`web-frontend/src/modules/management/fleet-tracker/FleetTrackerModule.tsx`.
+
+Tracking display verification on Nov 17 passed all 1,433 backend tests (9,061
+assertions), including the updated Not Tracking filter membership, scoped Pint,
+web lint, TypeScript and production build. Synthetic browser checks at 1440,
+390 and 320 px covered all seven server states mapped to three display labels,
+the four filter choices, status placement before Close, the booking reference
+heading, yellow Alert sent badges, contact states and overflow. Live fleet data
+and physical GPS were outside this presentation check.
+
+Location-summary verification on Nov 17 used synthetic browser responses at
+1440, 390 and 320 px to check Last location and Accuracy sharing a row, readable
+wrapped coordinates, missing-location values and sheet overflow. Web lint,
+TypeScript and production build passed.
 
 Verification: web lint, TypeScript, production build and whitespace checks passed.
 Browser checks used synthetic responses at 1280, 390 and 320 px and covered

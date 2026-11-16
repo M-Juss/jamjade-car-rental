@@ -270,7 +270,7 @@ it('groups practical tracking filters without mixing lifecycle states', function
     fleetBooking(['status' => BookingStatus::Completed]);
     $this->actingAs(vehicleManagerUser());
     foreach (['updating' => [$updating->id], 'no_updates' => [$stale->id], 'paused' => [$paused->id],
-        'not_tracking' => [$waiting->id, $awaiting->id, $ended->id, $unavailable->id]] as $state => $ids) {
+        'not_tracking' => [$waiting->id, $awaiting->id, $stale->id, $ended->id, $unavailable->id]] as $state => $ids) {
         $response = $this->getJson('/admin/fleet-tracker?tracking_state='.$state)->assertOk()
             ->assertJsonPath('meta.total', count($ids))->assertJsonPath('meta.total_ongoing', 7);
         expect(array_column($response->json('data'), 'id'))->toBe($ids);

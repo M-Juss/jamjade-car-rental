@@ -1,18 +1,18 @@
 import { Badge } from "@/components/ui/badge";
-import { VehicleStatus } from "@/modules/management/fleet-tracker/data/mock-fleet-tracker";
+import type { FleetTrackingStatus } from "@/services/fleet/types";
+import { fleetStatusLabels } from "../fleet-status";
 
-const statusClass: Record<VehicleStatus, string> = {
+const statusClass: Record<(typeof fleetStatusLabels)[FleetTrackingStatus], string> = {
   Active: "bg-success-surface text-success border-success-border",
   Paused: "bg-warning-surface text-warning border-warning-border",
-  Idle: "bg-background text-foreground border-border",
-  "Geofence Alert": "bg-destructive-surface text-destructive border-destructive-border",
-  "GPS Lost": "bg-violet-50 text-violet-700 border-violet-200",
+  "Not Tracking": "bg-muted text-muted-foreground border-border",
 };
 
-export function FleetStatusBadge({ status }: { status: VehicleStatus }) {
+export function FleetStatusBadge({ status }: { status: FleetTrackingStatus }) {
+  const label = fleetStatusLabels[status];
   return (
-    <Badge className={`w-full max-w-full justify-center truncate border rounded-full px-2 py-1 text-xs font-semibold ${statusClass[status]}`}>
-      {status}
+    <Badge variant="outline" className={statusClass[label]}>
+      {label}
     </Badge>
   );
 }

@@ -5,7 +5,7 @@ import { RentalDrivingEvents } from "./components/RentalDrivingEvents";
 import { useRef, useState } from "react";
 import { Loader2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MetadataList } from "@/components/common/data-display/MetadataList";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
@@ -21,6 +21,7 @@ import { ManagementPageHeading } from "@/modules/management/shell/components/Man
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import type { FleetQuery } from "@/validations/fleet/schemas";
 import { FleetVehicleCard } from "./components/FleetVehicleCard";
+import { FleetStatusBadge } from "./components/FleetStatusBadge";
 import { fleetVehicleName } from "./fleet-presentation";
 import { fleetTrackingFilters } from "./fleet-status";
 import { useFleetRentals } from "./useFleetRentals";
@@ -118,7 +119,7 @@ export default function FleetTracker() {
                 prefixLabel="Tracking"
                 value={query.tracking_state ?? "all"}
                 ariaLabel="Filter rentals by tracking status"
-                placeholder="All statuses"
+                placeholder="All"
                 height="compact"
                 className="min-w-0"
                 options={fleetTrackingFilters}
@@ -247,38 +248,20 @@ export default function FleetTracker() {
         >
           {selected ? (
             <>
-              <SheetHeader className="border-b border-border px-6 py-4">
-                <SheetTitle className="pr-8">
+              <SheetHeader className="flex-row items-center gap-3 border-b border-border py-4 pl-6 pr-14">
+                <SheetTitle className="min-w-0 flex-1">
                   {fleetVehicleName(selected.vehicle)}
                 </SheetTitle>
+                <FleetStatusBadge status={selected.tracking.status} />
               </SheetHeader>
               <div className="grid items-start gap-6 p-4 sm:p-6 lg:grid-cols-2">
                 <Card className="lg:col-span-2">
-                  <CardHeader className="min-h-14 border-b border-border pb-3">
-                    <CardTitle className="text-sm font-semibold">Booking information</CardTitle>
-                    <CardDescription className="text-xs">{selected.bookingCode}</CardDescription>
+                  <CardHeader className="border-b border-border pb-3">
+                    <CardTitle className="text-sm font-semibold">{selected.bookingCode}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-1">
-                    <p className="font-semibold">Customer emergency contacts</p>
-                    {selected.emergencyContacts.length ? (
-                      <ul className="flex flex-wrap gap-x-6 gap-y-2">
-                        {selected.emergencyContacts.map((contact, index) => (
-                          <li key={index} className="min-w-0 break-words">
-                            <p className="font-medium">{contact.name}</p>
-                            <p className="flex flex-wrap gap-x-2 text-muted-foreground">
-                              <span className="min-w-0">{contact.relationship}</span>
-                              <span className="min-w-0">{contact.phoneNumber}</span>
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-muted-foreground">No emergency contact provided</p>
-                    )}
-                  </CardContent>
-                  <CardContent className="border-t border-border pt-4">
+                  <CardContent className="grid gap-4 lg:grid-cols-5">
                     <MetadataList
-                      className="grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4 [&_dt]:text-xs"
+                      className="grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:col-span-4 lg:grid-cols-4 [&_dt]:text-xs"
                       items={[
                         { label: "Plate", value: selected.vehicle?.plateNumber || "Unavailable" },
                         { label: "Customer", value: selected.customerName || "Unavailable" },
@@ -290,6 +273,20 @@ export default function FleetTracker() {
                         { label: "Return by", value: formatReturnDateTime(selected.rentalEndAt) },
                       ]}
                     />
+                    <div className="min-w-0 space-y-4">
+                      {selected.emergencyContacts.length ? selected.emergencyContacts.map((contact, index) => (
+                        <MetadataList
+                          key={index}
+                          className="grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-1 [&_dt]:text-xs"
+                          items={[
+                            { label: contact.relationship || "Emergency contact", value: contact.name || "Unavailable" },
+                            { label: "Emergency number", value: contact.phoneNumber || "Unavailable" },
+                          ]}
+                        />
+                      )) : (
+                        <p className="text-sm text-muted-foreground">No emergency contact provided</p>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
                 <RentalDrivingEvents key={selected.bookingCode} bookingCode={selected.bookingCode} dataVersion={dataVersion} />
