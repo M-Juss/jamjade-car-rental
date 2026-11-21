@@ -4,6 +4,7 @@ namespace App\Http\Requests\Profile;
 
 use App\Http\Requests\BaseFormRequest;
 use App\Support\ValidationPatterns;
+use Illuminate\Validation\Rule;
 
 class EmergencyContactRequest extends BaseFormRequest
 {
@@ -17,7 +18,10 @@ class EmergencyContactRequest extends BaseFormRequest
         return [
             'name' => ['required', 'string', 'max:100', 'regex:'.ValidationPatterns::PERSON_NAME],
             'relationship' => ['required', 'string', 'max:80'],
-            'phone_number' => ['required', 'string', 'size:11', 'regex:/^09\d{9}$/'],
+            'phone_number' => [
+                'required', 'string', 'size:11', 'regex:/^09\d{9}$/',
+                Rule::notIn([preg_replace('/\D+/', '', (string) $this->user()->phone_number)]),
+            ],
         ];
     }
 
@@ -42,6 +46,7 @@ class EmergencyContactRequest extends BaseFormRequest
             'name.regex' => 'The emergency contact name may contain letters, spaces, apostrophes, or hyphens, but no numbers.',
             'phone_number.size' => 'The emergency contact number must contain 11 digits.',
             'phone_number.regex' => 'The emergency contact number must start with 09 and contain 11 digits.',
+            'phone_number.not_in' => 'Emergency contact number must be different from your phone number.',
         ];
     }
 }

@@ -32,7 +32,9 @@ class AuthService
             return DB::transaction(function () use ($data, $emailHash) {
                 $pending = PendingMobileRegistration::query()->where('email_hash', $emailHash)->lockForUpdate()->first();
                 if ($pending && $pending->absolute_expires_at->isFuture() && $pending->resend_available_at->isFuture()) {
-                    throw new HttpException(429, 'A verification code was recently sent. Try again shortly.');
+                    throw new HttpException(429, 'A verification code was recently sent. Try again shortly.', null, [
+                        'Retry-After' => (string) max(1, (int) ceil(now()->diffInSeconds($pending->resend_available_at, false))),
+                    ]);
                 }
 
                 $code = $this->newRegistrationCode();
@@ -61,7 +63,7 @@ class AuthService
                 return $this->pendingRegistrationDto($pending);
             });
         } catch (UniqueConstraintViolationException) {
-            throw new HttpException(429, 'A registration is already in progress. Try again shortly.');
+            throw new HttpException(429, 'A registration is already in progress. Try again shortly.', null, ['Retry-After' => '60']);
         }
     }
 
@@ -86,7 +88,9 @@ class AuthService
                 throw ValidationException::withMessages(['registration_id' => ['This registration has expired. Start again.']]);
             }
             if ($pending->resend_available_at->isFuture()) {
-                throw new HttpException(429, 'A verification code was recently sent. Try again shortly.');
+                throw new HttpException(429, 'A verification code was recently sent. Try again shortly.', null, [
+                    'Retry-After' => (string) max(1, (int) ceil(now()->diffInSeconds($pending->resend_available_at, false))),
+                ]);
             }
 
             $code = $this->newRegistrationCode();
@@ -186,7 +190,9 @@ class AuthService
     {
         $key = 'mobile-registration:'.hash('sha256', $key);
         if (RateLimiter::tooManyAttempts($key, $maximum)) {
-            throw new HttpException(429, 'Too many registration attempts. Try again later.');
+            throw new HttpException(429, 'Too many registration attempts. Try again later.', null, [
+                'Retry-After' => (string) max(1, RateLimiter::availableIn($key)),
+            ]);
         }
         RateLimiter::hit($key, 3600);
     }

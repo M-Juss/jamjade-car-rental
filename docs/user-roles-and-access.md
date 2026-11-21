@@ -1,5 +1,42 @@
 # User roles and access: Staff and Driver
 
+## Hosted demo Customer cleanup — 2026-11-19
+
+An authorized, user-executed Tinker cleanup permanently removed six Customer
+accounts and four terminal bookings, including two paid completed bookings and
+two unpaid cancelled bookings. It removed their exclusive profiles, documents,
+contacts, notices, payment records, booking evidence, two driving reports and
+rental motion data. The user approved preserving four inspection snapshots used
+by later condition history, all eight signature records/files and related
+inspection activity. Account/booking links were cleared while historical signer
+names and the inspection chain were retained.
+
+The scoped database rows and readable files were encrypted and read-back
+verified under `backend/storage/app/private/maintenance-backups/` before a
+successful transactional rollback rehearsal and committed deletion. The first
+attempt rolled back when its ownership guard encountered two assigned-Driver
+motion sessions. The revised scope checked their exact session identities,
+stopped status, trip, booking and Driver assignment before including them.
+The Driver account remained outside the deletion scope.
+
+Initial file cleanup removed six exclusive files and reported three failures
+and two missing files. A privileged, project-scoped read showed those two private
+files were present. Their bytes were encrypted into a separately verified
+supplemental backup before the remaining five files were removed. Both file
+passes checked current references, project storage boundaries and hashes.
+User-supplied final verification reported zero target accounts, bookings and
+exclusive files, with verified original/supplemental backups, preserved database
+history and all eight shared signature hashes.
+
+Disposable SQLite and Tinker checks covered deletion, assigned-Driver session
+scope, changed payments/motion status, new bookings, unexpected dependencies,
+shared files, missing files and rehearsal rollback. Follow-up checks covered
+newly visible files, supplemental encryption, preserved history, changed bytes,
+missing signatures, shared references and retries. Hosted commands were executed
+by the user. Relevant existing contracts are `User`, `Booking`,
+`DriveMonitoringSession`, `VehicleInspection`, `VehicleInspectionSignature`,
+`CustomerDocumentFile` and Laravel's current foreign keys.
+
 ## Hosted demo Customer cleanup — 2026-11-17
 
 An authorized, user-executed Tinker cleanup permanently removed one Customer and
@@ -161,6 +198,46 @@ The full backend suite reproduced
 five existing failures in booking time formatting and overlap tests against
 the prior code. Live browser and Android checks are pending.
 
+### Customer and emergency phone validation — 2026-11-21
+
+Customer and emergency contact phone numbers must differ when either number is
+submitted. This prevents a Customer from saving their own number as the emergency
+contact, including changing their personal number to the saved emergency number.
+The rule applies to onboarding and both Profile editors. Matching numbers show a
+field error: “Emergency contact number must be different from your phone number.”
+The personal-number field instead says “Your phone number must be different from
+your emergency contact number.” Validation runs on Continue or Save and the normal
+form revalidation flow; failed submissions keep the entered values for correction.
+
+Laravel's `EmergencyContactRequest` compares the submitted number with the
+authenticated Customer's stored number. `UpdateProfileRequest` and
+`CompleteProfileRequest` compare a submitted personal number with that Customer's
+saved emergency contact. Comparisons strip non-digit formatting from both sides;
+the existing 11-digit `09` format contract remains. Rejections return `422` with
+`errors.phone_number`, which all four mobile forms map to `contactNumber`.
+The mobile `createBasicInfoSchema` and `createEmergencyContactSchema` receive the
+other saved number and prevent a matching submission before the API call.
+
+Sources: `backend/app/Http/Requests/Profile/{EmergencyContactRequest,UpdateProfileRequest,CompleteProfileRequest}.php`,
+`mobile-frontend/validation/profile/schemas.ts`, and
+`mobile-frontend/forms/profile/{BasicInfoForm,EmergencyContactForm,ProfilePersonalInformationForm,ProfileEmergencyContactForm}.tsx`.
+Payloads, response fields, role access and service mappings are unchanged. The
+comparison is scoped to the Customer's own contact, not other accounts. No stored
+records are rewritten and existing eligibility checks are unchanged. Historical
+matching values must be corrected when a number is next submitted; unrelated
+partial API updates that omit the number remain supported.
+
+Verification: 15 focused Pest cases / 57 assertions and five mobile schema tests
+passed. They cover create/edit, normalized comparisons in both directions, each
+profile write endpoint, unchanged data after rejection, distinct numbers, missing
+contacts and existing required/phone-format rules. Full `composer test` passed
+all 1,457 tests / 9,224 assertions. Mobile lint, TypeScript and
+Android export passed; scoped Pint passed. The broader mobile run passed 384 of
+385 tests; the unchanged vehicle-image test expects seven mappings while the
+current source has 42. Full Pint still reports the existing formatting issue in
+`database/migrations/2026_11_11_210000_add_owner_and_admin_invitations.php`.
+Interactive Android verification remains pending.
+
 ### Self-drive review queue — 2026-11-16
 
 The Admin and Staff queue offers All statuses, Eligible, No documents, Pending,
@@ -192,6 +269,62 @@ The mobile Customer Profile separates personal details from sign-in credentials.
 Email changes are immediate after format, uniqueness, and current-password validation. They clear any prior `email_verified_at`; the registration OTP below does not extend to account email changes. Password changes require a different replacement with confirmation, at least eight characters including an uppercase letter and a special character, and no more than 72 UTF-8 bytes. Laravel and the mobile account form both validate these rules. Successful changes revoke mobile tokens and rotate the remember token; the current phone returns to sign-in. These actions do not require profile completion and do not modify roles or account activation.
 
 ## Mobile registration email verification
+
+### Account security CTA limits — 2026-11-18
+
+Laravel now separates login traffic from registration/code-request traffic so
+one exhausted allowance does not prevent another account-recovery action.
+The existing HTTP clients carry an optional `ApiError.retryAfter` parsed from
+the `Retry-After` header. The affected forms reuse their existing buttons,
+fields, validation and toast feedback, disable submission while pending, and
+show the server's remaining wait after a `429`. Synchronous submission guards
+prevent rapid repeated taps from issuing concurrent requests. No role,
+password, successful-authentication payload, cookie/CSRF or bearer-token
+contract changed.
+
+| Action | Implemented Laravel rule |
+| --- | --- |
+| Web and mobile login | Five failed (`401`/`422`) requests per minute per trimmed/lowercased login identifier, shared across both entry points and IPs; thirty total login requests per minute per IP. Successful logins do not consume the identifier's failure allowance. Limits expire from the first counted request; there is no permanent account lock. |
+| Registration and code issuance | Existing five attempts/hour per normalized email and twenty/hour per IP remain. Registration initial sends and resends share their hourly allowance; password recovery has its own allowance. Each public request endpoint also has twenty requests/minute per IP. |
+| Registration and password-reset resend | Existing sixty-second server cooldown remains, with an accurate remaining `Retry-After` on early requests and an hourly retry interval when exhausted. Existing hourly counters include unsuccessful issuance requests. |
+| Registration and password-reset verification | Ten requests/minute per IP for each verification endpoint separately, in addition to the existing five incorrect guesses per challenge. Resending registration codes preserves failed guesses. |
+| Owner Profile email-change code | One request/minute and five/hour per Owner, including attempts targeting different new email addresses. Existing five-guess challenge validation and profile authorization remain. |
+
+Login identifier and IP limiter keys are hashed; credentials and codes are never
+cache keys. JSON throttling responses on the scoped authentication/profile paths
+retain `429`, the established failure envelope and limiter headers. Existing
+protected-management Owner approval-code limits are unchanged. The web Owner
+Profile starts its sixty-second countdown after a successful send and uses
+`Retry-After` for rejections; the mobile resend forms use returned
+`resendAvailableAt` timestamps. Both clients use absolute deadlines so suspended
+timers do not extend the wait; Android stops countdown timers in the background
+and refreshes immediately when active again.
+
+Sources: `backend/app/Providers/AppServiceProvider.php`, `backend/routes/api.php`,
+`backend/routes/web.php`, `backend/bootstrap/app.php`, `AuthService`,
+`MobilePasswordResetService`, both `services/http/{client,errors}.ts`, both
+`forms/shared/useRetryCooldown.ts`, web `forms/auth/LoginForm.tsx` and
+`forms/owner-profile/OwnerProfileForms.tsx`, and mobile `forms/auth/`.
+Frontend paths are relative to their application roots (`src/` on web).
+
+Verification: all 1,442 backend tests passed (9,167 assertions), including nine
+new rate-limit tests for cross-client failures, per-IP spraying, successful
+logins, separate request budgets, code cooldowns and Owner issuance limits.
+The existing focused registration/reset/Owner profile suite also passed
+(35 tests, 213 assertions). Frontend transport and controlled-clock hook checks
+cover retry timing, independent verification/resend waits, validation failures,
+and timer cleanup (9 web and 18 mobile checks passed). Web and mobile lint and
+TypeScript passed. Android export passed. Scoped Pint passed; repository-wide
+Pint reports pre-existing formatting in
+`2026_11_11_210000_add_owner_and_admin_invitations.php`, which this change does
+not edit. The web production build was attempted but could not download the
+existing Poppins Google Font in this environment. Live email delivery,
+browser/Android flow acceptance and hosted client-IP recognition remain
+separate checks. The current trusted-proxy setup
+accepts forwarded protocol only; verify the actual hosting proxy and client-IP
+headers before changing trusted proxies or interpreting an IP budget as one
+individual visitor. Account identifiers and hourly email limits remain separate
+from that infrastructure concern.
 
 Mobile Customer password recovery — 2026-11-12: the sign-in screen offers an
 email-code recovery flow. `POST /api/mobile/password-reset` accepts an email and

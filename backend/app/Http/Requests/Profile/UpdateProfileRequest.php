@@ -6,6 +6,7 @@ use App\Http\Requests\BaseFormRequest;
 use App\Http\Requests\Concerns\ValidatesStructuredProfileAddress;
 use App\Support\CustomerAgePolicy;
 use App\Support\ValidationPatterns;
+use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends BaseFormRequest
 {
@@ -36,7 +37,12 @@ class UpdateProfileRequest extends BaseFormRequest
             'barangay_code' => ['sometimes', 'required_with:country_code,region_code,city_municipality_code,address_line', 'string', 'max:20', 'regex:/^\d+$/'],
             'address_line' => ['sometimes', 'required_with:country_code,region_code,city_municipality_code,barangay_code', 'string', 'max:255'],
             'postal_code' => ['required_with:country_code,region_code,city_municipality_code,barangay_code,address_line', 'string', 'regex:/^\d{4}$/'],
-            'phone_number' => ['sometimes', 'required', 'string', 'size:11', 'regex:/^09\d{9}$/', 'unique:users,phone_number,'.$this->user()->id],
+            'phone_number' => [
+                'sometimes', 'required', 'string', 'size:11', 'regex:/^09\d{9}$/',
+                'unique:users,phone_number,'.$this->user()->id,
+                Rule::notIn($this->user()->emergencyContacts()->pluck('phone_number')
+                    ->map(fn (string $number): string => preg_replace('/\D+/', '', $number))->all()),
+            ],
             'profile_picture' => ['nullable', 'image', 'max:5120'],
         ];
     }
@@ -66,6 +72,7 @@ class UpdateProfileRequest extends BaseFormRequest
             'birthdate.before_or_equal' => CustomerAgePolicy::MESSAGE,
             'phone_number.size' => 'The contact number must contain 11 digits.',
             'phone_number.regex' => 'The contact number must start with 09 and contain 11 digits.',
+            'phone_number.not_in' => 'Your phone number must be different from your emergency contact number.',
         ];
     }
 }

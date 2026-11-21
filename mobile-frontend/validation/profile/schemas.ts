@@ -15,7 +15,13 @@ import {
   isFutureDate,
 } from '@/utils/calculateAge';
 
-export const basicInfoSchema = z.object({
+function phoneNumbersMatch(first: string, second: string) {
+  const firstDigits = first.replace(/\D/g, '');
+
+  return firstDigits.length > 0 && firstDigits === second.replace(/\D/g, '');
+}
+
+export const createBasicInfoSchema = (emergencyContactNumber: string) => z.object({
   address: z.string().max(
     1000,
     'Address must be 1000 characters or fewer.',
@@ -69,7 +75,10 @@ export const basicInfoSchema = z.object({
     .refine((value) => isBookingAgeEligible(value), {
       message: BOOKING_AGE_REQUIREMENT_MESSAGE,
     }),
-  contactNumber: phoneSchema,
+  contactNumber: phoneSchema.refine(
+    (value) => !phoneNumbersMatch(value, emergencyContactNumber),
+    { message: 'Your phone number must be different from your emergency contact number.' },
+  ),
   firstName: personNameSchema('First name').max(
     100,
     'First name must be 100 characters or fewer.',
@@ -81,7 +90,7 @@ export const basicInfoSchema = z.object({
   profilePicture: z.string(),
 });
 
-export const emergencyContactSchema = z
+export const createEmergencyContactSchema = (customerPhoneNumber: string) => z
   .object({
     contactNumber: z.string(),
     name: z.string(),
@@ -126,6 +135,12 @@ export const emergencyContactSchema = z
       context.addIssue({
         code: 'custom',
         message: 'Enter an 11-digit mobile number starting with 09.',
+        path: ['contactNumber'],
+      });
+    } else if (phoneNumbersMatch(contact.contactNumber, customerPhoneNumber)) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Emergency contact number must be different from your phone number.',
         path: ['contactNumber'],
       });
     }

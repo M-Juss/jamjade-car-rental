@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import { getUserRoleNames } from "@/services/auth";
 import { ApiError } from "@/services/http";
 import { requestEmail, confirmEmail, changePassword } from "@/services/owner-profile/owner-profile.service";
 import { emailSchema, codeSchema, passwordSchema } from "@/validations/owner-profile/schemas";
+import { useRetryCooldown } from "@/forms/shared/useRetryCooldown";
 
 type EmailValues = z.infer<typeof emailSchema>;
 type CodeValues = z.infer<typeof codeSchema>;
@@ -23,6 +24,9 @@ export function OwnerProfileForms() {
   const { user, status } = useManagementSession();
   const router = useRouter();
   const [sent, setSent] = useState(false);
+  const sendCooldown = useRetryCooldown();
+  const verifyCooldown = useRetryCooldown();
+  const emailInFlight = useRef(false);
   const email = useForm<EmailValues>({
     resolver: zodResolver(emailSchema),
     defaultValues: { email: "", currentPassword: "" },
@@ -40,26 +44,37 @@ export function OwnerProfileForms() {
   const invalid = () => appToast.error("Check the highlighted fields.");
 
   const sendCode = async (values: EmailValues) => {
+    if (emailInFlight.current || sendCooldown.seconds > 0) return;
+    emailInFlight.current = true;
     try {
       await requestEmail(values.email, values.currentPassword);
       code.reset();
       setSent(true);
+      sendCooldown.start(60);
       appToast.success("Verification code sent to your new email.");
     } catch (error) {
+      sendCooldown.handleError(error);
       if (error instanceof ApiError && error.errors) {
         if (error.errors.email?.[0]) email.setError("email", { message: error.errors.email[0] });
         if (error.errors.current_password?.[0]) email.setError("currentPassword", { message: error.errors.current_password[0] });
       }
       showError(error);
+    } finally {
+      emailInFlight.current = false;
     }
   };
   const verifyCode = async (values: CodeValues) => {
+    if (emailInFlight.current || verifyCooldown.seconds > 0) return;
+    emailInFlight.current = true;
     try {
       await confirmEmail(values.code);
       window.location.reload();
     } catch (error) {
+      verifyCooldown.handleError(error);
       if (error instanceof ApiError && error.errors?.code?.[0]) code.setError("code", { message: error.errors.code[0] });
       showError(error);
+    } finally {
+      emailInFlight.current = false;
     }
   };
   const savePassword = async (values: PasswordValues) => {
@@ -86,18 +101,18 @@ export function OwnerProfileForms() {
           <CardTitle className="break-words">Email <span className="text-sm font-normal text-muted-foreground">({user.email})</span></CardTitle>
         </CardHeader>
         <CardContent>
-          <form noValidate className="space-y-4" onSubmit={email.handleSubmit(sendCode, invalid)}>
+          <form noValidate className="space-y-4" onSubmit={(event) => { void email.handleSubmit(sendCode, invalid)(event); }}>
             <InputWithLabel id="profile-new-email" label="New email" type="email" autoComplete="email" required disabled={emailBusy}
               error={email.formState.errors.email?.message} {...email.register("email", { onChange: () => { setSent(false); code.reset(); } })} />
             <InputWithLabel id="profile-email-password" label="Current password" type="password" autoComplete="current-password" required disabled={emailBusy}
               error={email.formState.errors.currentPassword?.message} {...email.register("currentPassword")} />
-            <Button disabled={emailBusy}>{email.formState.isSubmitting ? "Sending..." : sent ? "Resend verification code" : "Send verification code"}</Button>
+            <Button disabled={emailBusy || sendCooldown.seconds > 0}>{email.formState.isSubmitting ? "Sending..." : sendCooldown.seconds > 0 ? `Resend in ${sendCooldown.seconds}s` : sent ? "Resend verification code" : "Send verification code"}</Button>
           </form>
           {sent && (
-            <form noValidate className="mt-4 space-y-4" onSubmit={code.handleSubmit(verifyCode, invalid)}>
+            <form noValidate className="mt-4 space-y-4" onSubmit={(event) => { void code.handleSubmit(verifyCode, invalid)(event); }}>
               <InputWithLabel id="profile-verification-code" label="Verification code" inputMode="numeric" autoComplete="one-time-code" required maxLength={6} disabled={emailBusy}
                 error={code.formState.errors.code?.message} {...code.register("code")} />
-              <Button disabled={emailBusy}>{code.formState.isSubmitting ? "Verifying..." : "Verify email"}</Button>
+              <Button disabled={emailBusy || verifyCooldown.seconds > 0}>{code.formState.isSubmitting ? "Verifying..." : verifyCooldown.seconds > 0 ? `Try again in ${verifyCooldown.seconds}s` : "Verify email"}</Button>
             </form>
           )}
         </CardContent>

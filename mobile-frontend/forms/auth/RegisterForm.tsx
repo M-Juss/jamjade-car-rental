@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Controller, type FieldErrors, useForm } from 'react-hook-form';
 import { View } from 'react-native';
 import { z } from 'zod';
@@ -13,6 +13,7 @@ import { updateRegisteredEmail } from '@/lib/customer/customer-store';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/services/http';
 import type { MobileRegistrationPending } from '@/services/api';
+import { useRetryCooldown } from '@/forms/shared/useRetryCooldown';
 
 function getRegistrationErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
@@ -40,6 +41,8 @@ export function RegisterForm() {
   const router = useRouter();
   const { beginRegistration, verifyRegistration, resendRegistrationCode } = useAuth();
   const toast = useFormToast();
+  const cooldown = useRetryCooldown();
+  const inFlight = useRef(false);
   const [pending, setPending] = useState<MobileRegistrationPending | null>(null);
   const {
     control,
@@ -57,6 +60,8 @@ export function RegisterForm() {
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
+    if (inFlight.current || cooldown.seconds > 0) return;
+    inFlight.current = true;
     try {
       const result = await beginRegistration({
         email: values.email,
@@ -67,6 +72,7 @@ export function RegisterForm() {
       setPending(result);
       toast.clearToast();
     } catch (error) {
+      cooldown.handleError(error);
       if (error instanceof ApiError && error.errors) {
         const fieldMap: Record<string, keyof RegisterFormValues> = {
           email: 'email',
@@ -80,6 +86,8 @@ export function RegisterForm() {
         });
       }
       toast.showToast(getRegistrationErrorMessage(error));
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -178,8 +186,8 @@ export function RegisterForm() {
               />
 
               <AuthSubmitButton
-                disabled={isSubmitting}
-                label={isSubmitting ? 'Sending code...' : 'Create Account'}
+                disabled={isSubmitting || cooldown.seconds > 0}
+                label={isSubmitting ? 'Sending code...' : cooldown.seconds > 0 ? `Try again in ${cooldown.seconds}s` : 'Create Account'}
                 onPress={handleSubmit(onSubmit, (errors) => {
                   toast.showToast(getValidationErrorMessage(errors));
                 })}

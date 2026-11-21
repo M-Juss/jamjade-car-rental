@@ -8,8 +8,8 @@ import { ProfileFormSheet } from '@/components/profile';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
-import { emergencyContactSchema, sanitizePersonName } from '@/validation';
-import { updateEmergencyContact } from '@/lib/customer/customer-store';
+import { createEmergencyContactSchema, sanitizePersonName } from '@/validation';
+import { updateEmergencyContact, useCustomer } from '@/lib/customer/customer-store';
 import { saveEmergencyContact } from '@/services/api';
 import { ApiError } from '@/services/http';
 import type { EmergencyContact, EmergencyRelationship } from '@/types/customer';
@@ -36,6 +36,7 @@ export function ProfileEmergencyContactForm({
   visible: boolean;
   onClose: () => void;
 }) {
+  const customer = useCustomer();
   const { clearToast, message, showToast, title, variant } = useFormToast();
   const {
     control,
@@ -47,7 +48,7 @@ export function ProfileEmergencyContactForm({
     watch,
   } = useForm<EmergencyContact>({
     defaultValues: contact,
-    resolver: zodResolver(emergencyContactSchema),
+    resolver: zodResolver(createEmergencyContactSchema(customer.contactNumber)),
   });
   const relationshipValue = watch('relationship');
 

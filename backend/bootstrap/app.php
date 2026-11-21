@@ -11,6 +11,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -45,6 +46,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {
+            if ($request->expectsJson() && $exception->getStatusCode() === 429
+                && $request->is('admin/login', 'admin/owner-profile/*', 'api/mobile/login', 'api/mobile/register*', 'api/mobile/password-reset*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Too many attempts. Try again later.',
+                ], 429, $exception->getHeaders());
+            }
+
+            return null;
+        });
+
         $exceptions->render(function (ValidationException $exception, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([

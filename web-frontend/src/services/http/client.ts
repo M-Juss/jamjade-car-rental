@@ -1,6 +1,6 @@
 import { OwnerVerificationWait, requestOwnerVerification } from "./owner-verification";
 import { buildApiUrl } from "./config";
-import { ApiError, GENERIC_ERROR_MESSAGE } from "./errors";
+import { ApiError, GENERIC_ERROR_MESSAGE, parseRetryAfter } from "./errors";
 import type { ApiMethodOptions, ApiRequestOptions, ApiResponse } from "./types";
 
 function isFormData(body: unknown) {
@@ -205,6 +205,7 @@ export async function apiFetch<TData = unknown>(
       getApiErrorMessage(response.status),
       response.status,
       validationErrors,
+      response.status === 429 ? parseRetryAfter(response.headers.get("Retry-After")) : undefined,
     );
   }
 

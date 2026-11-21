@@ -11,7 +11,7 @@ import { BottomActionButton } from '@/components/ui/BottomActionButton';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
-import { emergencyContactSchema, sanitizePersonName } from '@/validation';
+import { createEmergencyContactSchema, sanitizePersonName } from '@/validation';
 import { skipEmergencyContact, updateEmergencyContact, useCustomer } from '@/lib/customer/customer-store';
 import type { EmergencyContact, EmergencyRelationship } from '@/types/customer';
 import { saveEmergencyContact, skipEmergencyContact as skipEmergencyContactApi } from '@/services/api';
@@ -46,7 +46,7 @@ export function EmergencyContactForm() {
     watch,
   } = useForm<EmergencyContact>({
     defaultValues: customer.emergencyContact,
-    resolver: zodResolver(emergencyContactSchema),
+    resolver: zodResolver(createEmergencyContactSchema(customer.contactNumber)),
   });
   const relationshipValue = watch('relationship');
 
@@ -122,7 +122,7 @@ export function EmergencyContactForm() {
             disabled={isSubmitting || isSkipping}
             label={isSubmitting ? 'Saving...' : 'Continue'}
             onPress={handleSubmit(onSubmit, () => {
-              toast.showToast('Complete all required emergency contact fields.');
+              toast.showToast('Check the highlighted emergency contact fields.');
             })}
             secondaryLabel="Skip for now"
             onSecondaryPress={handleSkip}

@@ -17,7 +17,7 @@ import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { useLogoutConfirmation } from '@/hooks/use-logout-confirmation';
-import { basicInfoSchema, sanitizePersonName } from '@/validation';
+import { createBasicInfoSchema, sanitizePersonName } from '@/validation';
 import {
   createCustomerProfile,
   emptyCustomerAddress,
@@ -83,7 +83,7 @@ export function BasicInfoForm() {
       lastName: customer.lastName,
       profilePicture: customer.profilePicture,
     },
-    resolver: zodResolver(basicInfoSchema),
+    resolver: zodResolver(createBasicInfoSchema(customer.emergencyContact.contactNumber)),
   });
   const form = watch();
   const backDisabled = isSubmitting || isLoggingOut;

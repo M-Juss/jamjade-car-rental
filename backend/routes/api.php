@@ -27,16 +27,16 @@ use App\Http\Middleware\RestrictRcResearchToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('mobile')->name('mobile.')->group(function () {
-    Route::middleware('throttle:mobile-auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:account-login')->name('login');
+    Route::middleware('throttle:account-code-request')->group(function () {
         Route::post('/register', [AuthController::class, 'register'])->name('register');
         Route::post('/register/resend', [AuthController::class, 'resendRegistration'])->name('register.resend');
-        Route::post('/login', [AuthController::class, 'login'])->name('login');
         Route::post('/password-reset', [AuthController::class, 'requestPasswordReset'])->name('password-reset.request');
     });
-    Route::post('/password-reset/verify', [AuthController::class, 'verifyPasswordReset'])->middleware('throttle:10,1')->name('password-reset.verify');
+    Route::post('/password-reset/verify', [AuthController::class, 'verifyPasswordReset'])->middleware('throttle:account-code-verify')->name('password-reset.verify');
     Route::post('/password-reset/complete', [AuthController::class, 'completePasswordReset'])->middleware('throttle:10,1')->name('password-reset.complete');
     Route::post('/register/verify', [AuthController::class, 'verifyRegistration'])
-        ->middleware('throttle:10,1')->name('register.verify');
+        ->middleware('throttle:account-code-verify')->name('register.verify');
 
     Route::middleware('throttle:mobile-api')->group(function () {
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');

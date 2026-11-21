@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useRef } from 'react';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { Pressable, Text, View } from 'react-native';
 import { z } from 'zod';
@@ -10,6 +11,7 @@ import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { loginSchema } from '@/validation';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApiError } from '@/services/http';
+import { useRetryCooldown } from '@/forms/shared/useRetryCooldown';
 
 function withLoginFailedPrefix(message: string) {
   const trimmed = message.trim();
@@ -48,6 +50,8 @@ export function LoginForm() {
   const { passwordChanged } = useLocalSearchParams<{ passwordChanged?: string }>();
   const { signIn } = useAuth();
   const toast = useFormToast();
+  const cooldown = useRetryCooldown();
+  const inFlight = useRef(false);
   const {
     control,
     formState: { isSubmitting },
@@ -62,6 +66,8 @@ export function LoginForm() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
+    if (inFlight.current || cooldown.seconds > 0) return;
+    inFlight.current = true;
     try {
       await signIn({
         email: values.email,
@@ -69,6 +75,10 @@ export function LoginForm() {
       });
       router.replace('/');
     } catch (error) {
+      if (cooldown.handleError(error)) {
+        toast.showToast('Too many login attempts. Please wait before trying again.');
+        return;
+      }
       if (error instanceof ApiError && error.status === 422) {
         let mapped = false;
         for (const field of ['email', 'password'] as const) {
@@ -82,6 +92,8 @@ export function LoginForm() {
         if (mapped) return;
       }
       toast.showToast(getLoginErrorMessage(error));
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -107,8 +119,8 @@ export function LoginForm() {
             </Pressable>
 
             <AuthSubmitButton
-              disabled={isSubmitting}
-              label={isSubmitting ? 'Logging in...' : 'Sign In'}
+              disabled={isSubmitting || cooldown.seconds > 0}
+              label={isSubmitting ? 'Logging in...' : cooldown.seconds > 0 ? `Try again in ${cooldown.seconds}s` : 'Sign In'}
               onPress={handleSubmit(onSubmit, (errors) => {
                 toast.showToast(getValidationErrorMessage(errors));
               })}

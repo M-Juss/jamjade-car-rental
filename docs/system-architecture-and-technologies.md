@@ -98,6 +98,15 @@ the existing secure storage abstraction. See the
 [mobile HTTP client](../mobile-frontend/services/http/client.ts), and
 [backend middleware configuration](../backend/bootstrap/app.php).
 
+Account security limits are enforced centrally by Laravel's cache-backed named
+limiters. Web/mobile login share the normalized identifier failure budget;
+code-request and verification budgets remain separate. Both HTTP clients expose
+`Retry-After` through `ApiError.retryAfter`, and form-owned countdown hooks use
+absolute deadlines without automatically replaying throttled writes. Existing
+cache configuration is reused; no package or native configuration was added.
+See [account security limits](user-roles-and-access.md#account-security-cta-limits--2026-11-18)
+for exact limits, source paths and verification boundaries.
+
 New mobile Customer registration uses a separate pending-registration record and
 Laravel's configured Gmail SMTP transport. A six-digit code expires after 15
 minutes; only successful verification creates the Customer/profile and issues a

@@ -45,6 +45,7 @@ Route::get('/', function () {
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:account-login')
         ->name('login');
 
     Route::middleware(['auth', 'active_admin'])->group(function () {
@@ -229,7 +230,7 @@ Route::prefix('admin/admins')->middleware(['auth', 'active_admin', 'role:owner',
 });
 
 Route::prefix('admin/owner-profile')->middleware(['auth', 'active_admin', 'role:owner', 'throttle:10,1'])->group(function () {
-    Route::post('/email', [OwnerProfileController::class, 'requestEmail']);
+    Route::post('/email', [OwnerProfileController::class, 'requestEmail'])->middleware('throttle:owner-email-code');
     Route::post('/email/confirm', [OwnerProfileController::class, 'confirmEmail']);
     Route::post('/password', [OwnerProfileController::class, 'password']);
 });

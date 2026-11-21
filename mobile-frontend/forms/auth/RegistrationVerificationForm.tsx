@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { AppState, BackHandler, Pressable, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { BackHandler, Pressable, Text, TextInput, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -9,6 +9,7 @@ import type { useFormToast } from '@/forms/shared/FormToast';
 import { ApiError } from '@/services/http';
 import type { MobileRegistrationPending, MobileUser } from '@/services/api';
 import { registrationResendSchema, registrationVerificationSchema } from '@/validation';
+import { useRetryCooldown } from '@/forms/shared/useRetryCooldown';
 
 type VerificationFormValues = z.input<typeof registrationVerificationSchema>;
 type ToastController = ReturnType<typeof useFormToast>;
@@ -51,7 +52,9 @@ export function RegistrationVerificationForm({
   resendRegistrationCode: (payload: { registration_id: string }) => Promise<MobileRegistrationPending>;
   setPending: (value: MobileRegistrationPending) => void;
 }) {
-  const [now, setNow] = useState(Date.now());
+  const resendCooldown = useRetryCooldown(pending.resendAvailableAt);
+  const verifyCooldown = useRetryCooldown();
+  const inFlight = useRef(false);
   const [isResending, setIsResending] = useState(false);
   const [focused, setFocused] = useState(false);
   const [formError, setFormError] = useState('');
@@ -68,18 +71,6 @@ export function RegistrationVerificationForm({
   const busy = isSubmitting || isResending;
 
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const tick = () => setNow(Date.now());
-    const start = () => { if (!timer) timer = setInterval(tick, 1000); };
-    const stop = () => { if (timer) clearInterval(timer); timer = undefined; };
-    if (AppState.currentState === 'active') start();
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') { tick(); start(); } else stop();
-    });
-    return () => { stop(); subscription.remove(); };
-  }, []);
-
-  useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (busy) return true;
       onBack();
@@ -88,16 +79,18 @@ export function RegistrationVerificationForm({
     return () => subscription.remove();
   }, [busy, onBack]);
 
-  const secondsLeft = (isoDate: string) => Math.max(0, Math.ceil((Date.parse(isoDate) - now) / 1000));
-  const resendSeconds = secondsLeft(pending.resendAvailableAt);
+  const resendSeconds = resendCooldown.seconds;
   const formatCountdown = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
   const submit = async (values: VerificationFormValues) => {
+    if (inFlight.current || verifyCooldown.seconds > 0) return;
+    inFlight.current = true;
     setFormError('');
     try {
       await verifyRegistration({ registration_id: values.registrationId, code: values.code });
       onVerified(pending.email);
     } catch (error) {
+      verifyCooldown.handleError(error);
       if (error instanceof ApiError && error.errors) {
         const codeMessage = error.errors.code?.[0];
         const sessionMessage = error.errors.registration_id?.[0]
@@ -108,15 +101,19 @@ export function RegistrationVerificationForm({
         if (sessionMessage && sessionMessage !== codeMessage) setFormError(sessionMessage);
       }
       toast.showToast(getVerificationErrorMessage(error));
+    } finally {
+      inFlight.current = false;
     }
   };
 
   const resend = async () => {
+    if (inFlight.current || resendSeconds > 0) return;
     const parsed = registrationResendSchema.safeParse({ registrationId: pending.registrationId });
     if (!parsed.success) {
       setFormError('This registration session is invalid. Go back and register again.');
       return;
     }
+    inFlight.current = true;
     setIsResending(true);
     setFormError('');
     try {
@@ -126,11 +123,13 @@ export function RegistrationVerificationForm({
       setValue('code', '');
       toast.clearToast();
     } catch (error) {
+      resendCooldown.handleError(error);
       if (error instanceof ApiError && error.errors?.registration_id?.[0]) {
         setFormError(error.errors.registration_id[0]);
       }
       toast.showToast(getResendErrorMessage(error));
     } finally {
+      inFlight.current = false;
       setIsResending(false);
     }
   };
@@ -187,8 +186,8 @@ export function RegistrationVerificationForm({
           {formError ? <Text accessibilityRole="alert" className="font-sans text-[13px] text-destructive">{formError}</Text> : null}
 
           <AuthSubmitButton
-            disabled={busy}
-            label={isSubmitting ? 'Verifying...' : 'Verify email'}
+            disabled={busy || verifyCooldown.seconds > 0}
+            label={isSubmitting ? 'Verifying...' : verifyCooldown.seconds > 0 ? `Try again in ${verifyCooldown.seconds}s` : 'Verify email'}
             onPress={handleSubmit(submit, () => toast.showToast('Enter the six-digit code.'))}
           />
 

@@ -24,7 +24,7 @@ class MobilePasswordResetService
         foreach ([['email:'.$emailHash, 5], ['ip:'.hash('sha256', $ip), 20]] as [$part, $max]) {
             $key = 'mobile-password-reset:'.hash('sha256', $part);
             if (RateLimiter::tooManyAttempts($key, $max)) {
-                throw new HttpException(429, 'Too many requests. Try again later.');
+                throw new HttpException(429, 'Too many requests. Try again later.', null, ['Retry-After' => (string) max(1, RateLimiter::availableIn($key))]);
             }
             RateLimiter::hit($key, 3600);
         }
@@ -33,7 +33,7 @@ class MobilePasswordResetService
             return DB::transaction(function () use ($email, $emailHash) {
                 $existing = MobilePasswordReset::query()->where('email_hash', $emailHash)->lockForUpdate()->first();
                 if ($existing && $existing->resend_available_at->isFuture()) {
-                    throw new HttpException(429, 'A code was recently requested. Try again shortly.');
+                    throw new HttpException(429, 'A code was recently requested. Try again shortly.', null, ['Retry-After' => (string) max(1, (int) ceil(now()->diffInSeconds($existing->resend_available_at, false)))]);
                 }
                 $user = User::query()->where('email', $email)->first();
                 if (! $this->isEligible($user)) {
@@ -57,7 +57,7 @@ class MobilePasswordResetService
                 return ['resetId' => $record->id, 'expiresAt' => $record->expires_at->toISOString(), 'resendAvailableAt' => $record->resend_available_at->toISOString()];
             });
         } catch (UniqueConstraintViolationException) {
-            throw new HttpException(429, 'A code was recently requested. Try again shortly.');
+            throw new HttpException(429, 'A code was recently requested. Try again shortly.', null, ['Retry-After' => '60']);
         }
     }
 

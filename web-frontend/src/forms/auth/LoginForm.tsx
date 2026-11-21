@@ -4,6 +4,7 @@ import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import { type FieldErrors, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ApiError } from "@/services/http";
@@ -13,6 +14,7 @@ import {
   LoginSchemaFormValues,
 } from "@/validations/auth/schemas";
 import { appToast } from "@/lib/toast";
+import { useRetryCooldown } from "@/forms/shared/useRetryCooldown";
 
 function withLoginFailedPrefix(message: string) {
   const trimmed = message.trim();
@@ -50,6 +52,8 @@ function getValidationErrorMessage(errors: FieldErrors<LoginSchemaFormValues>) {
 
 export function LoginForm() {
   const router = useRouter();
+  const cooldown = useRetryCooldown();
+  const inFlight = useRef(false);
   const {
     register: formRegister,
     handleSubmit,
@@ -60,6 +64,8 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginSchemaFormValues) => {
+    if (inFlight.current || cooldown.seconds > 0) return;
+    inFlight.current = true;
     try {
       const { user } = await login({
         ...data,
@@ -75,6 +81,10 @@ export function LoginForm() {
       appToast.success("Login successful.");
       router.replace(dashboardPath);
     } catch (error) {
+      if (cooldown.handleError(error)) {
+        appToast.error("Too many login attempts. Please wait before trying again.");
+        return;
+      }
       if (error instanceof ApiError && error.errors?.email?.[0]) {
         setError("email", {
           message: error.errors.email[0],
@@ -83,6 +93,8 @@ export function LoginForm() {
       }
 
       appToast.error(getLoginErrorMessage(error));
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -93,7 +105,7 @@ export function LoginForm() {
   return (
     <form
       noValidate
-      onSubmit={handleSubmit(onSubmit, onInvalid)}
+      onSubmit={(event) => { void handleSubmit(onSubmit, onInvalid)(event); }}
       className="flex w-full flex-col gap-4"
     >
       <InputWithLabel
@@ -125,10 +137,10 @@ export function LoginForm() {
 
       <Button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || cooldown.seconds > 0}
         className="mt-1 h-11"
       >
-        {isSubmitting ? "Logging in..." : "Login"}
+        {isSubmitting ? "Logging in..." : cooldown.seconds > 0 ? `Try again in ${cooldown.seconds}s` : "Login"}
       </Button>
     </form>
   );

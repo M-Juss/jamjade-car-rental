@@ -3,20 +3,18 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { ApiError, parseRetryAfter } from './errors.ts';
 
 // Exercise the real client with an isolated transport; no network or stored tokens.
 function clientWith(fetch, baseUrls = ['https://example.test/api']) {
   const source = readFileSync(new URL('./client.ts', import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  class ApiError extends Error {
-    constructor(message, status, errors) { super(message); this.status = status; this.errors = errors; }
-  }
   const exports = {};
   vm.runInNewContext(compiled, {
     exports, fetch, Headers, FormData, Blob, URLSearchParams, AbortController, setTimeout, clearTimeout,
     require(name) {
       if (name === './auth-token') return { getApiAuthToken: async () => 'synthetic-token' };
-      if (name === './errors') return { ApiError, GENERIC_ERROR_MESSAGE: 'Request failed.' };
+      if (name === './errors') return { ApiError, parseRetryAfter, GENERIC_ERROR_MESSAGE: 'Request failed.' };
       if (name === './config') return {
         API_BASE_URL: baseUrls[0],
         API_NETWORK_FALLBACK_TIMEOUT_MS: 100,
@@ -159,4 +157,24 @@ test('a successful HTML or JSON response cannot be saved as a PDF', async () => 
 test('network errors remain retryable failures rather than a successful receipt', async () => {
   const client = clientWith(async () => { throw new Error('Offline'); });
   await assert.rejects(() => client.apiDownload('/example'), (error) => error.status === 0);
+});
+
+test('429 responses preserve Retry-After without retrying a write on another server', async () => {
+  let calls = 0;
+  const client = clientWith(async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ message: 'Too many attempts.' }), { status: 429, headers: { 'Retry-After': '42' } });
+  }, ['https://primary.example.test/api', 'https://fallback.example.test/api']);
+  await assert.rejects(() => client.apiPost('/mobile/login', {}, { allowNetworkFallback: true }),
+    error => error instanceof ApiError && error.status === 429 && error.retryAfter === 42);
+  assert.equal(calls, 1);
+});
+
+test('Retry-After parsing handles HTTP dates and rejects missing, zero and invalid values', () => {
+  const now = Date.parse('2026-11-18T00:00:00Z');
+  assert.equal(parseRetryAfter('Wed, 18 Nov 2026 00:00:42 GMT', now), 42);
+  assert.equal(parseRetryAfter('42', now), 42);
+  for (const value of [null, '', ' ', 'invalid', '0', '-1', 'Wed, 18 Nov 2026 00:00:00 GMT']) {
+    assert.equal(parseRetryAfter(value, now), undefined);
+  }
 });

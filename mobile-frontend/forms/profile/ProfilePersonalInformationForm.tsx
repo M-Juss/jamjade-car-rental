@@ -10,7 +10,7 @@ import { DatePickerInput } from '@/components/ui/DatePickerInput';
 import { FormInput } from '@/components/ui/FormInput';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
-import { basicInfoSchema, sanitizePersonName } from '@/validation';
+import { createBasicInfoSchema, sanitizePersonName } from '@/validation';
 import {
   createCustomerProfile,
   emptyCustomerAddress,
@@ -61,7 +61,7 @@ export function ProfilePersonalInformationForm({
     watch,
   } = useForm<BasicCustomerProfileInput>({
     defaultValues: getFormValues(customer),
-    resolver: zodResolver(basicInfoSchema),
+    resolver: zodResolver(createBasicInfoSchema(customer.emergencyContact.contactNumber)),
   });
   const form = watch();
   const initials =
