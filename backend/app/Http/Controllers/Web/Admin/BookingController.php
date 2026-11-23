@@ -78,6 +78,13 @@ class BookingController extends Controller
         );
     }
 
+    public function analysisBooking(Booking $booking): JsonResponse
+    {
+        abort_unless($booking->status === BookingStatus::Completed, 404);
+
+        return $this->success('Analysis booking fetched.', new \App\Http\Resources\DrivingAnalysisBookingResource($booking->load(['vehicle', 'user:id,name', 'assignedDriver'])));
+    }
+
     public function drivingAnalysis(Booking $booking, RentalDrivingAnalysisService $analysis): JsonResponse
     {
         abort_unless($booking->status === BookingStatus::Completed, 404);
@@ -93,7 +100,7 @@ class BookingController extends Controller
             'booking_ids' => (clone $scope)->select('booking.id'),
         ], $request->integer('per_page', 10));
 
-        return $this->paginated('Driving analysis fetched.', $bookings, BookingResource::class, [
+        return $this->paginated('Driving analysis fetched.', $bookings, \App\Http\Resources\DrivingAnalysisBookingResource::class, [
             'driving_grades' => $analysis->gradesForBookings($bookings->getCollection()),
             'recorded_operators' => $overview->recordedOperators($bookings->getCollection()),
             'summary' => $overview->summary($scope),

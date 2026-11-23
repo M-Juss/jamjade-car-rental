@@ -23,7 +23,7 @@ class UpdatePersonnelRequest extends BaseFormRequest
 
     public function authorize(): bool
     {
-        return $this->user()?->hasAnyRole(['admin', 'staff']) ?? false;
+        return $this->user()?->hasRole('owner') ?? false;
     }
 
     public function rules(): array
@@ -34,8 +34,8 @@ class UpdatePersonnelRequest extends BaseFormRequest
             'first_name' => ['required', 'string', 'max:80', 'regex:'.ValidationPatterns::PERSON_NAME],
             'last_name' => ['required', 'string', 'max:80', 'regex:'.ValidationPatterns::PERSON_NAME],
             'email' => ['required', 'email', 'max:160', Rule::unique('users', 'email')->ignore($userId)],
-            'phone_number' => ['nullable', 'string', 'regex:/^09\d{9}$/', Rule::unique('users', 'phone_number')->ignore($userId)],
-            'role' => ['required', 'string', Rule::in($this->user()->hasRole('owner') ? ['staff', 'driver', 'admin'] : ($this->user()->hasRole('admin') ? ['staff', 'driver'] : ['driver'])), Rule::exists('roles', 'name')->where('guard_name', 'web')],
+            'phone_number' => [Rule::requiredIf(in_array($this->input('role'), ['staff', 'driver'], true)), 'nullable', 'string', 'regex:/^09\d{9}$/', Rule::unique('users', 'phone_number')->ignore($userId)],
+            'role' => ['required', 'string', Rule::in(['staff', 'driver', 'admin']), Rule::exists('roles', 'name')->where('guard_name', 'web')],
             'is_active' => ['sometimes', 'boolean'],
             'modules' => ['prohibited'],
             'permissions' => ['prohibited'],

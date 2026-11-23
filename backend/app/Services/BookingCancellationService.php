@@ -34,7 +34,7 @@ class BookingCancellationService
 
     public function cancelWithRefund(Booking $booking, User $actor, array $data): Booking
     {
-        abort_unless($actor->hasRole('admin') && $actor->can('manage bookings'), 403);
+        abort_unless($actor->hasAnyRole(['owner', 'staff']) && $actor->can('manage bookings'), 403);
 
         return DB::transaction(function () use ($booking, $actor, $data) {
             $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
@@ -54,7 +54,7 @@ class BookingCancellationService
 
     public function review(Booking $booking, User $actor, array $data): Booking
     {
-        abort_unless($actor->hasRole('admin') && $actor->can('manage bookings'), 403);
+        abort_unless($actor->hasAnyRole(['owner', 'staff']) && $actor->can('manage bookings'), 403);
 
         return DB::transaction(function () use ($booking, $actor, $data) {
             $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
@@ -81,7 +81,7 @@ class BookingCancellationService
 
     public function recordRefund(Booking $booking, User $actor): Booking
     {
-        abort_unless($actor->hasRole('admin') && $actor->can('manage bookings'), 403);
+        abort_unless($actor->hasAnyRole(['owner', 'staff']) && $actor->can('manage bookings'), 403);
 
         return DB::transaction(function () use ($booking, $actor) {
             $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);

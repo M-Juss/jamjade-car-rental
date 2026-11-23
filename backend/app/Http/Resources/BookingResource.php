@@ -9,6 +9,8 @@ use App\Services\BookingAttentionService;
 use App\Services\BookingGeofenceService;
 use App\Services\BookingReturnService;
 use App\Services\BookingService;
+use App\Services\DriverAssignmentService;
+use App\Services\DriverPickupService;
 use App\Services\LocationMonitoringService;
 use App\Services\RentalReadinessService;
 use App\Services\TelematicsCalibrationService;
@@ -41,12 +43,18 @@ class BookingResource extends JsonResource
         $latestPayment = collect($payments)->sortByDesc('created_at')->first();
         $paidAmount = collect($payments)->sum(fn ($payment) => (float) $payment->amount);
         $image = $this->vehicle?->images?->first()?->image_path;
+        $isFeedbackOwner = $request->user()?->can('leaveFeedback', $this->resource) ?? false;
+        if ($isFeedbackOwner) {
+            $this->resource->loadMissing('feedback');
+        }
 
         return [
             'backendId' => $this->id,
+            'feedback' => $this->when($isFeedbackOwner, fn () => $this->feedback ? new BookingFeedbackResource($this->feedback) : null),
+            'canLeaveFeedback' => $isFeedbackOwner && $this->status === BookingStatus::Completed && ! $this->feedback,
             'canRecordNoShow' => $isManagement && $this->status === BookingStatus::Confirmed
                 && ! $this->started_at && $this->rental_end_at?->lte(now()),
-            'canReviewCancellationRefund' => $isManagement && ($request->user()?->hasRole('admin') ?? false),
+            'canReviewCancellationRefund' => $isManagement && ($request->user()?->hasAnyRole(['owner', 'staff']) ?? false),
             'cancellation' => $this->when(! $isDriverView, fn () => $this->cancellation ? [
                 'kind' => $this->cancellation->kind,
                 'reason' => $this->cancellation->reason,
@@ -98,8 +106,15 @@ class BookingResource extends JsonResource
             'assignedDriver' => $this->assignedDriver ? [
                 'id' => $this->assignedDriver->id,
                 'name' => $this->assignedDriver->name,
+                'email' => $this->assignedDriver->email,
                 'phoneNumber' => $this->assignedDriver->phone_number,
             ] : null,
+            'driverWorkflow' => app(DriverPickupService::class)->projection($this->resource, $request->user()),
+            'canReassignDriver' => $isManagement && $this->rental_type === RentalType::OwnersDriver
+                && in_array($this->status, [BookingStatus::Pending, BookingStatus::Confirmed], true)
+                && ! app(DriverAssignmentService::class)->assignmentLocked($this->resource),
+            'driverAssignmentRequired' => $isManagement && $this->rental_type === RentalType::OwnersDriver
+                && $this->status === BookingStatus::Confirmed && ! $this->assignedDriver,
             'driverAssignedAt' => $this->assignment?->assigned_at?->toISOString(),
             'telematicsSetupStatus' => app(TelematicsCalibrationService::class)->effectiveStatus($this->telematicsSetupSession)?->value,
             'telematicsHandover' => $this->when(
@@ -108,7 +123,7 @@ class BookingResource extends JsonResource
             ),
             'monitoringZones' => $this->when($hasMonitoringDetails,
                 fn () => BookingGeofenceResource::collection(app(BookingGeofenceService::class)->zonesFor($this->resource))),
-            'canManageMonitoringZones' => $isManagement && ($request->user()?->hasRole('admin') ?? false)
+            'canManageMonitoringZones' => $isManagement && ($request->user()?->can('edit geofences') ?? false)
                 && $telematicsSupported && in_array($this->status->value, ['pending', 'confirmed'], true) && ! $this->started_at,
             'geofenceActivity' => $this->when($hasMonitoringDetails, fn () => $this->telematicsEvents()->whereIn('event_type', ['geofence_enter', 'geofence_exit', 'geofence_initial_inside'])->orderByDesc('occurred_at')->limit(30)->get()->map(fn ($event) => [
                 'id' => (string) $event->id, 'type' => $event->event_type->value, 'zoneName' => $event->metadata['zone_name'] ?? 'Monitoring zone',
@@ -286,6 +301,27 @@ class BookingResource extends JsonResource
                 'completed' => $this->status === BookingStatus::Completed,
             ],
         ];
+
+        if ($this->rental_type === RentalType::OwnersDriver) {
+            $outgoing = $this->vehicleInspections->first(fn ($inspection) => $inspection->type->value === 'outgoing' && $inspection->status->value === 'finalized');
+            $milestones = [
+                ['Driver assigned', $this->events->where('event_type', 'driver_assigned')->sortBy('created_at')->first()?->created_at ?? $this->assignment?->assigned_at],
+                ['Outgoing Inspection completed', $outgoing?->finalized_at],
+                ['Driver on the way', $this->assignment?->on_way_at],
+                ['Driver arrived', $this->assignment?->arrived_at],
+                ['Setup completed', $this->telematicsSetupSession?->ready_at],
+            ];
+            $extra = array_map(fn ($milestone) => [
+                'title' => $milestone[0], 'description' => '',
+                'timestamp' => $milestone[1]?->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A') ?? '',
+                'completed' => $milestone[1] !== null,
+            ], $milestones);
+            $changes = $this->events->where('event_type', 'driver_reassigned')->sortBy('created_at')->map(fn ($event) => [
+                'title' => 'Driver updated', 'description' => '',
+                'timestamp' => $event->created_at->copy()->setTimezone('Asia/Manila')->format('F j, Y - g:i A'), 'completed' => true,
+            ])->values()->all();
+            $items = array_merge(array_slice($items, 0, 2), array_slice($extra, 0, 1), $changes, array_slice($extra, 1), array_slice($items, 2));
+        }
 
         if ($this->status === BookingStatus::Rejected) {
             return [

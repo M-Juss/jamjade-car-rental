@@ -97,9 +97,13 @@ export type BookingRecord = {
     phoneNumber?: string | null;
     createdAt?: string | null;
   } | null;
+  canReassignDriver?: boolean;
+  driverAssignmentRequired?: boolean;
+  driverWorkflow?: { status: string; onWayAt: string | null; arrivedAt: string | null } | null;
   assignedDriver?: {
     id: number;
     name: string;
+    email?: string;
     phoneNumber?: string | null;
   } | null;
   driverAssignedAt?: string | null;
@@ -177,6 +181,7 @@ export type BookingReadiness = {
   ageEligible: boolean;
   documentsApproved: boolean;
   emergencyContactOnFile: boolean;
+  driverArrived?: boolean;
   driverAssigned: boolean;
   driverEligible: boolean;
   vehicleOperational: boolean;
@@ -226,3 +231,8 @@ export type BookingMonitoringZone = {
 };
 
 export type GeofenceCoordinate = { latitude: number; longitude: number };
+
+export type DrivingAnalysisBooking = Pick<BookingRecord, "backendId" | "id" | "bookingCode" | "statusKey" | "adminStatus" | "vehicleId" | "vehicleName" | "vehiclePlateNumber" | "brand" | "model" | "rentalStartAt" | "rentalEndAt" | "durationDays" | "rentalType" | "driverOption" | "geofenceActivity"> & {
+  customer: { id: number; name: string | null };
+  assignedDriver: { id: number; name: string } | null;
+};

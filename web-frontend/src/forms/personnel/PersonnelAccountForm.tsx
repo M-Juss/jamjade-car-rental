@@ -283,6 +283,7 @@ export function PersonnelAccountForm({
                     <InputWithLabel
                       id="personnel-phone-number"
                       label="Phone Number"
+                      required={["staff", "driver"].includes(selectedRole)}
                       icon={<Phone size={13} />}
                       inputFormat="integer"
                       inputMode="numeric"

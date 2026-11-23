@@ -33,14 +33,14 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     $this->admin = User::factory()->create();
-    $this->admin->assignRole('admin');
+    $this->admin->assignRole('owner');
 });
 
 function personnelPayload(User $user, array $overrides = []): array
 {
     return array_replace([
         'first_name' => 'Test', 'last_name' => 'Personnel', 'email' => $user->email,
-        'phone_number' => null, 'role' => $user->hasRole('driver') ? 'driver' : 'staff',
+        'phone_number' => $user->phone_number, 'role' => $user->hasRole('driver') ? 'driver' : 'staff',
         'is_active' => $user->is_active,
     ], $overrides);
 }
@@ -322,7 +322,7 @@ it('keeps deleted personnel email and phone identities reserved', function () {
 it('records personnel creation and updates without sensitive values in audit metadata', function () {
     $this->actingAs($this->admin)->postJson('/admin/personnel/users', [
         'first_name' => 'Test', 'last_name' => 'Personnel', 'email' => 'audit@example.test',
-        'role' => 'staff', 'password' => 'Password@123', 'password_confirmation' => 'Password@123',
+        'phone_number' => '09170000998', 'role' => 'staff', 'password' => 'Password@123', 'password_confirmation' => 'Password@123',
     ])->assertCreated();
     $staff = User::where('email', 'audit@example.test')->sole();
     $this->putJson("/admin/personnel/users/{$staff->id}", personnelPayload($staff, ['is_active' => false, 'password' => 'Changed@123', 'password_confirmation' => 'Changed@123']))->assertOk();
@@ -523,3 +523,13 @@ it('enforces personnel visibility and creation by management role', function () 
     $this->actingAs($this->admin)->putJson("/admin/personnel/users/{$this->admin->id}", personnelPayload($this->admin, ['role' => 'admin']))->assertUnprocessable();
     $this->deleteJson("/admin/personnel/users/{$this->admin->id}")->assertUnprocessable();
 });
+
+it('requires a contact number when Staff or Driver accounts are created or edited', function (string $role) {
+    $person = User::factory()->create();
+    $person->assignRole($role);
+    $payload = personnelPayload($person, ['role' => $role, 'phone_number' => null]);
+    $this->actingAs($this->admin)->putJson('/admin/personnel/users/'.$person->id, $payload)
+        ->assertUnprocessable()->assertJsonValidationErrors('phone_number');
+    $this->postJson('/admin/personnel/users', [...$payload, 'email' => 'new-person@example.test', 'password' => 'Password@123', 'password_confirmation' => 'Password@123'])
+        ->assertUnprocessable()->assertJsonValidationErrors('phone_number');
+})->with(['staff', 'driver']);

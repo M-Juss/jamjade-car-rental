@@ -205,6 +205,7 @@ export function BookingDetailsDialog({ open, onOpenChange, booking, onContinue, 
           <Detail label="Vehicle" value={[currentDetails.brand, currentDetails.vehicleName, currentDetails.model].filter(Boolean).join(" ")} />
           <Detail label="Transmission" value={currentDetails.transmission} /><Detail label="Fuel" value={currentDetails.fuelType} /><Detail label="Seats" value={currentDetails.seats} />
           {currentDetails.driverOption === "owners_driver" ? <Detail label="Assigned Driver" value={currentDetails.assignedDriver?.name ?? "Not assigned"} /> : null}
+          {currentDetails.assignedDriver?.email ? <Detail label="Driver email" value={currentDetails.assignedDriver.email} /> : null}
           {currentDetails.driverOption === "owners_driver" && currentDetails.assignedDriver ? <Detail label="Driver phone" value={currentDetails.assignedDriver.phoneNumber} /> : null}
         </div></Section>
         {currentDetails.adminNotes ? <Section title="Staff notes"><p className="whitespace-pre-wrap text-xs text-foreground">{currentDetails.adminNotes}</p></Section> : null}

@@ -10,7 +10,7 @@ class SaveVehicleOptionRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin') ?? false;
+        return $this->user()?->can('configure vehicles') ?? false;
     }
 
     protected function prepareForValidation(): void

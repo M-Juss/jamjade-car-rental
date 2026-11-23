@@ -24,7 +24,7 @@ beforeEach(function () {
 
 it('keeps a booking with a pending PayPal checkout visible in the admin table', function () {
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
 
     $customer = customerUser();
     $vehicle = availableVehicle();
@@ -68,7 +68,7 @@ it('keeps a booking with a pending PayPal checkout visible in the admin table', 
 
 it('separates current bookings from terminal history for management users', function () {
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
     $staff = User::factory()->create();
     $staff->assignRole(UserRole::Staff->value);
     $customer = customerUser();
@@ -132,7 +132,7 @@ it('separates current bookings from terminal history for management users', func
 
 it('keeps terminal booking history view only for management actions', function () {
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
     $customer = customerUser();
     $vehicle = availableVehicle();
     $booking = Booking::create([
@@ -176,7 +176,7 @@ it('keeps terminal booking history view only for management actions', function (
 
 it('returns finalized inspection progress in the booking list', function () {
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
     $customer = customerUser();
     $vehicle = availableVehicle();
     $booking = Booking::create([
@@ -233,7 +233,7 @@ it('returns finalized inspection progress in the booking list', function () {
 
 it('allows an admin to confirm a pending booking through session auth', function () {
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
 
     $customer = customerUser();
     $vehicle = availableVehicle();
@@ -280,7 +280,7 @@ it('allows an admin to force resend a paid booking confirmation email', function
     Storage::fake('local');
 
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
 
     $customer = customerUser();
     $vehicle = availableVehicle();
@@ -328,7 +328,7 @@ it('allows an admin to force resend a paid booking confirmation email', function
 it('requires a completed customer payment before issuing rental information and a receipt on resend', function () {
     Mail::fake();
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
     $booking = Booking::create([
         'booking_code' => 'BK-NO-PAYMENT',
         'user_id' => customerUser()->id, 'vehicle_id' => availableVehicle()->id,

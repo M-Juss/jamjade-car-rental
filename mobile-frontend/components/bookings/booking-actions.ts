@@ -4,6 +4,7 @@ import {
   CreditCard,
   Navigation,
   RefreshCcw,
+  Star,
   type LucideIcon,
 } from 'lucide-react-native';
 
@@ -17,6 +18,7 @@ export type BookingActionKey =
   | 'pay_balance'
   | 'open_telematics'
   | 'book_again'
+  | 'feedback'
   | 'book_another_vehicle';
 
 export type BookingAction = {
@@ -79,6 +81,7 @@ const actionsByStatus = {
   ],
   Completed: [
     detailAction,
+    { key: 'feedback', label: 'Leave feedback', icon: Star, variant: 'soft' },
     {
       key: 'book_again',
       label: 'Book Again',
@@ -107,10 +110,10 @@ const actionsByStatus = {
   ],
 } satisfies Record<BookingStatus, BookingAction[]>;
 
-export function getBookingActions(status: BookingStatus, options?: { includeDetails?: boolean; isSelfDrive?: boolean }) {
+export function getBookingActions(status: BookingStatus, options?: { includeDetails?: boolean; isSelfDrive?: boolean; canLeaveFeedback?: boolean; hasFeedback?: boolean }) {
   const includeDetails = options?.includeDetails ?? true;
   const isSelfDrive = options?.isSelfDrive ?? false;
-  const actions = actionsByStatus[status].filter(
+  const actions = actionsByStatus[status].filter(action => action.key !== 'feedback' || options?.canLeaveFeedback || options?.hasFeedback).map(action => action.key === 'feedback' && options?.hasFeedback ? { ...action, label: 'View feedback' } : action).filter(
     (action) => isSelfDrive || action.key !== 'open_telematics',
   );
 

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Mobile\AccountController;
 use App\Http\Controllers\Api\Mobile\AddressDirectoryController;
 use App\Http\Controllers\Api\Mobile\AuthController;
 use App\Http\Controllers\Api\Mobile\BookingController;
+use App\Http\Controllers\Api\Mobile\BookingFeedbackController;
 use App\Http\Controllers\Api\Mobile\CustomerReceiptController;
 use App\Http\Controllers\Api\Mobile\DeliveryQuoteController;
 use App\Http\Controllers\Api\Mobile\DocumentController;
@@ -22,9 +23,12 @@ use App\Http\Controllers\Api\Mobile\RentalMotionMonitoringController;
 use App\Http\Controllers\Api\Mobile\TelematicsController;
 use App\Http\Controllers\Api\Mobile\TelematicsSetupController;
 use App\Http\Controllers\Api\Mobile\VehicleController;
+use App\Http\Controllers\Api\PublicFeedbackController;
 use App\Http\Controllers\Web\Admin\RcDemoInferenceController;
 use App\Http\Middleware\RestrictRcResearchToken;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/testimonials', PublicFeedbackController::class)->middleware('throttle:60,1');
 
 Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:account-login')->name('login');
@@ -101,6 +105,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
             Route::get('/{vehicle}', [VehicleController::class, 'show'])->name('show');
         });
         Route::post('/bookings', [BookingController::class, 'store'])->middleware('role:customer')->name('bookings.store');
+        Route::post('/bookings/{booking}/feedback', [BookingFeedbackController::class, 'store'])->whereNumber('booking')->middleware('role:customer')->name('bookings.feedback.store');
         Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->middleware('role:customer')->name('bookings.cancel');
         Route::get('/bookings/{booking}/delivery-estimate', [BookingController::class, 'deliveryEstimate'])->middleware(['role:customer', 'throttle:20,1']);
         Route::get('/bookings/{booking}', [BookingController::class, 'show'])->middleware('role:customer')->name('bookings.show');
@@ -116,6 +121,7 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/bookings/{booking}/telematics-setup/restart', [TelematicsSetupController::class, 'restart'])->name('bookings.telematics-setup.restart');
         Route::post('/bookings/{booking}/telematics-setup/steps/{step}/attempt', [TelematicsSetupController::class, 'attempt'])->name('bookings.telematics-setup.steps.attempt');
         Route::get('/driver/services', [DriverBookingController::class, 'index'])->name('driver.services.index');
+        Route::post('/driver/services/{booking}/workflow', [DriverBookingController::class, 'workflow'])->name('driver.services.workflow');
         Route::get('/driver/services/{booking}', [DriverBookingController::class, 'show'])->name('driver.services.show');
 
         Route::get('/documents', [DocumentController::class, 'index'])->middleware('role:customer')->name('documents.index');

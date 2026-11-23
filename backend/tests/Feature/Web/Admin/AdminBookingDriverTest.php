@@ -19,7 +19,7 @@ beforeEach(function () {
 function bookingAdminUser(): User
 {
     $user = User::factory()->create();
-    $user->assignRole(UserRole::Admin->value);
+    $user->assignRole(UserRole::Owner->value);
 
     return $user;
 }

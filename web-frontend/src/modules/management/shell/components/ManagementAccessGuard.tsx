@@ -20,11 +20,13 @@ export function ManagementAccessGuard({
   const currentModule = managementModuleForPath(pathname, portal);
   const roles = user ? getUserRoleNames(user) : [];
   const permissions = new Set(user?.permissions ?? []);
-  const isAdmin = roles.includes("admin");
+  const isAdmin = roles.includes("owner") || roles.includes("admin");
+  const moduleAllowed = Boolean(currentModule?.permission && permissions.has(currentModule.permission));
+  const profileAllowed = pathname === "/admin/profile" && roles.includes("owner");
   const isAuthorized = status === "ready" && Boolean(
     portal === "admin"
-      ? isAdmin
-      : roles.includes("staff") && !isAdmin && (currentModule?.id === "personnel" || Boolean(currentModule?.permission && permissions.has(currentModule.permission))),
+      ? isAdmin && (moduleAllowed || profileAllowed)
+      : roles.includes("staff") && !isAdmin && moduleAllowed,
   );
 
   useEffect(() => {

@@ -16,7 +16,7 @@ export function getUserRoleNames(user: AuthenticatedUser): UserRole[] {
 export function getDashboardPathForUser(user: AuthenticatedUser) {
   const roles = getUserRoleNames(user);
 
-  if (roles.includes("admin")) return "/admin";
+  if (roles.includes("owner") || roles.includes("admin")) return "/admin";
 
   if (!roles.includes("staff")) return "/login";
 

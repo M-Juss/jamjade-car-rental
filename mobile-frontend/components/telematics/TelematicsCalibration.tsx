@@ -34,7 +34,7 @@ export function TelematicsCalibration({ handover, consent, busy, recording, live
   const pending = preparing || evaluating;
   const definition = type ? CALIBRATION_STEPS[type] : null;
   const result = handover.steps.find((step) => step.type === type);
-  if (showSuccess) return <CalibrationSuccess key={live.step} step={live.step}
+  if (showSuccess) return <CalibrationSuccess driverRelease={Boolean(handover.driverWorkflow)} key={live.step} step={live.step}
     nextStep={isCalibrationStep(handover.calibration.nextStep) ? handover.calibration.nextStep : null}
     ready={!busy} onComplete={onDismissSuccess} />;
 

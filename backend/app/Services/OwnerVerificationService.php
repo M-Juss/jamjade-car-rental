@@ -112,6 +112,9 @@ class OwnerVerificationService
             }
             $value = $write($model);
             $verification->update(['consumed_at' => now()]);
+            activity()->causedBy($actor)->event('owner_verified_change')
+                ->withProperties(['owner_id' => $owner->id, 'verification_id' => $verification->id, 'action' => $action, 'target' => $target])
+                ->log('Owner-verified change applied.');
 
             return ['value' => $value];
         });

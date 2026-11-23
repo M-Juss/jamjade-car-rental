@@ -15,10 +15,10 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     Mail::fake();
     $this->owner = User::factory()->create(['is_active' => true]);
-    $this->owner->assignRole('owner', 'admin');
-    $this->adminActor = User::factory()->create(['is_active' => true]);
-    $this->adminActor->assignRole('admin');
-    $this->actingAs($this->adminActor, 'web');
+    $this->owner->assignRole('owner');
+    $this->staffActor = User::factory()->create(['is_active' => true]);
+    $this->staffActor->assignRole('staff');
+    $this->actingAs($this->staffActor, 'web');
     $this->values = ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 40];
     $this->url = '/admin/delivery-pricing';
 });
@@ -75,10 +75,11 @@ it('expires codes and rotates them only after the resend delay', function () {
 it('does not allow another actor or a removed owner to use a code', function () {
     [$id, $code] = issueOwnerCode($this);
     $admin = User::factory()->create(['is_active' => true]);
-    $admin->assignRole('admin');
+    $admin->assignRole('staff');
     $headers = ['X-Owner-Verification-Id' => $id, 'X-Owner-Code' => $code];
     $this->actingAs($admin, 'web')->withHeaders($headers)->putJson($this->url, $this->values)->assertUnprocessable();
     $this->owner->removeRole('owner');
+    $this->owner->assignRole('staff');
     $this->actingAs($this->owner, 'web')->withHeaders($headers)->putJson($this->url, $this->values)->assertStatus(503);
 });
 

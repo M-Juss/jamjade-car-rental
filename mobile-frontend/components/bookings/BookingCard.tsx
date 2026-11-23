@@ -1,3 +1,4 @@
+import { DriverWorkflowForm } from '@/forms/booking/DriverWorkflowForm';
 import { themeColors } from '@/constants/theme';
 import { CalendarDays, Clock3, MapPin, CreditCard, Navigation } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
@@ -35,21 +36,25 @@ export function BookingCard({
   onAction,
   onViewDetails,
   audience = 'customer',
+  onBookingUpdated,
 }: {
   booking: Booking;
   onViewDetails: (booking: Booking) => void;
   onAction: (action: BookingAction, booking: Booking) => void;
   audience?: 'customer' | 'driver';
+  onBookingUpdated?: (booking: Booking) => void;
 }) {
   const vehicleTitle = [booking.brand, booking.vehicleName, booking.model].filter(Boolean).join(' ');
   const isDriver = audience === 'driver';
   const driverBalance = booking.additionalCharges.reduce((total, charge) => total + charge.outstandingAmount, 0);
   const actions: BookingAction[] = isDriver ? [
     { key: 'view_details', label: 'View details', icon: CalendarDays, variant: 'secondary' },
-    ...(['Confirmed', 'Active', 'Ongoing'].includes(booking.status) ? [{ key: 'open_telematics' as const, label: 'Telematics', icon: Navigation, variant: 'primary' as const }] : []),
+    ...(['Active', 'Ongoing'].includes(booking.status) ? [{ key: 'open_telematics' as const, label: 'Telematics', icon: Navigation, variant: 'primary' as const }] : []),
     ...(driverBalance > 0 ? [{ key: 'pay_balance' as const, label: 'Pay charges', icon: CreditCard, variant: 'secondary' as const }] : []),
   ] : getBookingActions(booking.status, {
     isSelfDrive: booking.driverType === 'Self-Drive',
+    canLeaveFeedback: booking.canLeaveFeedback,
+    hasFeedback: Boolean(booking.feedback),
   }).filter(
     (action) => action.key !== 'payment_info' && action.key !== 'book_another_vehicle'
       && (action.key !== 'pay_balance' || booking.remainingBalance > 0),
@@ -105,6 +110,7 @@ export function BookingCard({
         </View>
         <PaymentStatusBadge status={booking.paymentStatus} />
       </View> : driverBalance > 0 ? <Text className="font-sans mt-3 text-caption font-medium text-foreground">Driver charges: {formatPeso(driverBalance)}</Text> : null}
+      {isDriver && booking.status === 'Confirmed' && booking.driverWorkflow && onBookingUpdated ? <View className="mt-3"><DriverWorkflowForm bookingId={booking.backendId} bookingCode={booking.id} workflow={booking.driverWorkflow} pickupType={booking.pickupType} onUpdated={onBookingUpdated} /></View> : null}
       <View className="mt-3 flex-row flex-wrap items-stretch gap-2">
         {actions.map((action) => {
           const label = action.key === 'view_details' ? 'View details'
@@ -113,7 +119,7 @@ export function BookingCard({
           return <ActionButton
             key={action.key}
             accessibilityLabel={`${label} for ${booking.id}`}
-            className={isDriver && actions.length > 2 ? 'min-w-[45%] flex-1' : 'min-w-0 flex-1'}
+            className={actions.length > 2 ? 'min-w-[45%] flex-1' : 'min-w-0 flex-1'}
             density="compact"
             icon={action.icon}
             label={label}

@@ -15,6 +15,7 @@ experimental settings, and dated verification; none is evidence of another.
 | BerryPanel deployment, main branch, Hostinger DNS and hosted-demo setup | [BerryPanel deployment](deployment-berrypanel.md) |
 | Roles and authorization | [User roles and access](user-roles-and-access.md) |
 | Booking, inspection, handover, return, payment and completion | [Booking rental lifecycle](booking-rental-lifecycle.md) |
+| Completed-rental feedback, lifetime ratings and curated landing reviews | [Customer feedback](customer-feedback.md) |
 
 `mobile-frontend` supports Android only. iOS and mobile-browser targets are
 retired; the separate Next.js website remains supported.

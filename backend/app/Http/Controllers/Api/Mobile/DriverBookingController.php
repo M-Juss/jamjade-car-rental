@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Booking\DriverWorkflowRequest;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
+use App\Services\DriverPickupService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +14,13 @@ use Illuminate\Http\Request;
 class DriverBookingController extends Controller
 {
     use ApiResponseTrait;
+
+    public function workflow(DriverWorkflowRequest $request, Booking $booking, DriverPickupService $service): JsonResponse
+    {
+        $service->act($booking, $request->user(), $request->validated('action'));
+
+        return $this->show($request, (string) $booking->id);
+    }
 
     public function index(Request $request): JsonResponse
     {

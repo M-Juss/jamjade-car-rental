@@ -24,7 +24,7 @@
             @elseif ($confirmation['currentDeliveryTerms'])
                 <li>Garage pickup and return are free. Delivery and any staff-approved toll are charged at the accepted quote amount.</li>
             @else
-                <li>Pickup and delivery of the unit to the renter will be charged PHP 900.00.</li>
+                <li>Pickup and delivery of the unit to the customer will be charged PHP 900.00.</li>
             @endif
             <li>A rental extension is allowed only after surrendering the unit first and paying the remaining balance.</li>
             <li>The rented vehicle must be clean when returned to the company.</li>
@@ -45,9 +45,9 @@
     </div>
 
     <div class="terms-section">
-        <h2 class="terms-section-title">Terms and Conditions for Self-Drive Renters</h2>
+        <h2 class="terms-section-title">Terms and Conditions for Self-Drive Customers</h2>
         <ol class="terms-list">
-            <li>For self-drive renters, all damages will be charged to the renter.</li>
+            <li>For self-drive customers, all damages will be charged to the customer.</li>
             @unless ($currentAgreement)
             <li>A refundable participation fee of PHP 10,000.00 must be paid in advance for any damages incurred in an accident.</li>
             @endunless
@@ -55,9 +55,9 @@
             <li>Physical verification of documentation is required once the vehicle has been delivered.</li>
             <li>Clutch damage will be charged PHP 9,000.00.</li>
             @if ($currentAgreement)
-            <li>Before operating the vehicle, the renter must complete Jamjade’s staff-controlled telematics handover. Any future mobile monitoring requires clear consent and an authorized trip start.</li>
+            <li>Before operating the vehicle, the customer must complete Jamjade’s staff-controlled telematics handover. Any future mobile monitoring requires clear consent and an authorized trip start.</li>
             @else
-            <li>Before operating the vehicle, the renter must calibrate the telematics in the mobile application. Telematics must be active while the vehicle is in motion and may be paused when the renter is outside the vehicle.</li>
+            <li>Before operating the vehicle, the customer must calibrate the telematics in the mobile application. Telematics must be active while the vehicle is in motion and may be paused when the customer is outside the vehicle.</li>
             @endif
         </ol>
     </div>
@@ -72,7 +72,7 @@
                     <li>Outside Metro Manila: PHP 1,000.00 per day.</li>
                 </ul>
             </li>
-            <li>The renter is responsible for the driver's accommodations.</li>
+            <li>The customer is responsible for the driver's accommodations.</li>
             @if (($confirmation['agreementVersion'] ?? '') === \App\Support\BookingAgreement::VERSION)
             <li>The assigned Driver may share the vehicle’s latest location with you and JamJade during the rental after agreeing to location sharing. Sharing starts after staff releases the vehicle and stops when the Driver stops sharing or staff receives the vehicle.</li>
             @endif

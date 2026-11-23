@@ -31,9 +31,7 @@ class PersonnelController extends Controller
             'users' => PersonnelResource::collection($users->getCollection()),
             'roles' => $request->user()->hasRole('owner')
                 ? [['name' => 'staff', 'label' => 'Staff'], ['name' => 'driver', 'label' => 'Driver'], ['name' => 'admin', 'label' => 'Admin']]
-                : ($request->user()->hasRole('admin')
-                    ? [['name' => 'staff', 'label' => 'Staff'], ['name' => 'driver', 'label' => 'Driver']]
-                    : [['name' => 'driver', 'label' => 'Driver']]),
+                : [['name' => 'driver', 'label' => 'Driver']],
             'pagination' => [
                 'currentPage' => $users->currentPage(),
                 'lastPage' => $users->lastPage(),

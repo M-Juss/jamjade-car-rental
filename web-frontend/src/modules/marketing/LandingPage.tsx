@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import CarShowcase from "@/modules/marketing/CarShowcase";
 import BookingSteps from "@/modules/marketing/BookingSteps";
+import TestimonialsCarousel from "@/modules/marketing/TestimonialsCarousel";
 import DrivingInsights from "@/modules/marketing/DrivingInsights";
 import SiteHeader from "@/modules/marketing/SiteHeader";
 import RentNowButton from "@/modules/marketing/RentNowButton";
@@ -99,6 +100,15 @@ export default function Home() {
               </p>
             </div>
             <BookingSteps />
+          </section>
+
+          {/* ── Customer Feedback ── */}
+          <section id="testimonials" aria-labelledby="testimonials-heading" className={`scroll-mt-20 bg-background ${sectionPadding}`}>
+            <div className={sectionHeader}>
+              <h2 id="testimonials-heading" className={sectionHeading}>What Our Customers Say</h2>
+              <p className={sectionSubtext}>Feedback from customers who have completed a rental with JamJade.</p>
+            </div>
+            <TestimonialsCarousel />
           </section>
 
           {/* ── Visit Us ── */}

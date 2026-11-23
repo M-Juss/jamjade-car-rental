@@ -125,7 +125,7 @@ class DocumentVerificationService
 
     public function review(CustomerDocument $document, User $reviewer, DocumentStatus $status, ?string $reason = null): CustomerDocument
     {
-        if ($document->status === $status || ($document->status !== DocumentStatus::Pending && ! $reviewer->hasRole('admin'))) {
+        if ($document->status === $status || ($document->status !== DocumentStatus::Pending && ! $reviewer->hasRole('owner'))) {
             throw ValidationException::withMessages([
                 'status' => ['Only pending documents can be reviewed.'],
             ]);

@@ -18,7 +18,7 @@ application has its own dependencies and commands.
 
 ```mermaid
 flowchart TD
-    W[Next.js website: Admin and Staff] -->|HTTP services; session cookies and CSRF| B[Laravel API and domain services]
+    W[Next.js website: Owner, Admin and Staff] -->|HTTP services; session cookies and CSRF| B[Laravel API and domain services]
     M[Android Expo / React Native app: Customer and Driver flows] -->|HTTP services; Sanctum bearer token| B
     R[Android Kotlin RC recorder] -->|Local Expo module interface| M
     B --> D[Relational database through Eloquent]
@@ -36,7 +36,7 @@ recording contract; the preview adds no real-vehicle backend/native profile.
 See the [vehicle-first UI boundary](telematics-master-plan.md#android-admin-vehicle-first-collection-ui--2026-11-15).
 
 Rental setup is a separate server-owned flow: six device checks followed by
-stationary and forward reference captures, then Staff release. The captures
+stationary and forward reference captures, then explicit authorized release. Owner/Staff can release both rental types; the current assigned Driver can also release an arrived, eligible With Assigned Driver rental. The captures
 use the same native Android sensor source as RC collection and submit bounded
 summaries to Laravel. See the
 [native calibration contract](telematics-master-plan.md#native-pre-release-calibration).
@@ -121,6 +121,16 @@ or web sign-in. The mobile auth service owns these requests, and successful rese
 revokes mobile sessions. See the [account guide](user-roles-and-access.md#mobile-registration-email-verification).
 
 ## Technologies currently used
+
+Completed-rental feedback uses Laravel's `booking_feedback` table and
+`BookingFeedbackService`, Form Requests, policies and API Resources. Customer
+mobile submissions use the existing bearer-token API; management lifetime review
+and curation use the stateful web session. The public paginated testimonial API
+exposes only Admin/Owner-starred written reviews with first-name/last-initial
+display names; customer publication permission is not required. Next.js reuses
+the Reports table/dialog and former marketing carousel; Expo reuses its booking
+sheet and shared form controls. No dependencies or native configuration were
+added. See [Customer feedback](customer-feedback.md) for contracts and verification.
 
 Hosted-demo preparation — 2026-11-12: BerryPanel is the selected deployment
 target, with `main` as source and `jamjadecarrental.tech` managed in Hostinger DNS.
@@ -214,3 +224,14 @@ operational failures into a paginated, read-only Success/Failed view with actor,
 module, action and search filters. Technical/address-directory issues, telematics and research are excluded. See [Activity Log](user-roles-and-access.md#activity-log).
 
 Personnel photo updates use Laravel-authorized web endpoints and public storage. The Owner web profile uses Laravel session authentication, a database-backed emailed verification challenge for email changes, and the shared password rules. See `user-roles-and-access.md` for permissions and current verification limits.
+
+
+### Driver assignment and pickup workflow — 2026-11-21
+
+Laravel owns automatic assignment at booking confirmation, assignment locking at finalized Outgoing Inspection, reported pickup progress and Driver-authorized rental release. `DriverPickupService` publishes action eligibility through Booking/Handover Resources and handles the current Driver's token-authenticated workflow mutations under booking locks. It reuses `BookingService` and `RentalReadinessService` for release, leaving device evidence and monitoring in their existing domains. `booking_assignments.on_way_at/arrived_at` are reported pickup timestamps, not sensor evidence or location history.
+
+`booking_driver_updates` is an encrypted operational email outbox separate from immutable payment documents. Existing Laravel mail/cache/database facilities and the scheduler provide after-commit dispatch, retry and stale-update suppression; no dependency or native configuration is added. Mobile form/schema/API modules own pickup and release actions; Next.js reuses Prepare Rental and personnel forms. Customer Driver details cross the Resource/DTO/mapping boundary explicitly. Staff/Driver phone validation is required at the Laravel and web form boundaries. See the [lifecycle](booking-rental-lifecycle.md#assigned-driver-pickup-and-release--2026-11-21), [notifications](mobile-notifications.md#driver-assignment-and-pickup-updates--2026-11-21), and [PDF contract](booking-financial-documents.md#driver-contacts-and-two-page-rental-information--2026-11-21).
+
+## Management access separation — 2026-11-23
+
+Owner handles business operations, technical Admin handles research/monitoring, and Staff handles daily rental work with Owner email verification for permitted sensitive writes. Existing `/admin` and `/staff` routes compose shared modules; Owner does not require Admin membership. Laravel fixed permission ceilings, the reversible permission snapshot migration, Form Requests and restricted Resources enforce access independently of the sidebar. Staff report sections omit financial analytics; technical Driving Analysis uses a separate nonfinancial booking projection. No new package, identity table, native permission, approval queue or external provider was added. See [roles, sources and verification](user-roles-and-access.md#owner-technical-admin-and-staff-separation--2026-11-23).

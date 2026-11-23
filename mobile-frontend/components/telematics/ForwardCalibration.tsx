@@ -48,7 +48,7 @@ export function ForwardCalibration({ live, limits, mountLimits, movementLimits, 
   const progress = passed ? 1 : feedback.progress;
   const label = passed ? 'Forward direction set' : phase === 'evaluating' ? 'Checking movement' : phase === 'preparing' ? 'Preparing sensors'
     : phase === 'recording' ? (retrying && !warning ? 'Stop safely before trying again' : guidance[guidanceState][0]) : failed ? 'Repeat this step' : 'Ready when you are';
-  const hint = passed ? 'Calibration complete. Wait for staff release.' : phase === 'evaluating' ? 'Stop safely while the result is checked.'
+  const hint = passed ? 'Calibration complete. Return to setup for rental release.' : phase === 'evaluating' ? 'Stop safely while the result is checked.'
     : phase === 'preparing' ? 'Stay parked until ready.' : phase === 'recording'
       ? (retrying && !warning ? 'Wait for the forward cue before moving again.' : guidance[guidanceState][1])
       : 'Start while parked, with staff supervising and the phone mounted.';

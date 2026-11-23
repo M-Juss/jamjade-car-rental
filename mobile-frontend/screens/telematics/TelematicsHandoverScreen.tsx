@@ -1,3 +1,4 @@
+import { DriverWorkflowForm } from '@/forms/booking/DriverWorkflowForm';
 import { RentalMotionMonitoring } from '@/components/telematics/RentalMotionMonitoring';
 import { useFocusEffect } from '@react-navigation/native';
 import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
@@ -170,7 +171,7 @@ export function TelematicsHandoverScreen() {
   const confirmRestartSetup = () => {
     Alert.alert(
       'Restart setup?',
-      'Repeat all six device checks and both calibration steps before staff can start the rental.',
+      'Repeat all six device checks and both calibration steps before the rental can start.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Restart setup', onPress: () => {
@@ -240,6 +241,7 @@ export function TelematicsHandoverScreen() {
           <TelematicsSetupCards handover={handover} disabled={busy || loading || Boolean(loadError)} onOpen={openView}
             repeatLabel={handover.setup?.canRestart ? 'Restart setup' : undefined}
             onRepeatSetup={handover.setup?.canRestart && handover.steps.some(step => isDeviceSetupStep(step.type) && step.attemptCount > 0) ? confirmRestartSetup : overview?.device.canOpen ? repeatSetup : undefined} />
+          {isDriver && handover.setup?.status === 'ready_for_release' && handover.driverWorkflow && handover.driverServiceId ? <DriverWorkflowForm bookingId={handover.driverServiceId} bookingCode={handover.bookingCode} workflow={handover.driverWorkflow} pickupType={handover.driverPickupType === 'delivery' ? 'Delivery' : 'Shop Pickup'} onUpdated={async () => { setRequestedView('overview'); await refresh(); }} /> : null}
           {monitoring.prepared ? <Text className="font-sans text-caption text-primary">Keep Telematics open until monitoring starts after release.</Text> : null}
           {view === 'overview' ? feedbackView : null}
         </> : null}

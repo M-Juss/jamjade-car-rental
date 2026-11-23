@@ -1,4 +1,4 @@
-<div class="page">
+<div class="page rental-information-page">
     @include('pdf.bookings.partials.header', ['documentTitle' => 'Rental Information'])
     @include('pdf.bookings.partials.booking-summary')
     @include('pdf.bookings.partials.customer-info')

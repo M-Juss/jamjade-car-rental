@@ -64,7 +64,7 @@ function policyPayment(Booking $booking, float $amount = 3500): Payment
 function policyAdmin(): User
 {
     $user = User::factory()->create();
-    $user->assignRole('admin');
+    $user->assignRole('owner');
 
     return $user;
 }

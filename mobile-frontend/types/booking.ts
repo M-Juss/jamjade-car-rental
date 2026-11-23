@@ -29,7 +29,25 @@ export type BookingTimelineItem = {
   completed: boolean;
 };
 
+export type DriverWorkflow = {
+  status: 'assigned' | 'on_way' | 'arrived';
+  onWayAt: string | null;
+  arrivedAt: string | null;
+  canReportOnWay: boolean;
+  canReportArrival: boolean;
+  canBeginSetup: boolean;
+  canStartRental: boolean;
+  setupComplete?: boolean;
+  releaseBlocker?: string | null;
+};
+
+export type BookingFeedback = { id: number; rating: number; comment: string | null; createdAt: string };
+
 export type Booking = {
+  feedback?: BookingFeedback | null;
+  canLeaveFeedback?: boolean;
+  assignedDriver?: { id: number; name: string; email: string; phoneNumber: string | null } | null;
+  driverWorkflow?: DriverWorkflow | null;
   sharedVehicleLocation?: { latitude: number; longitude: number; accuracy: number; sharedAt: string } | null;
   cancellation?: { kind: 'customer' | 'customer_unpaid' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
   lateReturn?: import('@/types/browse').LateReturnDetails;

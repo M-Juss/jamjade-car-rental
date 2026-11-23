@@ -13,7 +13,7 @@ import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/tab
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getDrivingAnalysisBookings, getDrivingOperators, type BookingRecord, type DrivingOperator, type DrivingAnalysisSummary, type RecordedOperator, type DrivingVehicleOption } from "@/services/booking";
+import { getDrivingAnalysisBookings, getDrivingOperators, type DrivingAnalysisBooking, type DrivingOperator, type DrivingAnalysisSummary, type RecordedOperator, type DrivingVehicleOption } from "@/services/booking";
 import { OperatorBookingsDialog } from "./OperatorBookingsDialog";
 import { formatDrivingGrade } from "./DrivingGradeDetails";
 import type { RentalDrivingGrade } from "@/services/fleet/fleet.service";
@@ -25,6 +25,8 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
   const view = params.get("view") === "operators" ? "operators" : "rentals";
   const operatorId = view === "rentals" ? params.get("operator") : null;
   const vehicleId = view === "rentals" ? params.get("vehicle") : null;
+  const typeParam = params.get("operator_type");
+  const operatorType = view === "operators" && (typeParam === "customer" || typeParam === "driver") ? typeParam : null;
   const operatorTrigger = useRef<HTMLButtonElement | null>(null);
   const [selectedOperator, setSelectedOperator] = useState<DrivingOperator | null>(null);
   const [vehicleOptions, setVehicleOptions] = useState<DrivingVehicleOption[]>([]);
@@ -33,7 +35,7 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
   const [reload, setReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [bookings, setBookings] = useState<DrivingAnalysisBooking[]>([]);
   const [operators, setOperators] = useState<DrivingOperator[]>([]);
   const [grades, setGrades] = useState<Record<string, RentalDrivingGrade>>({});
   const [recordedOperators, setRecordedOperators] = useState<Record<string, RecordedOperator>>({});
@@ -50,7 +52,7 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
         try {
           const filters = { page, search, operatorId, vehicleId };
           if (view === "operators") {
-            const result = await getDrivingOperators(filters);
+            const result = await getDrivingOperators({ ...filters, operatorType });
             if (current) {
               setOperators(result.operators);
               setSummary(result.summary);
@@ -75,7 +77,7 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
       void load();
     }, 250);
     return () => { current = false; clearTimeout(timer); };
-  }, [view, operatorId, vehicleId, page, search, reload]);
+  }, [view, operatorId, vehicleId, operatorType, page, search, reload]);
 
   const ready = !loading && !error && summary;
   const kpis = [
@@ -103,7 +105,14 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
     query.set("booking", String(id));
     router.push(`${base}?${query}`);
   };
-  const colSpan = view === "operators" ? 6 : 5;
+  const changeOperatorType = (value: string) => {
+    setPage(1);
+    setLoading(true);
+    const query = new URLSearchParams(params.toString());
+    if (value === "all") query.delete("operator_type"); else query.set("operator_type", value);
+    router.replace(`${base}?${query}`);
+  };
+  const colSpan = view === "operators" ? 7 : 5;
   const total = view === "operators" ? operators.length : bookings.length;
 
   return <div className="space-y-5">
@@ -119,23 +128,25 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <SearchInput value={search} maxLength={160} onValueChange={value => { setSearch(value); setPage(1); setLoading(true); }} placeholder={view === "operators" ? "Search operators" : "Search completed rentals"} wrapperClassName="min-w-0 w-full flex-1" />
               {view === "rentals" ? <FilterSelect value={vehicleId ?? "all"} onValueChange={changeVehicle} options={[{ value: "all", label: "All vehicles" }, ...vehicleOptions]} ariaLabel="Filter driving analysis by vehicle" className="w-full sm:w-64 sm:shrink-0" /> : null}
+              {view === "operators" ? <FilterSelect value={operatorType ?? "all"} onValueChange={changeOperatorType} options={[{ value: "all", label: "All operators" }, { value: "customer", label: "Customers" }, { value: "driver", label: "Drivers" }]} ariaLabel="Filter operators by type" className="w-full sm:w-64 sm:shrink-0" /> : null}
             </div>
             {view === "rentals" && operatorId ? <Button variant="outline" size="sm" aria-label="Clear operator filter" onClick={() => { reset(); router.replace(listUrl("rentals")); }}>{operatorFilter?.name ?? "Selected operator"}<X className="size-3.5" aria-hidden="true" /></Button> : null}
           </CardContent>
           <ManagementTable>
-            <TableHeader><TableRow>{view === "operators" ? <><TableHead>Operator</TableHead><TableHead>Monitored rentals</TableHead><TableHead>Average grade</TableHead><TableHead>Latest grade</TableHead><TableHead>Harsh events</TableHead></> : <><TableHead>Booking</TableHead><TableHead>Vehicle</TableHead><TableHead>Operator</TableHead><TableHead>Grade</TableHead></>}<TableHead className="w-16 px-4"><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow>{view === "operators" ? <><TableHead>Operator</TableHead><TableHead>Operator type</TableHead><TableHead>Monitored rentals</TableHead><TableHead>Average grade</TableHead><TableHead>Latest grade</TableHead><TableHead>Harsh events</TableHead></> : <><TableHead>Booking</TableHead><TableHead>Vehicle</TableHead><TableHead>Operator</TableHead><TableHead>Grade</TableHead></>}<TableHead className="w-16 px-4"><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
             <TableBody>{loading ? <TableRow><ManagementTableCell colSpan={colSpan} className="py-10 text-center text-sm text-muted-foreground">Loading {view}…</ManagementTableCell></TableRow>
               : error ? <TableRow><ManagementTableCell colSpan={colSpan} className="py-8 text-center"><p role="alert" className="text-sm text-destructive">Driving Analysis could not be loaded.</p><Button variant="outline" size="sm" className="mt-3" onClick={() => setReload(value => value + 1)}>Retry</Button></ManagementTableCell></TableRow>
-                : view === "operators" ? operators.map(operator => <TableRow key={operator.id}>
+                : view === "operators" ? operators.map(operator => <TableRow key={`${operator.id}:${operator.operator_type}`}>
                   <ManagementTableCell data-label="Operator" className="font-medium">{operator.name ?? "Not recorded"}</ManagementTableCell>
+                  <ManagementTableCell data-label="Operator type">{operator.operator_type === "customer" ? "Customer" : "Driver"}</ManagementTableCell>
                   <ManagementTableCell data-label="Monitored rentals" className="tabular-nums">{operator.monitored_rentals} of {operator.completed_rentals}</ManagementTableCell>
                   <ManagementTableCell data-label="Average grade" className="tabular-nums">{operator.average_score === null ? "Not graded" : `${operator.average_score.toFixed(1)} / 100`}</ManagementTableCell>
                   <ManagementTableCell data-label="Latest grade" className="tabular-nums">{operator.latest_score === null ? "Not graded" : `${operator.latest_score} / 100`}</ManagementTableCell>
                   <ManagementTableCell data-label="Harsh events" className="tabular-nums">{operator.harsh_events}</ManagementTableCell>
                   <ManagementTableCell data-label="Actions" className="px-4 py-3 md:w-16"><Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`View rentals for ${operator.name ?? "operator"}`} onClick={event => { operatorTrigger.current = event.currentTarget; setSelectedOperator(operator); }}><Eye aria-hidden="true" /></Button></ManagementTableCell>
                 </TableRow>) : bookings.map(booking => <TableRow key={booking.backendId}>
-                  <ManagementTableCell data-label="Booking"><Link href={`/${portal}/history?booking=${booking.backendId}`} className="font-semibold text-primary hover:underline">{booking.bookingCode}</Link></ManagementTableCell>
-                  <ManagementTableCell data-label="Vehicle"><Link href={`/${portal}/vehicle/${encodeURIComponent(booking.vehicleId)}`} className="font-medium text-primary hover:underline">{[booking.brand, booking.vehicleName, booking.vehiclePlateNumber].filter(Boolean).join(" ")}</Link></ManagementTableCell>
+                  <ManagementTableCell data-label="Booking"><Link href={`/${portal}/driving-analysis?booking=${booking.backendId}`} className="font-semibold text-primary hover:underline">{booking.bookingCode}</Link></ManagementTableCell>
+                  <ManagementTableCell data-label="Vehicle"><span className="font-medium">{[booking.brand, booking.vehicleName, booking.vehiclePlateNumber].filter(Boolean).join(" ")}</span></ManagementTableCell>
                   <ManagementTableCell data-label="Operator">{recordedOperators[booking.backendId]?.name ?? (booking.driverOption === "self_drive" ? booking.customer?.name : booking.assignedDriver?.name) ?? "Not recorded"}</ManagementTableCell>
                   <ManagementTableCell data-label="Grade" className={grades[booking.backendId]?.score != null ? "font-medium tabular-nums" : "text-muted-foreground"}>{formatDrivingGrade(grades[booking.backendId])}</ManagementTableCell>
                   <ManagementTableCell data-label="Actions" className="px-4 py-3 md:w-16"><Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`View analysis for ${booking.bookingCode}`} onClick={() => openAnalysis(booking.backendId)}><Eye aria-hidden="true" /></Button></ManagementTableCell>
@@ -147,6 +158,6 @@ export function DrivingAnalysisOverview({ portal }: { portal: string }) {
         </TableCard>
       </TabsContent>
     </Tabs>
-    {selectedOperator ? <OperatorBookingsDialog key={selectedOperator.id} operator={selectedOperator} portal={portal} onClose={() => setSelectedOperator(null)} onReturnFocus={() => operatorTrigger.current?.focus()} /> : null}
+    {selectedOperator ? <OperatorBookingsDialog key={`${selectedOperator.id}:${selectedOperator.operator_type}`} operator={selectedOperator} portal={portal} onClose={() => setSelectedOperator(null)} onReturnFocus={() => operatorTrigger.current?.focus()} /> : null}
   </div>;
 }

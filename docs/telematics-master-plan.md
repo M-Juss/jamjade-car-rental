@@ -2343,6 +2343,9 @@ flag, not proof of correct axes, sound labels, independent splits, or model accu
 
 ## Existing rental and handover boundaries
 
+Driver pickup/release authority update — 2026-11-21: finalized garage Outgoing locks the assignment and enables reported departure/arrival. With Assigned Driver device/setup and calibration attempts now require the current Driver's saved arrival. Staff/Admin retains handover and release actions; the current assigned Driver can also explicitly Start rental after arrival and every existing readiness check. Self Drive remains Staff/Admin-released. This changes release authorization, not sampling, calibration tolerances, consent, controlled-area staff supervision, frozen zones, one-trip behavior or post-release collection. Pickup status is not GPS or a telematics trip. See [the owning lifecycle contract](booking-rental-lifecycle.md#assigned-driver-pickup-and-release--2026-11-21).
+
+
 Driver UI alignment — 2026-11-11: Driver Services and its dedicated detail route
 link to the existing `driver-telematics/[bookingId]` route, which already uses
 the same `TelematicsHandoverScreen`, setup checks, calibration, Full details,
@@ -2377,11 +2380,10 @@ Keep these implemented business rules while extending research:
   Existing finalized inspections can continue without replacement.
 - Setup mutations normally require a confirmed booking, server time inside
   `[rental_start_at, rental_end_at)`, the applicable operator, and in-progress
-  handover; Self Drive also requires verified Customer documents. Reassignment
-  requires fresh readiness for the new Driver.
+  handover; Self Drive also requires verified Customer documents. Reassignment is allowed only before finalized Outgoing Inspection; the new Driver needs their own readiness.
 - Standard release requires payment, inspection/signature, vehicle/operator, and
-  all eight effective setup/calibration requirements. Staff's authorized
-  **Start Rental** is the only `ready_for_release -> released` action.
+  all eight effective setup/calibration requirements. The authorized
+  **Start Rental** is the only `ready_for_release -> released` action, authorized to Staff/Admin or the current arrived assigned Driver for With Assigned Driver.
 - A booking has at most one post-release trip. Pause/resume stays in that trip.
 - Active default zones are copied into `booking_geofences` at release; all booking
   geometry and alert settings are then frozen. Zone configuration and containment
@@ -2457,7 +2459,7 @@ The user approved replacing the five rental calibration exercises with stationar
 and forward reference captures. `TelematicsSetupService::requiredSteps()` now
 requires six existing device checks plus these two captures. The existing
 Customer/assigned-Driver ownership, consent/supervision, server-time, documents,
-payment/inspection/signature checks and Staff-only Start Rental remain in force.
+payment/inspection/signature checks and the authorized Start Rental transition remain in force; current assigned-Driver release is described in the updated handover boundary.
 Completing forward calibration can make the setup ready for staff release;
 it does not release the rental, create a trip or start GPS/motion collection.
 
@@ -2681,7 +2683,7 @@ is used. `sensor_platform=rc` is stored separately from the booked vehicle; clas
 results do not establish real-car accuracy. The shared operator boundary also
 supports the current assigned Driver for With Assigned Driver rentals.
 
-- Staff Start Rental remains the only release action. Native setup captures never
+- The authorized Start Rental transition remains the only release action (Staff/Admin, or the current arrived assigned Driver for With Assigned Driver). Native setup captures never
   create trips or start motion monitoring. In Device Setup, the operator can
   opt into Drive Monitoring alongside automatic GPS. The one-use preparation is
   bound to the booking, operator and setup context and stays in memory while
@@ -5207,8 +5209,9 @@ page. Labels and Driving Analysis vehicle links show brand, name and plate,
 without the model/year. Other vehicle modules retain their existing labels.
 `ListDrivingAnalysisRequest` and the matching Zod query schema accept nullable
 existing vehicle_id. Both backend overview scopes apply vehicle filtering before
-pagination and KPI aggregation. The Operators UI deliberately has a full-width
-search and no vehicle filter or hidden rental vehicle restriction.
+pagination and KPI aggregation. The Operators UI has no vehicle filter or hidden
+rental vehicle restriction. Its operator-type filter is described in the Nov 21
+update below.
 
 `OperatorBookingsDialog.tsx` uses the shared wide form-dialog shell and
 management table. It fetches paginated completed bookings from the existing
@@ -5237,6 +5240,45 @@ Final web lint, TypeScript and production build passed after the dialog's
 responsive action-cell widths and focus-return handling were completed.
 Action cells keep their compact desktop width without constraining stacked
 mobile labels; closing the operator dialog returns focus to its eye trigger.
+
+#### Driving Analysis operator types — 2026-11-21
+
+The Operators table now places **Operator type** immediately before Monitored
+rentals, showing Customer or Driver. A shared `FilterSelect` beside Search offers
+All operators, Customers and Drivers, and stacks below search on small screens.
+Changing type resets pagination; loading, error and empty rows span all seven
+columns, and the type cell uses the existing labeled mobile-table layout. This
+reuses the Rentals vehicle-filter and shared management-table patterns rather
+than introducing a separate control or table style.
+
+`ListDrivingAnalysisRequest` and `drivingAnalysisQuerySchema` accept the same
+optional nullable `operator_type: customer | driver`. The booking service maps
+`operatorType` to that query key. Laravel filters before pagination and KPI
+aggregation. Type reflects the recorded rental context: Self Drive is Customer;
+With Assigned Driver is Driver. Recorded trip identity remains authoritative,
+including retained deleted accounts; current roles and assignments do not
+rewrite historical attribution. If an identity has operated in both contexts,
+its rows, averages and latest grades stay separate by type. The selected row's
+booking dialog applies that same type, and analysis/back links retain the parent
+type selection. KPI Operators monitored still counts distinct identities.
+
+Sources: `RentalDrivingOverviewService`, `DrivingOperatorResource`,
+`ListDrivingAnalysisRequest`, web `services/booking/booking.service.ts`,
+`validations/driving-analysis/schemas.ts`, `DrivingAnalysisOverview.tsx`,
+`OperatorBookingsDialog.tsx`, `DrivingAnalysisOverviewTest.php` and
+`services/booking/driving-analysis.test.mjs`. No migration, mobile contract,
+sensor collection, score formula or authorization change is required.
+
+Verification: all nine focused backend overview tests passed (110 assertions),
+including type validation, pagination and filtered KPI totals, retained deleted
+identities, empty searches and independent latest grades when one identity has
+both contexts. The completed `composer test` run passed all 1,480 backend tests
+(9,378 assertions). Both web schema/service query tests passed. Web lint,
+TypeScript, production build, scoped Pint and `git diff --check` passed. Full Pint reports only the existing
+invitation migration `2026_11_11_210000_add_owner_and_admin_invitations.php`.
+Responsive browser and keyboard visual acceptance were not performed; source
+review confirmed reuse of the existing responsive filter/table controls and
+their loading, error and empty states. No live records were changed.
 
 # Separate mobile monitoring entry — 2026-11-11
 
@@ -5720,3 +5762,65 @@ The pinned private RC runtime model was installed through a temporary authentica
 Completing a booking now finalizes its report inside the booking transition using only server-received motion batches and confirmed events. Active sessions close as interrupted and the report records incomplete synchronization; unresolved candidate events remain uncertain. New batches are rejected after completion, while exact duplicates of accepted batches remain idempotent. The scheduled finalizer also processes older completed bookings without reports. A booking without motion sessions has no report; one without received batches is not graded. While the app is foregrounded and online and before a new capture starts, it checks each queued session against the server; only a confirmed closed report causes that booking’s locally queued batches and transfer intent to be deleted. Offline or failed checks preserve the queue. This Android change requires an updated installed app; old versions may retain rejected batches. Sources: `BookingService`, `RentalDrivingReportService`, and `RentalMotionMonitoringTest`.
 
 The immediate-report and closed-queue changes passed the targeted booking/report suite (148 tests), mobile lint and TypeScript, 14 mobile service tests, and the Android recorder unit suite. The full backend suite reported seven failures; six RC collection tests passed when rerun separately, while a PayPal confirmation-mail test still failed independently. Full PHP formatting also reported an unrelated existing migration issue. Hosted deployment and physical Android verification are pending.
+
+### Report operators needing attention — 2026-11-22
+
+Risk & Telematics now includes an **Operators needing attention** table. The
+agreed starting threshold is a displayed average final grade below **70 / 100**;
+averages use the same one-decimal rounding as Driving Analysis. An average that
+rounds to 70.0 is excluded. This is an operational review flag from the saved RC
+grades, not a validated real-vehicle safety-risk classification or an account,
+assignment, payment or release restriction.
+
+The query includes only non-deleted, currently completed bookings with a saved
+numeric driving grade and recorded trip operator. Completion status-event times
+determine the selected Manila report period; report-finalization timestamps do
+not move older rentals into the period. Ungraded rentals never count as zero or
+inflate the displayed graded-rental denominator. Customer and Driver groups are
+separate even for the same recorded user. The booking's purchasing Customer is
+not substituted for an assigned Driver. Lowest averages appear first, followed
+by stable operator name/ID/type ordering. Latest grade uses completion time and
+booking ID tie breaking within that same scope. Saved incomplete-sync counts
+and the latest grade's incomplete flag remain visible.
+
+The existing report search, vehicle and rental-type filters apply before
+aggregation. Attention search also matches the recorded operator name. Literal
+percent/underscore/exclamation searches, brand and model searches are supported
+consistently in the operator rental drilldown. The new list paginates at ten
+operators through `operator_page`, independently of the existing event log's
+`page`; changes to search or report scope reset both pages.
+
+`GET /admin/reports` adds `operatorAttention` only for the telematics section and
+viewers with **view reports**, **manage bookings** and **view fleet tracker**.
+Report-only viewers retain the existing monitoring totals/event log without
+the additional operator records. The response carries the threshold, canonical
+DrivingOperator Resource rows, page, lastPage and total. Existing report CSV
+continues to export the declared event-log columns.
+
+View reuses `OperatorBookingsDialog` and the existing Driving Analysis route.
+`ListDrivingAnalysisRequest`, matching web Zod query schema and booking service
+now accept an optional paired `period`/`date` and `graded_only`. The dialog
+retains the selected period, search, vehicle, operator identity/type and grade-only
+scope. Its existing analysis action opens the saved grade breakdown, coverage
+and activity for that rental. Normal Driving Analysis callers omit these filters
+and keep their existing all-time completed-rental behavior.
+
+Sources: `backend/app/Services/RentalDrivingOverviewService.php`,
+`backend/app/Services/ReportAnalyticsService.php`,
+`backend/app/Http/Controllers/Web/Admin/ReportController.php`,
+`backend/app/Http/Requests/Admin/Booking/ListDrivingAnalysisRequest.php`,
+`backend/app/Http/Requests/Admin/Report/ReportAnalyticsRequest.php`,
+`web-frontend/src/modules/management/reports/components/OperatorsNeedingAttention.tsx`,
+the existing `ReportsModule.tsx`/`OperatorBookingsDialog.tsx`, and web booking/report
+services and types. There are no schema, model-scoring, sensor or mobile changes.
+
+Focused verification passed 32 backend tests (423 assertions) and six web
+service/component tests. Web lint, TypeScript and the production build passed.
+Full `composer test` passed 1,503 tests with 9,694 assertions. Touched PHP files
+pass scoped Pint; full Pint still reports the existing formatting issue in
+`2026_11_11_210000_add_owner_and_admin_invitations.php`. `git diff --check` passed.
+A read-only local MySQL check confirmed the scoped query against current data;
+operator identities were omitted from verification output. Browser access is
+available again, but the local report
+preview redirects to sign-in; populated responsive browser verification remains
+pending. The signed-in hosted tab is a separate preview and was not modified.

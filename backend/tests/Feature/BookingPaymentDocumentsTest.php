@@ -123,7 +123,7 @@ it('renders rental information and a separate one-page receipt for the individua
         ->and($receipt->getDomPDF()->getCanvas()->get_page_count())->toBe(1)
         ->and($information->output())->toContain('/BaseFont /NotoSans-Regular')
         ->and($receipt->output())->toContain('/BaseFont /NotoSans-Bold')
-        ->and($informationHtml)->toContain('Rental Information', 'General Terms and Conditions', 'RENTER ACKNOWLEDGEMENT', 'PHP 3,500.00', 'PHP 1,000.00', 'PHP 2,500.00')->not->toContain('Invoice', 'INV-')
+        ->and($informationHtml)->toContain('Rental Information', 'General Terms and Conditions', 'CUSTOMER ACKNOWLEDGEMENT', 'PHP 3,500.00', 'PHP 1,000.00', 'PHP 2,500.00')->not->toContain('Invoice', 'INV-')
         ->and($receiptHtml)->toContain('Payment Receipt', 'Amount Received in This Payment', 'PHP 1,000.00', 'PHP 2,500.00', 'Down Payment')
         ->not->toContain('General Terms and Conditions')
         ->and($document->receipt_filename)->toContain(' | Confirmed | Receipt-RCP-')

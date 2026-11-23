@@ -64,7 +64,7 @@ export function BookingInspectionForm({ onClose, booking, type, personnelName, o
     appToast.error("Check the highlighted inspection fields and both signatures.");
   };
 
-  const operatorLabel = booking.driverOption === "self_drive" ? "Renter" : "Assigned Driver";
+  const operatorLabel = booking.driverOption === "self_drive" ? "Customer" : "Assigned Driver";
   const startsHandover = type === "outgoing" && booking.driverOption === "self_drive";
   const submitLabel = startsHandover ? "Finalize Inspection & Start Handover" : "Finalize Inspection";
   const submit = async (formValues: BookingInspectionFormValues) => {

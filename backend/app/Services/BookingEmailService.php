@@ -86,7 +86,7 @@ class BookingEmailService
             $document = $claimed;
             $recipient = $document->booking?->user?->email;
             if (empty($recipient)) {
-                $this->markFailed($document, 'The renter does not have an email address.');
+                $this->markFailed($document, 'The customer does not have an email address.');
 
                 return false;
             }

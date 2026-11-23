@@ -7,18 +7,18 @@ import { ChevronLeft } from "lucide-react";
 import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
 import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import { RentalDrivingEvents } from "@/modules/management/fleet-tracker/components/RentalDrivingEvents";
-import { getBooking, type BookingRecord } from "@/services/booking";
+import { getAnalysisBooking, type DrivingAnalysisBooking } from "@/services/booking";
 import { formatReturnDateTime } from "@/services/booking/return-time";
 import { Button } from "@/components/ui/button";
 import type { RentalDrivingEvents as DrivingEvents } from "@/services/fleet/fleet.service";
 import { formatDrivingGrade, GradingDialog } from "./components/DrivingGradeDetails";
 import { DrivingAnalysisOverview } from "./components/DrivingAnalysisOverview";
 
-function operator(booking: BookingRecord) {
+function operator(booking: DrivingAnalysisBooking) {
   return booking.driverOption === "self_drive" ? booking.customer?.name : booking.assignedDriver?.name;
 }
 
-function vehicleIdentity(booking: BookingRecord) {
+function vehicleIdentity(booking: DrivingAnalysisBooking) {
   return [booking.brand, booking.vehicleName, booking.vehiclePlateNumber].filter(Boolean).join(" ");
 }
 
@@ -27,9 +27,9 @@ function AnalysisContent() {
   const { portal, user } = useManagementSession();
   const selected = Number(params.get("booking"));
   const bookingId = Number.isSafeInteger(selected) && selected > 0 ? selected : null;
-  const allowed = user?.permissions?.includes("manage bookings") && user.permissions.includes("view fleet tracker");
+  const allowed = user?.permissions?.includes("view driving analysis") && user.permissions.includes("view fleet tracker");
   const [analysis, setAnalysis] = useState<DrivingEvents | null>(null);
-  const [detail, setDetail] = useState<BookingRecord | null>(null);
+  const [detail, setDetail] = useState<DrivingAnalysisBooking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reload, setReload] = useState(0);
@@ -47,7 +47,7 @@ function AnalysisContent() {
       setAnalysis(null);
       const load = async () => {
         try {
-          const booking = await getBooking(bookingId);
+          const booking = await getAnalysisBooking(bookingId);
           if (booking.statusKey !== "completed") throw new Error("Rental is not completed.");
           if (current) setDetail(booking);
         } catch { if (current) setError(true); }
@@ -68,14 +68,14 @@ function AnalysisContent() {
           <ChevronLeft size={15} className="transition-transform group-hover:-translate-x-0.5" /> Driving Analysis
         </Link>
         {detail ? <><span aria-hidden="true" className="text-border">/</span>
-          <Link href={`/${portal}/history?booking=${detail.backendId}`} className="min-w-0 text-xs font-semibold text-foreground hover:text-primary hover:underline">{detail.bookingCode}</Link>
+          <span className="min-w-0 text-xs font-semibold text-foreground">{detail.bookingCode}</span>
         </> : null}
       </nav><GradingDialog grading={analysis?.grading ?? null} /></div> : null}
       {!bookingId ? <DrivingAnalysisOverview portal={portal} /> : error ? <div role="alert" className="space-y-3"><p className="text-sm text-destructive">Driving Analysis could not be loaded.</p><Button variant="outline" onClick={() => setReload(value => value + 1)}>Retry</Button></div>
         : loading && bookingId ? <p role="status" className="text-sm text-muted-foreground">Loading Driving Analysis…</p>
         : detail ? <>
           <section aria-label="Booking details" className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Booking</p><Link href={`/${portal}/history?booking=${detail.backendId}`} className="font-semibold text-primary hover:underline">{detail.bookingCode}</Link></div>
+            <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Booking</p><span className="font-semibold">{detail.bookingCode}</span></div>
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Vehicle</p>
               <Link href={`/${portal}/vehicle/${encodeURIComponent(detail.vehicleId)}`} className="font-medium text-primary hover:underline">{vehicleIdentity(detail)}</Link>
             </div>

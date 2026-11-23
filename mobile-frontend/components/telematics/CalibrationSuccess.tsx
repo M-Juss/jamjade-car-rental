@@ -5,10 +5,11 @@ import { SetupSuccessCheck } from '@/components/telematics/SetupSuccessCheck';
 import { CALIBRATION_STEPS, type CalibrationStep } from '@/lib/telematics/calibration';
 import { CALIBRATION_CHECK_ORDER } from '@/lib/telematics/setup';
 
-export function CalibrationSuccess({ step, nextStep, ready, onComplete }: {
+export function CalibrationSuccess({ step, nextStep, ready, onComplete, driverRelease = false }: {
   step: CalibrationStep;
   nextStep: CalibrationStep | null;
   ready: boolean;
+  driverRelease?: boolean;
   onComplete: () => void;
 }) {
   useEffect(() => {
@@ -24,7 +25,7 @@ export function CalibrationSuccess({ step, nextStep, ready, onComplete }: {
       <View accessibilityLiveRegion="polite" className="items-center gap-2">
         <Text className="font-sans text-center text-title font-semibold text-success">{nextStep ? 'Exercise complete' : 'Calibration complete'}</Text>
         <Text className="font-sans text-center text-body text-foreground">{CALIBRATION_STEPS[step].title}</Text>
-        <Text className="font-sans text-center text-caption leading-5 text-secondary-foreground">{nextStep ? `Next: ${CALIBRATION_STEPS[nextStep].title}. Stop safely before continuing.` : 'Wait for staff to release the vehicle.'}</Text>
+        <Text className="font-sans text-center text-caption leading-5 text-secondary-foreground">{nextStep ? `Next: ${CALIBRATION_STEPS[nextStep].title}. Stop safely before continuing.` : driverRelease ? 'Return to setup to start the rental.' : 'Wait for staff to release the vehicle.'}</Text>
       </View>
     </View>
   );

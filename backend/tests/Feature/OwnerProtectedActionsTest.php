@@ -17,10 +17,10 @@ beforeEach(function () {
     Mail::fake();
     Storage::fake('local');
     $this->approvalOwner = User::factory()->create(['is_active' => true]);
-    $this->approvalOwner->assignRole(['admin', 'owner']);
-    $this->requestingAdmin = User::factory()->create(['is_active' => true]);
-    $this->requestingAdmin->assignRole('admin');
-    $this->actingAs($this->requestingAdmin);
+    $this->approvalOwner->assignRole('owner');
+    $this->requestingStaff = User::factory()->create(['is_active' => true]);
+    $this->requestingStaff->assignRole('staff');
+    $this->actingAs($this->requestingStaff);
 });
 
 function protectedActionCode($test, string $method, string $url, array $payload): array
@@ -66,7 +66,7 @@ it('requires separate approval for a refund decision and recording money returne
 
 it('requires approval for charge edits and deletions', function () {
     [$booking, , $charge, $data] = editableLifecycleCharge();
-    $this->actingAs($this->requestingAdmin);
+    $this->actingAs($this->requestingStaff);
     $url = "/admin/bookings/{$booking->id}/additional-charges/{$charge->id}";
     $payload = ['charges' => [[...$data, 'amount' => 275]]];
     $this->putJson($url, $payload)->assertStatus(428);

@@ -107,7 +107,7 @@ export type DashboardResponse = {
 export type DashboardCalendarSummary = {
   overdueReturns: number;
   bookingsNeedingAttention: number;
-  monthRevenue: number;
+  monthRevenue: number | null;
   confirmedBookings: number;
   activeRentals: number;
   todaysPickups: number;
@@ -245,13 +245,21 @@ export type ReportSelection = {
   vehicleId?: number;
   rentalType?: "self_drive" | "owners_driver";
   page?: number;
+  operatorPage?: number;
 };
 export type ReportChart = { title: string; type: "line" | "bar" | "stacked" | "horizontal"; format: ReportFormat; series: Array<{ key: string; label: string }>; points: Array<{ label: string; [key: string]: string | number | null }> };
 export type ReportData = {
+  operatorAttention?: {
+    threshold: number;
+    operators: import("@/services/booking").DrivingOperator[];
+    page: number;
+    lastPage: number;
+    total: number;
+  };
   section: ReportSection;
   period: { mode: ReportPeriod; startDate: string; endDate: string };
   vehicles: Array<{ id: number; name: string }>;
-  metrics: Array<{ label: string; value: number | null; format: ReportFormat }>;
+  metrics: Array<{ label: string; value: number | null; format: ReportFormat; details?: Array<{ label: string; value: number | null; format: ReportFormat }> }>;
   charts: ReportChart[];
-  table: null | { title: string; columns: Array<{ key: string; label: string; format: "text" | "money" | "count" | "hours" | "datetime" }>; rows: Array<Record<string, string | number | null>>; page: number; lastPage: number; total: number };
+  table: null | { title: string; columns: Array<{ key: string; label: string; format: "text" | "money" | "count" | "hours" | "datetime" | "rating" }>; rows: Array<Record<string, string | number | null>>; page: number; lastPage: number; total: number };
 };

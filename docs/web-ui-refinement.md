@@ -270,8 +270,8 @@ verification remains pending; no form or API contract changed.
 
 Reports and Analytics appears in the management navigation for Admin and Staff
 with `view reports`. The heading shows the selected date range. The toolbar
-starts with search, followed by the date picker, period, vehicle, and rental
-type. Search matches booking codes, customer names, and vehicle details and
+starts with search, followed by the date picker and period. Search matches
+booking codes, customer names, and vehicle details and
 applies to charts, tables, and CSV. Maintenance records match vehicle details.
 Month is the default. The API converts the selected Manila calendar interval
 to UTC and uses an exclusive end. Charts group by hour for Day, day for Week
@@ -286,7 +286,7 @@ activity uses booking creation and status event timestamps. No-shows come from
 cancellation records. Fleet hours use the overlap of actual release and
 physical return with the period. Late returns compare physical return with the
 scheduled rental end. Maintenance completions use the vehicle filter and appear
-when all rental types are selected. Customer classification uses each renter's
+when all rental types are selected. Customer classification uses each customer's
 first completed rental across their history. Telematics uses started monitoring
 trips and recorded geofence exits and interruptions. The Driving Analysis link
 uses the same permissions as the destination.
@@ -311,6 +311,279 @@ synthetic database and covered the sidebar entry, desktop and 390 px layouts,
 filters, ten-row pages, the complete CSV download and retry after a failed
 request. The full backend suite reproduced five existing failures in booking
 time formatting and overlap handling.
+
+### Reports Overview refinement — 2026-11-21
+
+Overview now provides four summary cards: Net receipts, Rentals completed,
+Customers served and Cancellations. Gross receipts and Refunds paid remain in
+Revenue, while booking-creation counts remain in Bookings. This removes the
+three competing financial headline amounts and the comparison between created
+and completed bookings, which may belong to different booking cohorts.
+
+The Overview charts are Receipts over time (net cash by receipt/refund date)
+and Most booked vehicles (up to five vehicles ranked by completed rental count).
+The ranking includes the vehicle name and plate; ties sort by label and vehicle
+ID. Both reuse the existing report chart card and solid primary color. An empty
+Overview ranking keeps its card with “No data for this period.” rather than
+showing a zero-valued or fabricated vehicle. Revenue's subsequent refinement is
+described below.
+
+`ReportAnalyticsService::overview()` reuses `finalBookings()` to count each
+completed/cancelled booking once within the selected final-status date period.
+Customers served counts distinct Customer IDs from those completed rentals,
+not registered accounts or assigned Drivers. Repeat rentals by one Customer
+increase the completed count but do not increase Customers served. Cancellations
+exclude Rejected and No-show, including the legacy cancelled/no-show mapping.
+Search and the retained API vehicle/rental-type filters apply before aggregation.
+The receipts calculation is unchanged and remains independent of rental
+completion dates; no per-rental revenue or conversion ratio is inferred from it.
+
+Overview CSV retains gross/refund/net receipt columns for reconciliation, and
+now exports completed totals split into Self Drive and Assigned Driver,
+Customers served and Cancellations for each interval. Customers served is
+distinct within each CSV interval; adding intervals may count a repeat Customer
+more than once, while the headline counts them once across the selected period.
+Bookings created was removed from Overview CSV. No request, permission,
+storage, Revenue-tab calculation or mobile contract changed. The generic
+`ReportData` metrics/charts and existing service mapping carry the revised data.
+
+Sources: `backend/app/Services/ReportAnalyticsService.php`,
+`backend/tests/Feature/Web/Admin/ReportPeriodsTest.php`, and
+`web-frontend/src/modules/management/reports/ReportsModule.tsx`. Existing
+`KpiCard`, `ReportChartCard`, line/horizontal Recharts renderers and semantic
+theme tokens remain the UI foundation.
+
+Verification: all 13 focused report tests passed (194 assertions), including
+distinct Customers, duplicate terminal events, excluded open/deleted/out-of-period
+bookings, refunds, legacy no-shows, ranking limits/ties, search, retained API
+filters, zero data and interval CSV values. The full `composer test` run passed
+all 1,486 backend tests (9,481 assertions). Web lint, TypeScript, production
+build, scoped Pint and `git diff --check` passed. Whole-backend Pint still
+reports only the existing invitation migration. Browser access was unavailable
+in this chat, so updated chart appearance, responsive layout and hover/focus
+behavior remain unverified. Temporary preview source was removed; no live
+booking, payment, refund or notification data was changed.
+
+### Revenue analytics refinement — 2026-11-21
+
+A read-only aggregate check of the local application database found six completed
+positive PHP receipts across five bookings, all via PayPal, with no paid refunds.
+The November report total was PHP 26,521: PHP 26,321 in full payments and PHP 200
+in balance payments. These are local-database findings, not a claim that every
+deployment has the same records. No personal records or credentials were
+printed, and the verification transaction was rolled back without writes.
+
+Revenue now emphasizes Net receipts, Payments received, Bookings with payments
+and Average payment. The Net receipts card shows only its label and total; the
+Gross receipts and Refunds paid text beneath it was removed in the subsequent
+copy refinement. Average payment is gross receipts divided by
+successful payment count, rounded to two decimals; it excludes refund rows and
+remains null/displayed as a dash when there are no payments. Bookings with
+payments counts distinct booking IDs with a successful receipt in the period;
+it does not imply full settlement or rental completion. Split/down payments
+increase payment count without increasing that distinct booking count.
+
+Receipts by payment purpose replaces the dated receipts/refunds chart already
+summarized by Overview's cash trend. Purpose comes from the recorded payment:
+full payment, down payment, balance payment, Customer charges, Driver charges or
+manual booking payment. Null/unrecognized historical purposes stay in Other
+payments rather than being inferred. This is a receipt-purpose breakdown, not
+an allocation of the rental fee, delivery and every additional-charge category.
+The table and full CSV now include a Purpose column using the same labels;
+refund rows have no payment purpose.
+
+Net receipts by vehicle replaces the rental-type comparison. Vehicle identity
+is grouped by ID and labeled with name and plate. The five highest net receipt
+amounts appear individually; any remainder is summed into Other vehicles so
+the chart always reconciles to the net total. Paid refunds reduce that vehicle's
+amount, including refund-only negative values. Ties sort by label and ID.
+Both Revenue chart cards remain visible with the existing empty-state message
+when their respective dataset is empty.
+
+`ReportAnalyticsService::revenue()` streams the same filtered cash-entry source
+as its table/CSV. It retains completed positive PHP receipts by payment date,
+the historical creation-date fallback for missing payment dates, paid refunds
+by actual refund date, historical soft-deleted booking receipts and the current
+inclusion of recorded Driver payments. Pending, failed, non-PHP and nonpositive
+payment rows are excluded. No financial totals, money movement, refund rules,
+payment status or historical documents were changed. These are cash receipts,
+not profit or revenue recognized on completion; no missing expense/fee data is
+invented.
+
+Sources: `backend/app/Services/ReportAnalyticsService.php`,
+`backend/tests/Feature/Web/Admin/ReportPeriodsTest.php`,
+`web-frontend/src/services/report/types.ts`, and
+`web-frontend/src/modules/management/reports/ReportsModule.tsx`.
+The additive optional `ReportData.metrics[].details` list retains numeric values,
+labels and existing formats in the response; report cards no longer render it.
+The generic chart/table contract, query mapping and `ReportAnalyticsRequest`
+remain unchanged. No new package, migration or mobile contract was added.
+
+Verification: all 16 focused report tests passed (235 assertions). Coverage
+includes partial/split and Driver payments, unknown purposes, receipt count
+versus distinct bookings, averages, actual/unpaid refunds, refund-only negative
+cash, legacy timestamps, deleted bookings, filters, pagination independence,
+chart reconciliation, Other vehicles, CSV and empty data. The full `composer test`
+run passed all 1,489 backend tests (9,522 assertions). Web lint, TypeScript,
+production build, scoped Pint and `git diff --check` passed. Whole-backend Pint
+still reports only the existing invitation migration. A read-only run of the
+new service against the local database confirmed the six payments/five bookings,
+PHP 4,420.17 average, purpose sums and vehicle totals. Browser visual acceptance
+remains pending because local browser access is unavailable in this chat. No
+live payment, refund, booking or notification was changed.
+
+Revenue card copy follow-up — 2026-11-21: removed the Gross receipts and Refunds
+paid lines beneath Net receipts by omitting the shared card description in
+`ReportsModule.tsx`. Web lint, TypeScript, production build and `git diff --check`
+passed. Browser visual verification remains unavailable; calculations and API
+data were not changed.
+
+### Operators needing attention — 2026-11-22
+
+Risk & Telematics now adds an Operators
+needing attention section using the shared ManagementTable, TablePagination,
+Button and existing OperatorBookingsDialog. It shows Customer/Driver type,
+average/latest final grade, graded-rental count, harsh events and incomplete-sync
+context. The average-below-70 rule, filters, authorization and checks are owned
+by [the central telematics guide](telematics-master-plan.md#report-operators-needing-attention--2026-11-22).
+The existing KPI cards, event log, CSV and report toolbar retain their layouts.
+
+### Customer Insights table and terminology — 2026-11-21
+
+The Customer Insights table now shows Customer, Self Drive, Assigned Driver,
+Total spent, Most booked vehicle and Last completed rental. The first-completed
+date and combined completed-count columns were removed. The redundant Renters
+card heading was removed; all report tables now omit their visible card titles
+as described below, while this table retains its accessible Customers name. Summary cards show
+Customers, Self Drive completed, Assigned Driver completed and Total spent.
+The existing first-time/returning chart still uses the first completion in the
+Customer's history, but its title now says customers.
+
+All row values, summaries, pagination and CSV use the same selected report
+period and search; the API also supports vehicle and rental-type filters.
+Last completed rental is the
+latest completion within that filtered period. Most booked vehicle counts those
+completed rentals, with ties resolved by the most recent completion and then
+the lowest vehicle ID; its label includes the saved vehicle name and plate.
+Total spent sums successful positive PHP payments made by that booking's
+Customer, including earlier down payments, less refunds actually paid before
+the report cutoff. Payments after the cutoff, failed/pending/foreign-currency
+payments, other payers and `driver_outstanding` payments are excluded. This is
+spending on rentals completed in the period, not the Revenue tab's cash-flow
+measure by payment date. No amount is inferred from the booking's price or paid
+flag. Aggregated payment/refund joins keep one row per completion, so multiple
+payments do not multiply rental counts.
+
+Date display follow-up — 2026-11-22: the Last completed rental table cell uses
+the existing report formatter with a date-only option in `ReportsModule.tsx`,
+displaying e.g. `Nov 12, 2026` in Asia/Manila. API timestamps and CSV exports retain
+their full precision. The Additional Charges and Late Return Charge responsibility
+options were also checked and already use `Customer`.
+Web lint, TypeScript, production build and `git diff --check` passed for this
+follow-up. Browser visual verification was not performed.
+
+Visible Renter and Customer / Renter wording was standardized to Customer in
+web charge/inspection/setup controls, mobile booking terms, confirmation email
+fallbacks and newly rendered PDF terms/acknowledgement. Stored inspection signer
+codes (`renter`), accepted agreement snapshots and already-issued PDF bytes are
+preserved. No request contract, permission, migration, native API or rental rule
+changed. `ReportAnalyticsRequest`, web `ReportSelection` and the existing report
+service query mapping remain unchanged; the generic report column contract carries the new
+fields and money/count/date formats.
+
+Implementation: `backend/app/Services/ReportAnalyticsService.php`,
+`web-frontend/src/modules/management/reports/ReportsModule.tsx`, the existing
+booking forms/workflow copy, `mobile-frontend/components/browse/TermsSignatureModal.tsx`,
+and the confirmation email/PDF view sources. Regression coverage is in
+`backend/tests/Feature/Web/Admin/ReportPeriodsTest.php` and the existing financial
+document tests. The table reuses `ReportTable`, `ManagementTable`, labeled mobile
+cells and `TablePagination`; it adds no competing visual pattern.
+
+Verification: all 50 focused report/PDF/payment-document tests passed (377
+assertions), followed by `composer test` with 1,482 tests / 9,412 assertions.
+Web/mobile lint and TypeScript, web production build, Android JavaScript export, scoped Pint and
+`git diff --check` passed. Whole-backend Pint still reports only the existing
+invitation migration `2026_11_11_210000_add_owner_and_admin_invitations.php`.
+A synthetic browser preview rendered the actual table component with production
+styles at desktop and 390 px widths, including populated and empty states; the
+phone layout had no horizontal overflow. Synthetic PDF page images confirmed
+the updated Customer wording and exactly two pages. Authenticated report
+navigation, live inbox rendering and physical Android acceptance were not
+exercised. No live booking, payment, refund or notification records were changed.
+
+### Reports toolbar filter removal — 2026-11-21
+
+Removed the All vehicles and All rental types dropdowns from Reports and
+Analytics. `ReportsModule.tsx` now exposes search, date navigation and period
+selection. The unused vehicle
+options variable and rental-type options constant were removed. The page starts
+with all vehicles and rental types, and CSV uses the same selection. Laravel's
+existing optional API filters and read contracts remain available.
+
+Web lint, TypeScript, production build, source review and `git diff --check`
+passed. Browser visual checks were not rerun for this control removal. No backend
+or mobile code changed.
+
+Reports toolbar sizing follow-up — 2026-11-21: the desktop toolbar uses a
+3:1 grid when space permits, with search on the left and grouped date navigation/
+period controls on the right. The right-hand group has a 22 rem minimum width
+and does not wrap on desktop. Search gives up width when needed to keep all
+controls on one line instead of forcing the period selector onto another row.
+Below the desktop breakpoint, search spans the width and the controls follow
+below it. Existing SearchInput, Input, Button and FilterSelect components,
+labels, date boundaries and query/export behavior are unchanged.
+Web lint, TypeScript, production build and `git diff --check` passed. A synthetic
+server-rendered preview of the actual component with production styles confirmed
+search, date and period controls have matching top/bottom positions at 1280 px
+and remain on one row at 1024 px. The 390 px fallback also had no page overflow.
+The preview did not hydrate the controls or exercise authenticated report reads.
+
+Booking outcome colors — 2026-11-21: `ReportsModule.tsx` binds Cancelled to
+destructive red, Rejected to warning gold and No-show to muted foreground.
+Completed remains primary blue. Bars and
+legend markers share the same series configuration; other report series retain
+their existing colors. No totals, query, CSV or backend behavior changed.
+Web lint, TypeScript, production build and `git diff --check` passed. Color
+bindings were reviewed in source; browser chart verification was not rerun.
+
+### Final booking statuses and report table titles — 2026-11-21
+
+The Bookings table and its full CSV export now show one row per booking with a
+current terminal status: Completed, Cancelled, Rejected or No-show, matching the
+History status boundary. Created, Pending, Confirmed, Ongoing and Returned rows
+are excluded. The selected period applies to the latest recorded event for that
+booking's current final status, not its creation date. Duplicate final-status
+events do not create duplicate table rows. Legacy cancelled/no-show records keep
+their No-show label. Deleted bookings and final bookings without a recorded
+final-status date are omitted; no date is inferred from creation time.
+
+`ReportAnalyticsService::finalBookings()` groups terminal events by booking and
+status, matches the current booking status, then applies the existing period and
+search/vehicle/rental-type filters before pagination. The displayed column is
+Status; its existing response key remains `outcome`. Bookings-created metrics
+and the charts retain their existing event-based calculations. The API request
+contract and the generic web report table/CSV formats are unchanged.
+
+The shared `ReportTable` in `ReportsModule.tsx` no longer renders a card title
+for any report section. Booking activity, Transactions, Vehicles, Customers and
+Event log titles therefore no longer appear above their tables. Accessible table
+names, column headings, chart titles, report tabs and the page heading remain.
+The previous Customer-only `showTitle` option was removed rather than retaining
+a separate display rule for each tab. Overview has no on-screen detail table.
+
+Sources: `backend/app/Services/ReportAnalyticsService.php`,
+`backend/tests/Feature/Web/Admin/ReportPeriodsTest.php`, and
+`web-frontend/src/modules/management/reports/ReportsModule.tsx`.
+All 11 focused report tests passed (157 assertions), covering final statuses,
+latest-event deduplication, period boundaries, search, retained API filters,
+pagination, CSV parity, excluded records and preserved creation metrics.
+The completed `composer test` run passed all 1,484 backend tests (9,444 assertions).
+Web lint, TypeScript, production build, scoped Pint and `git diff --check`
+passed. Whole-backend Pint still reports only the existing invitation migration.
+A synthetic browser preview of the actual shared table verified the title-free
+layout, Status column and responsive rows at desktop and 390 px widths without
+page overflow. Authenticated live report navigation was not exercised; no live
+records or mobile code changed.
 
 ## Fleet rental details layout — 2026-11-12
 

@@ -70,6 +70,10 @@ function telematicsFoundationBooking(RentalType $type = RentalType::SelfDrive): 
 
 function finalizeFoundationOutgoing(Booking $booking): void
 {
+    if ($booking->rental_type === RentalType::OwnersDriver) {
+        $booking->assignment()->update(['on_way_at' => now()->subMinute(), 'arrived_at' => now()]);
+        $booking->unsetRelation('assignment');
+    }
     app(BookingInspectionService::class)->finalizeOutgoing(
         $booking,
         vehicleConditionPayload(['odometer' => 1300]),

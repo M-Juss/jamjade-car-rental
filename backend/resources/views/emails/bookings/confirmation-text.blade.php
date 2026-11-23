@@ -17,7 +17,7 @@
 @endphp
 {{ $isConfirmed ? 'Booking confirmed' : 'Payment received' }}
 
-Dear {{ $confirmation['customer']['name'] ?? 'Renter' }},
+Dear {{ $confirmation['customer']['name'] ?? 'Customer' }},
 
 Booking reference: {{ $confirmation['bookingReference'] ?? '—' }}
 @if ($vehicleName !== '')

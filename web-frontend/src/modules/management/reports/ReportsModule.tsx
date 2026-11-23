@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BarChart3, ChevronLeft, ChevronRight, Clock3, Download, Loader2, PhilippinePeso } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
@@ -19,6 +19,10 @@ import { formatPhilippinePeso } from "@/lib/formatters/currency";
 import { appToast } from "@/lib/toast";
 import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
 import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
+import { CustomerFeedbackDialog } from "./components/CustomerFeedbackDialog";
+import { OperatorsNeedingAttention } from "./components/OperatorsNeedingAttention";
+import { OperatorBookingsDialog, type OperatorBookingsScope } from "@/modules/management/driving-analysis/components/OperatorBookingsDialog";
+import type { DrivingOperator } from "@/services/booking";
 import {
   downloadReport, getReports, type ReportChart, type ReportData, type ReportFormat,
   type ReportPeriod, type ReportSection, type ReportSelection,
@@ -40,12 +44,12 @@ const sections: Array<{ value: ReportSection; label: string }> = [
   { value: "customers", label: "Customer Insights" },
   { value: "telematics", label: "Risk & Telematics" },
 ];
-const rentalTypes = [
-  { value: "all", label: "All rental types" },
-  { value: "self_drive", label: "Self Drive" },
-  { value: "owners_driver", label: "With Assigned Driver" },
-];
 const colors = ["var(--primary)", "var(--success)", "var(--warning)", "var(--destructive)"];
+const outcomeColors: Record<string, string> = {
+  cancelled: "var(--destructive)",
+  rejected: "var(--warning)",
+  no_show: "var(--muted-foreground)",
+};
 const metricIcons = { money: PhilippinePeso, count: BarChart3, hours: Clock3 };
 
 function todayInManila() {
@@ -76,17 +80,20 @@ function adjacentPeriod(date: string, period: ReportPeriod, direction: number) {
 
 const calendarDate = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "UTC" });
 const reportDateTime = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone });
+const reportDate = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone });
 const numbers = new Intl.NumberFormat("en-PH", { maximumFractionDigits: 2 });
 const compactNumbers = new Intl.NumberFormat("en-PH", { notation: "compact", maximumFractionDigits: 1 });
 
 function formatValue(
   value: string | number | null | undefined,
-  format: ReportFormat | "text" | "datetime",
+  format: ReportFormat | "text" | "datetime" | "date" | "rating",
   compact = false,
 ) {
   if (value === null || value === undefined || value === "") return "—";
   if (format === "datetime") return reportDateTime.format(new Date(value));
+  if (format === "date") return reportDate.format(new Date(value));
   if (format === "text") return String(value);
+  if (format === "rating") return `${Number(value).toFixed(1)} / 5`;
   if (format === "money") return formatPhilippinePeso(Number(value), compact);
   const formatted = (compact ? compactNumbers : numbers).format(Number(value));
   return format === "hours" ? `${formatted} hrs` : formatted;
@@ -96,7 +103,7 @@ function ReportChartCard({ chart }: { chart: ReportChart }) {
   const horizontal = chart.type === "horizontal";
   const formatTick = (value: number) => formatValue(value, chart.format, true);
   const config = Object.fromEntries(chart.series.map(({ key, label }, index) => [
-    key, { label, color: colors[index] },
+    key, { label, color: outcomeColors[key] ?? colors[index] },
   ]));
   const axes = (
     <>
@@ -135,6 +142,7 @@ function ReportChartCard({ chart }: { chart: ReportChart }) {
     <Card className="min-w-0 rounded-2xl border border-border bg-surface shadow-none">
       <CardHeader className="pb-2"><CardTitle className="text-sm">{chart.title}</CardTitle></CardHeader>
       <CardContent className="pt-0">
+        {chart.points.length === 0 ? <div role="status" className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">No data for this period.</div> :
         <ChartContainer config={config} className="h-[250px] w-full">
           {chart.type === "line" ? (
             <LineChart data={chart.points} margin={{ right: 12 }}>
@@ -159,22 +167,23 @@ function ReportChartCard({ chart }: { chart: ReportChart }) {
             </BarChart>
           )}
         </ChartContainer>
+        }
       </CardContent>
     </Card>
   );
 }
 
 function ReportTable({
-  table, onPageChange,
+  table, onPageChange, onViewFeedback,
 }: {
   table: NonNullable<ReportData["table"]>;
   onPageChange: (page: number) => void;
+  onViewFeedback: (customer: { id: number; name: string }, trigger: HTMLButtonElement) => void;
 }) {
   return (
     <div>
       <TableCard>
-        <CardHeader className="py-4"><CardTitle className="text-sm">{table.title}</CardTitle></CardHeader>
-        <ManagementTable>
+        <ManagementTable aria-label={table.title}>
           <TableHeader>
             <TableRow className="bg-background">
               {table.columns.map(({ key, label }) => (
@@ -193,7 +202,7 @@ function ReportTable({
               <TableRow key={index}>
                 {table.columns.map(({ key, label, format }) => (
                   <ManagementTableCell key={key} data-label={label} className="px-4 py-3 text-sm whitespace-normal">
-                    {formatValue(row[key], format)}
+                    {key === "lifetime_rating" && Number(row.rating_count) > 0 ? <Button variant="link" className="h-auto whitespace-normal p-0 text-sm" aria-label={`View lifetime ratings for ${row.customer}`} onClick={event => onViewFeedback({ id: Number(row.customer_id), name: String(row.customer) }, event.currentTarget)}>{Number(row[key]).toFixed(1)} / 5 ({row.rating_count})</Button> : key === "lifetime_rating" ? "—" : formatValue(row[key], key === "last_completed" ? "date" : format)}
                   </ManagementTableCell>
                 ))}
               </TableRow>
@@ -214,8 +223,14 @@ function ReportTable({
 
 export function ReportsAnalytics() {
   const { portal, user } = useManagementSession();
+  const [feedbackCustomer, setFeedbackCustomer] = useState<{ id: number; name: string } | null>(null);
+  const feedbackTrigger = useRef<HTMLButtonElement | null>(null);
+  const [attentionOperator, setAttentionOperator] = useState<{ operator: DrivingOperator; scope: OperatorBookingsScope } | null>(null);
+  const operatorTrigger = useRef<HTMLButtonElement | null>(null);
+  const canCurateFeedback = user?.permissions?.includes("view financial reports") ?? false;
+  const visibleSections = canCurateFeedback ? sections : sections.filter(section => ["bookings", "telematics"].includes(section.value));
   const [selection, setSelection] = useState<ReportSelection>(() => ({
-    period: "month", date: todayInManila(), section: "overview", page: 1,
+    period: "month", date: todayInManila(), section: canCurateFeedback ? "overview" : "bookings", page: 1,
   }));
   const [searchInput, setSearchInput] = useState("");
   const [result, setResult] = useState<{ selection: ReportSelection; data: ReportData } | null>(null);
@@ -231,7 +246,7 @@ export function ReportsAnalytics() {
 
     const timer = window.setTimeout(() => {
       setError(false);
-      setSelection((current) => ({ ...current, search, page: 1 }));
+      setSelection((current) => ({ ...current, search, page: 1, operatorPage: 1 }));
     }, 300);
     return () => window.clearTimeout(timer);
   }, [search, searchPending]);
@@ -250,7 +265,8 @@ export function ReportsAnalytics() {
 
   function update(next: Partial<ReportSelection>) {
     setError(false);
-    setSelection((current) => ({ ...current, page: 1, ...next }));
+    const pagingOnly = Object.keys(next).every(key => key === "page" || key === "operatorPage");
+    setSelection((current) => ({ ...current, ...(!pagingOnly ? { page: 1, operatorPage: 1 } : {}), ...next }));
   }
 
   async function exportCsv() {
@@ -270,8 +286,7 @@ export function ReportsAnalytics() {
   const rangeStart = new Date(`${adjacentPeriod(selection.date, selection.period, 0)}T00:00:00Z`);
   const rangeEnd = new Date(`${next}T00:00:00Z`);
   rangeEnd.setUTCDate(rangeEnd.getUTCDate() - 1);
-  const vehicles = result?.data.vehicles ?? [];
-  const charts = data?.charts.filter((chart) => chart.points.length > 0) ?? [];
+  const charts = data?.charts.filter((chart) => ["overview", "revenue"].includes(selection.section) || chart.points.length > 0) ?? [];
   const permissions = user?.permissions ?? [];
   const canViewDrivingAnalysis = permissions.includes("manage bookings") && permissions.includes("view fleet tracker");
 
@@ -285,62 +300,50 @@ export function ReportsAnalytics() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+      <div className="grid items-center gap-2 lg:grid-cols-[minmax(0,3fr)_minmax(22rem,1fr)]">
         <SearchInput
           value={searchInput}
           onValueChange={setSearchInput}
           placeholder="Search reports..."
           aria-label="Search reports by booking code, customer, or vehicle"
           maxLength={160}
-          wrapperClassName="col-span-2 sm:min-w-[17rem] sm:flex-1"
+          wrapperClassName="w-full"
         />
-        <div className="col-span-2 flex w-full items-center gap-1 sm:w-auto">
-          <Button
-            type="button" variant="outline" size="icon" aria-label="Previous period"
-            disabled={previous < earliestDate} onClick={() => update({ date: previous })}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Input
-            type="date" aria-label="Report date" className="min-w-0 flex-1 bg-surface sm:w-[160px]"
-            value={selection.date} min={earliestDate} max={today}
-            onChange={(event) => {
-              if (event.target.value && event.target.validity.valid) update({ date: event.target.value });
-            }}
+        <div className="flex min-w-0 flex-wrap items-center gap-2 lg:flex-nowrap">
+          <div className="flex min-w-0 flex-[1_1_14rem] items-center gap-1">
+            <Button
+              type="button" variant="outline" size="icon" aria-label="Previous period"
+              disabled={previous < earliestDate} onClick={() => update({ date: previous })}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Input
+              type="date" aria-label="Report date" className="min-w-0 flex-1 bg-surface"
+              value={selection.date} min={earliestDate} max={today}
+              onChange={(event) => {
+                if (event.target.value && event.target.validity.valid) update({ date: event.target.value });
+              }}
+            />
+            <Button
+              type="button" variant="outline" size="icon" aria-label="Next period"
+              disabled={next > today} onClick={() => update({ date: next })}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+          <FilterSelect<ReportPeriod>
+            value={selection.period}
+            onValueChange={(period) => update({ period })}
+            ariaLabel="Report period"
+            className="min-w-0 flex-[1_1_7rem]"
+            options={periods}
           />
-          <Button
-            type="button" variant="outline" size="icon" aria-label="Next period"
-            disabled={next > today} onClick={() => update({ date: next })}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
         </div>
-        <FilterSelect<ReportPeriod>
-          value={selection.period}
-          onValueChange={(period) => update({ period })}
-          ariaLabel="Report period"
-          className="sm:w-[112px]"
-          options={periods}
-        />
-        <FilterSelect
-          value={selection.vehicleId ? String(selection.vehicleId) : "all"}
-          onValueChange={(value) => update({ vehicleId: value === "all" ? undefined : Number(value) })}
-          ariaLabel="Vehicle"
-          className="sm:w-[190px]"
-          options={[{ value: "all", label: "All vehicles" }, ...vehicles.map(({ id, name }) => ({ value: String(id), label: name }))]}
-        />
-        <FilterSelect
-          value={selection.rentalType ?? "all"}
-          onValueChange={(value) => update({ rentalType: value === "all" ? undefined : value as ReportSelection["rentalType"] })}
-          ariaLabel="Rental type"
-          className="sm:w-[186px]"
-          options={rentalTypes}
-        />
       </div>
 
       <Tabs value={selection.section} onValueChange={(section) => update({ section: section as ReportSection })} className="gap-4">
         <TabsList aria-label="Report sections">
-          {sections.map(({ value, label }) => <TabsTrigger key={value} value={value}>{label}</TabsTrigger>)}
+          {visibleSections.map(({ value, label }) => <TabsTrigger key={value} value={value}>{label}</TabsTrigger>)}
         </TabsList>
         <TabsContent value={selection.section} className="space-y-4">
           {error ? (
@@ -366,7 +369,11 @@ export function ReportsAnalytics() {
                   {charts.map((chart) => <ReportChartCard key={chart.title} chart={chart} />)}
                 </div>
               )}
-              {data.table && <ReportTable table={data.table} onPageChange={(page) => update({ page })} />}
+              {data.table && <ReportTable table={data.table} onPageChange={(page) => update({ page })} onViewFeedback={(customer, trigger) => { feedbackTrigger.current = trigger; setFeedbackCustomer(customer); }} />}
+              {selection.section === "telematics" && canViewDrivingAnalysis && data.operatorAttention ? <OperatorsNeedingAttention data={data.operatorAttention} onPageChange={operatorPage => update({ operatorPage })} onView={(operator, trigger) => {
+                operatorTrigger.current = trigger;
+                setAttentionOperator({ operator, scope: { period: selection.period, date: selection.date, search: selection.search ?? "", vehicleId: selection.vehicleId ? String(selection.vehicleId) : undefined, gradedOnly: true } });
+              }} /> : null}
               {selection.section === "telematics" && canViewDrivingAnalysis && (
                 <Button variant="outline" asChild><Link href={`/${portal}/driving-analysis`}>Driving Analysis</Link></Button>
               )}
@@ -374,6 +381,8 @@ export function ReportsAnalytics() {
           )}
         </TabsContent>
       </Tabs>
+      {feedbackCustomer ? <CustomerFeedbackDialog key={feedbackCustomer.id} customer={feedbackCustomer} canCurate={canCurateFeedback} onClose={() => setFeedbackCustomer(null)} onReturnFocus={() => feedbackTrigger.current?.focus()} /> : null}
+      {attentionOperator ? <OperatorBookingsDialog key={`${attentionOperator.operator.id}:${attentionOperator.operator.operator_type}`} operator={attentionOperator.operator} scope={attentionOperator.scope} portal={portal} onClose={() => setAttentionOperator(null)} onReturnFocus={() => operatorTrigger.current?.focus()} /> : null}
     </div>
   );
 }

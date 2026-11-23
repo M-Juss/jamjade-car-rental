@@ -159,7 +159,7 @@ function availableVehicle(array $attributes = []): Vehicle
 function vehicleManagerUser(): User
 {
     $user = User::factory()->create();
-    $user->assignRole(UserRole::Admin->value);
+    $user->assignRole(UserRole::Owner->value);
 
     return $user;
 }
@@ -227,6 +227,9 @@ function verifiedOwnerWrite($test, string $method, string $url, array $data = []
         $issued = $test->json($method, $url, $data, ['X-Owner-Verification' => 'request']);
     }
     $issued->assertOk();
+    if ($issued->json('data.verificationRequired') === false) {
+        return $test->json($method, $url, $data);
+    }
     $code = Mail::sent(OwnerVerificationMail::class)->last()->code;
 
     return $test->json($method, $url, $data, ['X-Owner-Verification-Id' => $issued->json('data.verificationId'), 'X-Owner-Code' => $code]);

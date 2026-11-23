@@ -9,8 +9,6 @@ import { FormDialogContent, FormDialogHeader } from "@/components/common/forms/F
 import { TextAreaWithLabel } from "@/components/common/forms/TextAreaWithLabel";
 import { InputWithLabel } from "@/components/common/forms/InputWithLabel";
 import { SelectWithLabel } from "@/components/common/forms/SelectWithLabel";
-import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
-import { getUserRoleNames } from "@/services/auth";
 import { BookingDialogFooter } from "@/modules/management/bookings/components/BookingDialogFooter";
 import { cancelBooking, type BookingRecord } from "@/services/booking";
 import { ApiError, OwnerVerificationCancelled } from "@/services/http";
@@ -18,9 +16,8 @@ import { appToast } from "@/lib/toast";
 import { cancellationWithRefundSchema, type CancellationWithRefundValues } from "@/validations/booking/cancellation";
 
 export function CancelBookingDialog({ booking, onClose, onSaved }: { booking: BookingRecord; onClose: () => void; onSaved: (booking: BookingRecord) => void }) {
-  const { user } = useManagementSession();
   const paid = booking.customerPaidAmount ?? 0;
-  const refundEnabled = booking.statusKey === 'confirmed' && paid > 0 && Boolean(user && getUserRoleNames(user).includes('admin'));
+  const refundEnabled = booking.statusKey === 'confirmed' && paid > 0 && booking.canReviewCancellationRefund === true;
   const form = useForm<CancellationWithRefundValues>({ resolver: zodResolver(cancellationWithRefundSchema(paid, refundEnabled)), defaultValues: { reason: "", refundMode: 'full', refundAmount: '' } });
   const mode = useWatch({ control: form.control, name: 'refundMode' });
   const busy = form.formState.isSubmitting;

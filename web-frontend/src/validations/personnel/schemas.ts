@@ -35,6 +35,9 @@ export function createPersonnelAccountSchema(requirePassword: boolean) {
       passwordConfirmation: z.string().max(72, "Use 72 characters or fewer."),
     })
     .superRefine((values, context) => {
+      if (["staff", "driver"].includes(values.role) && !values.phoneNumber) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Contact number is required.", path: ["phoneNumber"] });
+      }
       if (requirePassword && !values.password) {
         context.addIssue({
           code: z.ZodIssueCode.custom,

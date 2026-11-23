@@ -7,6 +7,7 @@ use App\Enums\TelematicsEventType;
 use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
@@ -18,6 +19,17 @@ class ReportAnalyticsService
     public const PAGE_SIZE = 10;
 
     private const RENTAL_TYPES = ['self_drive' => 'Self Drive', 'owners_driver' => 'With Assigned Driver'];
+
+    public function operatorsNeedingAttention(ReportPeriod $period, array $filters): LengthAwarePaginator
+    {
+        $overview = app(RentalDrivingOverviewService::class);
+        $scope = $this->bookingQuery($filters, includeOperator: true)->select('bookings.id');
+        $rentals = $overview->rentals(['graded_only' => true])->whereIn('booking.id', $scope)->whereNotNull('trip.operator_user_id');
+        $period->constrain($rentals, 'completion.completed_at');
+
+        return $overview->operators($rentals, self::PAGE_SIZE, RentalDrivingOverviewService::ATTENTION_GRADE_THRESHOLD,
+            'operator_page', $filters['operator_page'] ?? 1);
+    }
 
     public function analytics(string $section, ReportPeriod $period, array $filters): array
     {
@@ -41,7 +53,7 @@ class ReportAnalyticsService
     {
         $table = match ($section) {
             'revenue' => $this->revenueTable($this->cashEntries($period, $filters)),
-            'bookings' => $this->bookingTable($this->bookingActivity($period, $filters)),
+            'bookings' => $this->bookingTable($this->finalBookings($period, $filters)),
             'telematics' => $this->telematicsTable($this->telematicsEvents($period, $filters)),
             default => $this->dataset($section, $period, $filters)['table'],
         };
@@ -67,30 +79,66 @@ class ReportAnalyticsService
     private function overview(ReportPeriod $period, array $filters): array
     {
         $cash = $this->cashTotals($this->cashEntries($period, $filters), $period);
-        $activity = $this->bookingTotals($this->bookingActivity($period, $filters), $period);
+        $points = $period->points(['completed' => 0, 'self_drive' => 0, 'owners_driver' => 0, 'cancelled' => 0, 'customers' => 0]);
+        $customers = [];
+        $bucketCustomers = [];
+        $vehicles = [];
+        $completed = 0;
+        $cancelled = 0;
+        $finals = $this->finalBookings($period, $filters)
+            ->addSelect('bookings.user_id', 'bookings.vehicle_id', 'vehicles.plate_number');
+        foreach ($finals->cursor() as $booking) {
+            $bucket = $period->bucket($booking->occurred_at);
+            if ($booking->outcome === 'cancelled') {
+                $points[$bucket]['cancelled']++;
+                $cancelled++;
+            }
+            if ($booking->outcome !== 'completed') {
+                continue;
+            }
+            $completed++;
+            $points[$bucket]['completed']++;
+            $points[$bucket][$booking->rental_type]++;
+            $customers[$booking->user_id] = true;
+            if (! isset($bucketCustomers[$bucket][$booking->user_id])) {
+                $points[$bucket]['customers']++;
+                $bucketCustomers[$bucket][$booking->user_id] = true;
+            }
+            $vehicles[$booking->vehicle_id] ??= [
+                'id' => $booking->vehicle_id,
+                'label' => $booking->vehicle === null ? 'Not recorded' : $this->vehicleLabel($booking->vehicle, $booking->plate_number),
+                'completed' => 0,
+            ];
+            $vehicles[$booking->vehicle_id]['completed']++;
+        }
+        $ranking = collect($vehicles)->sortBy([['completed', 'desc'], ['label', 'asc'], ['id', 'asc']])->take(5)
+            ->map(fn (array $vehicle) => ['label' => $vehicle['label'], 'completed' => $vehicle['completed']])->values()->all();
         $rows = collect($cash['points'])->map(fn (array $point, string $key) => [
             ...$point,
-            'bookings' => $activity['points'][$key]['created'],
-            'completed' => $activity['points'][$key]['completed'],
+            ...$points[$key],
         ])->values();
 
         return [
             'metrics' => [
-                ...$this->cashMetrics($cash),
-                $this->metric('Bookings created', $activity['totals']['created']),
-                $this->metric('Rentals completed', $activity['totals']['completed']),
+                $this->metric('Net receipts', $cash['net'], 'money'),
+                $this->metric('Rentals completed', $completed),
+                $this->metric('Customers served', count($customers)),
+                $this->metric('Cancellations', $cancelled),
             ],
             'charts' => [
-                $this->chart('Net receipts', 'line', 'money', ['net' => 'Net receipts'], $cash['points']),
-                $this->chart('Booking activity', 'bar', 'count', ['created' => 'Bookings created', 'completed' => 'Rentals completed'], $activity['points']),
+                $this->chart('Receipts over time', 'line', 'money', ['net' => 'Net receipts'], $cash['points']),
+                $this->chart('Most booked vehicles', 'horizontal', 'count', ['completed' => 'Completed rentals'], $ranking),
             ],
             'table' => $this->table('Period totals', [
                 'label' => ['Period', 'text'],
                 'gross' => ['Gross receipts', 'money'],
                 'refunds' => ['Refunds paid', 'money'],
                 'net' => ['Net receipts', 'money'],
-                'bookings' => ['Bookings created', 'count'],
                 'completed' => ['Rentals completed', 'count'],
+                'self_drive' => ['Self Drive', 'count'],
+                'owners_driver' => ['Assigned Driver', 'count'],
+                'customers' => ['Customers served', 'count'],
+                'cancelled' => ['Cancellations', 'count'],
             ], $rows),
         ];
     }
@@ -99,19 +147,62 @@ class ReportAnalyticsService
     {
         $entries = $this->cashEntries($period, $filters);
         $cash = $this->cashTotals($entries, $period);
-        $byType = collect($cash['rentalTypes'])->map(fn (int $cents, string $type) => [
-            'label' => self::RENTAL_TYPES[$type],
-            'net' => $cents / 100,
-        ])->all();
+        $payments = 0;
+        $bookings = [];
+        $purposes = [];
+        $vehicles = [];
+        foreach ((clone $entries)->cursor() as $entry) {
+            $cents = (int) round((float) $entry->amount * 100);
+            $vehicles[$entry->vehicle_id] ??= [
+                'id' => $entry->vehicle_id, 'net' => 0,
+                'label' => $entry->vehicle === null ? 'Not recorded' : $this->vehicleLabel($entry->vehicle, $entry->plate_number),
+            ];
+            $vehicles[$entry->vehicle_id]['net'] += $cents;
+            if ($entry->entry_type !== 'Receipt') {
+                continue;
+            }
+            $payments++;
+            $bookings[$entry->booking_id] = true;
+            $purpose = $this->paymentPurposeLabel($entry->purpose);
+            $purposes[$purpose] = ($purposes[$purpose] ?? 0) + $cents;
+        }
+        $byPurpose = collect($purposes)->map(fn (int $cents, string $label) => ['label' => $label, 'gross' => $cents / 100])
+            ->sortBy([['gross', 'desc'], ['label', 'asc']])->values()->all();
+        $ranked = collect($vehicles)->sortBy([['net', 'desc'], ['label', 'asc'], ['id', 'asc']])->values();
+        $byVehicle = $ranked->take(5)->map(fn (array $vehicle) => ['label' => $vehicle['label'], 'net' => $vehicle['net'] / 100])->values()->all();
+        if ($ranked->count() > 5) {
+            $byVehicle[] = ['label' => 'Other vehicles', 'net' => $ranked->slice(5)->sum('net') / 100];
+        }
 
         return [
-            'metrics' => $this->cashMetrics($cash),
+            'metrics' => [
+                [...$this->metric('Net receipts', $cash['net'], 'money'), 'details' => [
+                    $this->metric('Gross receipts', $cash['gross'], 'money'),
+                    $this->metric('Refunds paid', $cash['refunds'], 'money'),
+                ]],
+                $this->metric('Payments received', $payments),
+                $this->metric('Bookings with payments', count($bookings)),
+                $this->metric('Average payment', $payments === 0 ? null : round($cash['gross'] / $payments, 2), 'money'),
+            ],
             'charts' => [
-                $this->chart('Receipts and refunds', 'bar', 'money', ['gross' => 'Gross receipts', 'refunds' => 'Refunds paid'], $cash['points']),
-                $this->chart('Net receipts by rental type', 'bar', 'money', ['net' => 'Net receipts'], $byType),
+                $this->chart('Receipts by payment purpose', 'horizontal', 'money', ['gross' => 'Gross receipts'], $byPurpose),
+                $this->chart('Net receipts by vehicle', 'horizontal', 'money', ['net' => 'Net receipts'], $byVehicle),
             ],
             'table' => $this->revenueTable($entries),
         ];
+    }
+
+    private function paymentPurposeLabel(?string $purpose): string
+    {
+        return match ($purpose) {
+            'full_payment' => 'Full payments',
+            'down_payment' => 'Down payments',
+            'remaining_balance' => 'Balance payments',
+            'customer_outstanding' => 'Customer charges',
+            'driver_outstanding' => 'Driver charges',
+            'manual_booking_payment' => 'Manual payments',
+            default => 'Other payments',
+        };
     }
 
     private function cashEntries(ReportPeriod $period, array $filters): Builder
@@ -128,6 +219,7 @@ class ReportAnalyticsService
             })
             ->selectRaw("payments.id as entry_id, coalesce(payments.completed_at, payments.created_at) as occurred_at,
                 'Receipt' as entry_type, payments.provider as method, payments.amount as amount,
+                bookings.id as booking_id, bookings.vehicle_id, payments.purpose, vehicles.plate_number,
                 bookings.booking_code as booking, bookings.rental_type, vehicles.name as vehicle");
 
         $refunds = $this->bookingQuery($filters, historical: true)
@@ -136,6 +228,7 @@ class ReportAnalyticsService
             ->where('refund.refund_amount', '>', 0)
             ->selectRaw("refund.id as entry_id, refund.refunded_at as occurred_at,
                 'Refund' as entry_type, null as method, -refund.refund_amount as amount,
+                bookings.id as booking_id, bookings.vehicle_id, null as purpose, vehicles.plate_number,
                 bookings.booking_code as booking, bookings.rental_type, vehicles.name as vehicle");
 
         return DB::query()->fromSub($payments->unionAll($period->constrain($refunds, 'refund.refunded_at')), 'cash_entries');
@@ -146,7 +239,6 @@ class ReportAnalyticsService
         $points = $period->points(['gross' => 0, 'refunds' => 0, 'net' => 0]);
         $gross = 0;
         $refunds = 0;
-        $rentalTypes = [];
 
         foreach ((clone $entries)->select(['occurred_at', 'entry_type', 'amount', 'rental_type'])->cursor() as $entry) {
             $key = $period->bucket($entry->occurred_at);
@@ -159,7 +251,6 @@ class ReportAnalyticsService
                 $refunds -= $cents;
             }
             $points[$key]['net'] += $cents;
-            $rentalTypes[$entry->rental_type] = ($rentalTypes[$entry->rental_type] ?? 0) + $cents;
         }
 
         return [
@@ -169,16 +260,6 @@ class ReportAnalyticsService
             'gross' => $gross / 100,
             'refunds' => $refunds / 100,
             'net' => ($gross - $refunds) / 100,
-            'rentalTypes' => $rentalTypes,
-        ];
-    }
-
-    private function cashMetrics(array $cash): array
-    {
-        return [
-            $this->metric('Gross receipts', $cash['gross'], 'money'),
-            $this->metric('Refunds paid', $cash['refunds'], 'money'),
-            $this->metric('Net receipts', $cash['net'], 'money'),
         ];
     }
 
@@ -191,6 +272,7 @@ class ReportAnalyticsService
             'vehicle' => ['Vehicle', 'text'],
             'rental_type' => ['Rental type', 'text'],
             'method' => ['Method', 'text'],
+            'purpose' => ['Purpose', 'text'],
             'amount' => ['Amount', 'money'],
         ], $query->orderByDesc('occurred_at')->orderBy('entry_type')->orderByDesc('entry_id'));
     }
@@ -212,7 +294,7 @@ class ReportAnalyticsService
                 $this->chart('Bookings by rental type', 'stacked', 'count', self::RENTAL_TYPES, $activity['points']),
                 $this->chart('Booking outcomes', 'bar', 'count', ['completed' => 'Completed', 'cancelled' => 'Cancelled', 'no_show' => 'No-show', 'rejected' => 'Rejected'], $activity['points']),
             ],
-            'table' => $this->bookingTable($events),
+            'table' => $this->bookingTable($this->finalBookings($period, $filters)),
         ];
     }
 
@@ -252,13 +334,30 @@ class ReportAnalyticsService
 
     private function bookingTable(Builder $query): array
     {
-        return $this->table('Booking activity', [
+        return $this->table('Booking outcomes', [
             'occurred_at' => ['Date', 'datetime'],
             'booking' => ['Booking', 'text'],
             'vehicle' => ['Vehicle', 'text'],
             'rental_type' => ['Rental type', 'text'],
-            'outcome' => ['Activity', 'text'],
+            'outcome' => ['Status', 'text'],
         ], $query->orderByDesc('occurred_at')->orderBy('outcome')->orderByDesc('entry_id'));
+    }
+
+    private function finalBookings(ReportPeriod $period, array $filters): Builder
+    {
+        $finalStatuses = DB::table('booking_events')->where('event_type', 'status_changed')
+            ->whereIn('new_status', BookingStatus::terminalValues())
+            ->groupBy('booking_id', 'new_status')->selectRaw('booking_id, new_status, max(created_at) as occurred_at');
+        $bookings = $this->bookingQuery($filters)->whereIn('bookings.status', BookingStatus::terminalValues())
+            ->joinSub($finalStatuses, 'final_status', fn ($join) => $join->on('final_status.booking_id', '=', 'bookings.id')
+                ->on('final_status.new_status', '=', 'bookings.status'))
+            ->leftJoin('vehicles', 'vehicles.id', '=', 'bookings.vehicle_id')
+            ->leftJoin('booking_cancellations as cancellation', 'cancellation.booking_id', '=', 'bookings.id')
+            ->selectRaw("bookings.id as entry_id, final_status.occurred_at, bookings.booking_code as booking,
+                bookings.rental_type, vehicles.name as vehicle,
+                case when bookings.status = 'cancelled' and cancellation.kind = 'no_show' then 'no_show' else bookings.status end as outcome");
+
+        return $period->constrain($bookings, 'final_status.occurred_at');
     }
 
     private function fleet(ReportPeriod $period, array $filters): array
@@ -318,6 +417,19 @@ class ReportAnalyticsService
     private function customers(ReportPeriod $period, array $filters): array
     {
         $completions = $this->lifecycle(BookingStatus::Completed);
+        // Ratings deliberately ignore report dates, filters and publication choices.
+        $ratings = DB::table('booking_feedback as feedback')
+            ->join('bookings as rated_booking', 'rated_booking.id', '=', 'feedback.booking_id')
+            ->whereNull('rated_booking.deleted_at')->where('rated_booking.status', BookingStatus::Completed->value)
+            ->groupBy('feedback.customer_id')->selectRaw('feedback.customer_id, avg(feedback.rating) as lifetime_rating, count(*) as rating_count');
+        // Include earlier down payments, but never cash recorded after the report cutoff.
+        $payments = DB::table('payments')->where('status', 'completed')->where('currency', 'PHP')->where('amount', '>', 0)
+            ->where(fn (Builder $query) => $query->whereNull('purpose')->orWhere('purpose', '!=', 'driver_outstanding'))
+            ->whereRaw('coalesce(completed_at, created_at) < ?', [$period->dataEnd->utc()])
+            ->groupBy('booking_id', 'user_id')->selectRaw('booking_id, user_id, sum(amount) as paid');
+        $refunds = DB::table('booking_cancellations')->where('refund_amount', '>', 0)
+            ->where('refunded_at', '<', $period->dataEnd->utc())
+            ->groupBy('booking_id')->selectRaw('booking_id, sum(refund_amount) as refunded');
         $firstRental = DB::query()->fromSub(clone $completions, 'first_completion')
             ->join('bookings', 'bookings.id', '=', 'first_completion.booking_id')
             ->whereNull('bookings.deleted_at')
@@ -325,12 +437,20 @@ class ReportAnalyticsService
         $rentals = $this->bookingQuery($filters)->joinSub($completions, 'completion', 'completion.booking_id', '=', 'bookings.id')
             ->joinSub($firstRental, 'history', 'history.user_id', '=', 'bookings.user_id')
             ->leftJoin('users', 'users.id', '=', 'bookings.user_id')
-            ->select(['bookings.user_id', 'users.name as customer', 'completion.occurred_at', 'history.first_completed']);
+            ->leftJoin('vehicles', 'vehicles.id', '=', 'bookings.vehicle_id')
+            ->leftJoinSub($ratings, 'ratings', 'ratings.customer_id', '=', 'bookings.user_id')
+            ->leftJoinSub($payments, 'customer_payments', fn ($join) => $join->on('customer_payments.booking_id', '=', 'bookings.id')
+                ->on('customer_payments.user_id', '=', 'bookings.user_id'))
+            ->leftJoinSub($refunds, 'customer_refunds', 'customer_refunds.booking_id', '=', 'bookings.id')
+            ->select(['bookings.user_id', 'bookings.vehicle_id', 'bookings.rental_type', 'users.name as customer', 'ratings.lifetime_rating', 'ratings.rating_count',
+                'vehicles.name as vehicle_name', 'vehicles.plate_number', 'completion.occurred_at', 'history.first_completed'])
+            ->selectRaw('coalesce(customer_payments.paid, 0) as paid, coalesce(customer_refunds.refunded, 0) as refunded');
         $points = $period->points(['firstTime' => 0, 'returning' => 0]);
         $rows = [];
         $seen = [];
+        $vehicles = [];
 
-        foreach ($period->constrain($rentals, 'completion.occurred_at')->orderBy('completion.occurred_at')->cursor() as $rental) {
+        foreach ($period->constrain($rentals, 'completion.occurred_at')->orderBy('completion.occurred_at')->orderBy('bookings.id')->cursor() as $rental) {
             $bucket = $period->bucket($rental->occurred_at);
             if (! isset($seen[$bucket][$rental->user_id])) {
                 $group = $period->bucket($rental->first_completed) === $bucket ? 'firstTime' : 'returning';
@@ -339,24 +459,48 @@ class ReportAnalyticsService
             }
             $rows[$rental->user_id] ??= [
                 'customer' => $rental->customer,
+                'customer_id' => $rental->user_id,
+                'lifetime_rating' => $rental->lifetime_rating,
+                'rating_count' => (int) $rental->rating_count,
                 'completed' => 0,
-                'first_completed' => $rental->first_completed,
+                'self_drive' => 0,
+                'owners_driver' => 0,
+                'spent_cents' => 0,
                 'last_completed' => null,
             ];
             $rows[$rental->user_id]['completed']++;
+            $rows[$rental->user_id][$rental->rental_type]++;
+            $rows[$rental->user_id]['spent_cents'] += (int) round((float) $rental->paid * 100) - (int) round((float) $rental->refunded * 100);
             $rows[$rental->user_id]['last_completed'] = $rental->occurred_at;
+            $vehicles[$rental->user_id][$rental->vehicle_id] ??= [
+                'id' => $rental->vehicle_id, 'count' => 0,
+                'label' => $rental->vehicle_name === null ? null : $this->vehicleLabel($rental->vehicle_name, $rental->plate_number),
+                'last_completed' => null,
+            ];
+            $vehicles[$rental->user_id][$rental->vehicle_id]['count']++;
+            $vehicles[$rental->user_id][$rental->vehicle_id]['last_completed'] = $rental->occurred_at;
         }
 
-        $customers = collect(array_values($rows))->sortBy([['completed', 'desc'], ['customer', 'asc']])->values();
+        $customers = collect($rows)->map(function (array $row, int $customerId) use ($vehicles) {
+            $favorite = collect($vehicles[$customerId])->sortBy([['count', 'desc'], ['last_completed', 'desc'], ['id', 'asc']])->first();
+
+            return [...$row, 'total_spent' => $row['spent_cents'] / 100, 'most_booked_vehicle' => $favorite['label']];
+        })->sortBy([['completed', 'desc'], ['customer', 'asc']])->values();
 
         return [
-            'metrics' => [$this->metric('Renters', $customers->count()), $this->metric('Rentals completed', (int) $customers->sum('completed'))],
-            'charts' => [$this->chart('First-time and returning renters', 'stacked', 'count', ['firstTime' => 'First-time', 'returning' => 'Returning'], $points)],
-            'table' => $this->table('Renters', [
+            'metrics' => [$this->metric('Customers', $customers->count()),
+                $this->metric('Self Drive completed', (int) $customers->sum('self_drive')),
+                $this->metric('Assigned Driver completed', (int) $customers->sum('owners_driver')),
+                $this->metric('Total spent', $customers->sum('spent_cents') / 100, 'money')],
+            'charts' => [$this->chart('First-time and returning customers', 'stacked', 'count', ['firstTime' => 'First-time', 'returning' => 'Returning'], $points)],
+            'table' => $this->table('Customers', [
                 'customer' => ['Customer', 'text'],
-                'completed' => ['Rentals completed', 'count'],
-                'first_completed' => ['First completed rental', 'datetime'],
-                'last_completed' => ['Latest in period', 'datetime'],
+                'self_drive' => ['Self Drive', 'count'],
+                'owners_driver' => ['Assigned Driver', 'count'],
+                'total_spent' => ['Total spent', 'money'],
+                'most_booked_vehicle' => ['Most booked vehicle', 'text'],
+                'last_completed' => ['Last completed rental', 'datetime'],
+                'lifetime_rating' => ['Lifetime ratings', 'rating'],
             ], $customers),
         ];
     }
@@ -419,7 +563,7 @@ class ReportAnalyticsService
             ->groupBy('booking_id')->selectRaw('booking_id, max(created_at) as occurred_at');
     }
 
-    private function bookingQuery(array $filters, bool $historical = false): Builder
+    private function bookingQuery(array $filters, bool $historical = false, bool $includeOperator = false): Builder
     {
         return DB::table('bookings')
             ->when(! $historical, fn (Builder $query) => $query->whereNull('bookings.deleted_at'))
@@ -431,7 +575,11 @@ class ReportAnalyticsService
                     ->orWhereExists($this->matchingVehicle('bookings.vehicle_id', $pattern))
                     ->orWhereExists(DB::table('users as search_customer')->selectRaw('1')
                         ->whereColumn('search_customer.id', 'bookings.user_id')
-                        ->whereRaw("search_customer.name LIKE ? ESCAPE '!'", [$pattern]))));
+                        ->whereRaw("search_customer.name LIKE ? ESCAPE '!'", [$pattern]))
+                    ->when($includeOperator, fn (Builder $match) => $match->orWhereExists(DB::table('telematics_trips as search_trip')
+                        ->join('users as search_operator', 'search_operator.id', '=', 'search_trip.operator_user_id')
+                        ->selectRaw('1')->whereColumn('search_trip.booking_id', 'bookings.id')
+                        ->whereRaw("search_operator.name LIKE ? ESCAPE '!'", [$pattern])))));
     }
 
     private function matchingVehicle(string $vehicleId, string $pattern): Builder
@@ -511,9 +659,15 @@ class ReportAnalyticsService
             $values = [];
             foreach ($table['columns'] as ['key' => $key, 'format' => $format]) {
                 $value = $row[$key];
+                if ($key === 'purpose' && $row['entry_type'] === 'Receipt') {
+                    $values[$key] = $this->paymentPurposeLabel($value);
+
+                    continue;
+                }
                 $values[$key] = $value === null ? null : match ($format) {
                     'datetime' => CarbonImmutable::parse($value, 'UTC')->toISOString(),
                     'money', 'hours' => (float) $value,
+                    'rating' => round((float) $value, 1),
                     'count' => (int) $value,
                     default => match ($key) {
                         'rental_type' => self::RENTAL_TYPES[$value],
@@ -523,6 +677,11 @@ class ReportAnalyticsService
                         default => $value,
                     },
                 };
+            }
+
+            if (array_key_exists('lifetime_rating', $values)) {
+                $values['customer_id'] = (int) $row['customer_id'];
+                $values['rating_count'] = (int) $row['rating_count'];
             }
 
             return $values;

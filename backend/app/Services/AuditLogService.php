@@ -12,6 +12,7 @@ class AuditLogService
 {
     // Only business operations belong here. Never return activity descriptions or properties.
     public const EVENTS = [
+        'owner_verified_change' => ['settings', 'updated', 'Applied Owner-verified change'],
         'booking_created' => ['bookings', 'created', 'Created booking'],
         'booking_status_changed' => ['bookings', 'updated', 'Updated booking'],
         'booking_dates_revised' => ['bookings', 'updated', 'Updated booking dates'],

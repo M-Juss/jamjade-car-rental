@@ -17,6 +17,7 @@ export type PersonnelUser = {
   email: string;
   phoneNumber?: string | null;
   isActive: boolean;
+  availableNow?: boolean | null;
   status: "active" | "inactive";
   role: PersonnelRole;
   lastLoginAt?: string | null;

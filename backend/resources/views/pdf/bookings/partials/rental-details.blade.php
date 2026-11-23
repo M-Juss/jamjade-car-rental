@@ -27,6 +27,12 @@
                 </span>
             </td>
         </tr>
+        @if ($confirmation['rental']['pickupLocation'] === $confirmation['rental']['returnLocation'])
+        <tr><td colspan="2" style="width:100%;padding-left:0;border-left:0;">
+            <span class="label">{{ $confirmation['rental']['pickupType'] === 'delivery' ? 'Pickup / End Trip Location' : 'Pickup / Return Location' }}</span>
+            <span class="value">{{ $displayValue($confirmation['rental']['pickupLocation']) }}</span>
+        </td></tr>
+        @else
         <tr>
             <td>
                 <span class="label">Pickup Location</span>
@@ -37,33 +43,22 @@
                 <span class="value">{{ $displayValue($confirmation['rental']['returnLocation']) }}</span>
             </td>
         </tr>
+        @endif
     </table>
-    @if (($confirmation['formatVersion'] ?? 1) >= 2 && (($confirmation['formatVersion'] ?? 1) < 3 || $confirmation['rental']['pickupType'] !== 'delivery'))
+    @if (($confirmation['formatVersion'] ?? 1) >= 2)
         <table class="info-grid"><tr>
-            <td><span class="label">Rental Type</span><span class="value">{{ $confirmation['rental']['driverOption'] }}</span></td>
+            <td><span class="label">{{ $confirmation['rental']['pickupType'] === 'delivery' ? 'Driver Option' : 'Rental Type' }}</span><span class="value">{{ $confirmation['rental']['driverOption'] }}</span></td>
             @if (($confirmation['rental']['coverage'] ?? null))
             <td><span class="label">Trip Coverage</span><span class="value">{{ $confirmation['rental']['coverage'] === 'outside_manila' ? 'Outside Manila' : 'Within Metro Manila' }}</span></td>
             @endif
         </tr></table>
     @endif
-    @if ($confirmation['rental']['pickupType'] === 'delivery')
+    @if ($confirmation['rental']['driverOption'] === "Owner's Driver" || !empty($confirmation['driver']))
         <table class="info-grid info-grid-three">
             <tr>
-                <td>
-                    <span class="label">Driver Option</span>
-                    <span class="value">{{ $displayValue($confirmation['rental']['driverOption']) }}</span>
-                    @if (($confirmation['formatVersion'] ?? 1) >= 3 && ($confirmation['rental']['coverage'] ?? null))
-                    <br><span class="value">{{ $confirmation['rental']['coverage'] === 'outside_manila' ? 'Outside Manila' : 'Within Metro Manila' }}</span>
-                    @endif
-                </td>
-                <td>
-                    <span class="label">Driver Name</span>
-                    <span class="value">{{ $confirmation['driver']['name'] ?? 'To be assigned' }}</span>
-                </td>
-                <td>
-                    <span class="label">Contact Number</span>
-                    <span class="value">{{ $confirmation['driver']['phone'] ?? 'To be assigned' }}</span>
-                </td>
+                <td style="width:37%;"><span class="label">Driver Name</span><span class="value">{{ $confirmation['driver']['name'] ?? 'To be assigned' }}</span></td>
+                <td style="width:43%;"><span class="label">Email</span><span class="value">{{ $confirmation['driver']['email'] ?? 'Not provided' }}</span></td>
+                <td style="width:20%;"><span class="label">Contact Number</span><span class="value">{{ $confirmation['driver']['phone'] ?? 'To be assigned' }}</span></td>
             </tr>
         </table>
     @endif

@@ -88,7 +88,7 @@ it('renders the booking confirmation as exactly two A4 pages', function () {
         ->and($html)->toContain('PHP 900.00')
         ->and($html)->not->toContain('PHP ₱')
         ->and($html)->toContain('General Terms and Conditions')
-        ->and($html)->toContain('Terms and Conditions for Self-Drive Renters')
+        ->and($html)->toContain('Terms and Conditions for Self-Drive Customers')
         ->and($html)->toContain("Terms and Conditions for Renting a Car with Owner's Driver")
         ->and($html)->toContain('Telematics must be active while the vehicle is in motion')
         ->and($html)->not->toContain('Official Receipt')
@@ -105,6 +105,35 @@ it('names the confirmation using the booking reference and displayed status', fu
     expect(app(BookingConfirmationPdfService::class)->filename($booking))
         ->toBe('BK-20957 | '.$status->mobileLabel().' | Rental Information.pdf');
 })->with(BookingStatus::cases());
+
+it('keeps driver contact details on the first of exactly two pages for delivery and garage pickup', function (string $pickup) {
+    $booking = Booking::create([
+        'booking_code' => 'BK-PDF-DRIVER', 'user_id' => customerUser()->id, 'vehicle_id' => availableVehicle()->id,
+        'rental_type' => RentalType::OwnersDriver, 'rental_start_at' => now()->addDay(), 'rental_end_at' => now()->addDays(2),
+        'pickup_location_type' => $pickup, 'pickup_location' => 'Test pickup', 'return_location' => 'Test pickup',
+        'status' => BookingStatus::Confirmed, 'payment_status' => PaymentStatus::Paid,
+        'price_per_day' => 3500, 'duration_days' => 1, 'subtotal' => 3500, 'total_amount' => 3500, 'remaining_balance' => 0,
+    ]);
+    $driver = createDriverUser([
+        'name' => str_repeat('Name ', 31).'Driver',
+        'email' => str_repeat('a', 64).'@'.str_repeat('b', 63).'.'.str_repeat('c', 26).'.test',
+        'phone_number' => '09170000887',
+    ]);
+    $booking->update(['rental_type' => RentalType::OwnersDriver, 'assigned_driver_id' => $driver->id, 'pickup_location_type' => $pickup]);
+    $context = app(BookingConfirmationViewData::class)->make($booking->fresh());
+    $context['formatVersion'] = 3;
+    $context['customer']['address'] = substr(str_repeat('Test address ', 100), 0, 1000);
+    $context['rental']['pickupLocation'] = substr(str_repeat('Pickup address ', 100), 0, 1000);
+    $context['rental']['returnLocation'] = $context['rental']['pickupLocation'];
+    $pdf = app(BookingConfirmationPdfService::class)->makeRentalInformation($context);
+    expect($pdf->getDomPDF()->getCanvas()->get_page_count())->toBe(2);
+    $html = view('pdf.bookings.rental-information', ['confirmation' => $context])->render();
+    [$first, $terms] = explode('<div class="page page-break">', $html, 2);
+    expect($first)->toContain($driver->email, '09170000887', 'Driver Name')
+        ->not->toContain('General Terms and Conditions')
+        ->and($terms)->toContain('General Terms and Conditions')
+        ->not->toContain($driver->email, 'Driver Name', 'Agreed Rental Pricing');
+})->with(['delivery', 'shop']);
 
 it('derives paid status and balance from recorded payments', function () {
     $user = customerUser();
@@ -229,4 +258,18 @@ it('hides driver information fields for self-drive bookings', function () {
         ->and($html)->not->toContain('Contact Number')
         ->and($html)->not->toContain('To be assigned')
         ->and($html)->not->toContain('Driver Type');
+});
+
+it('never delivers an oversized rental document as a third page or silently drops its charges', function () {
+    $booking = Booking::create([
+        'booking_code' => 'BK-PDF-OVERSIZE', 'user_id' => customerUser()->id, 'vehicle_id' => availableVehicle()->id,
+        'rental_type' => RentalType::SelfDrive, 'rental_start_at' => now()->addDay(), 'rental_end_at' => now()->addDays(2),
+        'pickup_location_type' => 'shop', 'pickup_location' => 'Test pickup', 'return_location' => 'Test pickup',
+        'status' => BookingStatus::Confirmed, 'payment_status' => PaymentStatus::Paid,
+        'price_per_day' => 3500, 'duration_days' => 1, 'subtotal' => 3500, 'total_amount' => 3500, 'remaining_balance' => 0,
+    ]);
+    $context = app(BookingConfirmationViewData::class)->make($booking);
+    $context['additionalChargeItems'] = array_fill(0, 100, ['label' => str_repeat('Charge detail ', 20), 'amount' => 100]);
+    expect(fn () => app(BookingConfirmationPdfService::class)->makeRentalInformation($context))
+        ->toThrow(RuntimeException::class, 'Rental Information must fit two pages.');
 });

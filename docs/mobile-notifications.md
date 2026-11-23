@@ -35,3 +35,14 @@ Driving report notifications appear in the main inbox as booking notices. Each
 eligible recipient receives the overall grade out of 100 in the preview, with
 the deductions and summary in the notification detail. See the
 [finalization and recipient rules](telematics-master-plan.md#final-driving-reports--2026-11-12).
+
+
+## Driver assignment and pickup updates — 2026-11-21
+
+Actual assignment changes and reported `on_way` / `arrived` transitions create Customer category `booking` notifications in the main inbox, rather than trip Activity. Each contains the Driver's saved name, email and contact number in `fullMessage` and structured data, with View Booking opening the current assignment. Old notices remain historical; saving the same Driver or repeating a completed pickup action adds no notice. Previous/new Driver assignment notices remain scoped to their own accounts. Customer booking details independently display current contact data.
+
+`BookingDriverUpdateService` persists a separate `booking_driver_updates` row in the same transaction, with encrypted issuance-time context and delivery status/attempt/retry timestamps. Delivery starts only after commit, uses the Customer's current email and has HTML/plain-text parts with no financial attachments. A cache lock and sent-state check suppress ordinary repeated sends. Failure leaves booking/payment/progress and its in-app notice intact. The scheduled `booking-drivers:retry-emails` command retries at most 50 eligible rows every five minutes, with increasing waits capped at one hour. Superseded assignments, cancelled/terminal bookings and outdated departure/arrival updates are skipped so retries do not send misleading current-state emails. SMTP acceptance followed by a process failure before persisting sent state can still require operational reconciliation; no exactly-once SMTP guarantee is claimed.
+
+Deploy the new migration and keep Laravel's scheduler running. No new provider, package, phone push service, GPS collection or online/on-duty switch is introduced. Notification read state, pagination and account ownership retain their existing contracts.
+
+Sources: `BookingDriverUpdate`, `BookingDriverUpdateService`, `BookingDriverUpdateMail`, `emails/bookings/driver-update*.blade.php`, `routes/console.php`, and `DriverPickupWorkflowTest.php`. Live inbox delivery and physical Android acceptance remain separate checks.

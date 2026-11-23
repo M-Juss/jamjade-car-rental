@@ -56,7 +56,7 @@ class DashboardOverviewService
             'operationsTotal' => $canBook ? (clone $pickups)->count() + (clone $returns)->count() : null,
             'pendingDocuments' => $pendingDocuments,
             'awaitingPayment' => $canBook ? Booking::where('status', 'pending')->count() : null,
-            'balances' => $canBook ? [
+            'balances' => $user->can('view financial reports') ? [
                 'amount' => (float) (clone $balances)->sum('remaining_balance'),
                 'bookings' => (clone $balances)->count(),
                 'overdueAmount' => (float) (clone $balances)->where('balance_due_at', '<', $now)->sum('remaining_balance'),

@@ -21,7 +21,7 @@ const attentionText: Record<BookingAttention["key"], string | null> = {
 };
 
 type Props = {
-  booking: Pick<BookingRecord, "statusKey" | "adminStatus" | "attention" | "lateReturn">;
+  booking: Pick<BookingRecord, "statusKey" | "adminStatus" | "attention" | "lateReturn" | "driverAssignmentRequired">;
   className?: string;
 };
 
@@ -40,6 +40,7 @@ export function BookingStatusDisplay({ booking, className }: Props) {
       <span className={cn("table-status-badge inline-flex max-w-full whitespace-normal rounded-lg border px-2.5 py-1 text-xs font-semibold [overflow-wrap:anywhere]", bookingStatusStyle[booking.statusKey])}>
         {booking.adminStatus}
       </span>
+      {booking.driverAssignmentRequired ? <p className="text-xs font-medium text-warning">Driver required</p> : null}
       {note && (
         <p className={cn("whitespace-nowrap text-xs font-medium leading-4", overdue ? "text-destructive" : needsAttention ? "text-warning" : "text-muted-foreground")}>
           {note}{duration ? <span className="font-normal"> {duration}</span> : null}

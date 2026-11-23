@@ -61,6 +61,8 @@ function mapFuelType(value: string): Booking['fuelType'] {
 
 export function mapBooking(record: MobileBookingRecord): Booking {
   return {
+    assignedDriver: record.assignedDriver,
+    driverWorkflow: record.driverWorkflow,
     cancellation: record.cancellation,
     lateReturn: record.lateReturn,
     attention: record.attention,
@@ -68,6 +70,8 @@ export function mapBooking(record: MobileBookingRecord): Booking {
     backendId: Number(record.backendId),
     canReviseUnpaid: record.canReviseUnpaid,
     canCancelUnpaid: record.canCancelUnpaid,
+    feedback: record.feedback,
+    canLeaveFeedback: record.canLeaveFeedback,
     vehicleId: record.vehicleId,
     ownerDriverCoverage: record.ownerDriverCoverage,
     vehicleName: record.vehicleName,

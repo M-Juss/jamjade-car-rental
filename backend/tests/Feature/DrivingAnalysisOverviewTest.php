@@ -118,13 +118,52 @@ it('identifies incomplete saved grades in booking details and aggregate views', 
 });
 
 it('validates filters and requires both management permissions', function () {
-    foreach (['per_page=101', 'page=0', 'operator_id=99999999', 'search='.str_repeat('a', 161)] as $query) {
+    foreach (['per_page=101', 'page=0', 'operator_id=99999999', 'operator_type=staff', 'operator_type[]=driver', 'search='.str_repeat('a', 161)] as $query) {
         $this->getJson('/admin/driving-analysis/operators?'.$query)->assertUnprocessable();
     }
     $staff = User::factory()->create(['is_active' => true]);
     $staff->assignRole('staff')->roles()->firstOrFail()->revokePermissionTo('view fleet tracker');
     $this->actingAs($staff, 'web')->getJson('/admin/driving-analysis/operators')->assertForbidden();
     $this->actingAs($this->owner, 'web')->getJson('/admin/driving-analysis/operators')->assertForbidden();
+});
+
+it('filters operator types before pagination and aggregates only their matching rentals', function () {
+    overviewRental($this->owner, $this->operator, true, [['harsh_braking', 'confirmed']]);
+    overviewRental($this->owner, $this->operator, true);
+    overviewRental($this->owner, User::factory()->create(['name' => 'Another Customer']));
+    $driver = createDriverUser(['name' => 'Assigned Driver']);
+    $rental = overviewRental($this->owner, $driver, true, [['harsh_swerve', 'confirmed']]);
+    $rental->update(['rental_type' => RentalType::OwnersDriver]);
+    $driver->delete();
+
+    $this->getJson('/admin/driving-analysis/operators?operator_type=customer&per_page=1')->assertOk()
+        ->assertJsonCount(1, 'data')->assertJsonPath('meta.total', 2)
+        ->assertJsonPath('data.0.operator_type', 'customer')
+        ->assertJsonPath('meta.summary.completed_rentals', 3)
+        ->assertJsonPath('meta.summary.harsh_events', 1)->assertJsonPath('meta.summary.average_score', 99);
+    $this->getJson('/admin/driving-analysis/operators?operator_type=driver')->assertOk()
+        ->assertJsonCount(1, 'data')->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.id', $driver->id)->assertJsonPath('data.0.operator_type', 'driver')
+        ->assertJsonPath('data.0.completed_rentals', 1)->assertJsonPath('data.0.latest_score', 97)
+        ->assertJsonPath('meta.summary.completed_rentals', 1)->assertJsonPath('meta.summary.average_score', 97);
+    $this->getJson('/admin/driving-analysis/operators?operator_type=driver&search=Nobody')->assertOk()
+        ->assertJsonCount(0, 'data')->assertJsonPath('meta.summary.completed_rentals', 0);
+    $this->getJson('/admin/driving-analysis/operators')->assertOk()->assertJsonPath('meta.total', 3);
+});
+
+it('keeps historical customer and Driver rentals separate for the same recorded identity', function () {
+    overviewRental($this->owner, $this->operator, true, completedAt: '2026-11-01 10:00:00');
+    $driverRental = overviewRental($this->owner, $this->operator, true, [['harsh_swerve', 'confirmed']], completedAt: '2026-11-02 10:00:00');
+    $driverRental->update(['rental_type' => RentalType::OwnersDriver]);
+
+    $response = $this->getJson('/admin/driving-analysis/operators')->assertOk()->assertJsonCount(2, 'data');
+    $rows = collect($response->json('data'))->keyBy('operator_type');
+    expect($rows->get('customer')['latest_score'])->toBe(100)
+        ->and($rows->get('driver')['latest_score'])->toBe(97)
+        ->and($rows->get('customer')['completed_rentals'])->toBe(1)
+        ->and($rows->get('driver')['completed_rentals'])->toBe(1);
+    $this->getJson('/admin/driving-analysis?operator_id='.$this->operator->id.'&operator_type=driver')->assertOk()
+        ->assertJsonCount(1, 'data')->assertJsonPath('data.0.backendId', $driverRental->id);
 });
 
 it('floors each rental score before averaging and breaks unknown completion ties by booking ID', function () {

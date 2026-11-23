@@ -53,7 +53,7 @@ export function RcMovementCalibration({ step, live, calibration, busy, failureRe
         : feedback === 'keep_straight' ? 'Keep the movement straight' : captured ? 'Movement detected'
           : retrying ? 'Stop safely before trying again' : measuring ? 'Detecting movement'
             : phase === 'recording' ? (forward ? 'Ready for forward movement' : 'Waiting for movement') : 'Ready when you are';
-  const hint = passed ? 'Calibration complete. Wait for staff release.'
+  const hint = passed ? 'Calibration complete. Return to setup for rental release.'
     : phase === 'preparing' ? 'Stay parked until ready.'
       : phase === 'evaluating' ? 'Stop safely while the result is checked.'
       : captured ? 'Stop safely. Finishing the movement check.' : 'Follow staff directions and keep the mounted phone untouched.';

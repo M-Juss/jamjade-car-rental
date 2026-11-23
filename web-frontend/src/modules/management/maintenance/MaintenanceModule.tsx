@@ -47,6 +47,7 @@ import {
   MaintenancePlansTable,
   ScheduledMaintenanceTable,
 } from "./components/MaintenanceTables";
+import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import { MaintenanceDetailsDialog } from "./components/MaintenanceDetailsDialog";
 
 type ModuleTab = "plans" | "active" | "history";
@@ -57,6 +58,8 @@ type MaintenanceModuleProps = {
 };
 
 export function MaintenanceModule({ fixedVehicleId, compact = false }: MaintenanceModuleProps) {
+  const { user } = useManagementSession();
+  const canManagePlans = user?.permissions?.includes("manage maintenance plans") ?? false;
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
@@ -197,7 +200,7 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
           />
         )}
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Button type="button" variant="outline" onClick={() => { setEditingPlan(undefined); setPlanOpen(true); }}><Settings /> Add Plan</Button>
+          {canManagePlans && <Button type="button" variant="outline" onClick={() => { setEditingPlan(undefined); setPlanOpen(true); }}><Settings /> Add Plan</Button>}
           <Button type="button" onClick={() => openSchedule()}><Plus /> Custom Maintenance</Button>
         </div>
       </div>
@@ -231,7 +234,7 @@ export function MaintenanceModule({ fixedVehicleId, compact = false }: Maintenan
           </div>
         </div>
 
-        <TabsContent value="plans"><MaintenancePlansTable paginationKey={`${search}|${statusFilter}`} plans={filteredPlans} onSchedule={openSchedule} onEdit={(plan) => { setEditingPlan(plan); setPlanOpen(true); }} onDelete={setDeletePlan} onViewRecord={(recordId) => { const record = records.find((item) => item.id === recordId); if (record) setDetailsRecord(record); }} /></TabsContent>
+        <TabsContent value="plans"><MaintenancePlansTable canManagePlans={canManagePlans} paginationKey={`${search}|${statusFilter}`} plans={filteredPlans} onSchedule={openSchedule} onEdit={(plan) => { setEditingPlan(plan); setPlanOpen(true); }} onDelete={setDeletePlan} onViewRecord={(recordId) => { const record = records.find((item) => item.id === recordId); if (record) setDetailsRecord(record); }} /></TabsContent>
         <TabsContent value="active"><ScheduledMaintenanceTable paginationKey={`${search}|${statusFilter}`} records={filteredActive} onView={setDetailsRecord} onStart={(record) => setLifecycle({ record, mode: "start" })} onComplete={(record) => setLifecycle({ record, mode: "complete" })} onReschedule={setRescheduleRecord} onCancel={setCancelRecord} onCondition={(record) => void openConditionFlow(record)} /></TabsContent>
         <TabsContent value="history"><MaintenanceHistoryTable paginationKey={`${search}|${statusFilter}`} records={filteredHistory} onView={setDetailsRecord} /></TabsContent>
       </Tabs>

@@ -74,6 +74,6 @@ class AuthController extends Controller
 
     private function hasAdminAccess($user): bool
     {
-        return ! $user->hasRole('driver') && $user->hasAnyRole(['admin', 'staff']);
+        return ! $user->hasRole('driver') && $user->hasAnyRole(['owner', 'admin', 'staff']);
     }
 }

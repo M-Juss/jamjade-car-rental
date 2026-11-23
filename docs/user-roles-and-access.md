@@ -91,9 +91,39 @@ application source behavior did not change.
 
 ## Scope
 
-This guide defines the implemented Staff/Driver separation and Personnel. The identified JamJade account has Owner membership alongside Admin membership. Owner membership grants Admin account creation and revocation controls in Personnel. The Owner uses the existing Admin portal.
+This guide defines the implemented Staff/Driver separation and Personnel. Owner, Admin and Staff have separate fixed responsibilities. Owner uses the existing `/admin` portal for business work, technical Admin uses that shell with different permissions, and Staff uses `/staff`. Owner-only accounts no longer need Admin membership. The current matrix is recorded below; earlier dated access descriptions are historical.
 
 Accounts remain in `users`, with role membership in the existing Spatie tables. Staff and Driver are fixed, separate roles; neither role name nor its module permissions can be edited through Personnel. Customers continue using their existing mobile workflows.
+
+## Owner, technical Admin and Staff separation — 2026-11-23
+
+`config/management_permissions.php` defines fixed role permission ceilings. Owner has business authority; Admin has research and monitoring authority; Staff has rental operations plus explicitly permitted Owner-verified financial edits. `ManagementAccess` runs before the Spatie permission check so stale or direct grants cannot bypass a role boundary. `UserResource.permissions` returns only effective permissions. Existing cookie/CSRF web authentication and Customer/Driver bearer-token contracts remain separate.
+
+| Area | Owner | Technical Admin | Staff |
+| --- | --- | --- | --- |
+| Dashboard | Business and financial overview | Research-upload and monitoring counts | Daily rental operations, without aggregate revenue/balances |
+| Bookings / History / document verification | Business management | Denied | Operational actions; established state locks remain |
+| Vehicles | Create, edit, delete, catalogs and condition | Denied | Edit existing vehicles/condition; rate changes require Owner code; cannot create/delete/configure |
+| Maintenance | Plans, scheduling and work records | Denied | Schedule and update work records; cannot change plan definitions |
+| Fleet Monitoring / Driving Analysis | View | View technical records | View |
+| Geofence Library | Read/write default/custom zones | Read only | Read only |
+| Reports | All sections and exports; feedback curation | Denied | Booking outcomes and telematics only, including their CSV exports |
+| Fee Pricing / refunds / charge corrections | Direct authorized writes | Denied | Authorized writes require Owner email verification |
+| Personnel | Manage Admin, Staff and Driver accounts | Denied | Driver directory only; no credential/status/photo/lifecycle writes |
+| Data Collection / Model Explorer | Denied | Existing account-bound research access | Denied |
+| Activity Log | Business actions and Owner-verification audit | Own research upload/sign-in records | Denied |
+
+The Drive Monitoring research route retains its existing restricted API and remains hidden from the sidebar. Technical views do not imply service uptime checks, model training, or validated physical sensor behavior. Driving Analysis uses a dedicated limited booking Resource and read endpoint; financial totals, documents, internal notes, inspections, customer email and phone are absent. Fleet troubleshooting also excludes emergency contacts and operator contact details for technical Admins.
+
+The migration `2026_11_23_000001_separate_management_role_permissions.php` snapshots previous role permission names and Owner+Admin membership rows, synchronizes the three fixed roles, and removes Admin membership from existing Owners. It does not move or delete research recordings or other account data. Historical research remains owned by its original account; it is not automatically shared with another Admin. Rollback restores the captured permissions/memberships. New seeded Owners have Owner membership only. Owner precedence also prevents accidental retained dual membership from exposing research through the web portal.
+
+### Staff verification flow
+
+Staff saves an ordinary operational edit immediately. For a protected rate, fee, refund, ordinary charge correction/deletion or manual/adjusted late-charge action, the same validated write first requests a code emailed to the active Owner. Staff enters that code directly; there is no Admin approval queue or saved pending-change record. The live record is unchanged until the exact write and code consumption commit together. The email identifies the requester and current/proposed values. The Owner's own authorized actions do not need an emailed code.
+
+Reuse `OwnerVerificationService`: hashed single-use six-digit codes, 15-minute expiry, 60-second resend delay, five failed guesses, requester/action/payload/current-state binding, owner-email change invalidation, and existing issuance/verification rate limits. Missing/multiple Owners or email-delivery failure prevent the protected save. Verification cannot bypass finalized inspections, assignment locks, paid charge locks or accepted booking-price snapshots. `owner_verified_change` records requester, Owner, challenge ID, action and target; the code itself is never audited.
+
+Sources: `ManagementAccess`, `ManagementRoleService`, `RoleAndPermissionSeeder`, management web routes and Form Requests, `DrivingAnalysisBookingResource`, `TechnicalActivityService`, technical dashboard controller, web module registry/access guard and existing shared verification dialog. Deploy the migration before serving the updated clients. Verification results and remaining physical/browser/email limitations are recorded at the end of this section after final checks.
 
 ## Access responsibilities
 
@@ -474,7 +504,7 @@ The existing Admin controls the web page `/admin/personnel` and these cookie/CSR
 
 Personnel uses one table with an All Personnel, Staff, or Driver filter (plus Admin for the Owner) in the search card and a shared account form. All Personnel is the default view; each row shows its role. The backend response supplies the authoritative `category`, `personnelId`, and role. `PER-` identifiers are display values derived from the existing user ID, not a new identity table or persisted identifier.
 
-Names, email, optional phone, role, password, and account status are validated by `StorePersonnelRequest` / `UpdatePersonnelRequest`. The web form uses the corresponding `createPersonnelAccountSchema`. Camel-case form values are mapped to snake-case payload fields in the personnel service. Modules and permissions cannot be supplied as account fields.
+Names, email, required Staff/Driver phone, role, password, and account status are validated by `StorePersonnelRequest` / `UpdatePersonnelRequest`. The web form uses the corresponding `createPersonnelAccountSchema`. Camel-case form values are mapped to snake-case payload fields in the personnel service. Modules and permissions cannot be supplied as account fields.
 
 Admin can delete a Staff or Driver from the Personnel row menu after confirmation.
 Deletion sets `users.deleted_at`, disables the account, revokes mobile tokens and
@@ -520,7 +550,7 @@ Admin manages default monitoring zones and custom booking zones on the website. 
 
 ## Telematics boundary and future work
 
-Self Drive telematics is operated by the owning Customer; With Assigned Driver telematics is operated by the current assigned Driver. Driver Services provides entry to the assigned rental's setup and activity screens, while Laravel checks assignment and setup eligibility on every read and mutation. Staff retains inspection and rental release authority. Video recording, sending, auditing, and dashcam offerings remain outside scope.
+Self Drive telematics is operated by the owning Customer; With Assigned Driver telematics is operated by the current assigned Driver. Driver Services provides entry to the assigned rental's setup and activity screens, while Laravel checks assignment and setup eligibility on every read and mutation. Staff retains inspection authority and can release rentals. The current assigned Driver can also explicitly start their own eligible With Assigned Driver rental after reported arrival, finalized Outgoing Inspection, full payment and completed setup/calibration. Customers cannot release rentals. Video recording, sending, auditing, and dashcam offerings remain outside scope.
 
 Fleet Monitoring reads ongoing rentals and authorized latest locations for active
 Admin/Staff accounts with `view fleet tracker`. The latest-point map and private
@@ -684,3 +714,10 @@ Activity Log visibility update (2026-11-14): the user requested full history aga
 Activity Log category cleanup (2026-11-14): Technical was removed from the web filter, request enum and failure allowlist. `AddressDirectoryController` no longer records directory outages in this log. The historical address rows remain stored. The focused 20 tests / 375 assertions and full backend suite (1,325 tests / 8,529 assertions), scoped Pint, web lint, TypeScript and production build passed.
 
 Mobile UI consistency review (2026-11-14): document submission retains the shared `OnboardingScreenFrame`, upload controls, `BottomActionButton` and `ProfileFormSheet`. The privacy notice now uses the existing body text role, paragraph spacing, checkbox treatment, minimum control height and shared Retry button; literal backslash-newline text was removed. Address Retry uses the same minimum touch height, and secondary footer buttons expose their own disabled state visually and to accessibility services. No new layout system or native API was introduced. Mobile lint, TypeScript and Android bundle export passed. The existing Node suite passed 324/325 tests; its unchanged vehicle-image fixture expects seven entries while the bundled map contains 42. No Android device was connected, so physical layout acceptance remains pending.
+
+
+### Staff/Driver contact numbers and guarded Driver release — 2026-11-21
+
+Personnel create/edit requires a valid 11-digit `09` phone for Staff and Driver roles in Laravel and the matching web Zod form. Admin phone requirements are unchanged. The shared `users.phone_number` column remains nullable for Customer onboarding and historical records; no invented numbers or bulk rewrite is performed. Existing Drivers missing a phone must have it corrected before a new assignment or release. Driver debt still restricts personnel deactivation/conversion where previously required, but it does not prevent assignment, Outgoing Inspection or rental release.
+
+Driver role permissions remain limited; no `manage bookings` permission is granted. The new token workflow authorizes the current assigned Driver through BookingPolicy and rechecks ownership under the booking lock. Driver release reuses the authoritative booking transition/readiness checks. Staff/Admin retains web actions; Customer and unrelated Driver requests remain denied. Assignment becomes immutable at finalized Outgoing, and report-only pickup progress is separate from sensor consent and post-release trips. See [the rental lifecycle](booking-rental-lifecycle.md#assigned-driver-pickup-and-release--2026-11-21) for sequencing and contracts.

@@ -30,7 +30,7 @@ beforeEach(function () {
 function documentReviewer(): User
 {
     $admin = User::factory()->create();
-    $admin->assignRole(UserRole::Admin->value);
+    $admin->assignRole(UserRole::Owner->value);
 
     return $admin;
 }

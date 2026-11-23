@@ -33,7 +33,7 @@ function dashboardOverviewBooking(array $attributes = []): Booking
 function dashboardOverviewAdmin(): User
 {
     $user = User::factory()->create();
-    $user->assignRole('admin');
+    $user->assignRole('owner');
 
     return $user;
 }

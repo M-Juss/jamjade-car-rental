@@ -102,7 +102,9 @@ export function missingSetupPrerequisite(handover: MobileTelematicsHandover, ste
 
 export function handoverStatusCopy(handover: MobileTelematicsHandover) {
   if (telematicsStage(handover) === 'awaiting_release') {
-    return { title: 'Ready for staff release', description: 'Wait for staff to release the vehicle.' };
+    return handover.driverWorkflow
+      ? { title: 'Setup complete', description: 'Start the rental when all release requirements are met.' }
+      : { title: 'Ready for staff release', description: 'Wait for staff to release the vehicle.' };
   }
   const scheduledDate = handover.rentalStartAt
     ? new Date(handover.rentalStartAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' })

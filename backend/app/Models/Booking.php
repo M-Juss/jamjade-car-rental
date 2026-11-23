@@ -84,6 +84,11 @@ class Booking extends Model
         static::saved(fn (Booking $booking) => $booking->persistPendingDetails());
     }
 
+    public function feedback(): HasOne
+    {
+        return $this->hasOne(BookingFeedback::class);
+    }
+
     protected function casts(): array
     {
         return [

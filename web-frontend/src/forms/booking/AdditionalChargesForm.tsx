@@ -83,7 +83,7 @@ export function AdditionalChargesForm({ onCancel, booking, onSaved, onBusyChange
             placeholder="Explain what this charge covers."
             error={errors.charges?.[index]?.description?.message} {...register(`charges.${index}.description`)} />
           {booking.driverOption === "owners_driver" ? <SelectWithLabel id={`charge-responsibility-${index}`} label="Responsibility" required disabled={isSubmitting}
-            options={[{ value: "customer", label: "Customer / Renter" }, { value: "driver", label: "Assigned Driver" }]}
+            options={[{ value: "customer", label: "Customer" }, { value: "driver", label: "Assigned Driver" }]}
             value={charges[index]?.responsibility ?? "customer"} error={errors.charges?.[index]?.responsibility?.message}
             onValueChange={(value) => setValue(`charges.${index}.responsibility`, value as "customer" | "driver", { shouldDirty: true })} />
             : null}

@@ -273,7 +273,7 @@ export default function Dashboard() {
     { label: "Today’s Pickups", value: data.summary.todaysPickups.toLocaleString(), icon: CalendarClock },
     { label: "Today’s Returns", value: data.overview.todaysReturns.toLocaleString(), icon: Clock3 },
     { label: "Active Rentals", value: data.summary.activeRentals.toLocaleString(), icon: Car },
-    { label: "Monthly Gross Receipts", value: formatPhilippinePeso(data.summary.monthRevenue, true), icon: PhilippinePeso },
+    ...(data.summary.monthRevenue === null ? [] : [{ label: "Monthly Gross Receipts", value: formatPhilippinePeso(data.summary.monthRevenue, true), icon: PhilippinePeso }]),
   ];
 
   return (

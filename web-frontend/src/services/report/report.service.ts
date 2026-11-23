@@ -16,6 +16,7 @@ function reportQuery(selection: ReportSelection, includePage = true) {
   if (selection.rentalType) query.set("rental_type", selection.rentalType);
   if (includePage) {
     query.set("page", String(selection.page ?? 1));
+    if (selection.operatorPage) query.set("operator_page", String(selection.operatorPage));
     query.set("per_page", String(TABLE_PAGE_SIZE));
   }
   return query.toString();

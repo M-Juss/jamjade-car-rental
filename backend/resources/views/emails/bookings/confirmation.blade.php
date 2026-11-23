@@ -33,7 +33,7 @@
                     <tr>
                         <td style="padding: 8px 28px 22px;">
                             <h1 style="margin: 0 0 14px; font-size: 24px; line-height: 1.25; color: #17315F;">{{ $isConfirmed ? 'Booking confirmed' : 'Payment received' }}</h1>
-                            <p style="margin: 0;">Dear {{ $confirmation['customer']['name'] ?? 'Renter' }},</p>
+                            <p style="margin: 0;">Dear {{ $confirmation['customer']['name'] ?? 'Customer' }},</p>
                         </td>
                     </tr>
                     <tr>

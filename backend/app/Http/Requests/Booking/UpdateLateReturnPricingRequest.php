@@ -9,7 +9,7 @@ class UpdateLateReturnPricingRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin') ?? false;
+        return $this->user()?->can('manage delivery pricing') ?? false;
     }
 
     public function rules(): array

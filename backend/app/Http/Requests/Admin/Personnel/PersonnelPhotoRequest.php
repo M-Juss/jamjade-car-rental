@@ -8,7 +8,7 @@ class PersonnelPhotoRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasAnyRole(['admin', 'staff']);
+        return (bool) $this->user()?->hasRole('owner');
     }
 
     public function rules(): array

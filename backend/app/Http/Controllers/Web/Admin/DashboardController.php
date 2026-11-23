@@ -22,7 +22,8 @@ class DashboardController extends Controller
             $this->reportService->dashboardData(
                 $request->validated('start'),
                 $request->validated('end'),
-                $request->user()?->can('manage bookings') ?? false
+                ($request->user()?->can('manage bookings') ?? false),
+                $request->user()->can('view financial reports')
             ) + ['overview' => $this->overview->forUser($request->user())]
         );
     }

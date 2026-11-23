@@ -18,7 +18,7 @@ beforeEach(function () {
 
 it('returns dashboard calendar data and report analytics', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Admin->value);
+    $owner->assignRole(UserRole::Owner->value);
     $customer = customerUser();
     $vehicle = availableVehicle();
     $booking = Booking::create([
@@ -70,7 +70,7 @@ it('returns dashboard calendar data and report analytics', function () {
 
 it('shows confirmed bookings on the dashboard', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Admin->value);
+    $owner->assignRole(UserRole::Owner->value);
     $customer = customerUser();
     $vehicle = availableVehicle();
 
@@ -103,7 +103,7 @@ it('shows confirmed bookings on the dashboard', function () {
 
 it('requires a valid dashboard calendar range', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Admin->value);
+    $owner->assignRole(UserRole::Owner->value);
 
     $this->actingAs($owner)->getJson('/admin/dashboard')
         ->assertUnprocessable()
@@ -116,7 +116,7 @@ it('requires a valid dashboard calendar range', function () {
 
 it('downloads PDF and CSV reports', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Admin->value);
+    $owner->assignRole(UserRole::Owner->value);
 
     $this->actingAs($owner)->get('/admin/reports/pdf?range=12_months')
         ->assertOk()
@@ -129,7 +129,7 @@ it('downloads PDF and CSV reports', function () {
 
 it('rejects unsupported report ranges', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(UserRole::Admin->value);
+    $owner->assignRole(UserRole::Owner->value);
 
     $this->actingAs($owner)
         ->getJson('/admin/reports?range=custom')

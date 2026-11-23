@@ -32,7 +32,7 @@ class ReportService
         );
     }
 
-    public function dashboardData(string $start, string $end, bool $canManageBookings): array
+    public function dashboardData(string $start, string $end, bool $canManageBookings, bool $financial = true): array
     {
         $rangeStart = CarbonImmutable::parse($start, 'Asia/Manila')->startOfDay()->utc();
         $rangeEnd = CarbonImmutable::parse($end, 'Asia/Manila')->endOfDay()->utc();
@@ -48,7 +48,7 @@ class ReportService
             ->overlappingSchedule($rangeStart, $rangeEnd)
             ->orderBy('rental_start_at')
             ->get();
-        $monthRevenue = Payment::query()
+        $monthRevenue = $financial ? Payment::query()
             ->where('status', 'completed')
             ->where(function ($query) use ($monthStart, $monthEnd) {
                 $query->whereBetween('completed_at', [$monthStart, $monthEnd])
@@ -57,7 +57,7 @@ class ReportService
                             ->whereBetween('created_at', [$monthStart, $monthEnd]);
                     });
             })
-            ->sum('amount');
+            ->sum('amount') : null;
 
         $attention = app(BookingAttentionService::class);
         $counts = $attention->counts();
@@ -89,7 +89,7 @@ class ReportService
             'summary' => [
                 'overdueReturns' => $counts['overdue_return'],
                 'bookingsNeedingAttention' => $counts['all_attention'],
-                'monthRevenue' => (float) $monthRevenue,
+                'monthRevenue' => $monthRevenue === null ? null : (float) $monthRevenue,
                 'confirmedBookings' => Booking::where('status', BookingStatus::Confirmed->value)->count(),
                 'activeRentals' => Booking::where('status', BookingStatus::Ongoing->value)->count(),
                 'todaysPickups' => Booking::where('status', BookingStatus::Confirmed->value)
@@ -458,7 +458,7 @@ class ReportService
         ];
     }
 
-    private function calendarEvent(Booking $booking, bool $canManageBookings): array
+    private function calendarEvent(Booking $booking, bool $canManageBookings, bool $financial = true): array
     {
         return [
             'id' => $booking->id,

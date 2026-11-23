@@ -79,7 +79,7 @@ class BookingController extends Controller
     private function findOwnedBooking(Request $request, string $booking): Booking
     {
         return Booking::query()
-            ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'vehicleInspections', 'telematicsTrips',
+            ->with(['vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'vehicleInspections', 'telematicsTrips', 'feedback',
                 'assignedDriver', 'deliveryQuote', 'assignment', 'terms', 'confirmationEmail', 'events', 'telematicsSetupSession', 'returnRecord',
                 'additionalCharges' => fn ($query) => $query->where('responsible_user_id', $request->user()->id)->with('responsibleUser')])
             ->where('user_id', $request->user()->id)

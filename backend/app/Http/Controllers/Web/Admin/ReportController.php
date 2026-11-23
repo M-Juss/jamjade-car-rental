@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Report\ReportAnalyticsRequest;
 use App\Http\Requests\Admin\Report\ReportRequest;
+use App\Http\Resources\DrivingOperatorResource;
+use App\Services\RentalDrivingOverviewService;
 use App\Services\ReportAnalyticsService;
 use App\Services\ReportService;
 use App\Support\ReportPeriod;
@@ -25,12 +27,21 @@ class ReportController extends Controller
 
     public function index(ReportAnalyticsRequest $request): JsonResponse
     {
-        return $this->success(
-            'Reports fetched successfully.',
-            $request->filled('range')
-                ? $this->reportService->analytics($request->validated('range'))
-                : $this->analytics->analytics($request->section(), $request->period(), $request->validated()),
-        );
+        if ($request->filled('range')) {
+            return $this->success('Reports fetched successfully.', $this->reportService->analytics($request->validated('range')));
+        }
+        $period = $request->period();
+        $data = $this->analytics->analytics($request->section(), $period, $request->validated());
+        if ($request->section() === 'telematics' && $request->user()->can('manage bookings') && $request->user()->can('view fleet tracker')) {
+            $operators = $this->analytics->operatorsNeedingAttention($period, $request->validated());
+            $data['operatorAttention'] = [
+                'threshold' => RentalDrivingOverviewService::ATTENTION_GRADE_THRESHOLD,
+                'operators' => DrivingOperatorResource::collection($operators->getCollection())->resolve($request),
+                'page' => $operators->currentPage(), 'lastPage' => $operators->lastPage(), 'total' => $operators->total(),
+            ];
+        }
+
+        return $this->success('Reports fetched successfully.', $data)->header('Cache-Control', 'private, no-store');
     }
 
     public function csv(ReportAnalyticsRequest $request): StreamedResponse

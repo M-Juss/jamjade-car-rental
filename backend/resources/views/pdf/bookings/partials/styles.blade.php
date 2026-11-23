@@ -375,4 +375,12 @@
         .page-footer td:last-child {
             text-align: right;
         }
-    </style>
+            .rental-information-page .section { margin-top: 4px; }
+        .rental-information-page .info-grid td { padding-top: 1px; padding-bottom: 1px; line-height: 1.05; }
+        .rental-information-page .label { margin-bottom: 0; font-size: 7.5px; }
+        .rental-information-page .value { font-size: 9px; }
+        .rental-information-page .payment-table td { padding: 0; line-height: 1.05; }
+        .rental-information-page .page-footer { margin-top: 3px; padding-top: 2px; }
+        .rental-information-page .payment-table .total-row td { padding-top: 3px; padding-bottom: 3px; }
+        .rental-information-page .acknowledgement-copy { margin-bottom: 4px; font-size: 9px; line-height: 1.2; }
+</style>

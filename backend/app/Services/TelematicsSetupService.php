@@ -127,7 +127,7 @@ class TelematicsSetupService
                 ->performedOn($booking)
                 ->event('telematics_handover_started')
                 ->withProperties(['telematics_setup_session_id' => $session->id, 'test_mode' => $testMode])
-                ->log('Staff started the telematics handover.');
+                ->log('Rental setup preparation started.');
 
             return $session->fresh(['steps']);
         });

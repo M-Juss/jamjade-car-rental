@@ -18,7 +18,6 @@ class RentalReadinessService
 {
     public function __construct(
         private readonly DriverAssignmentService $drivers,
-        private readonly AdditionalChargeService $charges,
         private readonly VehicleAvailabilityService $availability,
         private readonly TelematicsSetupService $telematicsSetup
     ) {}
@@ -38,7 +37,9 @@ class RentalReadinessService
         $driverEligible = $selfDrive || ($booking->assignedDriver
             && $booking->assignedDriver->is_active
             && $booking->assignedDriver->hasRole(DriverAssignmentService::DRIVER_ROLE)
-            && ! $this->charges->hasOutstanding($booking->assignedDriver, AdditionalChargeResponsibility::Driver));
+            && preg_match('/^09\d{9}$/', (string) $booking->assignedDriver->phone_number)
+            && $this->drivers->isAvailableFor($booking->assignedDriver, $booking)
+            && $this->drivers->isAvailableNow($booking->assignedDriver, $booking));
 
         return [
             'bookingConfirmed' => $booking->status === BookingStatus::Confirmed,
@@ -51,6 +52,7 @@ class RentalReadinessService
             'documentsApproved' => $testMode || $documentsApproved,
             'emergencyContactOnFile' => $testMode || ! $selfDrive || $booking->user->hasCompleteEmergencyContact(),
             'driverAssigned' => $driverAssigned,
+            'driverArrived' => $selfDrive || $booking->assignment?->arrived_at !== null,
             'driverEligible' => (bool) $driverEligible,
             'vehicleOperational' => $booking->vehicle?->status === VehicleStatus::Available
                 && ! Booking::where('vehicle_id', $booking->vehicle_id)->whereKeyNot($booking->id)->where('status', 'ongoing')->exists(),
@@ -98,7 +100,7 @@ class RentalReadinessService
         app(SelfDriveBookingAvailabilityService::class)->assertHandoverAvailable($booking);
         $this->assertChecks($state, [
             'bookingConfirmed', 'fullyPaid', 'ageEligible', 'documentsApproved', 'emergencyContactOnFile', 'driverAssigned',
-            'driverEligible', 'vehicleOperational', 'outgoingFinalized', 'telematicsSetupReady',
+            'driverEligible', 'vehicleOperational', 'outgoingFinalized', 'telematicsSetupReady', 'driverArrived',
         ], 'The rental cannot start until payment, inspection, telematics setup, operator, and vehicle readiness are complete.');
         $this->availability->assertBookingIntervalAvailable($booking->vehicle_id, $booking->rental_start_at, $booking->rental_end_at, $booking->id);
     }

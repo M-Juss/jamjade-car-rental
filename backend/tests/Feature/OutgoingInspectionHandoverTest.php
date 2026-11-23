@@ -129,6 +129,10 @@ it('starts assigned-driver setup with the signed Driver inspection through the c
     Sanctum::actingAs($booking->assignedDriver);
     $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")
         ->assertOk()->assertJsonPath('data.setup.status', 'in_progress')
+        ->assertJsonPath('data.eligibility.canWorkSetup', false);
+    $this->postJson('/api/mobile/driver/services/'.$booking->id.'/workflow', ['action' => 'on_way'])->assertOk();
+    $this->postJson('/api/mobile/driver/services/'.$booking->id.'/workflow', ['action' => 'arrived'])->assertOk();
+    $this->getJson("/api/mobile/bookings/{$booking->booking_code}/telematics-setup")->assertOk()
         ->assertJsonPath('data.eligibility.canWorkSetup', true);
 });
 

@@ -15,6 +15,6 @@ class OperationalErrorController extends Controller
 
     public function index(ListOperationalErrorsRequest $request, AuditLogService $audit): JsonResponse
     {
-        return $this->paginated('Activity log fetched successfully.', $audit->paginate($request->validated()), OperationalErrorResource::class);
+        return $this->paginated('Activity log fetched successfully.', ($request->user()->hasRole('owner') ? $audit->paginate($request->validated()) : app(\App\Services\TechnicalActivityService::class)->paginate($request->user(), $request->validated())), OperationalErrorResource::class);
     }
 }

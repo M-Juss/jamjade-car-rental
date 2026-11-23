@@ -13,7 +13,8 @@ class ReportAnalyticsRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('view reports') ?? false;
+        return ($this->user()?->can('view reports') ?? false)
+            && ($this->user()->can('view financial reports') || (! $this->has('range') && in_array($this->input('section', 'bookings'), ['bookings', 'telematics'], true)));
     }
 
     public function rules(): array
@@ -22,7 +23,7 @@ class ReportAnalyticsRequest extends BaseFormRequest
             'range' => [
                 'sometimes', 'string', Rule::prohibitedIf($this->routeIs('admin.reports.csv')),
                 Rule::in(['6_months', '12_months', 'this_year', 'all_time']),
-                'prohibits:period,date,section,vehicle_id,rental_type,page,per_page,search',
+                'prohibits:period,date,section,vehicle_id,rental_type,page,per_page,search,operator_page',
             ],
             'period' => ['sometimes', Rule::in(ReportPeriod::MODES)],
             'date' => ['sometimes', 'date_format:Y-m-d', 'after_or_equal:1900-01-01', 'before_or_equal:'.CarbonImmutable::now(ReportPeriod::TIMEZONE)->toDateString()],
@@ -31,6 +32,7 @@ class ReportAnalyticsRequest extends BaseFormRequest
             'rental_type' => ['sometimes', Rule::enum(RentalType::class)],
             'search' => ['sometimes', 'nullable', 'string', 'max:160'],
             'page' => ['sometimes', 'integer', 'min:1', 'max:2147483647'],
+            'operator_page' => ['sometimes', 'integer', 'min:1', 'max:2147483647'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:'.ReportAnalyticsService::PAGE_SIZE],
         ];
     }
@@ -42,6 +44,6 @@ class ReportAnalyticsRequest extends BaseFormRequest
 
     public function section(): string
     {
-        return $this->validated('section', 'overview');
+        return $this->validated('section', $this->user()->can('view financial reports') ? 'overview' : 'bookings');
     }
 }

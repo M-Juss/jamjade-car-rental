@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { RefreshCcw, Search } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActionButton, BookingCard, BookingLoadingState, type BookingAction } from '@/components/bookings';
@@ -19,6 +19,7 @@ export function DriverServicesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const mutationRevision = useRef(0);
   const [services, setServices] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<ServiceFilter>('Upcoming');
   const [search, setSearch] = useState('');
@@ -26,8 +27,8 @@ export function DriverServicesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useFocusEffect(useCallback(() => {
-    if (tab !== 'history') return;
-    setFilter('History');
+    if (tab !== 'history' && tab !== 'active') return;
+    setFilter(tab === 'active' ? 'Active' : 'History');
     setSearch('');
     router.setParams({ tab: '' });
   }, [router, tab]));
@@ -37,7 +38,8 @@ export function DriverServicesScreen() {
     const load = async () => {
       if (reading) return;
       reading = true;
-      try { const records = await getDriverServices(); if (current) { setServices(records); setError(null); } }
+      const revision = mutationRevision.current;
+      try { const records = await getDriverServices(); if (current && revision === mutationRevision.current) { setServices(records); setError(null); } }
       catch { if (current) setError('Services could not be refreshed. Try again.'); }
       finally { reading = false; if (current) setLoading(false); }
     };
@@ -48,7 +50,8 @@ export function DriverServicesScreen() {
   const refresh = async () => {
     if (refreshing) return;
     setRefreshing(true);
-    try { setServices(await getDriverServices()); setError(null); }
+    const revision = mutationRevision.current;
+    try { const records = await getDriverServices(); if (revision === mutationRevision.current) { setServices(records); setError(null); } }
     catch { setError('Services could not be refreshed. Try again.'); }
     finally { setRefreshing(false); }
   };
@@ -81,7 +84,11 @@ export function DriverServicesScreen() {
         <View className="mt-section gap-3">
           {error ? <View className="gap-2 rounded-card border border-destructive-border bg-destructive-surface p-card"><Text accessibilityRole="alert" className="font-sans text-body text-destructive">{error}</Text><ActionButton density="compact" label="Try again" disabled={refreshing} onPress={() => void refresh()} /></View> : null}
           {loading ? <BookingLoadingState /> : <>
-            {visible.map(booking => <BookingCard key={booking.id} booking={booking} audience="driver" onViewDetails={details} onAction={action} />)}
+            {visible.map(booking => <BookingCard key={booking.id} booking={booking} audience="driver" onBookingUpdated={(updated) => {
+              mutationRevision.current += 1;
+              setServices((records) => records.map((record) => record.backendId === updated.backendId ? updated : record));
+              if (['Active', 'Ongoing'].includes(updated.status)) setFilter('Active');
+            }} onViewDetails={details} onAction={action} />)}
             {!error && visible.length === 0 ? <View className="rounded-card border border-border bg-surface p-card"><Text className="font-sans text-center text-body text-secondary-foreground">{search.trim() ? 'No matching services.' : `No ${filter.toLowerCase()} services.`}</Text></View> : null}
           </>}
         </View>

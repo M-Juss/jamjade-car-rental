@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\Admin\AdminInvitationController;
 use App\Http\Controllers\Web\Admin\AuthController;
 use App\Http\Controllers\Web\Admin\BookingController;
+use App\Http\Controllers\Web\Admin\BookingFeedbackController;
 use App\Http\Controllers\Web\Admin\BookingGeofenceController;
 use App\Http\Controllers\Web\Admin\CustomerController;
 use App\Http\Controllers\Web\Admin\DashboardController;
@@ -52,7 +53,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/navigation-counts', ManagementNavigationController::class)->name('navigation-counts');
-        Route::middleware(['role:admin', 'throttle:60,1'])->prefix('rc-research')->name('rc-research.')->group(function () {
+        Route::middleware(['role:admin', 'permission:view research', 'throttle:60,1'])->prefix('rc-research')->name('rc-research.')->group(function () {
             Route::get('/model-explorer/{example?}', ModelExplorerController::class)->where('example', '[0-9]{1,3}')->name('model-explorer');
             Route::get('/model-explorer/maneuvers', [RcManeuverComparisonController::class, 'index'])->name('maneuvers.index');
             Route::get('/model-explorer/maneuvers/{recording}/{annotation}/{index}', [RcManeuverComparisonController::class, 'signal'])
@@ -81,12 +82,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->middleware('permission:view fleet tracker')->name('fleet.broadcasting.auth');
 
         Route::get('/dashboard', DashboardController::class)
-            ->middleware('permission:view dashboard')
+            ->middleware(['permission:view dashboard', 'role:owner|staff'])
             ->name('dashboard');
 
         Route::get('/vehicle-options', [VehicleConfigurationController::class, 'options'])
-            ->middleware('role_or_permission:admin|manage vehicles|manage bookings|manage maintenance');
-        Route::middleware('role:admin')->prefix('vehicle-configuration')->group(function () {
+            ->middleware('permission:manage vehicles|manage bookings|manage maintenance');
+        Route::middleware('permission:configure vehicles')->prefix('vehicle-configuration')->group(function () {
             Route::get('/', [VehicleConfigurationController::class, 'index']);
             Route::post('/', [VehicleConfigurationController::class, 'store']);
             Route::put('/{option}', [VehicleConfigurationController::class, 'update']);
@@ -95,7 +96,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::middleware('permission:manage vehicles')->group(function () {
             Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
-            Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
+            Route::post('/vehicles', [VehicleController::class, 'store'])->middleware('permission:create vehicles')->name('vehicles.store');
             Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('vehicles.show');
             Route::get('/vehicles/{vehicle}/current-condition', [VehicleController::class, 'currentCondition'])->name('vehicles.current-condition');
             Route::get('/vehicles/{vehicle}/inspections', [VehicleController::class, 'inspectionHistory'])->name('vehicles.inspections.index');
@@ -103,17 +104,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/vehicles/{vehicle}/initial-condition', [VehicleController::class, 'storeInitialCondition'])->name('vehicles.initial-condition.store');
             Route::post('/vehicles/{vehicle}/condition-updates', [VehicleController::class, 'storeConditionUpdate'])->name('vehicles.condition-updates.store');
             Route::put('/vehicles/{vehicle}', [VehicleController::class, 'update'])->name('vehicles.update');
-            Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('vehicles.destroy');
+            Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->middleware('permission:delete vehicles')->name('vehicles.destroy');
         });
 
         Route::middleware('role_or_permission:admin|manage geofences')->get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
-        Route::middleware('role:admin')->group(function () {
-            Route::get('/errors', [OperationalErrorController::class, 'index']);
+        Route::get('/errors', [OperationalErrorController::class, 'index'])->middleware('permission:view activity log');
+        Route::get('/technical-dashboard', \App\Http\Controllers\Web\Admin\TechnicalDashboardController::class)->middleware('permission:view research');
+        Route::middleware('permission:manage delivery pricing')->group(function () {
             Route::put('/fee-pricing', [FeePricingController::class, 'update']);
             Route::get('/late-return-pricing', [LateReturnPricingController::class, 'show']);
             Route::put('/late-return-pricing', [LateReturnPricingController::class, 'update']);
             Route::get('/delivery-pricing', [DeliveryPricingController::class, 'show']);
             Route::put('/delivery-pricing', [DeliveryPricingController::class, 'update']);
+        });
+        Route::middleware('permission:edit geofences')->group(function () {
             Route::post('/bookings/{booking}/monitoring-zones', [BookingGeofenceController::class, 'store']);
             Route::put('/bookings/{booking}/monitoring-zones/{zone}', [BookingGeofenceController::class, 'update']);
             Route::delete('/bookings/{booking}/monitoring-zones/{zone}', [BookingGeofenceController::class, 'destroy']);
@@ -124,22 +128,26 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/geofences/{geofence}', [GeofenceController::class, 'destroy'])->name('geofences.destroy');
         });
 
-        Route::middleware('permission:manage bookings')->group(function () {
+        Route::middleware('permission:view driving analysis')->group(function () {
+            Route::get('/driving-analysis/bookings/{booking}', [BookingController::class, 'analysisBooking'])->whereNumber('booking')->name('driving-analysis.booking');
             Route::get('/driving-analysis', [BookingController::class, 'drivingAnalysisIndex'])
                 ->middleware('permission:view fleet tracker')->name('driving-analysis.index');
             Route::get('/driving-analysis/operators', [BookingController::class, 'drivingOperators'])
                 ->middleware('permission:view fleet tracker')->name('driving-analysis.operators');
+            Route::get('/bookings/{booking}/driving-analysis', [BookingController::class, 'drivingAnalysis'])
+                ->middleware('permission:view fleet tracker')->name('bookings.driving-analysis');
+        });
+
+        Route::middleware('permission:manage bookings')->group(function () {
             Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
             Route::get('/bookings/drivers', [BookingController::class, 'drivers'])->name('bookings.drivers');
             Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
-            Route::get('/bookings/{booking}/driving-analysis', [BookingController::class, 'drivingAnalysis'])
-                ->middleware('permission:view fleet tracker')->name('bookings.driving-analysis');
             Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm'])->name('bookings.confirm');
             Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
             Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/no-show', [BookingController::class, 'noShow']);
-            Route::post('/bookings/{booking}/refund-review', [BookingController::class, 'reviewRefund'])->middleware('role:admin');
-            Route::post('/bookings/{booking}/record-refund', [BookingController::class, 'recordRefund'])->middleware('role:admin');
+            Route::post('/bookings/{booking}/refund-review', [BookingController::class, 'reviewRefund'])->middleware('role:owner|staff');
+            Route::post('/bookings/{booking}/record-refund', [BookingController::class, 'recordRefund'])->middleware('role:owner|staff');
             Route::post('/bookings/{booking}/start', [BookingController::class, 'start'])->name('bookings.start');
             Route::post('/bookings/{booking}/telematics-setup/start', [BookingController::class, 'startTelematicsHandover'])->name('bookings.telematics-setup.start');
             Route::post('/bookings/{booking}/receive-vehicle', [BookingController::class, 'receiveVehicle']);
@@ -156,7 +164,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/bookings/{booking}/finalize-return', [BookingController::class, 'finalizeReturn'])->name('bookings.finalize-return');
             Route::post('/bookings/{booking}/assign-driver', [BookingController::class, 'assignDriver'])->name('bookings.assign-driver');
             Route::post('/bookings/{booking}/resend-confirmation-email', [BookingController::class, 'resendConfirmationEmail'])
-                ->middleware('role:admin')
+                ->middleware('role:owner')
                 ->name('bookings.resend-confirmation-email');
         });
 
@@ -175,9 +183,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/maintenance/{maintenanceRecord}/condition', [MaintenanceController::class, 'linkCondition'])->name('maintenance.condition');
             Route::get('/maintenance-plans', [MaintenanceController::class, 'plans'])->name('maintenance-plans.index');
             Route::get('/vehicles/{vehicle}/maintenance-plans', [MaintenanceController::class, 'vehiclePlans'])->name('vehicles.maintenance-plans.index');
-            Route::post('/maintenance-plans', [MaintenanceController::class, 'storePlan'])->name('maintenance-plans.store');
-            Route::put('/maintenance-plans/{plan}', [MaintenanceController::class, 'updatePlan'])->name('maintenance-plans.update');
-            Route::delete('/maintenance-plans/{plan}', [MaintenanceController::class, 'deletePlan'])->name('maintenance-plans.destroy');
+            Route::post('/maintenance-plans', [MaintenanceController::class, 'storePlan'])->middleware('permission:manage maintenance plans')->name('maintenance-plans.store');
+            Route::put('/maintenance-plans/{plan}', [MaintenanceController::class, 'updatePlan'])->middleware('permission:manage maintenance plans')->name('maintenance-plans.update');
+            Route::delete('/maintenance-plans/{plan}', [MaintenanceController::class, 'deletePlan'])->middleware('permission:manage maintenance plans')->name('maintenance-plans.destroy');
         });
 
         Route::middleware('permission:manage customers')->group(function () {
@@ -186,10 +194,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         Route::middleware('permission:view reports')->group(function () {
+            Route::get('/reports/customers/{customer}/feedback', [BookingFeedbackController::class, 'index'])->whereNumber('customer')->withTrashed();
+            Route::put('/feedback/{feedback}/featured', [BookingFeedbackController::class, 'update'])->whereNumber('feedback')->middleware('role:owner');
             Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
             Route::get('/reports/csv', [ReportController::class, 'csv'])->name('reports.csv');
-            Route::get('/reports/pdf', [ReportController::class, 'pdf'])->name('reports.pdf');
-            Route::get('/reports/excel', [ReportController::class, 'excel'])->name('reports.excel');
+            Route::get('/reports/pdf', [ReportController::class, 'pdf'])->middleware('permission:view financial reports')->name('reports.pdf');
+            Route::get('/reports/excel', [ReportController::class, 'excel'])->middleware('permission:view financial reports')->name('reports.excel');
         });
 
         Route::get('/fleet-tracker/{booking}/motion-monitoring', [FleetTrackerController::class, 'motion'])
@@ -213,13 +223,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
     });
 });
 
-Route::prefix('admin/personnel')->name('personnel.')->middleware(['auth', 'active_admin', 'role:admin|staff'])->group(function () {
+Route::prefix('admin/personnel')->name('personnel.')->middleware(['auth', 'active_admin', 'permission:view personnel'])->group(function () {
     Route::get('/', [PersonnelController::class, 'index'])->name('index');
-    Route::post('/users', [PersonnelController::class, 'store'])->name('users.store');
-    Route::put('/users/{user}', [PersonnelController::class, 'update'])->name('users.update');
-    Route::post('/users/{user}/photo', [PersonnelController::class, 'uploadPhoto'])->name('users.photo.upload');
-    Route::delete('/users/{user}/photo', [PersonnelController::class, 'deletePhoto'])->name('users.photo.delete');
-    Route::delete('/users/{user}', [PersonnelController::class, 'destroy'])->name('users.destroy');
+    Route::post('/users', [PersonnelController::class, 'store'])->middleware('permission:manage personnel')->name('users.store');
+    Route::put('/users/{user}', [PersonnelController::class, 'update'])->middleware('permission:manage personnel')->name('users.update');
+    Route::post('/users/{user}/photo', [PersonnelController::class, 'uploadPhoto'])->middleware('permission:manage personnel')->name('users.photo.upload');
+    Route::delete('/users/{user}/photo', [PersonnelController::class, 'deletePhoto'])->middleware('permission:manage personnel')->name('users.photo.delete');
+    Route::delete('/users/{user}', [PersonnelController::class, 'destroy'])->middleware('permission:manage personnel')->name('users.destroy');
 });
 
 Route::prefix('admin/admins')->middleware(['auth', 'active_admin', 'role:owner', 'throttle:20,1'])->group(function () {

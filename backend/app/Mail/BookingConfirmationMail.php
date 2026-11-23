@@ -65,7 +65,7 @@ class BookingConfirmationMail extends Mailable implements ShouldBeEncrypted, Sho
             }
             $recipient = $this->document->booking?->user?->email;
             if (empty($recipient)) {
-                throw new RuntimeException('The renter does not have an email address.');
+                throw new RuntimeException('The customer does not have an email address.');
             }
             // Account email may change while a message is queued; never send to a superseded address.
             $this->to = [];

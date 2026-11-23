@@ -73,7 +73,7 @@ export function TelematicsMonitoringControls({ monitoring, released, ended = fal
         { key: 'pause', label: 'Pause', icon: 'pause', accessibilityLabel: 'Pause vehicle activity monitoring', onPress: confirmPause, disabled: !active },
         { key: 'monitoring', label, icon: active ? 'steering' : 'play', featured: true, featuredActive: active,
           disabled: ended || allActive || monitoring.motionStarting || !released || blocked || monitoring.loading || !monitoring.snapshot?.canMonitor,
-          accessibilityLabel: !released ? 'Start is available after staff release' : label,
+          accessibilityLabel: !released ? 'Start is available after rental release' : label,
           onPress: () => void requestStart() },
         { key: 'activity', label: 'Activity', icon: 'bell-outline', badgeCount: unread, onPress: onActivity, disabled: blocked },
       ]} />

@@ -48,9 +48,6 @@ export default function DrivingInsights() {
           <h3 className="text-lg font-semibold leading-7 text-foreground">
             How it works
           </h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Designed for self-drive rentals.
-          </p>
           <ol className="mt-5 space-y-6 border-l border-border pl-5">
             {insightSteps.map((step, index) => (
               <li key={step.title}>

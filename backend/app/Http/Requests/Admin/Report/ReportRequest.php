@@ -9,7 +9,7 @@ class ReportRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('view reports') ?? false;
+        return $this->user()?->can('view financial reports') ?? false;
     }
 
     public function rules(): array

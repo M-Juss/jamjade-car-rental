@@ -20,8 +20,13 @@ class BookingConfirmationPdfService
 
     public function makeRentalInformation(array $confirmation): DomPdf
     {
-        return $this->makeDocument(($confirmation['formatVersion'] ?? 1) >= 3
-            ? 'pdf.bookings.rental-information' : 'pdf.bookings.legacy-invoice', $confirmation);
+        $currentFormat = ($confirmation['formatVersion'] ?? 1) >= 3;
+        $pdf = $this->makeDocument($currentFormat ? 'pdf.bookings.rental-information' : 'pdf.bookings.legacy-invoice', $confirmation);
+        if ($currentFormat && $pdf->getDomPDF()->getCanvas()->get_page_count() !== 2) {
+            throw new \RuntimeException('Rental Information must fit two pages. Review the document layout before retrying delivery.');
+        }
+
+        return $pdf;
     }
 
     public function makeReceipt(array $confirmation): DomPdf

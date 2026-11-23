@@ -217,7 +217,7 @@ function BookingsContent({ group = "booking" }: { group?: BookingGroup }) {
         onClick: () => { void openNext(booking); },
         disabled: loadingActionId === booking.backendId,
       }] : []),
-      ...(booking.driverOption === "owners_driver" && booking.assignedDriver && ["pending", "confirmed"].includes(booking.statusKey) ? [{
+      ...(booking.driverOption === "owners_driver" && booking.canReassignDriver !== false && booking.assignedDriver && ["pending", "confirmed"].includes(booking.statusKey) ? [{
         label: "Reassign Driver",
         icon: <UserRound size={13} className="mr-2" />,
         onClick: () => { void openNext(booking, "reassign-driver"); },

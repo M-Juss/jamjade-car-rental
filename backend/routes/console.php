@@ -2,6 +2,7 @@
 
 use App\Models\MobilePasswordReset;
 use App\Models\PendingMobileRegistration;
+use App\Services\BookingDriverUpdateService;
 use App\Services\BookingEmailService;
 use App\Services\DeliveryQuoteService;
 use App\Services\DocumentRetentionService;
@@ -67,3 +68,9 @@ Artisan::command('booking-documents:retry {--include-failed : Retry failed deliv
 })->purpose('Dispatch up to 50 pending invoice/receipt emails without regenerating issued documents');
 
 Schedule::command('booking-documents:retry')->everyFiveMinutes()->withoutOverlapping();
+
+Artisan::command('booking-drivers:retry-emails', function (BookingDriverUpdateService $service) {
+    $this->info('Driver update emails sent: '.$service->retryPending().'.');
+})->purpose('Retry pending customer driver updates without resending financial documents');
+
+Schedule::command('booking-drivers:retry-emails')->everyFiveMinutes()->withoutOverlapping();

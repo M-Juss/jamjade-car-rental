@@ -55,6 +55,11 @@ export function BookingDetailsContent({ booking, audience = 'customer' }: { book
       </View>
     </SectionCard> : null}
 
+    {!isDriver && booking.driverType === "Owner's Driver" ? <SectionCard title="Assigned Driver" icon={UserRound}>
+      <InfoRow label="Name" value={booking.assignedDriver?.name ?? 'Not assigned'} />
+      {booking.assignedDriver ? <><InfoRow label="Email" value={booking.assignedDriver.email} /><InfoRow label="Contact number" value={booking.assignedDriver.phoneNumber ?? 'Not provided'} /></> : null}
+    </SectionCard> : null}
+
     {!isDriver ? <><SectionCard title="Pricing Breakdown" icon={ReceiptText}>
       <PricingBreakdown booking={booking} />
     </SectionCard>

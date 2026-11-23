@@ -5,6 +5,7 @@ import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
 import { apiDelete, apiGet, apiPost, apiPut } from "@/services/http";
 import type { BookingRecord, DriverCandidate } from "./types";
 import type { RentalDrivingEvents, RentalDrivingGrade } from "@/services/fleet/fleet.service";
+import type { ReportPeriod } from "@/services/report/types";
 import type { VehicleConditionFormValues } from "@/validations/vehicle/schemas";
 import { toConditionRequest } from "@/services/vehicle/vehicle.service";
 
@@ -63,16 +64,18 @@ export type DrivingAnalysisSummary = {
 };
 export type DrivingOperator = {
   id: number; name: string | null; completed_rentals: number; monitored_rentals: number;
+  operator_type: "customer" | "driver";
   average_score: number | null; latest_score: number | null; harsh_events: number;
   incomplete_grades: number; latest_sync_incomplete: boolean;
 };
 export type DrivingVehicleOption = { value: string; label: string };
 export type RecordedOperator = { id: number | null; name: string | null };
 
-type DrivingAnalysisFilters = { page: number; search: string; operatorId?: string | null; vehicleId?: string | null };
+export type DrivingAnalysisFilters = { page: number; search: string; operatorId?: string | null; vehicleId?: string | null; operatorType?: DrivingOperator["operator_type"] | null; period?: ReportPeriod; date?: string; gradedOnly?: boolean };
 function drivingAnalysisParams(filters: DrivingAnalysisFilters) {
   const values = drivingAnalysisQuerySchema.parse({ page: filters.page, search: filters.search,
-    per_page: TABLE_PAGE_SIZE, operator_id: filters.operatorId, vehicle_id: filters.vehicleId });
+    per_page: TABLE_PAGE_SIZE, operator_id: filters.operatorId, vehicle_id: filters.vehicleId, operator_type: filters.operatorType,
+    period: filters.period, date: filters.date, graded_only: filters.gradedOnly === undefined ? undefined : Number(filters.gradedOnly) });
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) {
     if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
@@ -88,7 +91,7 @@ export async function getDrivingOperators(filters: DrivingAnalysisFilters) {
 
 export async function getDrivingAnalysisBookings(filters: DrivingAnalysisFilters) {
   const params = drivingAnalysisParams(filters);
-  const response = await apiGet<BookingRecord[]>(`/admin/driving-analysis?${params}`);
+  const response = await apiGet<import("./types").DrivingAnalysisBooking[]>(`/admin/driving-analysis?${params}`);
   return {
     bookings: response.data,
     grades: (response.meta?.driving_grades ?? {}) as Record<string, RentalDrivingGrade>,
@@ -203,4 +206,8 @@ export async function reviewCancellationRefund(booking: BookingRecord, values: {
 }
 export async function recordCancellationRefund(booking: BookingRecord, confirmed: boolean) {
   return (await apiPost<BookingRecord>(`/admin/bookings/${booking.backendId}/record-refund`, { confirmed })).data;
+}
+
+export async function getAnalysisBooking(id: number) {
+  return (await apiGet<import("./types").DrivingAnalysisBooking>(`/admin/driving-analysis/bookings/${id}`)).data;
 }

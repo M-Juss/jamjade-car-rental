@@ -24,6 +24,7 @@ class PersonnelResource extends JsonResource
             'email' => $this->email,
             'phoneNumber' => $this->phone_number,
             'isActive' => (bool) $this->is_active,
+            'availableNow' => $category === 'driver' ? (bool) ($this->is_active && preg_match('/^09\d{9}$/', (string) $this->phone_number) && ! $this->has_ongoing_service) : null,
             'status' => $this->is_active ? 'active' : 'inactive',
             'role' => ['name' => $category, 'label' => ucfirst($category)],
             'lastLoginAt' => $this->last_login_at?->toISOString(),

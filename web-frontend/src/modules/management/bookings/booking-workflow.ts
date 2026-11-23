@@ -212,11 +212,12 @@ export function bookingActionBlockers(
     (action === "start-rental" || (action === "outgoing" && booking.driverOption === "self_drive")) &&
       !ready.customerSelfDriveAvailable &&
       "Resolve the customer's other active self-drive rental or handover first.",
-    !ready.ageEligible && "The renter must meet the age requirement.",
+    !ready.ageEligible && "The customer must meet the age requirement.",
     !ready.documentsApproved && "Self-drive documents must be approved.",
     action === "start-rental" &&
       ready.emergencyContactOnFile === false &&
-      "The renter must add an emergency contact before release.",
+      "The customer must add an emergency contact before release.",
+    action === "start-rental" && booking.driverOption === "owners_driver" && ready.driverArrived === false && "The Driver must report arrival at pickup.",
     !ready.driverAssigned && "Assign a driver before inspection.",
     !ready.driverEligible && "The assigned driver is not eligible.",
     !ready.vehicleOperational &&

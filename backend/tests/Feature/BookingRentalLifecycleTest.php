@@ -127,6 +127,10 @@ function legacyLifecycleOutgoing(Booking $booking): void
 
 function completeTelematicsSetup(Booking $booking): void
 {
+    if ($booking->rental_type === RentalType::OwnersDriver) {
+        $booking->assignment()->update(['on_way_at' => now()->subMinute(), 'arrived_at' => now()]);
+        $booking->unsetRelation('assignment');
+    }
     $service = app(TelematicsSetupService::class);
     $session = $booking->fresh('telematicsSetupSession')->telematicsSetupSession;
     $service->startHandover($booking, vehicleManagerUser());
@@ -595,7 +599,7 @@ it('does not complete when a customer charge remains unpaid even if a generic pa
         ->toThrow(ValidationException::class);
 });
 
-it('blocks a new Driver assignment when that Driver has an unpaid responsible charge', function () {
+it('allows a new nonoverlapping Driver assignment despite an unpaid responsible charge', function () {
     $source = lifecycleBooking(RentalType::OwnersDriver);
     $actor = vehicleManagerUser();
     finalizeLifecycleInspection($source, 'outgoing', $actor, 1300);
@@ -605,10 +609,10 @@ it('blocks a new Driver assignment when that Driver has an unpaid responsible ch
     app(AdditionalChargeService::class)->create($source, [[
         'type' => 'other', 'description' => 'Driver accountability', 'amount' => 1000, 'responsibility' => 'driver',
     ]], $actor);
-    $target = lifecycleBooking(RentalType::OwnersDriver, ['assigned_driver_id' => null, 'driver_assigned_at' => null]);
+    $target = lifecycleBooking(RentalType::OwnersDriver, ['assigned_driver_id' => null, 'driver_assigned_at' => null, 'rental_start_at' => now()->addDays(3), 'rental_end_at' => now()->addDays(4)]);
 
-    expect(fn () => app(DriverAssignmentService::class)->assign($target, $source->assignedDriver))
-        ->toThrow(ValidationException::class);
+    expect(app(DriverAssignmentService::class)->assign($target, $source->assignedDriver)->id)->toBe($source->assignedDriver->id);
+    expect($source->additionalCharges()->outstanding()->exists())->toBeTrue();
 });
 
 it('exposes authoritative release timing for both rental types', function (RentalType $type, string $clock, bool $eligible) {
@@ -731,7 +735,7 @@ it('includes the vehicle plate in management booking lists and release details',
     $this->getJson("/admin/bookings/{$booking->id}")
         ->assertOk()
         ->assertJsonPath('data.vehiclePlateNumber', $booking->vehicle->plate_number);
-})->with(['admin', 'staff']);
+})->with(['owner', 'staff']);
 
 it('limits Driver service responses to assignments and redacts customer financial and document data', function () {
     $booking = lifecycleBooking(RentalType::OwnersDriver, ['admin_notes' => 'Internal return note']);

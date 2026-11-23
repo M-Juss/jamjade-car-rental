@@ -18,7 +18,7 @@ class UserResource extends JsonResource
             'phoneNumber' => $this->phone_number,
             'isActive' => (bool) $this->is_active,
             'roles' => $this->whenLoaded('roles', fn () => $this->roles->pluck('name')->values()),
-            'permissions' => $this->getAllPermissions()->pluck('name')->values(),
+            'permissions' => $this->getAllPermissions()->filter(fn ($permission) => $this->resource->can($permission->name))->pluck('name')->values(),
             'lastLoginAt' => $this->last_login_at?->toISOString(),
             'createdAt' => $this->created_at?->toISOString(),
             'profile' => new CustomerProfileResource($this->whenLoaded('customerProfile')),

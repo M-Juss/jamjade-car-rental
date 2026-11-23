@@ -41,7 +41,7 @@ export function PersonnelPage() {
   const { user } = useManagementSession();
   const roleNames = user ? getUserRoleNames(user) : [];
   const isOwner = roleNames.includes("owner");
-  const isStaff = !roleNames.includes("admin");
+  const isStaff = !isOwner;
   const [data, setData] = useState<PersonnelResponse | null>(null);
   const [category, setCategory] = useState<PersonnelFilter>("all");
   const [searchInput, setSearchInput] = useState("");
@@ -107,10 +107,10 @@ export function PersonnelPage() {
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <ManagementPageHeading title="Personnel" description="Manage staff and driver accounts and access." />
-        <Button onClick={() => setAccountDialog({ mode: "add" })} disabled={isLoading || Boolean(error) || !data}>
+        <ManagementPageHeading title={isOwner ? "Personnel" : "Drivers"} description={isOwner ? "Manage personnel accounts and access." : "View Driver contacts and current service availability."} />
+        {isOwner && <Button onClick={() => setAccountDialog({ mode: "add" })} disabled={isLoading || Boolean(error) || !data}>
           <Plus size={15} className="mr-2" />Add {categoryLabel}
-        </Button>
+        </Button>}
       </div>
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -199,14 +199,14 @@ export function PersonnelPage() {
                     </TableCell>
                     <TableCell data-label="Status" className={styles.statusCell}>
                       <Badge variant="outline" className={personnel.isActive ? "border-success-border bg-success-surface text-success" : "border-border bg-background text-muted-foreground"}>
-                        {personnel.isActive ? "Active" : "Inactive"}
+                        {!isOwner && personnel.isActive ? (personnel.availableNow ? "Available" : "In service") : personnel.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
                     <TableCell data-label="Last login" className={styles.loginCell}><span className="text-xs text-muted-foreground">{formatDate(personnel.lastLoginAt)}</span></TableCell>
                     <TableCell data-label="Actions" className={styles.actionsCell}>
                       <TableActionMenu label={`Open actions for ${personnel.name}`} items={[
                         { label: "View", icon: <Eye size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "view", personnel }) },
-                        ...(!isStaff || personnel.role.name === "driver" ? [{ label: "Edit", icon: <Pencil size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "edit", personnel }) },
+                        ...(isOwner ? [{ label: "Edit", icon: <Pencil size={13} className="mr-2" />, onClick: () => setAccountDialog({ mode: "edit", personnel }) },
                         { label: "Delete", icon: <Trash2 size={13} className="mr-2" />, variant: "danger" as const, separatorBefore: true, onClick: () => setDeleteTarget(personnel) }] : []),
                       ]} />
                     </TableCell>

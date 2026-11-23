@@ -216,6 +216,8 @@ export type PayPalOrderResponse = {
 };
 
 export type MobileBookingRecord = {
+  assignedDriver?: import('@/types/booking').Booking['assignedDriver'];
+  driverWorkflow?: import('@/types/booking').DriverWorkflow | null;
   sharedVehicleLocation?: { latitude: number; longitude: number; accuracy: number; sharedAt: string } | null;
   notes?: string | null;
   cancellation?: { kind: 'customer' | 'customer_unpaid' | 'management' | 'no_show' | 'payment_deadline'; reason: string; refundAmount: number | null; refundStatus: 'pending_review' | 'approved' | 'declined' | 'refunded' | 'not_eligible'; refundReason: string | null; reviewedAt: string | null; refundedAt: string | null } | null;
@@ -226,6 +228,8 @@ export type MobileBookingRecord = {
   bookingCode: string;
   canReviseUnpaid?: boolean;
   canCancelUnpaid?: boolean;
+  feedback?: import('@/types/booking').BookingFeedback | null;
+  canLeaveFeedback?: boolean;
   status: 'Pending' | 'Confirmed' | 'Active' | 'Ongoing' | 'Returned' | 'Completed' | 'Rejected' | 'Cancelled' | 'No-show';
   vehicleId: string;
   vehicleName: string;

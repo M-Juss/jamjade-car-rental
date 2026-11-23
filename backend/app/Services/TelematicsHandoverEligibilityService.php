@@ -47,7 +47,7 @@ class TelematicsHandoverEligibilityService
             'vehicle:id,name,brand,model',
             'vehicle.images:id,vehicle_id,image_path',
             'assignedDriver:users.id,name,is_active',
-            'assignment:id,booking_id,driver_id',
+            'assignment:id,booking_id,driver_id,on_way_at,arrived_at',
             'user:id',
             'user.documents:id,user_id,document_type,status',
             'telematicsSetupSession:id,booking_id,status',
@@ -120,6 +120,7 @@ class TelematicsHandoverEligibilityService
         $operatorEligible = $selfDrive || ($booking->assignedDriver
             && $booking->assignedDriver->is_active
             && $booking->assignedDriver->hasRole(DriverAssignmentService::DRIVER_ROLE));
+        $pickupArrived = $selfDrive || $booking->assignment?->arrived_at !== null;
         $bookingConfirmed = $booking->status === BookingStatus::Confirmed;
         $rentalPeriodEligible = $bookingConfirmed && $this->isRentalTimeEligible($booking);
         $setupTimeEligible = $bookingConfirmed && $this->isSetupTimeEligible($booking);
@@ -148,7 +149,7 @@ class TelematicsHandoverEligibilityService
                 ? in_array($setupStatus, [null, TelematicsSetupStatus::Locked->value, TelematicsSetupStatus::SetupRequired->value], true)
                 : $documentsVerified && $outgoingInspectionComplete
                     && $setupStatus === TelematicsSetupStatus::SetupRequired->value),
-            'canWorkSetup' => $supported && $bookingConfirmed && $setupTimeEligible && $customerAvailable && $operatorEligible
+            'canWorkSetup' => $pickupArrived && $supported && $bookingConfirmed && $setupTimeEligible && $customerAvailable && $operatorEligible
                 && ($testMode && $selfDrive || $documentsVerified)
                 && ($handoverStarted || ($testMode && $selfDrive && $setupStatus === TelematicsSetupStatus::ReadyForRelease->value)),
             'state' => in_array($booking->status, [BookingStatus::Returned, BookingStatus::Completed], true) ? 'rental_ended' : (! $released && ! $customerAvailable ? 'other_rental_active' : ($testMode && $selfDrive && $bookingConfirmed
@@ -185,6 +186,9 @@ class TelematicsHandoverEligibilityService
     {
         app(SelfDriveBookingAvailabilityService::class)->assertHandoverAvailable($booking);
         $eligibility = $this->evaluate($booking);
+        if ($booking->rental_type === RentalType::OwnersDriver && ! $booking->assignment?->arrived_at) {
+            throw ValidationException::withMessages(['telematics_setup' => ['Report arrival at pickup before beginning setup.']]);
+        }
 
         $testSelfDrive = $this->testModeEnabled() && $booking->rental_type === RentalType::SelfDrive;
         if (! $eligibility['setupTimeEligible'] || ! $eligibility['operatorEligible'] || (! $testSelfDrive && ! $eligibility['documentsVerified'])) {

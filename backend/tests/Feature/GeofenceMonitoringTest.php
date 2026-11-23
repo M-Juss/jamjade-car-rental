@@ -35,7 +35,7 @@ function monitoringZonePayload(array $overrides = []): array
 function monitoringAdmin(): User
 {
     $user = User::factory()->create();
-    $user->assignRole('admin');
+    $user->assignRole('owner');
 
     return $user;
 }

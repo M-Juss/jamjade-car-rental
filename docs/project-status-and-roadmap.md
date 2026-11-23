@@ -60,6 +60,16 @@ consent; physical rental acceptance remains pending. See the
 
 ## Product direction
 
+Customer feedback — 2026-11-21: completed-rental star ratings and optional comments,
+Customer Insights lifetime averages/detail dialog, Admin/Owner curation, and the
+restored landing carousel are implemented. Publication requires a starred written
+review; customer publication permission is no longer required (2026-11-22).
+Public names use the first name and last initial. Automated checks pass apart
+from the existing formatting/image-fixture issues. The empty landing carousel
+and the earlier mobile submission flow were visually checked; the latest mobile
+label/checkbox update and populated carousel still need visual verification.
+See [Customer feedback](customer-feedback.md).
+
 Deployment preparation — 2026-11-12: the selected target is BerryPanel using the
 existing repository's `main` branch and `jamjadecarrental.tech` with Hostinger DNS.
 Hosted RC Research/Model Explorer/motion require the explicit opt-in documented
@@ -93,6 +103,10 @@ sidebar; see the [navigation note](telematics-master-plan.md#drive-monitoring-si
 baseline, agreed requirements, target pipeline, UI, data contracts, implementation
 sequence, and verification gates.** Earlier telematics phase narratives are
 historical and archived; do not use them as competing plans.
+
+## Driver workflow update — 2026-11-21
+
+With Assigned Driver confirmation now attempts automatic assignment before payment-document issuance; unavailable Drivers leave the paid booking confirmed and visibly unassigned. Finalized garage Outgoing locks reassignment. Reported departure/arrival precedes consented setup and calibration, and the current assigned Driver may explicitly release their eligible rental alongside existing Staff/Admin authority. Customer contact notices/emails, timeline milestones, mandatory Staff/Driver phone numbers and two-page Rental Information are part of this change. Physical Android and live inbox acceptance remain pending. See the [owning lifecycle](booking-rental-lifecycle.md#assigned-driver-pickup-and-release--2026-11-21).
 
 ## Current system
 
@@ -156,3 +170,7 @@ and December defense are planning checkpoints recorded in the central guide.
   capstone scope. A user-initiated Stationary and Forward Reference check is
   planned for resuming scored motion after a remount. See the
   [remount limitation](telematics-master-plan.md#mid-trip-phone-remount).
+
+## Management role separation — 2026-11-23
+
+Owner business access, technical Admin research/monitoring access, and Staff operational access now use distinct fixed permission ceilings. Staff directly enters a code sent to the Owner for permitted sensitive business edits; ordinary operations stay immediate. The existing portal shells are reused, Owner-only login is supported, research ownership is preserved, and business/technical reads use restricted projections. Deploy the permission migration before the new web client. See [the role matrix, migration and checks](user-roles-and-access.md#owner-technical-admin-and-staff-separation--2026-11-23).

@@ -9,6 +9,7 @@ use App\Enums\TelematicsSetupStepStatus;
 use App\Enums\TelematicsSetupStepType;
 use App\Models\Booking;
 use App\Models\TelematicsSetupStep;
+use App\Services\DriverPickupService;
 use App\Services\TelematicsCalibrationService;
 use App\Services\TelematicsHandoverEligibilityService;
 use App\Services\TelematicsOperatorService;
@@ -40,6 +41,9 @@ class TelematicsHandoverResource extends JsonResource
         $eligibility = app(TelematicsHandoverEligibilityService::class)->evaluate($this->resource);
 
         return [
+            'driverWorkflow' => app(DriverPickupService::class)->projection($this->resource, $request->user()),
+            'driverServiceId' => $this->id,
+            'driverPickupType' => $this->pickup_location_type,
             'bookingCode' => $this->booking_code,
             'bookingStatus' => $this->status->value,
             'rentalStartAt' => $this->rental_start_at?->toISOString(),

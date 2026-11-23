@@ -6,7 +6,6 @@ import { ManagementTable as Table, ManagementTableCell as TableCell, TableCard }
 import { TablePagination } from "@/components/common/tables/TablePagination";
 import { useTablePagination } from "@/components/common/tables/useTablePagination";
 
-import { getUserRoleNames } from "@/services/auth";
 import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Circle, Eye, Fence, Loader2, Map, Pencil, Plus, RotateCcw, SquareDashed, Trash2, XCircle } from "lucide-react";
@@ -42,7 +41,7 @@ function primaryCoordinates(record: GeofenceRecord) {
 
 export function GeofenceLibraryModule() {
   const { user } = useManagementSession();
-  const canManage = user ? getUserRoleNames(user).includes("admin") : false;
+  const canManage = user?.permissions?.includes("edit geofences") ?? false;
   const [records, setRecords] = useState<GeofenceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

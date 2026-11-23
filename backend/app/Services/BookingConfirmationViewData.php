@@ -30,7 +30,7 @@ class BookingConfirmationViewData
         ])));
         $customerName = $profileName !== ''
             ? $profileName
-            : ($booking->user?->name ?: 'Renter');
+            : ($booking->user?->name ?: 'Customer');
         $signature = $this->signature($booking->customer_signature);
         $items = [['label' => 'Rental Subtotal', 'amount' => (float) $booking->subtotal]];
         foreach ([
@@ -80,6 +80,7 @@ class BookingConfirmationViewData
             ],
             'driver' => $booking->assignedDriver ? [
                 'name' => $booking->assignedDriver->name,
+                'email' => $booking->assignedDriver->email,
                 'phone' => $booking->assignedDriver->phone_number,
             ] : null,
             'rental' => [

@@ -9,7 +9,7 @@ Updated 2026-10-19: new successful Customer payments issue a Payment Receipt and
 Every newly recorded completed, positive PHP Customer payment issues exactly two PDF files tied to the same booking and receipt number:
 
 - **Payment Receipt:** the individual amount, purpose, method, transaction reference and completed date; booking/receipt references; concise vehicle/rental information; agreed rental total, itemized Customer additional charges, cumulative payments, settlement status and remaining balance as of issue. Ordinary receipts use one A4 page.
-- **Rental Information:** the accepted Customer, vehicle and rental details, itemized agreed pricing, the same payment summary as the receipt, and the originally accepted terms with renter signature. Ordinary records use two A4 pages. Long addresses, pricing or terms may need additional pages with accurate page numbering. The signature records agreement at booking and does not imply acceptance of later payment totals or charges.
+- **Rental Information:** the accepted Customer, vehicle and rental details, assigned Driver contacts, itemized agreed pricing, the same payment summary as the receipt, and the originally accepted terms with renter signature. New-format documents must use exactly two A4 pages: information on page 1, then all terms and renter acknowledgement on page 2. Content that cannot fit is rejected for layout review rather than adding pages or omitting information. Previously issued PDFs remain unchanged. The signature records agreement at booking and does not imply acceptance of later payment totals or charges.
 
 Both files use the same immutable per-payment snapshot. Later payments get their own document pair rather than reusing an earlier Rental Information PDF. Signing or reviewing without payment issues neither document. Pending, failed, refunded, zero, foreign-currency and Driver-responsible payments do not issue Customer receipts. Payment must belong to the booking's Customer; a paid booking flag alone is insufficient.
 
@@ -233,3 +233,28 @@ Changed the shared PDF header/styles and rental-information/receipt content
 partials. Verified the two-page rental document and one-page receipt through
 Dompdf and Poppler page images. All 33 focused payment-document and email tests
 passed (252 assertions). No financial records or issued files were replaced.
+
+
+## Driver contacts and two-page rental information — 2026-11-21
+
+New Rental Information includes the assigned Driver's name, email and contact number for both garage pickup and delivery. Assignment runs before the first payment snapshot is issued; lack of an eligible Driver leaves the paid booking confirmed and the document's Driver unassigned. Later reassignment sends a separate operational email/in-app update and does not overwrite the issued PDF, its encrypted context or its filenames. Receipts retain their independent payment purpose.
+
+Rental Information keeps page 1 for rental/customer/vehicle/driver/pricing/payment information and page 2 for terms and their renter acknowledgement. The customer fields use a compact three-column row with a full-width address. Identical pickup/return addresses render once with a combined label; Driver contact widths accommodate name/email while preserving the phone field. Spacing refinements are scoped to page 1; terms are not shortened, moved or clipped. Standard cases and accepted-length stress cases (1,000-character addresses, 161-character Driver name and 160-character email) render as exactly two A4 pages for both pickup modes. Already stored PDFs remain unchanged.
+
+Sources: `BookingConfirmationViewData`, shared PDF customer/rental/style partials and `BookingConfirmationPdfTest.php`. The explicit page break and rendered page count are tested together with Driver contacts being absent from the terms-page HTML.
+
+The renderer enforces the two-page boundary for new-format Rental Information. An unusually large unbounded charge list that cannot fit is rejected for layout review rather than emitting a third page, shrinking text indefinitely, clipping terms or omitting charges. Existing email failure/retry tracking retains that paid booking and its immutable context. This guard does not rewrite or restrict already-issued historical PDF bytes.
+
+Customer terminology — 2026-11-21: newly rendered terms use Customer instead of
+Renter, and the signature section is Customer acknowledgement with Customer's
+Full Name and Customer signature labels. Mobile terms and confirmation-email
+fallbacks use the same terminology. This changes wording only; accepted agreement
+snapshots, persisted signer codes and already-issued document bytes remain
+unchanged. The existing `renter-acknowledgement.blade.php` source name is retained.
+The focused 50 report/PDF/payment-document tests and full 1,482-test backend suite
+passed. A synthetic two-page Rental Information PDF was rendered with Dompdf,
+converted through Poppler and visually reviewed, including all terms and the
+Customer acknowledgement on page 2. No financial records or issued PDFs were
+replaced.
+
+Verification: the implementation handoff records passing PDF regression tests for both pickup modes, accepted-length address/contact stress cases, exactly two pages and overflow rejection, together with the full backend suite (1,478 tests / 9,346 assertions). The continuation reviewed the rendering guard, templates and tests without changing PDF code. See the [final workflow verification](booking-rental-lifecycle.md#driver-workflow-verification--2026-11-21) for the remaining application and delivery checks.

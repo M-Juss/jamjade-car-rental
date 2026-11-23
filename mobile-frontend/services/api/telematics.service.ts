@@ -4,6 +4,9 @@ import { restartSetupSchema } from '@/validation/telematics/calibration';
 import { normalizeBookingImageUrl } from './booking.service';
 
 export type MobileTelematicsHandover = {
+  driverWorkflow?: import('@/types/booking').DriverWorkflow | null;
+  driverServiceId?: number;
+  driverPickupType?: 'shop' | 'delivery';
   bookingCode: string;
   bookingStatus: 'pending' | 'confirmed' | 'ongoing' | 'returned' | 'completed';
   rentalStartAt?: string | null;

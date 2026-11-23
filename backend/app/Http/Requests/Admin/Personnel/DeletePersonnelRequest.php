@@ -8,7 +8,7 @@ class DeletePersonnelRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasAnyRole(['admin', 'staff']) ?? false;
+        return $this->user()?->hasRole('owner') ?? false;
     }
 
     public function rules(): array

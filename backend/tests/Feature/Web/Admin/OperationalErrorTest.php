@@ -14,7 +14,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     $this->admin = User::factory()->create();
-    $this->admin->assignRole('admin');
+    $this->admin->assignRole('owner');
 });
 
 it('restricts reading to active administrators and removes resolution', function () {

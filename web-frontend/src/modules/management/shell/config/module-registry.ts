@@ -55,7 +55,7 @@ export type ManagementModule = {
 };
 
 export const managementModules: readonly ManagementModule[] = [
-  { id: "errors", label: "Activity Log", section: "Administration", icon: ClipboardList, adminOnly: true, path: "errors" },
+  { id: "errors", label: "Activity Log", section: "Administration", icon: ClipboardList, permission: "view activity log", adminOnly: true, path: "errors" },
   {
     id: "dashboard",
     label: "Dashboard",
@@ -120,7 +120,7 @@ export const managementModules: readonly ManagementModule[] = [
     permission: "view fleet tracker",
     path: "fleet",
   },
-  { id: "drivingAnalysis", label: "Driving Analysis", section: "Insights", icon: Gauge, permission: "view fleet tracker", path: "driving-analysis" },
+  { id: "drivingAnalysis", label: "Driving Analysis", section: "Insights", icon: Gauge, permission: "view driving analysis", path: "driving-analysis" },
   {
     id: "reports",
     label: "Reports and Analytics",
@@ -132,14 +132,15 @@ export const managementModules: readonly ManagementModule[] = [
   {
     id: "personnel",
     label: "Personnel",
+    permission: "view personnel",
     section: "Administration",
     icon: ShieldCheck,
     path: "personnel",
   },
-  { id: "research", label: "Data Collection", section: "Model Development", icon: Activity, adminOnly: true, path: "research" },
-  { id: "modelExplorer", label: "Model Explorer", section: "Model Development", icon: Activity, adminOnly: true, path: "model-explorer" },
-  { id: "driveMonitoring", label: "Drive Monitoring", section: "Model Development", icon: Activity, adminOnly: true, path: "drive-monitoring" },
-  { id: "deliveryPricing", label: "Fee Pricing", section: "Administration", icon: PhilippinePeso, adminOnly: true, path: "delivery-pricing" },
+  { id: "research", label: "Data Collection", section: "Model Development", icon: Activity, permission: "view research", adminOnly: true, path: "research" },
+  { id: "modelExplorer", label: "Model Explorer", section: "Model Development", icon: Activity, permission: "view research", adminOnly: true, path: "model-explorer" },
+  { id: "driveMonitoring", label: "Drive Monitoring", section: "Model Development", icon: Activity, permission: "view research", adminOnly: true, path: "drive-monitoring" },
+  { id: "deliveryPricing", label: "Fee Pricing", section: "Administration", icon: PhilippinePeso, permission: "manage delivery pricing", path: "delivery-pricing" },
 ] as const;
 
 export const managementSections: readonly ManagementSection[] = [
@@ -171,9 +172,7 @@ export function managementModuleForPath(pathname: string, portal: ManagementPort
 
 export function managementModulesForPortal(portal: ManagementPortal, permissions: ReadonlySet<string> | null) {
   return managementModules.filter((module) => {
-    if (portal === "admin") return true;
-    if (module.id === "personnel") return true;
-    if (module.adminOnly || !module.permission) return false;
+    if ((portal === "staff" && module.adminOnly) || !module.permission) return false;
 
     return permissions?.has(module.permission) ?? false;
   });

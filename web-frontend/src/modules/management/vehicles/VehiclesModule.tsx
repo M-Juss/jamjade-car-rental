@@ -42,7 +42,7 @@ import {
 } from "@/services/vehicle";
 import type { VehicleFormValues } from "@/validations/vehicle/schemas";
 import { managementPath } from "@/modules/management/shell/config/module-registry";
-import { useManagementPortal } from "@/modules/management/shell/context/ManagementSessionProvider";
+import { useManagementPortal, useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 
 const statusStyle: Record<string, string> = {
   Available: "bg-success-surface text-success border-success-border",
@@ -68,6 +68,10 @@ function getVehicleImage(vehicle: VehicleRecord) {
 export default function Vehicle() {
   const router = useRouter();
   const portal = useManagementPortal();
+  const { user } = useManagementSession();
+  const canCreate = user?.permissions?.includes("create vehicles") ?? false;
+  const canDelete = user?.permissions?.includes("delete vehicles") ?? false;
+  const canConfigure = user?.permissions?.includes("configure vehicles") ?? false;
   const vehiclePath = managementPath(portal, "vehicles") ?? "/owner/vehicle";
   const [vehicles, setVehicles] = useState<VehicleRecord[]>([]);
   const [search, setSearch] = useState("");
@@ -183,17 +187,17 @@ export default function Vehicle() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <ManagementPageHeading title="Vehicles" description="Manage vehicle details, availability, and condition." />
         <div className="flex w-full gap-2 sm:w-auto">
-        {portal === "admin" ? <Button type="button" variant="outline" className="h-10 flex-1 rounded-xl text-sm sm:flex-none" onClick={() => setConfigurationOpen(true)}><Settings2 size={15} />Configure</Button> : null}
-        <Button
+        {canConfigure ? <Button type="button" variant="outline" className="h-10 flex-1 rounded-xl text-sm sm:flex-none" onClick={() => setConfigurationOpen(true)}><Settings2 size={15} />Configure</Button> : null}
+        {canCreate && <Button
           onClick={() => setVehicleFormOpen(true)}
           className="rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-semibold h-10 px-4 shadow-none transition-all duration-200 flex-1 sm:flex-none"
         >
           <Plus size={15} className="mr-2" />
           Add Vehicle
-        </Button>
+        </Button>}
         </div>
       </div>
-      {portal === "admin" ? <VehicleConfigurationDialog open={configurationOpen} onOpenChange={setConfigurationOpen} /> : null}
+      {canConfigure ? <VehicleConfigurationDialog open={configurationOpen} onOpenChange={setConfigurationOpen} /> : null}
 
       {/* ================= TOOLBAR ================= */}
       <TableCard>
@@ -382,13 +386,13 @@ export default function Vehicle() {
                               onClick: () =>
                                 router.push(`${vehiclePath}/${v.id}/edit`),
                             },
-                            {
+                            ...(canDelete ? [{
                               label: "Delete",
                               icon: <Trash2 size={13} className="mr-2" />,
                               onClick: () => setDeleteTarget(v.id),
                               separatorBefore: true,
-                              variant: "danger",
-                            },
+                              variant: "danger" as const,
+                            }] : []),
                           ]}
                         />
                       </TableCell>

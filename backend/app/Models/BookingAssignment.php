@@ -14,12 +14,16 @@ class BookingAssignment extends Model
         'booking_id',
         'driver_id',
         'assigned_at',
+        'on_way_at',
+        'arrived_at',
     ];
 
     protected function casts(): array
     {
         return [
             'assigned_at' => 'datetime',
+            'on_way_at' => 'datetime',
+            'arrived_at' => 'datetime',
         ];
     }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useManagementSession } from "@/modules/management/shell/context/ManagementSessionProvider";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { FilterSelect } from "@/components/common/forms/FilterSelect";
@@ -15,11 +16,14 @@ import { ApiError } from "@/services/http";
 import { getAuditLog, type AuditEntry, type AuditFilters } from "@/services/errors/error.service";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" });
-const modules = ["bookings", "payments", "vehicles", "maintenance", "personnel", "documents", "settings"];
+const businessModules = ["bookings", "payments", "vehicles", "maintenance", "personnel", "documents", "settings"];
 const actions = ["created", "updated", "deleted", "approved", "rejected"];
 const label = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 export function ErrorsModule() {
+  const { user } = useManagementSession();
+  const isTechnical = user?.permissions?.includes("view research") ?? false;
+  const modules = isTechnical ? ["research"] : businessModules;
   const [filters, setFilters] = useState<AuditFilters>({ search: "", module: "all", action: "all", status: "all" });
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
@@ -54,7 +58,7 @@ export function ErrorsModule() {
   const changeFilter = (key: keyof AuditFilters, value: string) => { setLoading(true); setError(""); filter(key, value); };
   return (
     <div className="min-h-screen space-y-5 bg-background p-4 md:p-6 lg:p-8">
-      <ManagementPageHeading title="Activity Log" description="Review business actions and their results." />
+      <ManagementPageHeading title="Activity Log" description={isTechnical ? "Review your research uploads and sign-in activity." : "Review business actions and their results."} />
       <TableCard className="gap-0 py-0 shadow-none" aria-label="Activity log">
         <CardContent className="border-b border-border p-4">
           <div className="flex flex-wrap gap-2.5">

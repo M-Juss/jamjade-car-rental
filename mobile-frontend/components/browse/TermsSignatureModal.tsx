@@ -74,7 +74,7 @@ const TERMS_SECTIONS: TermsSection[] = [
     title: 'Self-drive rentals',
     terms: [
       {
-        title: 'For self-drive renters, all damages will be charged to the renter.',
+        title: 'For self-drive customers, all damages will be charged to the customer.',
       },
       {
         title:
@@ -88,7 +88,7 @@ const TERMS_SECTIONS: TermsSection[] = [
       },
       {
         title:
-          'Before operating the vehicle, the renter must complete Jamjade’s staff-controlled telematics handover. Any future mobile monitoring requires clear consent and an authorized trip start.',
+          'Before operating the vehicle, the customer must complete Jamjade’s staff-controlled telematics handover. Any future mobile monitoring requires clear consent and an authorized trip start.',
       },
     ],
   },
@@ -101,7 +101,7 @@ const TERMS_SECTIONS: TermsSection[] = [
         details: ['Within Metro Manila: PHP 700.00 per day.', 'Outside Metro Manila: PHP 1,000.00 per day.'],
       },
       {
-        title: "The renter is responsible for the driver's accommodations.",
+        title: "The customer is responsible for the driver's accommodations.",
       },
       {
         title: 'The assigned Driver may share the vehicle’s latest location with you and JamJade during the rental after agreeing to location sharing. Sharing starts after staff releases the vehicle and stops when the Driver stops sharing or staff receives the vehicle.',

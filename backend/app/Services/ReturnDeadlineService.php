@@ -12,7 +12,7 @@ class ReturnDeadlineService
     {
         $sent = 0;
         $staff = User::permission('manage bookings')->where('is_active', true)
-            ->whereHas('roles', fn ($query) => $query->whereIn('name', ['admin', 'staff']))->get();
+            ->whereHas('roles', fn ($query) => $query->whereIn('name', ['owner', 'staff']))->get();
         Booking::where('status', 'ongoing')->where('rental_end_at', '<=', now()->addHours(2))
             ->whereDoesntHave('returnRecord', fn ($query) => $query->whereNotNull('vehicle_received_at'))
             ->chunkById(100, function ($bookings) use ($staff, &$sent) {

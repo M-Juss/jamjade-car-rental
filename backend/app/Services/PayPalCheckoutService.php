@@ -506,6 +506,9 @@ class PayPalCheckoutService
                     ->log('Booking automatically confirmed after payment.');
             }
 
+            if ($wasPending) {
+                app(DriverAssignmentService::class)->autoAssign($booking);
+            }
             $this->notificationService->createForCustomerPayment($booking, $lockedCheckout, $wasPending);
 
             $this->bookingEmailService->queueForPayment($lockedCheckout);

@@ -48,7 +48,7 @@ class BookingService
     {
         return Booking::query()
             ->with([
-                'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver',
+                'vehicle.images', 'vehicle.features', 'payments', 'user.documents', 'assignedDriver', 'feedback',
                 'deliveryQuote', 'assignment', 'terms', 'returnRecord', 'confirmationEmail', 'events', 'telematicsSetupSession.latestStationary', 'cancellation',
             ])
             ->where('user_id', $user->id)
@@ -163,7 +163,7 @@ class BookingService
         $customerCancellation = $targetStatus === BookingStatus::Cancelled && ($extra['cancellation_kind'] ?? null) === 'customer_unpaid';
         if (in_array($targetStatus, [BookingStatus::Cancelled, BookingStatus::Rejected, BookingStatus::NoShow], true)) {
             abort_unless($customerCancellation ? $actor->hasRole('customer')
-                : $actor->hasAnyRole(['admin', 'staff']) && $actor->can('manage bookings'), 403);
+                : $actor->hasAnyRole(['owner', 'staff']) && $actor->can('manage bookings'), 403);
         }
 
         return DB::transaction(function () use ($booking, $targetStatus, $actor, $reason, $extra, $customerCancellation) {
@@ -211,6 +211,10 @@ class BookingService
             }
 
             if ($targetStatus === BookingStatus::Ongoing) {
+                Gate::forUser($actor)->authorize('startRental', $booking);
+                if ($booking->rental_type === RentalType::OwnersDriver && $booking->assignment?->driver_id) {
+                    $booking->setRelation('assignedDriver', User::withTrashed()->lockForUpdate()->find($booking->assignment->driver_id));
+                }
                 app(SelfDriveBookingAvailabilityService::class)->lockCustomer($booking->user_id);
                 $this->readinessService->assertStartAllowed($booking);
             } elseif ($targetStatus === BookingStatus::Returned) {
@@ -262,6 +266,9 @@ class BookingService
                 ])
                 ->log('Booking status changed.');
 
+            if ($targetStatus === BookingStatus::Confirmed) {
+                app(DriverAssignmentService::class)->autoAssign($booking);
+            }
             $this->notifyStatusChange($booking, $targetStatus, $reason);
 
             if ($targetStatus === BookingStatus::Completed) {
@@ -507,6 +514,7 @@ class BookingService
             }
 
             if (! $awaitingPayPal) {
+                app(DriverAssignmentService::class)->autoAssign($booking);
                 $this->notificationService->createForCustomerPayment($booking, $payment, bookingConfirmed: true);
 
                 $this->bookingEmailService->queueForPayment($payment);

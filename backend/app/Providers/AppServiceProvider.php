@@ -17,7 +17,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->booting(function () {
+            \Illuminate\Support\Facades\Gate::before([\App\Support\ManagementAccess::class, 'gate']);
+        });
     }
 
     /**

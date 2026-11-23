@@ -37,9 +37,9 @@ The assigned Driver receives the confirmed destination and Note and can use **Na
 
 The web Toll Reviews queue, review map/form, actions, endpoints and navigation counts have been removed. Existing review history stays in the database. Management retains delivery details and the generic Toll Fee additional-charge option. Booking counts now cover due unstarted pickups only.
 
-## Admin settings
+## Business pricing settings
 
-Management → Fee Pricing is Admin-only. One card groups late-return rates and delivery pricing under separate labels. Fields start disabled; Configure enables editing and replaces that action with Save and Cancel. Cancel restores the last confirmed values. All five fields validate before either existing endpoint is called; the card locks again after confirmed saves. Delivery updates change only minimum fee, included kilometres and per-km rate, preserving the configured backend garage address/coordinates, including an unset point. The update API still validates optional garage fields if explicitly supplied. Changes are audited and affect only new quotes. Fresh environments must configure their actual garage point before delivery quotes are available.
+Management → Fee Pricing is available to Owner and Staff. Staff saves require a code emailed to the Owner; technical Admin is denied. One card groups late-return rates and delivery pricing under separate labels. Fields start disabled; Configure enables editing and replaces that action with Save and Cancel. Cancel restores the last confirmed values. All five fields validate before either existing endpoint is called; the card locks again after confirmed saves. Delivery updates change only minimum fee, included kilometres and per-km rate, preserving the configured backend garage address/coordinates, including an unset point. The update API still validates optional garage fields if explicitly supplied. Changes are audited and affect only new quotes. Fresh environments must configure their actual garage point before delivery quotes are available.
 
 The pricing form uses decimal-only input with no exponent, hexadecimal, sign or grouping-separator notation. Money allows two decimal places and included kilometres allow three; required, minimum and maximum rules mirror the existing Laravel requests. The shared pricing Zod schema supplies the existing delivery and late-return pricing schemas. Backend validation remains authoritative. Existing save endpoints remain separate: a partial failure keeps confirmed settings, retains failed edits and field errors, and retries only changed groups. Cancel restores confirmed values rather than undoing a successful request; after a failed save it refreshes both settings, covering a response lost after the server committed.
 
@@ -67,7 +67,7 @@ disabled in Work settings.
 | Customer | `GET /api/mobile/delivery/quotes` / `{quote}` | Retained owned quote reads; not used by the mobile booking flow |
 | Customer | `GET /api/mobile/delivery/quotes/{quote}/estimate` | Retained owned point estimate; not used to resume mobile bookings |
 | Customer | `GET /api/mobile/bookings/{booking}/delivery-estimate` | Fresh estimate for an owned booking; no repricing |
-| Admin | `GET` / `PUT /admin/delivery-pricing` | Existing pricing configuration |
+| Owner / Staff | `GET` / `PUT /admin/delivery-pricing` | Existing pricing configuration |
 
 The old customer `/delivery/routes` and quote `/select` endpoints and management `/delivery-quotes` review endpoints are removed. All affected clients are updated together.
 
@@ -99,4 +99,4 @@ Follow-up verification: mobile lint, TypeScript and the three remaining quote-re
 
 ## Owner verification
 
-The Fee Pricing form saves delivery and late-return settings together; Admin-initiated saves require owner verification, while the Owner saves directly. The individual delivery and late-return write endpoints also require verification. Garage coordinates remain outside the combined form. See [roles and access](user-roles-and-access.md#owner-verification).
+The Fee Pricing form saves delivery and late-return settings together; Staff-initiated saves require owner verification, while the Owner saves directly. The individual delivery and late-return write endpoints also require verification. Garage coordinates remain outside the combined form. See [roles and access](user-roles-and-access.md#owner-verification).

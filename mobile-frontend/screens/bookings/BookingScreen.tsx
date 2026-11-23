@@ -3,7 +3,7 @@ import { themeColors } from '@/constants/theme';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, type Href } from 'expo-router';
 import { Search, SlidersHorizontal, X } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,6 +14,8 @@ import {
   type BookingAction,
 } from '@/components/bookings';
 import { CustomerTabHeader } from '@/components/customer/CustomerTabHeader';
+import { BookingFeedbackForm } from '@/forms/booking/BookingFeedbackForm';
+import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import { matchesBookingSearch, matchesBookingStatus } from '@/lib/bookings/helpers';
 import { getBookings } from '@/services/api';
 import { BOOKING_STATUS_FILTERS, type Booking, type BookingStatusFilter } from '@/types/booking';
@@ -140,6 +142,10 @@ export function BookingScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [feedbackBookingId, setFeedbackBookingId] = useState<number | null>(null);
+  const feedbackBooking = bookings.find(booking => booking.backendId === feedbackBookingId);
+  const mutationRevision = useRef(0);
+  const toast = useFormToast();
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const activeFilterCount = Number(selectedStatus !== 'All');
@@ -147,9 +153,10 @@ export function BookingScreen() {
   const loadBookings = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
-
+    const revision = mutationRevision.current;
     try {
-      setBookings(await getBookings());
+      const records = await getBookings();
+      if (revision === mutationRevision.current) setBookings(records);
     } catch {
       setLoadError('Bookings could not be loaded. Please try again.');
     } finally {
@@ -170,6 +177,10 @@ export function BookingScreen() {
   }, [bookings, searchTerm, selectedStatus]);
 
   const handleAction = (action: BookingAction, booking: Booking) => {
+    if (action.key === 'feedback') {
+      setFeedbackBookingId(booking.backendId);
+      return;
+    }
     if (action.key === 'pay_balance' || action.key === 'payment_info') {
       router.push(`/bookings/payment?bookingId=${encodeURIComponent(booking.id)}` as Href);
       return;
@@ -280,6 +291,13 @@ export function BookingScreen() {
         onApply={setSelectedStatus}
         onClose={() => setIsFilterOpen(false)}
       />
+      {feedbackBooking ? <BookingFeedbackForm key={feedbackBooking.backendId} booking={feedbackBooking} onClose={() => { setFeedbackBookingId(null); void loadBookings(); }} onSaved={feedback => {
+        mutationRevision.current += 1;
+        setBookings(current => current.map(booking => booking.backendId === feedbackBooking.backendId ? { ...booking, feedback, canLeaveFeedback: false } : booking));
+        setFeedbackBookingId(null);
+        toast.showToast('Feedback submitted.', 'success');
+      }} /> : null}
+      <FormToast message={toast.message} title={toast.title} variant={toast.variant} onDismiss={toast.clearToast} />
     </View>
   );
 }

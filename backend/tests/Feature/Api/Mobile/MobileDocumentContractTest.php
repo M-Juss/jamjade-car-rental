@@ -132,7 +132,7 @@ it('stores an optional proof of address back image and exposes it to staff', fun
     Storage::disk('public')->assertExists([$document->file_path, $document->back_file_path]);
 
     $reviewer = User::factory()->create();
-    $reviewer->assignRole(UserRole::Admin->value);
+    $reviewer->assignRole(UserRole::Owner->value);
     $this->actingAs($reviewer)->getJson("/admin/self-drive-verification/customers/{$document->user_id}")
         ->assertOk()
         ->assertJsonPath('data.documents.1.document.backFileUrl', $response->json('data.backFileUrl'));
@@ -182,7 +182,7 @@ it('rejects new passport uploads while preserving historical passport records', 
 it('resubmits an approved document for review and restores eligibility only after approval', function (string $type) {
     $customer = auth()->user();
     $reviewer = User::factory()->create();
-    $reviewer->assignRole(UserRole::Admin->value);
+    $reviewer->assignRole(UserRole::Owner->value);
     foreach (CustomerDocument::REQUIRED_SELF_DRIVE_DOCUMENTS as $requiredType) {
         $customer->documents()->create([
             'document_type' => $requiredType,

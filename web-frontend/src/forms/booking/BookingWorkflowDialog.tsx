@@ -128,7 +128,7 @@ function money(value: number) {
   }).format(value);
 }
 
-function BookingContext({ booking, columns = 2 }: { booking: BookingRecord; columns?: 2 | 3 }) {
+function BookingContext({ booking, columns = 2, onChangeDriver }: { booking: BookingRecord; columns?: 2 | 3; onChangeDriver?: () => void }) {
   return (
     <Card className="gap-0 rounded-xl border border-border bg-background py-3 ring-0">
       <CardContent>
@@ -161,6 +161,9 @@ function BookingContext({ booking, columns = 2 }: { booking: BookingRecord; colu
               <dt className="text-muted-foreground">Assigned Driver</dt>
               <dd className="mt-1 font-semibold text-foreground">
                 {booking.assignedDriver?.name ?? "Not assigned"}
+                {booking.assignedDriver?.email ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{booking.assignedDriver.email}</span> : null}
+                {booking.assignedDriver?.phoneNumber ? <span className="block text-xs font-normal text-muted-foreground">{booking.assignedDriver.phoneNumber}</span> : null}
+                {booking.canReassignDriver && onChangeDriver ? <Button type="button" variant="link" className="h-auto px-0 py-1 text-xs" onClick={onChangeDriver}>Change driver</Button> : null}
               </dd>
             </div>
           ) : ["returned", "completed"].includes(booking.statusKey) ? (
@@ -259,7 +262,7 @@ export function BookingWorkflowDialog({
       : blockers;
   const calibration = bookingCalibrationProgress(booking);
   const deviceChecksPassed = setupStepsPassed(booking, TELEMATICS_DEVICE_STEPS);
-  const operatorLabel = booking.driverOption === "owners_driver" ? "The assigned driver" : "The renter";
+  const operatorLabel = booking.driverOption === "owners_driver" ? "The assigned driver" : "The customer";
 
   useEffect(() => {
     const visibleContent = contentRef.current?.querySelector<HTMLElement>(
@@ -555,6 +558,7 @@ export function BookingWorkflowDialog({
               >
                 {currentAction === "reassign-driver" || reviewingDriver ? "Reassign Driver" : "Assign Driver"}
               </h2>
+            {booking.canReassignDriver === false ? <p className="text-xs text-muted-foreground">Driver assignment is locked after Outgoing Inspection.</p> : null}
             {driverForm.formState.errors.root?.message ? (
               <p role="alert" className="text-xs text-destructive">
                 {driverForm.formState.errors.root.message}
@@ -564,13 +568,13 @@ export function BookingWorkflowDialog({
               id="booking-driver"
               label="Driver"
               required
-              disabled={busy || driversLoading || driversError}
+              disabled={busy || driversLoading || driversError || booking.canReassignDriver === false}
               placeholder="Select a driver"
               options={drivers.map((driver) => ({
                 value: String(driver.id),
                 label: driver.name,
-                description: driver.hasOutstandingBalance ? "Outstanding balance" : undefined,
-                disabled: driver.hasOutstandingBalance,
+                description: !driver.phoneNumber ? "Contact number required" : undefined,
+                disabled: !driver.phoneNumber,
               }))}
               value={selectedDriver}
               onValueChange={(value) =>
@@ -610,7 +614,7 @@ export function BookingWorkflowDialog({
           <Button
             type="submit"
             disabled={
-              busy || ((!booking.assignedDriver || driverChanged) && (driversLoading || driversError || drivers.length === 0))
+              busy || (booking.canReassignDriver === false && driverChanged) || ((!booking.assignedDriver || driverChanged) && (driversLoading || driversError || drivers.length === 0))
             }
           >
             {isActing ? "Saving..." : booking.assignedDriver && !driverChanged
@@ -751,7 +755,7 @@ export function BookingWorkflowDialog({
             <summary className="cursor-pointer font-semibold">View finalized Outgoing Inspection</summary>
             <div className="mt-3"><BookingStageContent stage="outgoing" booking={booking} /></div>
           </details>
-        ) : <BookingContext booking={booking} />}
+        ) : <BookingContext booking={booking} onChangeDriver={!busy ? () => setCurrentAction("reassign-driver") : undefined} />}
       </WorkflowPanel>
     );
   } else if (
@@ -887,7 +891,7 @@ export function BookingWorkflowDialog({
               : "Review this rental before confirming release."}
           </p>
         ) : null}
-        <BookingContext booking={booking} columns={currentAction === "start-rental" ? 3 : 2} />
+        <BookingContext booking={booking} columns={currentAction === "start-rental" ? 3 : 2} onChangeDriver={!busy ? () => setCurrentAction("reassign-driver") : undefined} />
         <Requirements items={visibleBlockers} />
         {confirmation ? <CustomerBalance booking={booking} /> : null}
         {(blockers.length > 0 || refreshError) && confirmation && currentAction !== "complete" && currentAction !== "start-rental" ? (
@@ -924,7 +928,7 @@ export function BookingWorkflowDialog({
       const savedTime = reviewAction === "complete" ? booking.completedAt
           : reviewAction === "assign-driver" ? booking.driverAssignedAt
             : booking.telematicsHandover?.setup?.releasedAt;
-      savedDetails = <><BookingContext booking={booking} />{savedTime ? <p className="text-xs text-muted-foreground">{formatReturnDateTime(savedTime)}</p> : null}</>;
+      savedDetails = <><BookingContext booking={booking} onChangeDriver={!busy ? () => setCurrentAction("reassign-driver") : undefined} />{savedTime ? <p className="text-xs text-muted-foreground">{formatReturnDateTime(savedTime)}</p> : null}</>;
     }
     reviewContent = reviewingDriver ? driverContent : <WorkflowPanel footer={<>{previousButton}{returnButton}</>}>
       <h2 data-workflow-heading tabIndex={-1} className="text-sm font-semibold text-foreground">{reviewLabel}</h2>

@@ -8,7 +8,7 @@ class RecordCancellationRefundRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return ($this->user()?->hasRole('admin') ?? false) && ($this->user()?->can('manage bookings') ?? false);
+        return ($this->user()?->hasAnyRole(['owner', 'staff']) ?? false) && ($this->user()?->can('manage bookings') ?? false);
     }
 
     public function rules(): array

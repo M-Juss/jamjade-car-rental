@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Eye, Users } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,15 @@ import { FormDialogContent, FormDialogHeader } from "@/components/common/forms/F
 import { TableCard, ManagementTable, ManagementTableCell } from "@/components/common/tables/ManagementTable";
 import { TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TablePagination } from "@/components/common/tables/TablePagination";
-import { getDrivingAnalysisBookings, type BookingRecord, type DrivingOperator } from "@/services/booking";
+import { getDrivingAnalysisBookings, type DrivingAnalysisBooking, type DrivingOperator, type DrivingAnalysisFilters } from "@/services/booking";
 import type { RentalDrivingGrade } from "@/services/fleet/fleet.service";
 import { formatDrivingGrade } from "./DrivingGradeDetails";
 
-export function OperatorBookingsDialog({ operator, portal, onClose, onReturnFocus }: { operator: DrivingOperator; portal: string; onClose: () => void; onReturnFocus: () => void }) {
-  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+export type OperatorBookingsScope = Pick<DrivingAnalysisFilters, "period" | "date" | "search" | "vehicleId" | "gradedOnly">;
+
+export function OperatorBookingsDialog({ operator, portal, scope, onClose, onReturnFocus }: { operator: DrivingOperator; portal: string; scope?: OperatorBookingsScope; onClose: () => void; onReturnFocus: () => void }) {
+  const params = useSearchParams();
+  const [bookings, setBookings] = useState<DrivingAnalysisBooking[]>([]);
   const [grades, setGrades] = useState<Record<string, RentalDrivingGrade>>({});
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, lastPage: 1 });
@@ -26,7 +30,7 @@ export function OperatorBookingsDialog({ operator, portal, onClose, onReturnFocu
     let current = true;
     const load = async () => {
       try {
-        const result = await getDrivingAnalysisBookings({ operatorId: String(operator.id), page, search: "" });
+        const result = await getDrivingAnalysisBookings({ ...scope, operatorId: String(operator.id), operatorType: operator.operator_type, page, search: scope?.search ?? "" });
         if (current) {
           setBookings(result.bookings);
           setGrades(result.grades);
@@ -37,7 +41,7 @@ export function OperatorBookingsDialog({ operator, portal, onClose, onReturnFocu
     };
     void load();
     return () => { current = false; };
-  }, [operator.id, page, reload]);
+  }, [operator.id, operator.operator_type, page, reload, scope]);
 
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
     <FormDialogContent width="wide" onCloseAutoFocus={event => { event.preventDefault(); onReturnFocus(); }}>
@@ -50,12 +54,15 @@ export function OperatorBookingsDialog({ operator, portal, onClose, onReturnFocu
               : error ? <TableRow><ManagementTableCell colSpan={5} className="py-8 text-center"><p role="alert" className="text-destructive">Bookings could not be loaded.</p><Button variant="outline" size="sm" className="mt-3" onClick={() => { setLoading(true); setError(false); setReload(value => value + 1); }}>Retry</Button></ManagementTableCell></TableRow>
                 : bookings.map(booking => {
                   const grade = grades[booking.backendId];
+                  const analysisQuery = new URLSearchParams(params.toString());
+                  analysisQuery.set("view", "operators");
+                  analysisQuery.set("booking", String(booking.backendId));
                   return <TableRow key={booking.backendId}>
-                    <ManagementTableCell data-label="Booking"><Link href={`/${portal}/history?booking=${booking.backendId}`} className="font-semibold text-primary hover:underline">{booking.bookingCode}</Link></ManagementTableCell>
+                    <ManagementTableCell data-label="Booking"><Link href={`/${portal}/driving-analysis?booking=${booking.backendId}`} className="font-semibold text-primary hover:underline">{booking.bookingCode}</Link></ManagementTableCell>
                     <ManagementTableCell data-label="Harsh events" className="tabular-nums">{grade?.confirmed_events ?? "—"}</ManagementTableCell>
                     <ManagementTableCell data-label="Deductions" className="tabular-nums">{grade?.score != null ? `−${grade.deductions}` : "—"}</ManagementTableCell>
                     <ManagementTableCell data-label="Grade" className={grade?.score != null ? "font-medium tabular-nums" : "text-muted-foreground"}>{formatDrivingGrade(grade)}</ManagementTableCell>
-                    <ManagementTableCell data-label="Actions" className="px-4 py-3 md:w-16"><Button asChild variant="ghost" size="icon" className="size-8"><Link href={`/${portal}/driving-analysis?view=operators&booking=${booking.backendId}`} aria-label={`View driving analysis for ${booking.bookingCode}`}><Eye aria-hidden="true" /></Link></Button></ManagementTableCell>
+                    <ManagementTableCell data-label="Actions" className="px-4 py-3 md:w-16"><Button asChild variant="ghost" size="icon" className="size-8"><Link href={`/${portal}/driving-analysis?${analysisQuery}`} aria-label={`View driving analysis for ${booking.bookingCode}`}><Eye aria-hidden="true" /></Link></Button></ManagementTableCell>
                   </TableRow>;
                 })}
               {!loading && !error && !bookings.length ? <TableRow><ManagementTableCell colSpan={5} className="py-10 text-center text-muted-foreground">No completed bookings found.</ManagementTableCell></TableRow> : null}

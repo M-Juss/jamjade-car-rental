@@ -175,17 +175,19 @@ class PersonnelService
 
     private function query(User $actor): Builder
     {
-        $roles = $actor->hasRole('owner') ? ['staff', 'driver', 'admin'] : ($actor->hasRole('admin') ? ['staff', 'driver'] : ['driver']);
+        $roles = $actor->hasRole('owner') ? ['staff', 'driver', 'admin'] : ['driver'];
 
-        return User::query()->whereKeyNot($actor->getKey())->role($roles)->has('roles', '=', 1);
+        return User::query()->select('users.*')->addSelect(['has_ongoing_service' => Booking::query()->selectRaw('1')
+            ->where('status', BookingStatus::Ongoing)->whereHas('assignment', fn ($query) => $query->whereColumn('driver_id', 'users.id'))->limit(1)])
+            ->whereKeyNot($actor->getKey())->role($roles)->has('roles', '=', 1);
     }
 
     private function canManageRole(User $actor, string $role): bool
     {
         return match ($role) {
             'admin' => $actor->hasRole('owner'),
-            'staff' => $actor->hasRole('admin'),
-            'driver' => $actor->hasAnyRole(['admin', 'staff']),
+            'staff' => $actor->hasRole('owner'),
+            'driver' => $actor->hasRole('owner'),
             default => false,
         };
     }

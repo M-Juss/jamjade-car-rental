@@ -88,6 +88,7 @@ function remaining(plan: MaintenancePlan) {
 }
 
 export function MaintenancePlansTable({
+  canManagePlans,
   plans,
   onSchedule,
   onEdit,
@@ -95,6 +96,7 @@ export function MaintenancePlansTable({
   onViewRecord,
   paginationKey,
 }: {
+  canManagePlans: boolean;
   plans: MaintenancePlan[];
   paginationKey: string;
   onSchedule: (planId: string) => void;
@@ -123,7 +125,7 @@ export function MaintenancePlansTable({
           </TableRow></TableHeader>
           <TableBody>
             {plans.length === 0 ? <EmptyRow colSpan={9} message="No maintenance plans match this view." /> : pagination.rows.map((plan) => {
-              const items: TableActionMenuItem[] = plan.activeRecord ? [
+              const items: TableActionMenuItem[] = !canManagePlans ? (plan.activeRecord ? [{ label: "View Scheduled Maintenance", icon: <Eye size={13} className="mr-2" />, onClick: () => onViewRecord(plan.activeRecord!.id) }] : [{ label: "Schedule Maintenance", icon: <CalendarPlus size={13} className="mr-2" />, onClick: () => onSchedule(plan.id) }]) : plan.activeRecord ? [
                 { label: "View Scheduled Maintenance", icon: <Eye size={13} className="mr-2" />, onClick: () => onViewRecord(plan.activeRecord!.id) },
                 { label: "Edit Plan", icon: <Pencil size={13} className="mr-2" />, onClick: () => onEdit(plan) },
                 { label: "Delete Plan", icon: <Trash2 size={13} className="mr-2" />, disabled: true, separatorBefore: true, variant: "danger" },

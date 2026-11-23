@@ -10,7 +10,7 @@ class CancelBookingRequest extends BookingStatusRequest
 {
     public function authorize(): bool
     {
-        return parent::authorize() && (! $this->has('refund_mode') || ($this->user()?->hasRole('admin') ?? false));
+        return parent::authorize() && (! $this->has('refund_mode') || ($this->user()?->hasAnyRole(['owner', 'staff']) ?? false));
     }
 
     protected function prepareForValidation(): void

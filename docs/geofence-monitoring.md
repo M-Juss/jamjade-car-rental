@@ -6,7 +6,7 @@ Geofences provide entry/exit information for Self Drive and With Assigned Driver
 
 During a network outage the app retains only the newest GPS fix and shows sharing as paused. An already-running session retries while open or, with explicit background consent and a live runtime, while backgrounded. It rechecks rental eligibility and consent on reconnection before sharing a fresh fix. Crossings wholly during an outage can be missed; there is no offline crossing log. Process termination still requires a fresh start. See the [telematics guide](telematics-master-plan.md#existing-released-gps-and-mobile-activity).
 
-Admin manages default circle/polygon zones in the website Geofence Library. Every active default applies automatically. Admin may create, edit, or remove additional custom zones from a pending/confirmed booking's details before release. Defaults cannot be removed or replaced per booking. Staff can view library and booking zones/activity, while all zone mutations require the Admin role on Laravel. Mobile has no geofence-management or assignment API. Admin represents existing owner authority; no Owner role is introduced.
+Owner manages default circle/polygon zones in the website Geofence Library. Every active default applies automatically. Owner may create, edit, or remove additional custom zones from a pending/confirmed booking before release. Defaults cannot be removed or replaced per booking. Staff and technical Admin can read the library; Staff retains booking-zone/activity reads. Laravel requires `edit geofences` for every zone mutation. Mobile has no geofence-management or assignment API. See the current [management role separation](user-roles-and-access.md#owner-technical-admin-and-staff-separation--2026-11-23).
 
 ## Release and history
 

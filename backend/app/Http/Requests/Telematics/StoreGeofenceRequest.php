@@ -9,7 +9,7 @@ class StoreGeofenceRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin') ?? false;
+        return $this->user()?->can('edit geofences') ?? false;
     }
 
     public function rules(): array

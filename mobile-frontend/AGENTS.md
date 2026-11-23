@@ -92,7 +92,7 @@ local module; presentation components must not own sensors or network calls.
 - Current Self Drive and With Assigned Driver setup remains server-gated through
   the handover read model. Preserve the six readiness checks, two consented
   foreground calibration captures (stationary then forward reference), attempt history, operator/assignment checks,
-  server-time gates, and Staff Start Rental authority. Research trials do not
+  server-time gates, and authorized rental release. Staff/Admin retains release; the current arrived assigned Driver can also explicitly start their own eligible With Assigned Driver rental. Research trials do not
   require customer bookings or rental-release exceptions.
 - Current calibration submits bounded summaries only. Current post-release GPS
   uses a separately consented app-wide foreground or explicit background collector;

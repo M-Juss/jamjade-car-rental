@@ -1,16 +1,16 @@
 # Vehicle configuration
 
-Vehicle Management → Configure is an Admin-only shared option library. Its seven cards are Brands, Features, Transmissions, Fuel Types, Exterior Checklist, Interior Checklist, and Equipment / Tools. Each card opens its own option list directly. Checklist items stay within the three fixed inspection groups. Status values, body panels, issue types, fuel-level scale, and individual vehicle fields remain outside this library.
+Vehicle Management → Configure is an Owner-only shared option library. Its seven cards are Brands, Features, Transmissions, Fuel Types, Exterior Checklist, Interior Checklist, and Equipment / Tools. Each card opens its own option list directly. Checklist items stay within the three fixed inspection groups. Status values, body panels, issue types, fuel-level scale, and individual vehicle fields remain outside this library.
 
 ## Management contract
 
 All endpoints use the existing management session and CSRF flow.
 
-- GET /admin/vehicle-options: active catalog names, current checklist definitions, and checklist_version; available to Admin or authorized vehicle, booking, or maintenance personnel.
-- GET /admin/vehicle-configuration: option records, active state, and whether an option has been used; Admin only.
-- POST /admin/vehicle-configuration: section, trimmed name, and is_active; Admin only.
-- PUT /admin/vehicle-configuration/{option}: name and is_active; Admin only. Section and stable key cannot be changed.
-- DELETE /admin/vehicle-configuration/{option}: delete an unused option or deactivate a used option; Admin only.
+- GET /admin/vehicle-options: active catalog names, current checklist definitions, and checklist_version; available to Owner or authorized vehicle, booking, or maintenance personnel.
+- GET /admin/vehicle-configuration: option records, active state, and whether an option has been used; Owner only.
+- POST /admin/vehicle-configuration: section, trimmed name, and is_active; Owner only.
+- PUT /admin/vehicle-configuration/{option}: name and is_active; Owner only. Section and stable key cannot be changed.
+- DELETE /admin/vehicle-configuration/{option}: delete an unused option or deactivate a used option; Owner only.
 
 Names are unique within a section without regard to case. Brand names allow 80 characters, transmission/fuel names 40, and features/checklist items 120. Dashcam remains excluded. At least one active option must remain in each section. Each option shows an Active or Inactive badge beside its row menu. The menu offers Deactivate for active options and Activate for inactive ones, using the existing PUT contract. Unused options also have a separate Delete action; Edit still supports changing the name and active state.
 

@@ -1,3 +1,4 @@
+import { DriverWorkflowForm } from '@/forms/booking/DriverWorkflowForm';
 import { BookingDetailsContent } from "@/components/bookings/BookingDetailsContent";
 import { themeColors } from "@/constants/theme";
 import { useFocusEffect } from "@react-navigation/native";
@@ -8,6 +9,7 @@ import {
   Navigation,
   CreditCard,
   CircleX,
+  Star,
 } from "lucide-react-native";
 import {
   ActivityIndicator,
@@ -28,6 +30,7 @@ import { getBooking, getDriverService } from "@/services/api";
 import { useAuth } from "@/providers/AuthProvider";
 import { ApiError } from "@/services/http";
 import { CancelBookingForm } from '@/forms/booking/CancelBookingForm';
+import { BookingFeedbackForm } from '@/forms/booking/BookingFeedbackForm';
 import { FormToast, useFormToast } from '@/forms/shared/FormToast';
 import type { Booking } from "@/types/booking";
 
@@ -37,11 +40,13 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
   const isDriver = user?.roles?.includes('driver') ?? false;
   const insets = useSafeAreaInsets();
   const [booking, setBooking] = useState<Booking | null>(null);
+  const mutationRevision = useRef(0);
   const bookingRef = useRef(booking);
   bookingRef.current = booking;
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const toast = useFormToast();
 
   const loadBooking = useCallback(async (quiet = false) => {
@@ -55,8 +60,10 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
       setLoadError(null);
     }
 
+    const revision = mutationRevision.current;
     try {
-      setBooking(await (isDriver ? getDriverService(bookingId) : getBooking(bookingId)));
+      const record = await (isDriver ? getDriverService(bookingId) : getBooking(bookingId));
+      if (revision === mutationRevision.current) setBooking(record);
     } catch (error) {
       if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
         setBooking(null);
@@ -72,7 +79,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
       void loadBooking();
       const interval = setInterval(() => {
         const current = bookingRef.current;
-        if (isDriver || (current?.driverType === "Owner's Driver" && current.status === "Active")) {
+        if (isDriver || (current?.driverType === "Owner's Driver" && ['Confirmed', 'Active'].includes(current.status))) {
           void loadBooking(true);
         }
       }, 15000);
@@ -147,8 +154,9 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
               <ActionButton density="compact" icon={Navigation} label="Telematics activity"
                 onPress={() => router.push(`/${isDriver ? 'driver-telematics' : 'telematics'}/${encodeURIComponent(booking.id)}?tab=activity` as Href)} />
             ) : null}
+            {isDriver && booking.status === 'Confirmed' && booking.driverWorkflow ? <DriverWorkflowForm bookingId={booking.backendId} bookingCode={booking.id} workflow={booking.driverWorkflow} pickupType={booking.pickupType} onUpdated={(updated) => { mutationRevision.current += 1; setBooking(updated); if (updated.status === 'Active') router.replace({ pathname: '/(driver)/services', params: { tab: 'active' } }); }} /> : null}
             {isDriver ? <View className="flex-row flex-wrap gap-2">
-              {['Confirmed', 'Active', 'Ongoing'].includes(booking.status) ? <ActionButton density="compact" className="min-w-[45%] flex-1"
+              {['Active', 'Ongoing'].includes(booking.status) ? <ActionButton density="compact" className="min-w-[45%] flex-1"
                 label="Telematics" icon={Navigation} variant="primary" onPress={() => router.push(`/driver-telematics/${encodeURIComponent(booking.id)}` as Href)} /> : null}
               {booking.additionalCharges.some(charge => charge.outstandingAmount > 0) ? <ActionButton density="compact" className="min-w-[45%] flex-1"
                 label="Pay charges" icon={CreditCard} onPress={() => router.push(`/driver-payment?bookingId=${encodeURIComponent(booking.id)}` as Href)} /> : null}
@@ -178,6 +186,7 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
                 onPress={() => router.push("/" as Href)}
               />
             ) : null}
+            {!isDriver && booking.status === 'Completed' && (booking.canLeaveFeedback || booking.feedback) ? <ActionButton density="compact" icon={Star} label={booking.feedback ? 'View feedback' : 'Leave feedback'} onPress={() => setIsFeedbackOpen(true)} /> : null}
           </View>
         </View>
       </ScrollView>
@@ -191,6 +200,12 @@ export function BookingDetailsScreen({ bookingId }: { bookingId?: string }) {
           toast.showToast('Booking cancelled.', 'success');
         }} /> : null}
       <FormToast message={toast.message} title={toast.title} variant={toast.variant} onDismiss={toast.clearToast} />
+      {!isDriver && isFeedbackOpen ? <BookingFeedbackForm key={booking.backendId} booking={booking} onClose={() => { setIsFeedbackOpen(false); void loadBooking(true); }} onSaved={feedback => {
+        mutationRevision.current += 1;
+        setBooking(current => current ? { ...current, feedback, canLeaveFeedback: false } : current);
+        setIsFeedbackOpen(false);
+        toast.showToast('Feedback submitted.', 'success');
+      }} /> : null}
     </View>
   );
 }
