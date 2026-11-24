@@ -4,7 +4,6 @@ import Link from "next/link";
 import { DashboardOperations } from "./DashboardOperations";
 import { DashboardSnapshot } from "./DashboardSnapshot";
 import { calendarDate, dashboardDateTime } from "./dashboard-format";
-import { FilterSelect } from "@/components/common/forms/FilterSelect";
 import { ManagementPageHeading } from "@/modules/management/shell/components/ManagementPageHeading";
 
 import { usePathname } from "next/navigation";
@@ -159,9 +158,6 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [currentDate, setCurrentDate] = useState(() => calendarDate());
   const [view, setView] = useState<View>("month");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [vehicleFilter, setVehicleFilter] = useState("all");
-  const [rentalFilter, setRentalFilter] = useState("all");
   const [selectedEvent, setSelectedEvent] =
     useState<DashboardCalendarEvent | null>(null);
   const [error, setError] = useState("");
@@ -249,16 +245,7 @@ export default function Dashboard() {
     );
   }
 
-  const vehicleOptions = Array.from(new Map(data.events.map((event) => [event.vehiclePlate || event.vehicleName, {
-    value: event.vehiclePlate || event.vehicleName,
-    label: event.vehiclePlate ? `${event.vehicleName} (${event.vehiclePlate})` : event.vehicleName,
-  }])).values());
-  const effectiveVehicle = vehicleOptions.some((option) => option.value === vehicleFilter) ? vehicleFilter : "all";
-  const events: RentalCalendarEvent[] = data.events.filter((event) =>
-    (statusFilter === "all" || event.status === statusFilter) &&
-    (effectiveVehicle === "all" || (event.vehiclePlate || event.vehicleName) === effectiveVehicle) &&
-    (rentalFilter === "all" || event.rentalType === rentalFilter)
-  ).map((event) => ({
+  const events: RentalCalendarEvent[] = data.events.map((event) => ({
     ...event,
     title: `${event.vehiclePlate || event.vehicleName} · ${event.bookingCode}`,
     start: calendarDate(event.start),
@@ -309,8 +296,7 @@ export default function Dashboard() {
           <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5 xl:flex xl:flex-1 xl:flex-col">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2 className="text-base font-semibold">Rental calendar</h2>
-                <p className="text-sm font-semibold text-foreground">
+                <p className="text-md font-semibold text-foreground">
                   {periodLabel(currentDate, view)}
                 </p>
               </div>
@@ -360,12 +346,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="mb-4 grid gap-2 sm:grid-cols-3">
-              <FilterSelect value={effectiveVehicle} onValueChange={setVehicleFilter} ariaLabel="Filter calendar by vehicle" options={[{ value: "all", label: "All vehicles" }, ...vehicleOptions]} />
-              <FilterSelect value={statusFilter} onValueChange={setStatusFilter} ariaLabel="Filter calendar by status" options={[{ value: "all", label: "All statuses" }, { value: "confirmed", label: "Confirmed" }, { value: "ongoing", label: "Ongoing" }]} />
-              <FilterSelect value={rentalFilter} onValueChange={setRentalFilter} ariaLabel="Filter calendar by rental type" options={[{ value: "all", label: "All rental types" }, { value: "Self-Drive", label: "Self-drive" }, { value: "Owner's Driver", label: "With driver" }]} />
-            </div>
-            {!isLoading && events.length === 0 && <p role="status" className="mb-3 text-sm text-muted-foreground">{data.events.length === 0 ? "No rentals scheduled in this period." : "No rentals match these filters."}</p>}
             <div className="relative overflow-x-auto xl:flex xl:flex-1 xl:flex-col">
               {isLoading ? (
                 <div className="absolute inset-x-0 top-0 z-10 flex justify-end p-2 text-primary">

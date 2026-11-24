@@ -594,3 +594,9 @@ refresh actions, pagination and data flows are unchanged; the layout is in
 `web-frontend/src/modules/management/fleet-tracker/FleetTrackerModule.tsx`.
 Browser verification was unavailable because local browser use was disabled in
 Work settings; visual checks at phone and desktop widths remain pending.
+
+## Dashboard calendar controls cleanup — 2026-11-24
+
+Removed the vehicle/status/rental-type filter row and the empty-period message from the large Owner/Staff rental calendar at the user's request. `DashboardModule.tsx` now maps every returned event for the selected period directly into the established calendar. Removed the unused filter state, option derivation and `FilterSelect` import. Period navigation, month/week/day views, loading/error feedback and booking-event interactions retain their existing contracts. No API or submission-form change was needed.
+
+Verification: web lint, TypeScript, production build and `git diff --check` passed. Source review confirmed the filter controls, filter state and empty-period message are absent. Interactive browser acceptance was not exercised. No terminal command or database migration is required for this UI change.

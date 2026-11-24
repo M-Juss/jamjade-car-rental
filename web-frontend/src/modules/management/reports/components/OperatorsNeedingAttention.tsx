@@ -15,8 +15,7 @@ export function OperatorsNeedingAttention({ data, onPageChange, onView }: {
 }) {
   return <section className="space-y-3" aria-labelledby="operators-attention-heading">
     <div>
-      <h2 id="operators-attention-heading" className="text-base font-semibold text-foreground">Operators needing attention</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Average final grade below {data.threshold} / 100.</p>
+      <h2 id="operators-attention-heading" className="text-base font-semibold text-foreground">Operators needing attention (Below 70)</h2>
     </div>
     <TableCard>
       <ManagementTable aria-label="Operators needing attention">
