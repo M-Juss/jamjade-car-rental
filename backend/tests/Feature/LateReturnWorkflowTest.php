@@ -140,12 +140,13 @@ it('requires late review before closing return charges and preserves vehicle res
     expect(fn () => app(BookingService::class)->transition($booking->fresh(), BookingStatus::Completed, $actor))->toThrow(ValidationException::class);
 });
 
-it('keeps pricing administrator-only and return operations out of customer and Driver access', function () {
+it('requires Owner verification for Staff pricing and denies Customer and Driver return operations', function () {
+    vehicleManagerUser();
     $booking = lateReturnBooking();
     $staff = User::factory()->create();
     $staff->assignRole('staff');
-    $this->actingAs($staff)->getJson('/admin/late-return-pricing')->assertForbidden();
-    $this->putJson('/admin/late-return-pricing', ['small_vehicle_hourly_rate' => 250, 'large_vehicle_hourly_rate' => 350])->assertForbidden();
+    $this->actingAs($staff)->getJson('/admin/late-return-pricing')->assertOk();
+    $this->putJson('/admin/late-return-pricing', ['small_vehicle_hourly_rate' => 250, 'large_vehicle_hourly_rate' => 350])->assertStatus(428);
     $this->postJson("/admin/bookings/{$booking->id}/receive-vehicle", ['vehicle_received_at' => now()->toISOString()])->assertOk();
     $this->actingAs($booking->user)->postJson("/admin/bookings/{$booking->id}/review-late-charge", ['amount' => 400, 'responsibility' => 'customer'])->assertForbidden();
     $this->actingAs(createDriverUser())->postJson("/admin/bookings/{$booking->id}/return-follow-up", ['note' => 'Unauthorized'])->assertForbidden();

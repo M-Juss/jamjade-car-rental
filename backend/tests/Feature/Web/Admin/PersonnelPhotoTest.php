@@ -13,16 +13,13 @@ beforeEach(function () {
     Storage::fake('public');
 });
 
-it('allows a staff member to update and remove a driver photo', function () {
+it('denies Staff photo mutations even for Drivers in their directory', function () {
     $staff = User::factory()->create();
     $staff->assignRole('staff');
-    $driver = User::factory()->create();
-    $driver->assignRole('driver');
-    $this->actingAs($staff)->postJson("/admin/personnel/users/{$driver->id}/photo", ['photo' => UploadedFile::fake()->image('portrait.jpg')])->assertOk();
-    $path = $driver->fresh()->personnel_photo_path;
-    Storage::disk('public')->assertExists($path);
-    $this->deleteJson("/admin/personnel/users/{$driver->id}/photo")->assertOk();
-    Storage::disk('public')->assertMissing($path);
+    $driver = createDriverUser();
+    $this->actingAs($staff)->postJson("/admin/personnel/users/{$driver->id}/photo", ['photo' => UploadedFile::fake()->image('portrait.jpg')])->assertForbidden();
+    $this->deleteJson("/admin/personnel/users/{$driver->id}/photo")->assertForbidden();
+    expect($driver->fresh()->personnel_photo_path)->toBeNull();
 });
 
 it('prevents staff changing their own or staff photos', function () {
@@ -36,7 +33,7 @@ it('prevents staff changing their own or staff photos', function () {
 
 it('lets the owner manage personnel photos and returns the photo in the signed-in account', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(['owner', 'admin']);
+    $owner->assignRole('owner');
     $staff = User::factory()->create();
     $staff->assignRole('staff');
     $response = $this->actingAs($owner)->postJson("/admin/personnel/users/{$staff->id}/photo", [
@@ -49,7 +46,7 @@ it('lets the owner manage personnel photos and returns the photo in the signed-i
 
 it('rejects invalid personnel photo files', function () {
     $owner = User::factory()->create();
-    $owner->assignRole(['owner', 'admin']);
+    $owner->assignRole('owner');
     $driver = User::factory()->create();
     $driver->assignRole('driver');
     $this->actingAs($owner)->postJson("/admin/personnel/users/{$driver->id}/photo", [

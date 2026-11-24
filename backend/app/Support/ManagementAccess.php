@@ -8,7 +8,7 @@ class ManagementAccess
 {
     public static function role(User $user): ?string
     {
-        if ($user->hasAnyRole(['customer', 'driver'])) {
+        if ($user->hasRole('driver')) {
             return null;
         }
         foreach (['owner', 'admin', 'staff'] as $role) {

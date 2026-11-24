@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Support\ManagementAccess;
 use Illuminate\Support\Facades\DB;
 
 class RcResearchAccessService
@@ -21,7 +22,7 @@ class RcResearchAccessService
     {
         return DB::transaction(function () use ($user, $deviceName) {
             $user = User::query()->lockForUpdate()->findOrFail($user->id);
-            abort_unless($this->enabled() && $user->is_active && $user->hasRole(UserRole::Admin->value),
+            abort_unless($this->enabled() && $user->is_active && ManagementAccess::role($user) === UserRole::Admin->value,
                 403, 'Data Collection is unavailable.');
             $deviceName = self::TOKEN_ABILITY.':'.$deviceName;
             $user->tokens()->where('name', $deviceName)->delete();

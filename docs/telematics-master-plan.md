@@ -5824,3 +5824,7 @@ operator identities were omitted from verification output. Browser access is
 available again, but the local report
 preview redirects to sign-in; populated responsive browser verification remains
 pending. The signed-in hosted tab is a separate preview and was not modified.
+
+### Management authorization update — 2026-11-23
+
+The website now separates Owner/Staff business operations from technical Admin research and monitoring. Owner-only accounts retain business handover/release without Admin membership. Current assigned Driver release remains unchanged. Technical Admin reads limited Driving Analysis records without customer finances/documents or booking-write permission. Research record ownership, native protocols, collection consent and physical acceptance requirements are unchanged; removing legacy Admin membership from an Owner does not transfer or delete that account's research files. See [the role migration and matrix](user-roles-and-access.md#owner-technical-admin-and-staff-separation--2026-11-23).

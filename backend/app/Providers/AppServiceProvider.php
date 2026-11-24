@@ -5,8 +5,10 @@ namespace App\Providers;
 use App\Models\Booking;
 use App\Models\TelematicsTrip;
 use App\Observers\FleetMonitoringObserver;
+use App\Support\ManagementAccess;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->booting(function () {
-            \Illuminate\Support\Facades\Gate::before([\App\Support\ManagementAccess::class, 'gate']);
+            Gate::before([ManagementAccess::class, 'gate']);
         });
     }
 

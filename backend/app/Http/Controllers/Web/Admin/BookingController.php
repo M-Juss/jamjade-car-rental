@@ -21,6 +21,7 @@ use App\Http\Requests\Admin\Booking\UpdateAdditionalChargeRequest;
 use App\Http\Requests\Admin\BookingStatusRequest;
 use App\Http\Resources\AdditionalChargeResource;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\DrivingAnalysisBookingResource;
 use App\Http\Resources\DrivingOperatorResource;
 use App\Http\Resources\RentalDrivingAnalysisResource;
 use App\Http\Resources\VehicleInspectionResource;
@@ -82,7 +83,7 @@ class BookingController extends Controller
     {
         abort_unless($booking->status === BookingStatus::Completed, 404);
 
-        return $this->success('Analysis booking fetched.', new \App\Http\Resources\DrivingAnalysisBookingResource($booking->load(['vehicle', 'user:id,name', 'assignedDriver'])));
+        return $this->success('Analysis booking fetched.', new DrivingAnalysisBookingResource($booking->load(['vehicle', 'user:id,name', 'assignedDriver'])));
     }
 
     public function drivingAnalysis(Booking $booking, RentalDrivingAnalysisService $analysis): JsonResponse
@@ -100,7 +101,7 @@ class BookingController extends Controller
             'booking_ids' => (clone $scope)->select('booking.id'),
         ], $request->integer('per_page', 10));
 
-        return $this->paginated('Driving analysis fetched.', $bookings, \App\Http\Resources\DrivingAnalysisBookingResource::class, [
+        return $this->paginated('Driving analysis fetched.', $bookings, DrivingAnalysisBookingResource::class, [
             'driving_grades' => $analysis->gradesForBookings($bookings->getCollection()),
             'recorded_operators' => $overview->recordedOperators($bookings->getCollection()),
             'summary' => $overview->summary($scope),

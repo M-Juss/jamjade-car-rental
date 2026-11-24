@@ -3,11 +3,13 @@
 use App\Mail\OwnerVerificationMail;
 use App\Models\Booking;
 use App\Models\DeliveryPricingSetting;
+use App\Models\RcNativeRecording;
 use App\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
@@ -142,6 +144,48 @@ it('returns only driving-analysis fields to the technical Admin', function () {
         ->assertJsonMissingPath('data.customer.email')->assertJsonMissingPath('data.payments')
         ->assertJsonMissingPath('data.adminNotes')->assertJsonMissingPath('data.inspections');
     $this->getJson('/admin/bookings/'.$booking->id)->assertForbidden();
+});
+
+it('keeps technical activity and upload counts account-bound and excludes business activity', function () {
+    $admin = managementRoleUser('admin');
+    $other = managementRoleUser('admin');
+    foreach ([$admin, $other] as $actor) {
+        RcNativeRecording::create([
+            'user_id' => $actor->id, 'client_recording_id' => (string) Str::uuid(),
+            'name' => 'Synthetic recording', 'surface' => 'test', 'capture_state' => 'sealed',
+            'manifest_path' => 'research-test/manifest', 'manifest_sha256' => str_repeat('a', 64),
+            'expected_chunks' => 1, 'expected_bytes' => 1, 'duration_ms' => 1000, 'started_at' => now(),
+        ]);
+        activity()->causedBy($actor)->event('mobile_rc_research_login')->log('Synthetic research sign-in.');
+        activity()->causedBy($actor)->event('vehicle_created')->log('Private business details.');
+    }
+    $this->actingAs($admin)->getJson('/admin/technical-dashboard')->assertOk()->assertJsonPath('data.recordings', 1);
+    $response = $this->getJson('/admin/errors')->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('meta.total', 2);
+    expect(collect($response->json('data'))->pluck('performedBy')->unique()->all())->toBe([$admin->name]);
+    expect($response->getContent())->not->toContain('Private business details', 'manifest_path', $other->name);
+    $this->getJson('/admin/errors?status=failed')->assertOk()->assertJsonCount(0, 'data');
+    $this->getJson('/admin/errors?search=upload')->assertOk()->assertJsonCount(1, 'data');
+    $this->getJson('/admin/errors?module=bookings')->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('leaves a sensitive Staff edit unchanged when approval email cannot be delivered', function () {
+    $owner = managementRoleUser('owner');
+    $before = DeliveryPricingSetting::current()->minimum_fee;
+    Mail::shouldReceive('to')->once()->with($owner->email)->andThrow(new RuntimeException('Synthetic delivery failure'));
+    $this->actingAs(managementRoleUser('staff'))->withHeaders(['X-Owner-Verification' => 'request'])
+        ->putJson('/admin/delivery-pricing', ['minimum_fee' => 999, 'included_km' => 2, 'per_km_rate' => 40])->assertStatus(503);
+    expect(DeliveryPricingSetting::current()->minimum_fee)->toBe($before);
+    $this->assertDatabaseCount('owner_verifications', 0);
+});
+
+it('fails closed for Staff when an approval Owner is missing or ambiguous', function () {
+    $this->actingAs(managementRoleUser('staff'));
+    $values = ['minimum_fee' => 999, 'included_km' => 2, 'per_km_rate' => 40];
+    $this->putJson('/admin/delivery-pricing', $values)->assertStatus(503);
+    managementRoleUser('owner');
+    managementRoleUser('owner');
+    $this->putJson('/admin/delivery-pricing', $values)->assertStatus(503);
+    Mail::assertNothingSent();
 });
 
 it('migrates existing memberships and can restore the saved permission snapshot', function () {

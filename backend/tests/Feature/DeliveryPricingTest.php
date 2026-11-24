@@ -136,12 +136,13 @@ it('fails safely when maps are unavailable or no routes exist', function () {
     config(['delivery.google_key' => null]);
     $this->postJson('/api/mobile/delivery/quotes', $this->payload)->assertUnprocessable();
 });
-it('protects pricing from staff and audits admin updates', function () {
+it('requires Owner verification for Staff pricing edits and audits Owner updates', function () {
     $staff = User::factory()->create();
     $staff->assignRole('staff');
     $staff->givePermissionTo('manage bookings');
-    $this->actingAs($staff, 'web')->getJson('/admin/delivery-pricing')->assertForbidden();
-    $this->putJson('/admin/delivery-pricing', ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 30])->assertForbidden();
+    $owner = vehicleManagerUser();
+    $this->actingAs($staff, 'web')->getJson('/admin/delivery-pricing')->assertOk();
+    $this->putJson('/admin/delivery-pricing', ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 30])->assertStatus(428);
     $actor = vehicleManagerUser();
     $this->actingAs($actor, 'web');
     verifiedOwnerWrite($this, 'PUT', '/admin/delivery-pricing', ['minimum_fee' => 200, 'included_km' => 2, 'per_km_rate' => 30, 'garage_address' => 'Configured garage', 'garage_latitude' => 14.3, 'garage_longitude' => 120.9])->assertOk()->assertJsonPath('data.minimum_fee', 200);

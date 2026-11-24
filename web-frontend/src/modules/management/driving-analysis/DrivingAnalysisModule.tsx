@@ -77,7 +77,7 @@ function AnalysisContent() {
           <section aria-label="Booking details" className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Booking</p><span className="font-semibold">{detail.bookingCode}</span></div>
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Vehicle</p>
-              <Link href={`/${portal}/vehicle/${encodeURIComponent(detail.vehicleId)}`} className="font-medium text-primary hover:underline">{vehicleIdentity(detail)}</Link>
+              {user?.permissions?.includes("manage vehicles") ? <Link href={`/${portal}/vehicle/${encodeURIComponent(detail.vehicleId)}`} className="font-medium text-primary hover:underline">{vehicleIdentity(detail)}</Link> : <span className="font-medium">{vehicleIdentity(detail)}</span>}
             </div>
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Operator</p><p className="font-medium">{analysis?.operator?.name ?? operator(detail) ?? "Not recorded"}</p></div>
             <div className="min-w-0 space-y-1"><p className="text-xs text-muted-foreground">Rental start</p><p>{formatReturnDateTime(detail.rentalStartAt)}</p></div>

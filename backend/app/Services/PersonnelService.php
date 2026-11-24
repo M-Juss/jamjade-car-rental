@@ -74,7 +74,7 @@ class PersonnelService
 
             if ($user->is($actor) || $user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name) || ! $this->canManageRole($actor, $data['role']) || ($user->hasRole('admin') && $data['role'] !== 'admin') || (! $user->hasRole('admin') && $data['role'] === 'admin')) {
                 throw ValidationException::withMessages([
-                    'role' => ['Only Staff and Driver accounts can be updated here.'],
+                    'role' => ['This account cannot be updated here.'],
                 ]);
             }
 
@@ -141,7 +141,7 @@ class PersonnelService
 
             if ($user->is($actor) || $user->roles()->count() !== 1 || ! $this->canManageRole($actor, $user->roles()->first()->name)) {
                 throw ValidationException::withMessages([
-                    'personnel' => ['Only Staff and Driver accounts can be deleted.'],
+                    'personnel' => ['This account cannot be deleted here.'],
                 ]);
             }
 

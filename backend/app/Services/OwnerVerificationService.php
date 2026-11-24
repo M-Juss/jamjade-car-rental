@@ -38,12 +38,12 @@ class OwnerVerificationService
             if ($required && ! $required($model)) {
                 return ['value' => $mode === 'request' ? response()->json(['success' => true, 'data' => ['verificationRequired' => false]]) : $write($model)];
             }
-            $owner = $this->owner();
-            if ($owner->is($actor)) {
+            if ($actor->hasRole('owner')) {
                 return ['value' => $mode === 'request'
                     ? response()->json(['success' => true, 'data' => ['verificationRequired' => false]])
                     : $write($model)];
             }
+            $owner = $this->owner();
             $payloadHash = $this->fingerprint($payload);
             $stateHash = $this->fingerprint($this->state($model));
             $verificationId = (string) $request->header('X-Owner-Verification-Id', '');

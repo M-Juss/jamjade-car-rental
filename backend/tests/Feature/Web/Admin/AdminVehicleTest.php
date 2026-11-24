@@ -97,7 +97,7 @@ it('continues to accept non-recording vehicle features', function () {
     ]))->assertCreated()->assertJsonPath('data.features', ['GPS Navigation', 'Reverse Camera']);
 });
 
-it('lets authorized Admin and Staff select shared custom vehicle features', function (string $role) {
+it('lets Owner create and Owner or Staff edit shared custom vehicle features', function (string $role) {
     $admin = ownerUser();
     foreach (['Roof rack', 'Sunroof'] as $name) {
         app(VehicleConfigurationService::class)->save(['section' => 'feature', 'name' => $name, 'is_active' => true], $admin);
@@ -105,21 +105,21 @@ it('lets authorized Admin and Staff select shared custom vehicle features', func
     $user = User::factory()->create();
     $user->assignRole($role);
 
-    $response = $this->actingAs($user)->postJson('/admin/vehicles', vehiclePayload([
+    $response = $this->actingAs($admin)->postJson('/admin/vehicles', vehiclePayload([
         'features' => ['Air Conditioning', 'Roof rack'],
     ]))->assertCreated();
     $vehicleId = $response->json('data.id');
+    $this->actingAs($user);
 
     $this->getJson("/admin/vehicles/{$vehicleId}")
         ->assertOk()->assertJsonPath('data.features', ['Air Conditioning', 'Roof rack']);
     $this->putJson("/admin/vehicles/{$vehicleId}", [
-        'price_per_day' => 2500,
         'fuel_type' => 'Gasoline',
         'features' => ['Roof rack', 'Sunroof'],
     ])->assertOk()->assertJsonPath('data.features', ['Roof rack', 'Sunroof']);
     $this->getJson("/admin/vehicles/{$vehicleId}")
         ->assertOk()->assertJsonPath('data.features', ['Roof rack', 'Sunroof']);
-})->with([UserRole::Admin->value, UserRole::Staff->value]);
+})->with([UserRole::Owner->value, UserRole::Staff->value]);
 
 it('stores uploaded vehicle images as public storage paths', function () {
     Storage::fake('public');

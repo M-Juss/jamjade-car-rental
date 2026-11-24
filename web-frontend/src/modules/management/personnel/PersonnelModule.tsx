@@ -198,8 +198,8 @@ export function PersonnelPage() {
                       <p className="mt-1 text-xs text-muted-foreground"><span className="sr-only">Contact number: </span>{personnel.phoneNumber || "No contact number"}</p>
                     </TableCell>
                     <TableCell data-label="Status" className={styles.statusCell}>
-                      <Badge variant="outline" className={personnel.isActive ? "border-success-border bg-success-surface text-success" : "border-border bg-background text-muted-foreground"}>
-                        {!isOwner && personnel.isActive ? (personnel.availableNow ? "Available" : "In service") : personnel.isActive ? "Active" : "Inactive"}
+                      <Badge variant="outline" className={personnel.isActive && (isOwner || personnel.availableNow) ? "border-success-border bg-success-surface text-success" : "border-border bg-background text-muted-foreground"}>
+                        {!isOwner && personnel.isActive ? (personnel.availableNow ? "Available" : "Unavailable") : personnel.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
                     <TableCell data-label="Last login" className={styles.loginCell}><span className="text-xs text-muted-foreground">{formatDate(personnel.lastLoginAt)}</span></TableCell>

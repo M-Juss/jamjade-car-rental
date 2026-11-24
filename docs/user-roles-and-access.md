@@ -123,7 +123,9 @@ Staff saves an ordinary operational edit immediately. For a protected rate, fee,
 
 Reuse `OwnerVerificationService`: hashed single-use six-digit codes, 15-minute expiry, 60-second resend delay, five failed guesses, requester/action/payload/current-state binding, owner-email change invalidation, and existing issuance/verification rate limits. Missing/multiple Owners or email-delivery failure prevent the protected save. Verification cannot bypass finalized inspections, assignment locks, paid charge locks or accepted booking-price snapshots. `owner_verified_change` records requester, Owner, challenge ID, action and target; the code itself is never audited.
 
-Sources: `ManagementAccess`, `ManagementRoleService`, `RoleAndPermissionSeeder`, management web routes and Form Requests, `DrivingAnalysisBookingResource`, `TechnicalActivityService`, technical dashboard controller, web module registry/access guard and existing shared verification dialog. Deploy the migration before serving the updated clients. Verification results and remaining physical/browser/email limitations are recorded at the end of this section after final checks.
+Sources: `ManagementAccess`, `ManagementRoleService`, `RoleAndPermissionSeeder`, management web routes and Form Requests, `DrivingAnalysisBookingResource`, `TechnicalActivityService`, technical dashboard controller, web module registry/access guard and existing shared verification dialog. Deploy the migration before serving the updated clients. Verification on 2026-11-23: the full backend suite passed **1,521 tests / 9,793 assertions**, including the role/permission boundaries, standalone Owner login, protected Staff writes and failure paths, account-bound technical reads, existing research token scopes, Driver workflow, and migration up/down restoration. Scoped PHP formatting passed. Web lint, TypeScript, production build and four focused navigation/auth tests passed. The broader Node suite passed 173/181 tests; its eight unchanged AnnotationForm harness failures lack the ManagementTable dependency. Full Pint still reports the existing unrelated `2026_11_11_210000_add_owner_and_admin_invitations.php` formatting issue. `git diff --check` passed. Tests used isolated SQLite and fake email; live Owner-code delivery, physical Android and interactive browser acceptance were not exercised. No runtime/hosted role migration or real email dispatch was performed by these checks.
+
+The existing `ManagementPageHeading`, dashboard `KpiCard`, management sidebar, Personnel table, read-only personnel form and shared Owner-verification dialog are the UI precedents. Existing personnel and pricing schemas remain aligned with their Form Requests; role-dependent permissions remain Laravel authorization rather than client validation. The new Staff fee-pricing route composes the existing form. No new frontend package or native configuration was introduced.
 
 ## Access responsibilities
 
@@ -146,12 +148,12 @@ cookies on mobile research routes or mobile tokens on web routes. See
 | Customer verification | Authorized document review | No access |
 | Driver assignment | Assign eligible Drivers | Receive assignments |
 | Inspections | Record/finalize authorized outgoing and incoming inspections | Participate/sign when required on the personnel device |
-| Rental release and completion | Authorized Staff-controlled workflow | Cannot start, cancel, return, or complete rentals |
+| Rental release and completion | Authorized operational workflow | Current arrived assigned Driver can explicitly start their eligible rental; cannot cancel, return, or complete |
 | Additional charges | Authorized creation and responsibility decisions | View/pay their own obligations |
-| Personnel | View and manage Driver accounts | No access |
+| Personnel | Read Driver directory | No access |
 | Custom roles/module access editing | Unavailable | Unavailable |
 
-Staff's seeded web modules remain Dashboard, Booking Management, Vehicle Management, Self-Drive Verification, Fleet Monitoring, Geofence Library, Maintenance Management, and Reports and Analytics. Pricing Settings (Delivery Pricing and Late Returns) is an Admin-only management area; Staff may review delivery toll requests through Booking Management but cannot edit pricing. The migration preserves the existing Staff permission assignments; the seeder uses the centrally defined `staff_accessible` modules in `backend/config/staff_modules.php`. Existing reporting and module permissions remain unchanged.
+Staff's fixed modules are Dashboard, Bookings/History, Vehicles, Self-Drive Verification, Fleet Monitoring, Geofence Library, Maintenance, operational Reports, Driver directory and Fee Pricing. The new `management_permissions` configuration is authoritative; `staff_modules` retains historical module metadata only. Staff cannot mutate accounts, catalogs, monitoring zones or maintenance-plan definitions. Sensitive pricing/refund/charge actions use the verification flow above.
 
 Driver mobile remains Services, Notifications, and Logout, with settlement through the existing Driver charge-payment flow. Driver-facing service endpoints require the Driver role and constrain records to the authenticated account's assignment. Customer booking/document/payment-creation routes require the Customer role. Driver access to shared notifications and payment capture remains governed by ownership and existing payment authorization.
 
@@ -208,7 +210,7 @@ device checks; no live customer's document was replaced during verification.
 
 Self-drive requires a customer aged 18 or older, an approved driver's license
 and proof of address, and a saved emergency contact with a name, relationship,
-and phone number. Staff can approve documents while the contact is missing.
+and phone number. Authorized Owner/Staff reviewers can approve documents while the contact is missing.
 Once age and document requirements are met, Self-Drive Verification shows
 **Emergency contact required** until the customer saves the contact in Profile.
 Customers can skip this step during onboarding and book with an assigned driver.
@@ -530,7 +532,7 @@ actions that were not previously logged are not reconstructed.
 - An outstanding Driver-responsible charge blocks deactivation and conversion until settled. Debt alone does not disable login, notifications, settlement, or an existing service.
 - Those same assignment and unpaid-charge safeguards block deletion, including deletion of an already inactive account.
 - An unassigned account with no outstanding Driver obligations may change between Staff and Driver.
-- Customers and mixed-role accounts cannot be edited through Personnel. Only the Owner can manage single-role Admin accounts; Staff can manage only Drivers. Admin role transitions are prohibited.
+- Customers and mixed-role accounts cannot be edited through Personnel. Only the Owner can manage personnel accounts; Staff can read Driver contacts and availability. Admin role transitions are prohibited.
 - Deactivation, role conversion, and password changes revoke mobile tokens and rotate the remember token. Inactive accounts are denied on authenticated mobile and management web requests. Driver roles are denied on management web requests, including stale sessions and direct permission grants.
 - Role conversion removes direct permission grants so the destination role cannot inherit previous custom privileges.
 
@@ -542,11 +544,11 @@ Assigned custom roles or mixed Driver roles cause the migration to stop with an 
 
 ## Vehicle configuration
 
-Vehicle Management → Configure and its mutation endpoints are Admin-only. Staff with vehicle, booking, or maintenance permissions may read active options for their operational forms. The vehicle-management permission does not grant shared configuration management. See [vehicle configuration](vehicle-configuration.md).
+Vehicle Management → Configure and its mutation endpoints are Owner-only. Staff with vehicle, booking, or maintenance permissions may read active options for their operational forms. The vehicle-management permission does not grant shared configuration management. See [vehicle configuration](vehicle-configuration.md).
 
 ## Geofence management
 
-Admin manages default monitoring zones and custom booking zones on the website. Staff can read the library and booking zone/activity information, but Laravel denies all default-zone and custom-zone mutations to Staff, including direct calls with existing permissions. Geofence management remains separate from authorized Staff Start Handover and Start Rental. The Owner also retains Admin membership for management access.
+Owner manages default monitoring zones and custom booking zones on the website. Staff can read the library and booking zone/activity information, but Laravel denies all default-zone and custom-zone mutations to Staff, including direct calls with existing permissions. Geofence management remains separate from authorized Staff Start Handover and Start Rental. The Owner also retains Admin membership for management access.
 
 ## Telematics boundary and future work
 
@@ -568,7 +570,7 @@ Backend regression coverage includes fixed-role validation, Admin-only account a
 
 ## Owner and Admin accounts
 
-The identified account has Owner and Admin membership. The Owner sees Admins in the shared Personnel table and may create, edit, deactivate, or soft-delete single-role Admin accounts. The Owner account and other mixed-role accounts are excluded and protected. Admins see and manage Staff and Drivers; Staff see and manage Drivers only. Every account is excluded from its own personnel list, and Laravel also rejects self-edit and self-delete through Personnel. Laravel enforces these limits and prevents role transitions to or from Admin. The shared form uses the existing account and password rules. Deactivation, password changes, and deletion invalidate tokens as in the existing Personnel lifecycle.
+Owner-only accounts are supported. The Owner sees Admins in the shared Personnel table and may create, edit, deactivate, or soft-delete single-role Admin accounts. Owner accounts and other mixed-role accounts are excluded and protected. Technical Admin has no Personnel access; Staff can read the Driver directory only. Every account is excluded from its own personnel list, and Laravel also rejects self-edit and self-delete through Personnel. Laravel enforces these limits and prevents role transitions to or from Admin. The shared form uses the existing account and password rules. Deactivation, password changes, and deletion invalidate tokens as in the existing Personnel lifecycle.
 
 Admin invitation issuance and acceptance are disabled. Existing invitation records remain in storage. No invitation email is sent when an Admin is created.
 
@@ -576,7 +578,7 @@ Admin invitation issuance and acceptance are disabled. Existing invitation recor
 
 The initial Owner account uses `ofcl.jamjadecarrental@gmail.com` for sign-in and approval codes. Migration `2026_11_12_130000_update_seeded_owner_email.php` updates the previous seeded Owner address only, preserving the account and stopping if the new address is already assigned. Existing Owners using another address are unchanged. The seeded-account and Owner verification feature tests pass; delivery to the inbox still requires a working mail transport and an end-to-end check.
 
-Protected management writes initiated by an Admin require a code sent to the single active account with the Owner role. When that Owner initiates the action, the write proceeds without an emailed code. Existing Admin and Staff permissions still apply. The requester confirms the action, asks the Owner for the emailed code, and enters it to complete the same write. Refund decisions and recording refunds, adjusted or manual late charges, ordinary charge edits and deletions, existing vehicle daily-price changes, and fee-pricing saves are protected. Creating a vehicle and reviewing an unadjusted late charge do not require this code.
+Protected management writes initiated by Staff require a code sent to the single active account with the Owner role. When that Owner initiates the action, the write proceeds without an emailed code. Existing Owner and Staff permissions and state locks still apply. The requester confirms the action, asks the Owner for the emailed code, and enters it to complete the same write. Refund decisions and recording refunds, adjusted or manual late charges, ordinary charge edits and deletions, existing vehicle daily-price changes, and fee-pricing saves are protected. Creating a vehicle and reviewing an unadjusted late charge do not require this code.
 
 Laravel binds a hashed, single-use code to the requester, action, validated payload and locked state. Codes expire after 15 minutes; resends wait 60 seconds and preserve the five-attempt limit. The write and consumption share a transaction. The system fails closed if there is no single active Owner or email delivery is unavailable. The migration `2026_11_11_220000_create_owner_verifications_table.php` adds challenge storage. Mail delivery must use a configured delivery transport; the log transport is rejected for these codes. The web uses the existing HTTP service, a shared verification dialog and the combined `PUT /admin/fee-pricing` endpoint.
 
@@ -721,3 +723,7 @@ Mobile UI consistency review (2026-11-14): document submission retains the share
 Personnel create/edit requires a valid 11-digit `09` phone for Staff and Driver roles in Laravel and the matching web Zod form. Admin phone requirements are unchanged. The shared `users.phone_number` column remains nullable for Customer onboarding and historical records; no invented numbers or bulk rewrite is performed. Existing Drivers missing a phone must have it corrected before a new assignment or release. Driver debt still restricts personnel deactivation/conversion where previously required, but it does not prevent assignment, Outgoing Inspection or rental release.
 
 Driver role permissions remain limited; no `manage bookings` permission is granted. The new token workflow authorizes the current assigned Driver through BookingPolicy and rechecks ownership under the booking lock. Driver release reuses the authoritative booking transition/readiness checks. Staff/Admin retains web actions; Customer and unrelated Driver requests remain denied. Assignment becomes immutable at finalized Outgoing, and report-only pickup progress is separate from sensor consent and post-release trips. See [the rental lifecycle](booking-rental-lifecycle.md#assigned-driver-pickup-and-release--2026-11-21) for sequencing and contracts.
+
+### Local permission migration applied — 2026-11-24
+
+The local MySQL database still had the new management migration pending and an empty Owner-role permission set. Applied only `2026_11_23_000001_separate_management_role_permissions.php` (batch 40) and ran `php artisan permission:cache-reset`. A fresh `UserResource` projection for the one active local Owner confirmed Fee Pricing, Personnel read/write and financial-report permissions, with Owner-only membership. No account identity, booking, payment or research data was rewritten, and no email was sent. Existing permission/membership snapshots are retained by the migration. The web session provider reads permissions when mounted, so an open browser must reload to display the updated navigation. This verifies local database/API projection state; interactive browser and deployed-host acceptance remain separate.

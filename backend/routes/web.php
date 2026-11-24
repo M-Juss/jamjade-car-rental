@@ -30,6 +30,7 @@ use App\Http\Controllers\Web\Admin\RcProcessingRunController;
 use App\Http\Controllers\Web\Admin\RcResearchController;
 use App\Http\Controllers\Web\Admin\ReportController;
 use App\Http\Controllers\Web\Admin\SelfDriveVerificationController;
+use App\Http\Controllers\Web\Admin\TechnicalDashboardController;
 use App\Http\Controllers\Web\Admin\VehicleConfigurationController;
 use App\Http\Controllers\Web\Admin\VehicleController;
 use App\Http\Controllers\Web\PayPalRedirectController;
@@ -107,9 +108,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->middleware('permission:delete vehicles')->name('vehicles.destroy');
         });
 
-        Route::middleware('role_or_permission:admin|manage geofences')->get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
+        Route::middleware('permission:manage geofences')->get('/geofences', [GeofenceController::class, 'index'])->name('geofences.index');
         Route::get('/errors', [OperationalErrorController::class, 'index'])->middleware('permission:view activity log');
-        Route::get('/technical-dashboard', \App\Http\Controllers\Web\Admin\TechnicalDashboardController::class)->middleware('permission:view research');
+        Route::get('/technical-dashboard', TechnicalDashboardController::class)->middleware('permission:view research');
         Route::middleware('permission:manage delivery pricing')->group(function () {
             Route::put('/fee-pricing', [FeePricingController::class, 'update']);
             Route::get('/late-return-pricing', [LateReturnPricingController::class, 'show']);

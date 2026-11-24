@@ -79,7 +79,7 @@ it('lists only fixed personnel categories with filters and pagination', function
         ->assertJsonPath('data.users.0.personnelId', sprintf('PER-%04d', $driver->id))
         ->assertJsonPath('data.summary.staff', 1)->assertJsonPath('data.summary.drivers', 1)
         ->assertJsonPath('data.summary.total', 2)->assertJsonPath('data.pagination.total', 1)
-        ->assertJsonCount(2, 'data.roles')->assertJsonMissingPath('data.modules');
+        ->assertJsonCount(3, 'data.roles')->assertJsonMissingPath('data.modules');
     $this->getJson('/admin/personnel?role=staff&search=not-found')->assertOk()->assertJsonCount(0, 'data.users');
     $this->getJson('/admin/personnel?role=staff&status=inactive')->assertOk()->assertJsonCount(0, 'data.users');
     $this->getJson('/admin/personnel?status=unknown&role=custom&page=0&per_page=101')
@@ -107,7 +107,7 @@ it('rejects protected and custom roles and privilege input', function (string $r
         'password' => 'Password@123', 'password_confirmation' => 'Password@123',
         'modules' => ['booking_management'], 'permissions' => ['manage bookings'],
     ])->assertUnprocessable()->assertJsonValidationErrors(['role', 'modules', 'permissions']);
-})->with(['admin', 'customer', 'owner', 'fleet_clerk']);
+})->with(['customer', 'owner', 'fleet_clerk']);
 
 it('validates account fields and uniqueness', function () {
     $staff = User::factory()->create(['phone_number' => '09170000123']);
@@ -298,7 +298,7 @@ it('protects Admin Customer and mixed-role accounts from deletion', function (ar
     $this->actingAs($this->admin)->deleteJson("/admin/personnel/users/{$account->id}")
         ->assertUnprocessable()->assertJsonValidationErrors('personnel');
     $this->assertNotSoftDeleted('users', ['id' => $account->id]);
-})->with([['roles' => ['admin']], ['roles' => ['customer']], ['roles' => ['staff', 'driver']], ['roles' => ['admin', 'staff']]]);
+})->with([['roles' => ['owner']], ['roles' => ['customer']], ['roles' => ['staff', 'driver']], ['roles' => ['admin', 'staff']]]);
 
 it('denies unauthenticated and inactive Admin deletion requests', function () {
     $staff = User::factory()->create();
@@ -484,44 +484,39 @@ it('requires resolving mixed Driver roles before removing privileges', function 
     $driver->givePermissionTo('manage bookings');
     $migration = require database_path('migrations/2026_09_29_000002_fix_personnel_roles.php');
     expect(fn () => $migration->up())->toThrow(LogicException::class);
-    expect($driver->fresh()->can('manage bookings'))->toBeTrue();
+    expect($driver->fresh()->hasDirectPermission('manage bookings'))->toBeTrue();
 });
 
-it('retains Admin login and personnel administration alongside Owner', function () {
+it('supports Owner-only login and personnel administration', function () {
     $this->admin->update(['password' => 'Existing-password@123']);
     $this->postJson('/admin/login', ['email' => strtoupper($this->admin->email), 'password' => 'Existing-password@123'])
-        ->assertOk()->assertJsonPath('data.user.roles.0', 'admin');
+        ->assertOk()->assertJsonPath('data.user.roles.0', 'owner');
     $this->getJson('/admin/personnel')->assertOk();
     $this->assertDatabaseHas('roles', ['name' => 'owner']);
 });
 
-it('enforces personnel visibility and creation by management role', function () {
-    $owner = User::factory()->create();
-    $owner->assignRole(['owner', 'admin']);
+it('enforces Owner account management and Staff directory-only visibility', function () {
+    $owner = $this->admin;
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
     $staff = User::factory()->create();
     $staff->assignRole('staff');
     $driver = createDriverUser();
-    $this->actingAs($owner)->getJson('/admin/personnel?role=admin')->assertOk()->assertJsonCount(1, 'data.users')->assertJsonPath('data.users.0.id', $this->admin->id);
-    $this->actingAs($this->admin)->getJson('/admin/personnel?role=admin')->assertUnprocessable();
+    $this->actingAs($owner)->getJson('/admin/personnel?role=admin')->assertOk()->assertJsonCount(1, 'data.users')->assertJsonPath('data.users.0.id', $admin->id);
+    $this->actingAs($admin)->getJson('/admin/personnel')->assertForbidden();
     $this->actingAs($staff)->getJson('/admin/personnel')->assertOk()->assertJsonCount(1, 'data.roles')->assertJsonPath('data.roles.0.name', 'driver')
-        ->assertJsonCount(1, 'data.users')->assertJsonPath('data.users.0.id', $driver->id)->assertJsonPath('data.summary.total', 1);
-    $this->putJson("/admin/personnel/users/{$this->admin->id}", personnelPayload($this->admin))->assertUnprocessable();
-    $this->deleteJson("/admin/personnel/users/{$staff->id}")->assertUnprocessable();
-    $this->putJson("/admin/personnel/users/{$driver->id}", personnelPayload($driver))->assertOk();
+        ->assertJsonCount(1, 'data.users')->assertJsonPath('data.users.0.id', $driver->id);
+    $this->putJson("/admin/personnel/users/{$driver->id}", personnelPayload($driver))->assertForbidden();
+    $this->deleteJson("/admin/personnel/users/{$driver->id}")->assertForbidden();
     $new = User::factory()->make();
     $payload = [...personnelPayload($new), 'password' => 'Password@123', 'password_confirmation' => 'Password@123'];
-    $this->postJson('/admin/personnel/users', $payload)->assertUnprocessable()->assertJsonValidationErrors('role');
-    $this->postJson('/admin/personnel/users', [...$payload, 'role' => 'driver'])->assertCreated();
-    $newAdmin = User::factory()->make();
-    $this->actingAs($owner)->postJson('/admin/personnel/users', [...personnelPayload($newAdmin, ['role' => 'admin']), 'password' => 'Password@123', 'password_confirmation' => 'Password@123'])->assertCreated();
-    $createdAdmin = User::where('email', $newAdmin->email)->firstOrFail();
-    $this->putJson("/admin/personnel/users/{$createdAdmin->id}", personnelPayload($createdAdmin, ['role' => 'admin', 'first_name' => 'Updated']))->assertOk();
-    $this->putJson("/admin/personnel/users/{$createdAdmin->id}", personnelPayload($createdAdmin, ['role' => 'staff']))->assertUnprocessable();
-    $this->deleteJson("/admin/personnel/users/{$createdAdmin->id}")->assertOk();
-    $this->putJson("/admin/personnel/users/{$staff->id}", personnelPayload($staff, ['role' => 'admin']))->assertUnprocessable();
+    $this->postJson('/admin/personnel/users', [...$payload, 'role' => 'driver'])->assertForbidden();
+    $this->actingAs($owner)->postJson('/admin/personnel/users', [...$payload, 'role' => 'admin'])->assertCreated();
+    $created = User::where('email', $new->email)->firstOrFail();
+    $this->putJson("/admin/personnel/users/{$created->id}", personnelPayload($created, ['role' => 'admin', 'first_name' => 'Updated']))->assertOk();
+    $this->putJson("/admin/personnel/users/{$created->id}", personnelPayload($created, ['role' => 'staff']))->assertUnprocessable();
+    $this->deleteJson("/admin/personnel/users/{$created->id}")->assertOk();
     $this->deleteJson("/admin/personnel/users/{$owner->id}")->assertUnprocessable();
-    $this->actingAs($this->admin)->putJson("/admin/personnel/users/{$this->admin->id}", personnelPayload($this->admin, ['role' => 'admin']))->assertUnprocessable();
-    $this->deleteJson("/admin/personnel/users/{$this->admin->id}")->assertUnprocessable();
 });
 
 it('requires a contact number when Staff or Driver accounts are created or edited', function (string $role) {

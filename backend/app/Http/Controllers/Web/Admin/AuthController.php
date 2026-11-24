@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
+use App\Support\ManagementAccess;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -74,6 +75,6 @@ class AuthController extends Controller
 
     private function hasAdminAccess($user): bool
     {
-        return ! $user->hasRole('driver') && $user->hasAnyRole(['owner', 'admin', 'staff']);
+        return ManagementAccess::role($user) !== null;
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ManagementAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +27,7 @@ class EnsureAdminUserIsActive
             ], 403);
         }
 
-        if ($user && ($user->hasRole('driver') || ! $user->hasAnyRole(['owner', 'admin', 'staff']))) {
+        if ($user && ManagementAccess::role($user) === null) {
             return response()->json([
                 'success' => false,
                 'message' => 'This account does not have management web access.',

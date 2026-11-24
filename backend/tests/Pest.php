@@ -158,6 +158,10 @@ function availableVehicle(array $attributes = []): Vehicle
 
 function vehicleManagerUser(): User
 {
+    // Business fixtures model the single active approval Owner.
+    if ($owner = User::role(UserRole::Owner->value)->where('is_active', true)->first()) {
+        return $owner;
+    }
     $user = User::factory()->create();
     $user->assignRole(UserRole::Owner->value);
 

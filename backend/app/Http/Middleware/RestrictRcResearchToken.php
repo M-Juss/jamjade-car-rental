@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\UserRole;
 use App\Services\RcResearchAccessService;
+use App\Support\ManagementAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -32,7 +33,7 @@ class RestrictRcResearchToken
         abort_unless($researchToken && $request->bearerToken()
             && $token->abilities === [RcResearchAccessService::TOKEN_ABILITY]
             && $this->research->enabled()
-            && $request->user()->hasRole(UserRole::Admin->value), 403, 'Data Collection access is unavailable.');
+            && ManagementAccess::role($request->user()) === UserRole::Admin->value, 403, 'Data Collection access is unavailable.');
 
         abort_unless($request->routeIs('mobile.rc-research.*', 'mobile.me'), 403,
             'This session is limited to Data Collection.');

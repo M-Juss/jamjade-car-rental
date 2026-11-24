@@ -20,7 +20,7 @@ beforeEach(function () {
 
 it('allows only the owner to create a manual admin account', function () {
     $this->actingAs($this->admin)->postJson('/admin/admins/users', $this->payload)->assertForbidden();
-    $this->postJson('/admin/personnel/users', $this->payload)->assertUnprocessable()->assertJsonValidationErrors('role');
+    $this->postJson('/admin/personnel/users', $this->payload)->assertForbidden();
     $this->admin->assignRole('owner');
     $this->postJson('/admin/admins/users', $this->payload)->assertCreated();
     $created = User::where('email', $this->payload['email'])->firstOrFail();

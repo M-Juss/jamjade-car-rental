@@ -63,6 +63,9 @@ function policyPayment(Booking $booking, float $amount = 3500): Payment
 
 function policyAdmin(): User
 {
+    if ($existing = User::role('owner')->first()) {
+        return $existing;
+    }
     $user = User::factory()->create();
     $user->assignRole('owner');
 
@@ -143,7 +146,7 @@ it('requires a management cancellation reason and never promises a refund automa
     $this->postJson("/admin/bookings/{$booking->id}/cancel", ['reason' => 'Documented emergency'])->assertOk()
         ->assertJsonPath('data.cancellation.kind', 'management')
         ->assertJsonPath('data.cancellation.refundStatus', 'pending_review')->assertJsonPath('data.cancellation.refundAmount', null);
-})->with(['admin', 'staff']);
+})->with(['owner', 'staff']);
 
 it('keeps historical customer cancellation records eligible for Admin refund review', function () {
     $booking = policyBooking();
@@ -161,13 +164,13 @@ it('keeps historical customer cancellation records eligible for Admin refund rev
         ->assertJsonPath('data.cancellation.refundStatus', 'approved');
 });
 
-it('permits only Admin to decide a refund and requires actual-return confirmation without a reference', function () {
+it('permits Owner and verified Staff to decide a refund and requires actual-return confirmation without a reference', function () {
     $booking = policyBooking();
     policyPayment($booking);
     app(BookingService::class)->transition($booking, BookingStatus::Cancelled, policyAdmin(), 'Emergency');
     $staff = User::factory()->create();
     $staff->assignRole('staff');
-    $this->actingAs($staff)->postJson("/admin/bookings/{$booking->id}/refund-review", ['amount' => 2000, 'reason' => 'Emergency accepted'])->assertForbidden();
+    $this->actingAs($staff)->postJson("/admin/bookings/{$booking->id}/refund-review", ['amount' => 2000, 'reason' => 'Emergency accepted'])->assertStatus(428);
     $this->actingAs(policyAdmin());
     verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/refund-review", ['amount' => 3500.01, 'reason' => 'Too much'])->assertUnprocessable()->assertJsonValidationErrors('amount');
     verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/refund-review", ['amount' => 2000.50, 'reason' => 'Partial refund approved'])->assertOk()->assertJsonPath('data.cancellation.refundStatus', 'approved');
@@ -291,17 +294,17 @@ it('rejects zero negative missing or overly precise custom refunds', function ($
     expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
 })->with(['zero' => '0', 'negative' => '-1', 'empty' => '', 'too precise' => '10.001']);
 
-it('prevents staff from approving a cancellation refund and protects admin approval with owner verification', function () {
+it('requires Owner verification before a Staff cancellation refund is applied', function () {
     $booking = policyBooking();
     policyPayment($booking);
+    policyAdmin();
     $staff = User::factory()->create();
     $staff->assignRole('staff');
-    $payload = ['reason' => 'Customer cancellation.', 'refund_mode' => 'full'];
-    $this->actingAs($staff)->postJson("/admin/bookings/{$booking->id}/cancel", $payload)->assertForbidden();
-    $owner = policyAdmin();
-    $owner->assignRole('owner');
-    $this->actingAs(policyAdmin())->postJson("/admin/bookings/{$booking->id}/cancel", $payload)->assertStatus(428);
+    $payload = ['reason' => 'Documented cancellation', 'refund_mode' => 'full'];
+    $this->actingAs($staff)->postJson("/admin/bookings/{$booking->id}/cancel", $payload)->assertStatus(428);
     expect($booking->fresh()->status)->toBe(BookingStatus::Confirmed);
+    verifiedOwnerWrite($this, 'POST', "/admin/bookings/{$booking->id}/cancel", $payload)->assertOk();
+    expect($booking->fresh()->status)->toBe(BookingStatus::Cancelled);
 });
 
 it('does not approve a refund from driver payments or cancel a pending booking through the combined action', function () {
