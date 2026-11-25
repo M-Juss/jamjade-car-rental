@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\Report\ReportRequest;
 use App\Http\Resources\DrivingOperatorResource;
 use App\Services\RentalDrivingOverviewService;
 use App\Services\ReportAnalyticsService;
+use App\Services\ReportCsvExportService;
 use App\Services\ReportService;
 use App\Support\ReportPeriod;
 use App\Traits\ApiResponseTrait;
@@ -44,8 +45,25 @@ class ReportController extends Controller
         return $this->success('Reports fetched successfully.', $data)->header('Cache-Control', 'private, no-store');
     }
 
-    public function csv(ReportAnalyticsRequest $request): StreamedResponse
+    public function csv(ReportAnalyticsRequest $request, ReportCsvExportService $csv): StreamedResponse
     {
+        if ($request->validated('export_scope') === 'all') {
+            $period = $request->period();
+
+            return response()->streamDownload(function () use ($request, $period, $csv) {
+                $output = fopen('php://output', 'w');
+                try {
+                    $csv->write($output, $request->user(), $period, $request->validated());
+                } finally {
+                    fclose($output);
+                }
+            }, $csv->filename($period), [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Access-Control-Expose-Headers' => 'Content-Disposition',
+                'Cache-Control' => 'private, no-store',
+            ]);
+        }
+
         $section = $request->section();
         $period = $request->period();
         $report = $this->analytics->export($section, $period, $request->validated());

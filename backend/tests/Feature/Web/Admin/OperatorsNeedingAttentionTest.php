@@ -127,7 +127,7 @@ it('applies literal search and vehicle filters before averages and matches drill
     }
 });
 
-it('paginates operators independently of the event log and does not invent rows for empty reports', function () {
+it('paginates operators with no event table and does not invent rows for empty reports', function () {
     $this->getJson(attentionReportUrl())->assertOk()->assertJsonPath('data.operatorAttention.total', 0)->assertJsonCount(0, 'data.operatorAttention.operators');
     $customer = customerUser();
     foreach (range(1, 11) as $index) {
@@ -137,7 +137,7 @@ it('paginates operators independently of the event log and does not invent rows 
         ->assertJsonPath('data.operatorAttention.total', 11)->assertJsonPath('data.operatorAttention.lastPage', 2)
         ->assertJsonPath('data.operatorAttention.operators.0.average_score', 1);
     $this->getJson(attentionReportUrl(['page' => 2, 'operator_page' => 2]))->assertOk()->assertJsonCount(1, 'data.operatorAttention.operators')
-        ->assertJsonPath('data.operatorAttention.page', 2)->assertJsonPath('data.table.page', 2)
+        ->assertJsonPath('data.operatorAttention.page', 2)->assertJsonPath('data.table', null)
         ->assertJsonPath('data.operatorAttention.operators.0.average_score', 11);
 });
 
@@ -164,4 +164,44 @@ it('uses the existing displayed average precision at the attention threshold', f
     }
     // 69.9583 displays as 70.0 in Driving Analysis, so it is not flagged below 70.0.
     $this->getJson(attentionReportUrl())->assertOk()->assertJsonPath('data.operatorAttention.total', 0);
+});
+
+it('totals the four saved confirmed maneuvers by completed rental period and exports matching counts', function () {
+    $customer = customerUser(['name' => 'Maneuver Customer']);
+    $driver = createDriverUser(['name' => 'Maneuver Driver']);
+    $save = function (array $counts, string $completed = '2026-11-10 01:00:00', array $attributes = [], bool $incomplete = false) use ($customer, $driver) {
+        $booking = attentionRental($customer, $driver, 60, $completed, $attributes, $incomplete);
+        $report = RentalDrivingReport::where('booking_id', $booking->id)->sole();
+        $snapshot = $report->snapshot;
+        $snapshot['maneuvers'] = $counts;
+        $snapshot['event_summary'] = ['needs_review' => 100, 'pending' => 100];
+        $report->update(['snapshot' => $snapshot]);
+
+        return $booking;
+    };
+    $first = $save(['harsh_acceleration' => 2, 'harsh_braking' => 3, 'harsh_cornering' => 4, 'harsh_swerve' => 5]);
+    $save(['harsh_acceleration' => 1, 'harsh_braking' => 2, 'harsh_cornering' => 3, 'harsh_swerve' => 4], attributes: ['rental_type' => RentalType::OwnersDriver], incomplete: true);
+    $save(['harsh_acceleration' => 50], '2026-10-31 15:59:59');
+    $boundary = $save(['harsh_braking' => 1], '2026-10-31 16:00:00');
+    $save(['harsh_acceleration' => 50], attributes: ['status' => BookingStatus::Ongoing]);
+    $save(['harsh_acceleration' => 50])->delete();
+    attentionRental($customer, $driver, null); // Missing historical maneuver keys count as zero.
+    $withoutReport = $save(['harsh_acceleration' => 50]);
+    RentalDrivingReport::where('booking_id', $withoutReport->id)->delete();
+
+    $data = $this->getJson(attentionReportUrl())->assertOk()->assertJsonPath('data.table', null)
+        ->assertJsonPath('data.charts', [])->json('data');
+    expect(array_column($data['metrics'], 'value', 'label'))->toBe([
+        'Harsh acceleration' => 3, 'Harsh braking' => 6, 'Harsh cornering' => 7, 'Harsh swerving' => 9,
+    ]);
+    $this->getJson(attentionReportUrl(['vehicle_id' => $first->vehicle_id]))->assertOk()
+        ->assertJsonPath('data.metrics.0.value', 2)->assertJsonPath('data.metrics.1.value', 3);
+    $this->getJson(attentionReportUrl(['rental_type' => 'owners_driver']))->assertOk()
+        ->assertJsonPath('data.metrics.0.value', 1)->assertJsonPath('data.metrics.3.value', 4);
+    $this->getJson(attentionReportUrl(['search' => $boundary->booking_code]))->assertOk()
+        ->assertJsonPath('data.metrics.0.value', 0)->assertJsonPath('data.metrics.1.value', 1);
+    $this->getJson(attentionReportUrl(['search' => 'no matching booking']))->assertOk()->assertJsonPath('data.metrics.1.value', 0);
+    $csv = $this->get(str_replace('/admin/reports?', '/admin/reports/csv?', attentionReportUrl()))->assertOk()->streamedContent();
+    expect($csv)->toContain('Maneuver,Count', '"Harsh acceleration",3', '"Harsh braking",6', '"Harsh cornering",7', '"Harsh swerving",9')
+        ->not->toContain('Event', 'Latitude');
 });

@@ -11,6 +11,7 @@ function load(path, imports = {}) {
   }).outputText;
   const exports = {};
   vm.runInNewContext(source, { exports, URLSearchParams, require(name) {
+    if (name === '@/lib/table-pagination') return { TABLE_PAGE_SIZE: 10 };
     if (name in imports) return imports[name];
     throw new Error(`Unexpected import: ${name}`);
   } });

@@ -5828,3 +5828,45 @@ pending. The signed-in hosted tab is a separate preview and was not modified.
 ### Management authorization update — 2026-11-23
 
 The website now separates Owner/Staff business operations from technical Admin research and monitoring. Owner-only accounts retain business handover/release without Admin membership. Current assigned Driver release remains unchanged. Technical Admin reads limited Driving Analysis records without customer finances/documents or booking-write permission. Research record ownership, native protocols, collection consent and physical acceptance requirements are unchanged; removing legacy Admin membership from an Owner does not transfer or delete that account's research files. See [the role migration and matrix](user-roles-and-access.md#owner-technical-admin-and-staff-separation--2026-11-23).
+
+### Risk & Telematics maneuver KPIs — 2026-11-25
+
+Risk & Telematics now uses four existing report KPI cards for confirmed harsh
+acceleration, braking, cornering and swerving totals. The monitoring-event table,
+its chart and former GPS/release KPI cards are removed from this report view.
+Operators needing attention remains below the cards with its existing permissions
+and pagination. This supersedes the monitoring-total/event-log presentation above.
+
+`ReportAnalyticsService::maneuverMetrics` aggregates only the four saved
+`snapshot.maneuvers` values from final driving reports on non-deleted, currently
+completed rentals. The selected Manila period uses completion status-event time,
+not report creation or maneuver detection time. Existing search, vehicle and
+rental-type filters apply before aggregation. Uncertain/pending detections and
+rentals without reports contribute no events; missing historical keys contribute
+zero. Reports with incomplete synchronization contribute their received confirmed
+counts, so these totals do not establish complete rental coverage or real-car
+classification accuracy. Driving Analysis retains coverage and sync details.
+
+The analytics DTO returns four count metrics, no charts and `table: null`.
+Download CSV exports the same four maneuver totals as Maneuver/Count rows.
+The existing web `ReportData` type and conditional table renderer already support
+this shape; no mobile, sensor, score, permission or persisted-data changes apply.
+Sources: `backend/app/Services/ReportAnalyticsService.php`,
+`backend/tests/Feature/Web/Admin/ReportPeriodsTest.php`,
+`backend/tests/Feature/Web/Admin/OperatorsNeedingAttentionTest.php`, and
+`web-frontend/src/modules/management/reports/ReportsModule.tsx`.
+
+Verification: 24 focused report/attention backend tests passed (335 assertions),
+as did the web report service check, lint, TypeScript, production build and
+`git diff --check`. The local isolated browser report shows all four KPI cards
+and the retained attention table, with no monitoring-event table. Scoped Pint
+passes; full Pint still flags the pre-existing
+`2026_11_11_210000_add_owner_and_admin_invitations.php` formatting issue.
+Full `composer test` also passed: 1,522 tests and 9,815 assertions. Hosted
+rollout and validation against populated production reporting remain separate.
+
+Combined CSV follow-up — 2026-11-25: the report toolbar's sectioned all-tab export
+includes the four confirmed-maneuver totals and all permitted below-threshold
+operator rows, independently of the displayed page. It preserves completion-period
+scope, incomplete-sync context and permission gates. See
+[combined CSV structure and verification](web-ui-refinement.md#combined-report-csv--2026-11-25).

@@ -600,3 +600,91 @@ Work settings; visual checks at phone and desktop widths remain pending.
 Removed the vehicle/status/rental-type filter row and the empty-period message from the large Owner/Staff rental calendar at the user's request. `DashboardModule.tsx` now maps every returned event for the selected period directly into the established calendar. Removed the unused filter state, option derivation and `FilterSelect` import. Period navigation, month/week/day views, loading/error feedback and booking-event interactions retain their existing contracts. No API or submission-form change was needed.
 
 Verification: web lint, TypeScript, production build and `git diff --check` passed. Source review confirmed the filter controls, filter state and empty-period message are absent. Interactive browser acceptance was not exercised. No terminal command or database migration is required for this UI change.
+
+### Reports pagination audit — 2026-11-25
+
+Revenue, Bookings, Fleet Performance and Customer Insights use the shared
+`ReportTable`, `ManagementTable`, `TableCard` and `TablePagination`. Overview has
+no records table. Risk & Telematics uses KPI cards and the independently paginated
+Operators needing attention table. Customer-feedback and operator-rental dialogs
+reuse the same table/pagination primitives within their dialog card footers.
+
+All web management requests use `TABLE_PAGE_SIZE` (10); customer feedback now
+imports it rather than repeating a literal. The main report backend validates a
+maximum of ten and operator attention paginates ten records. Page totals come
+from Laravel, main/operator page state is independent, and report scope/search
+changes reset both to page one. Empty results hide pagination through the shared
+component; first/last-page arrows retain shared disabled states. Dialogs have
+separate page state and suppress pagination while loading or showing an error.
+The audit did not change public testimonial pagination or CSV exports.
+
+Sources: `services/report/report.service.ts`, `services/feedback/feedback.service.ts`,
+`services/booking/booking.service.ts`, `modules/management/reports/ReportsModule.tsx`,
+its feedback/attention components, and
+`modules/management/driving-analysis/components/OperatorBookingsDialog.tsx`.
+
+Verification: eight focused web service/component checks and 33 backend
+report/attention/feedback tests (436 assertions) passed. The stale attention
+component test now checks the current approved heading. No backend contracts
+or table presentation styles changed during this audit.
+Web lint, TypeScript, production build and `git diff --check` also passed.
+
+### Combined report CSV — 2026-11-25
+
+Download CSV now exports every report tab available to the current viewer in one
+sectioned file, using the selected period, date, search, vehicle and rental type.
+The web service sends fixed `export_scope=all` and omits the active tab and both
+page parameters. `ReportAnalyticsRequest` accepts this flag only on the CSV route.
+Laravel independently selects all six sections for financial-report viewers;
+other report viewers receive Bookings and Risk & Telematics. Operator-attention
+records still require manage-bookings and fleet-tracker permissions.
+
+`ReportCsvExportService` streams a report title, scope and currency, then a named
+section for each tab with labeled Metric/Value/Unit rows, chart source data and
+full record tables. Blank lines separate sections and each record retains its own
+columns and CSV row. Empty tables are explicit. Overview includes interval totals;
+Customer Insights exports the displayed lifetime average without the removed
+last-completed column. Lifetime averages retain their existing all-time semantics
+for the customers in the selected report scope. Nested lifetime-review dialogs
+are not a period-filtered report dataset and are not added to the CSV.
+
+Database record cursors and bounded operator pages include all matches rather
+than only the displayed ten. Dates render in Manila without a visible timezone
+suffix; money has two decimals and the file declares PHP. UTF-8 BOM, CRLF record
+endings, standard quoting and formula-safe text preserve comma/quote/newline
+content in cells; negative financial amounts remain numeric. The file is a CSV
+with variable-width labeled sections, not a styled workbook. Spreadsheet software
+must import it using comma as delimiter if its locale does not detect CSV.
+
+Existing single-section CSV requests remain supported. No new package, database
+migration, mobile endpoint or financial permission was introduced. Sources:
+`ReportAnalyticsService::exportSection`, `ReportCsvExportService`,
+`ReportController::csv`, `ReportAnalyticsRequest`,
+`web-frontend/src/services/report/report.service.ts` and their focused tests.
+
+Focused checks: 29 backend report/export tests passed (390 assertions), including
+all sections, scope filters, more than ten records/operators, text quoting,
+negative amounts and restricted viewers. Two web report-service checks, web lint,
+TypeScript and production build passed. A real authenticated HTTP request to the
+isolated local test backend saved a 5,237-byte CSV with all six sections and 235
+parsed CSV records. This verifies the backend file; browser/OS save-dialog and
+spreadsheet locale behavior remain separate from the HTTP check.
+
+Final verification: full `composer test` passed 1,527 tests (9,870 assertions).
+The additional archived-vehicle regression passed in the focused combined-export
+suite (five tests, 58 assertions). Scoped PHP formatting passes; full Pint still
+flags the pre-existing `2026_11_11_210000_add_owner_and_admin_invitations.php`
+formatting issue. `git diff --check` passes. Hosted deployment remains separate.
+
+Combined CSV filename refinement — 2026-11-25: downloads use
+`JamJade-Reports-and-Analytics-<mode>-<timeframe>.csv`. Day uses `Day-Nov-25-2026`,
+week uses both calendar boundaries (`Week-Nov-23-2026-to-Nov-29-2026`), month uses
+`Month-Nov-2026`, and year uses `Year-2026`. The name follows the selected calendar
+range even when the current period is incomplete. Laravel owns the filename in
+`ReportCsvExportService::filename`; the browser retains that Content-Disposition
+filename. No customer/search text or private identifiers appear in filenames.
+Filename checks: ten combined-export tests passed (68 assertions), including day,
+week boundaries across years, leap-year month and year selections. The full
+backend suite passed 1,532 tests (9,883 assertions); two web service checks, lint,
+TypeScript and `git diff --check` passed. Scoped Pint passes; full Pint retains
+the previously documented unrelated migration formatting failure.

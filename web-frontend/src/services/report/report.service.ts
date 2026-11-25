@@ -36,9 +36,12 @@ function responseFilename(response: Response, fallback: string) {
 
 export async function downloadReport(selection: ReportSelection) {
   let response: Response;
+  const query = new URLSearchParams(reportQuery(selection, false));
+  query.delete("section");
+  query.set("export_scope", "all");
 
   try {
-    response = await fetch(buildApiUrl(`/admin/reports/csv?${reportQuery(selection, false)}`), {
+    response = await fetch(buildApiUrl(`/admin/reports/csv?${query}`), {
       credentials: "include",
       headers: {
         Accept: "text/csv",

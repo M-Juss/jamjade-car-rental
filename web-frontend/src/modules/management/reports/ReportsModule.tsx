@@ -180,29 +180,31 @@ function ReportTable({
   onPageChange: (page: number) => void;
   onViewFeedback: (customer: { id: number; name: string }, trigger: HTMLButtonElement) => void;
 }) {
+  const customerTable = table.columns.some(column => column.key === "lifetime_rating");
+  const columns = customerTable ? table.columns.filter(column => column.key !== "last_completed") : table.columns;
   return (
     <div>
       <TableCard>
-        <ManagementTable aria-label={table.title}>
+        <ManagementTable aria-label={table.title} className={customerTable ? "md:table-fixed" : undefined}>
           <TableHeader>
             <TableRow className="bg-background">
-              {table.columns.map(({ key, label }) => (
-                <TableHead key={key} className="px-4 py-3 text-xs">{label}</TableHead>
+              {columns.map(({ key, label }) => (
+                <TableHead key={key} className={`px-4 py-3 text-xs ${customerTable && (key === "self_drive" || key === "owners_driver") ? "md:w-[12%]" : ""}`}>{label}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {table.rows.length === 0 ? (
               <TableRow>
-                <ManagementTableCell colSpan={table.columns.length} className="py-10 text-center text-muted-foreground">
+                <ManagementTableCell colSpan={columns.length} className="py-10 text-center text-muted-foreground">
                   No records found.
                 </ManagementTableCell>
               </TableRow>
             ) : table.rows.map((row, index) => (
               <TableRow key={index}>
-                {table.columns.map(({ key, label, format }) => (
+                {columns.map(({ key, label, format }) => (
                   <ManagementTableCell key={key} data-label={label} className="px-4 py-3 text-sm whitespace-normal">
-                    {key === "lifetime_rating" && Number(row.rating_count) > 0 ? <Button variant="link" className="h-auto whitespace-normal p-0 text-sm" aria-label={`View lifetime ratings for ${row.customer}`} onClick={event => onViewFeedback({ id: Number(row.customer_id), name: String(row.customer) }, event.currentTarget)}>{Number(row[key]).toFixed(1)} / 5 ({row.rating_count})</Button> : key === "lifetime_rating" ? "—" : formatValue(row[key], key === "last_completed" ? "date" : format)}
+                    {key === "lifetime_rating" && Number(row.rating_count) > 0 ? <Button variant="link" className="h-auto whitespace-normal p-0 text-sm" aria-label={`View lifetime ratings for ${row.customer}`} onClick={event => onViewFeedback({ id: Number(row.customer_id), name: String(row.customer) }, event.currentTarget)}>{Number(row[key]).toFixed(1)} / 5</Button> : key === "lifetime_rating" ? "—" : formatValue(row[key], key === "last_completed" ? "date" : format)}
                   </ManagementTableCell>
                 ))}
               </TableRow>

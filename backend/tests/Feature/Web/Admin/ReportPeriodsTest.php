@@ -440,9 +440,9 @@ it('clips fleet hours and counts returning customers and monitored rentals from 
         ->assertJsonMissingPath('data.table.rows.0.first_completed');
 
     $risk = $this->getJson('/admin/reports?section=telematics&period=day&date=2026-11-02')->assertOk()
-        ->assertJsonPath('data.table.total', 2)->assertJsonMissingPath('data.table.rows.0.latitude')->json('data');
+        ->assertJsonPath('data.table', null)->assertJsonPath('data.charts', [])->json('data');
     expect(reportMetrics($risk))->toBe([
-        'Rentals released' => 1, 'Monitoring started' => 1, 'Geofence exits' => 1, 'Monitoring interruptions' => 1,
+        'Harsh acceleration' => 0, 'Harsh braking' => 0, 'Harsh cornering' => 0, 'Harsh swerving' => 0,
     ]);
 });
 

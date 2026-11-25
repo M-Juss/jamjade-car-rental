@@ -1,4 +1,5 @@
 import { apiGet, apiPut } from "@/services/http";
+import { TABLE_PAGE_SIZE } from "@/lib/table-pagination";
 import { featureFeedbackSchema, type FeatureFeedbackInput } from "@/validations/feedback/schemas";
 
 export type CustomerFeedback = {
@@ -14,7 +15,7 @@ export type CustomerFeedback = {
 export type PublicFeedback = { id: number; name: string; rating: number; comment: string };
 
 export async function getCustomerFeedback(customerId: number, page: number) {
-  const response = await apiGet<CustomerFeedback[]>(`/admin/reports/customers/${customerId}/feedback?page=${page}&per_page=10`);
+  const response = await apiGet<CustomerFeedback[]>(`/admin/reports/customers/${customerId}/feedback?page=${page}&per_page=${TABLE_PAGE_SIZE}`);
   return {
     reviews: response.data,
     total: Number(response.meta?.total ?? 0),

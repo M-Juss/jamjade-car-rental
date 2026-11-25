@@ -38,7 +38,7 @@ test('attention records preserve operator identity for View and retain grade cou
   const tree = exports.OperatorsNeedingAttention({ data: { threshold: 70, operators: [operator], page: 1, lastPage: 2, total: 11 },
     onView: (...args) => views.push(args), onPageChange: page => pages.push(page) });
   const text = content(tree);
-  assert.match(text, /Average final grade below 70 \/ 100/);
+  assert.match(text, /Operators needing attention \(Below 70\)/);
   assert.match(text, /Driver/);
   assert.match(text, /58\.0 \/ 100/);
   assert.match(text, /1 with incomplete sync/);

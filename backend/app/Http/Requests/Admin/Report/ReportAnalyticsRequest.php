@@ -28,6 +28,7 @@ class ReportAnalyticsRequest extends BaseFormRequest
             'period' => ['sometimes', Rule::in(ReportPeriod::MODES)],
             'date' => ['sometimes', 'date_format:Y-m-d', 'after_or_equal:1900-01-01', 'before_or_equal:'.CarbonImmutable::now(ReportPeriod::TIMEZONE)->toDateString()],
             'section' => ['sometimes', Rule::in(ReportAnalyticsService::SECTIONS)],
+            'export_scope' => ['sometimes', Rule::prohibitedIf(! $this->routeIs('admin.reports.csv')), Rule::in(['all'])],
             'vehicle_id' => ['sometimes', 'integer', 'min:1', 'exists:vehicles,id'],
             'rental_type' => ['sometimes', Rule::enum(RentalType::class)],
             'search' => ['sometimes', 'nullable', 'string', 'max:160'],

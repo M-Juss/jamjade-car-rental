@@ -30,7 +30,6 @@ export function FeedbackFeatureForm({ review, onSaved }: { review: CustomerFeedb
       <Star aria-hidden="true" className={review.isFeatured ? "fill-current text-warning" : ""} />
       {isSubmitting ? "Saving…" : review.isFeatured ? "Starred" : "Star"}
     </Button>
-    {!review.comment?.trim() ? <p className="text-xs text-muted-foreground">No written feedback</p> : null}
     <FormFieldError message={errors.is_featured?.message} />
   </form>;
 }

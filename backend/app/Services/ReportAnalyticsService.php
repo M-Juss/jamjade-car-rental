@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
-use App\Enums\TelematicsEventType;
 use App\Support\ReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
@@ -34,7 +33,7 @@ class ReportAnalyticsService
     public function analytics(string $section, ReportPeriod $period, array $filters): array
     {
         $dataset = $this->dataset($section, $period, $filters);
-        $table = $section === 'overview'
+        $table = $section === 'overview' || $dataset['table'] === null
             ? null
             : $this->page($dataset['table'], $filters['page'] ?? 1, $filters['per_page'] ?? self::PAGE_SIZE);
 
@@ -54,11 +53,28 @@ class ReportAnalyticsService
         $table = match ($section) {
             'revenue' => $this->revenueTable($this->cashEntries($period, $filters)),
             'bookings' => $this->bookingTable($this->finalBookings($period, $filters)),
-            'telematics' => $this->telematicsTable($this->telematicsEvents($period, $filters)),
+            'telematics' => $this->maneuverExport($period, $filters),
             default => $this->dataset($section, $period, $filters)['table'],
         };
 
+        return $this->exportTable($table);
+    }
+
+    public function exportSection(string $section, ReportPeriod $period, array $filters): array
+    {
+        $dataset = $this->dataset($section, $period, $filters);
+
         return [
+            'metrics' => $dataset['metrics'],
+            'charts' => $dataset['charts'],
+            'records' => $dataset['table'] === null ? null : $this->exportTable($dataset['table']),
+        ];
+    }
+
+    private function exportTable(array $table): array
+    {
+        return [
+            'title' => $table['title'],
             'columns' => $table['columns'],
             'rows' => $this->tableRows($table, $table['rows'] instanceof Builder ? $table['rows']->cursor() : $table['rows']->lazy()),
         ];
@@ -507,54 +523,38 @@ class ReportAnalyticsService
 
     private function telematics(ReportPeriod $period, array $filters): array
     {
-        $events = $this->telematicsEvents($period, $filters);
-        $counts = (clone $events)->groupBy('event.event_type')->selectRaw('event.event_type, count(*) as total')->pluck('total', 'event_type');
-        $released = $period->constrain($this->bookingQuery($filters)
-            ->joinSub($this->lifecycle(BookingStatus::Ongoing), 'release', 'release.booking_id', '=', 'bookings.id'), 'release.occurred_at');
-        $monitored = (clone $released)->whereExists(fn (Builder $query) => $query->selectRaw('1')
-            ->from('telematics_trips')->whereColumn('telematics_trips.booking_id', 'bookings.id')
-            ->whereColumn('telematics_trips.started_at', '>=', 'release.occurred_at')
-            ->where('telematics_trips.started_at', '<', $period->dataEnd->utc()))->count();
-        $exits = (int) $counts->get(TelematicsEventType::GeofenceExit->value, 0);
-        $points = $counts->map(fn ($count, string $event) => [
-            'label' => TelematicsEventType::from($event)->label(), 'count' => (int) $count,
-        ])->values()->all();
-
         return [
-            'metrics' => [
-                $this->metric('Rentals released', $released->count()),
-                $this->metric('Monitoring started', $monitored),
-                $this->metric('Geofence exits', $exits),
-                $this->metric('Monitoring interruptions', (int) $counts->sum() - $exits),
-            ],
-            'charts' => [$this->chart('Recorded events', 'horizontal', 'count', ['count' => 'Events'], $points)],
-            'table' => $this->telematicsTable($events),
+            'metrics' => $this->maneuverMetrics($period, $filters),
+            'charts' => [],
+            'table' => null,
         ];
     }
 
-    private function telematicsEvents(ReportPeriod $period, array $filters): Builder
+    private function maneuverMetrics(ReportPeriod $period, array $filters): array
     {
-        return $period->constrain($this->bookingQuery($filters)
-            ->join('telematics_trips as trip', 'trip.booking_id', '=', 'bookings.id')
-            ->join('telematics_events as event', 'event.trip_id', '=', 'trip.id')
-            ->leftJoin('vehicles', 'vehicles.id', '=', 'bookings.vehicle_id')
-            ->whereIn('event.event_type', [
-                TelematicsEventType::GeofenceExit->value,
-                TelematicsEventType::GpsUnavailable->value,
-                TelematicsEventType::LocationPermissionRevoked->value,
-                TelematicsEventType::TelemetryInterrupted->value,
-            ]), 'event.occurred_at');
+        $scope = $this->bookingQuery($filters, includeOperator: true)->select('bookings.id');
+        $rentals = app(RentalDrivingOverviewService::class)->rentals()
+            ->whereIn('booking.id', $scope)->whereNotNull('report.id');
+        $period->constrain($rentals, 'completion.completed_at');
+        $labels = [
+            'harsh_acceleration' => 'Harsh acceleration',
+            'harsh_braking' => 'Harsh braking',
+            'harsh_cornering' => 'Harsh cornering',
+            'harsh_swerve' => 'Harsh swerving',
+        ];
+        $rentals->select(array_map(fn ($key) => "report.snapshot->maneuvers->{$key} as {$key}", array_keys($labels)));
+        $totals = DB::query()->fromSub($rentals, 'maneuvers')->selectRaw(implode(', ',
+            array_map(fn ($key) => "COALESCE(SUM({$key}), 0) as {$key}", array_keys($labels))))->first();
+
+        return collect($labels)->map(fn ($label, $key) => $this->metric($label, (int) $totals->$key))->values()->all();
     }
 
-    private function telematicsTable(Builder $query): array
+    private function maneuverExport(ReportPeriod $period, array $filters): array
     {
-        return $this->table('Event log', [
-            'occurred_at' => ['Date', 'datetime'],
-            'booking' => ['Booking', 'text'],
-            'vehicle' => ['Vehicle', 'text'],
-            'event_type' => ['Event', 'text'],
-        ], $query->select(['event.occurred_at', 'bookings.booking_code as booking', 'vehicles.name as vehicle', 'event.event_type'])
-            ->orderByDesc('event.occurred_at')->orderByDesc('event.id'));
+        return $this->table('Harsh maneuvers', [
+            'label' => ['Maneuver', 'text'],
+            'value' => ['Count', 'count'],
+        ], collect($this->maneuverMetrics($period, $filters)));
     }
 
     private function lifecycle(BookingStatus $status): Builder
@@ -673,7 +673,6 @@ class ReportAnalyticsService
                         'rental_type' => self::RENTAL_TYPES[$value],
                         'method' => $value === 'paypal' ? 'PayPal' : str($value)->headline()->toString(),
                         'outcome' => $value === 'no_show' ? 'No-show' : str($value)->headline()->toString(),
-                        'event_type' => TelematicsEventType::from($value)->label(),
                         default => $value,
                     },
                 };

@@ -38,13 +38,18 @@ existing Bookings list/details screens.
 ## Lifetime ratings and curation
 
 Customer Insights retains its period-filtered customer rows. Its **Lifetime
-ratings** column shows the customer's average and review count across every
+ratings** column shows the customer's average across every
 non-deleted completed rental, independently of report dates, search, vehicle,
 rental type, comment or starred state. Unrated rentals are excluded,
 never scored as zero. A customer without ratings displays an em dash.
+The customer table omits the last completed rental and uses narrower rental-type columns.
 
 The rating button opens a paginated lifetime list with booking, vehicle, rating,
-written feedback and submission date. Report Staff can read; only active
+and written feedback. The Submitted column was removed to simplify the dialog;
+the saved submission timestamp remains in the API. Feedback has more table space,
+long comments are truncated, and the full comment is available by hovering over the
+row or opening the feedback with a pointer, keyboard, or touch. Reviews without written feedback
+still cannot be starred, without a separate message in the table. Report Staff can read; only active
 Admin/Owner accounts with report access can star/unstar. Laravel enforces both
 permissions. Normal management access still requires the established Admin/Staff
 role boundary; the Owner account retains its Admin role.
